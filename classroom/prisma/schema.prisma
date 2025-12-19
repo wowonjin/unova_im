@@ -1,0 +1,229 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum QnaAuthorRole {
+  STUDENT
+  TEACHER
+}
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  imwebMemberCode String?  @unique
+  phone           String?
+  createdAt       DateTime @default(now())
+  lastLoginAt     DateTime?
+
+  ownedCourses Course[] @relation("CourseOwner")
+  enrollments Enrollment[]
+  progress    Progress[]
+  notes       Note[]
+  qnaPosts    QnaPost[]
+  qnaPinned   QnaPost[] @relation("QnaPinnedBy")
+
+  @@index([imwebMemberCode])
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  email     String
+  codeHash  String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  usedAt    DateTime?
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
+model Course {
+  id             String   @id @default(cuid())
+  ownerId        String?
+  title          String
+  slug           String   @unique
+  description    String?
+  // (legacy) 외부 URL 썸네일을 쓰는 경우를 위해 남겨둠
+  thumbnailUrl   String?
+  // 업로드 썸네일(권장)
+  thumbnailStoredPath   String?
+  thumbnailOriginalName String?
+  thumbnailMimeType     String?
+  thumbnailSizeBytes    Int?
+  isPublished    Boolean  @default(true)
+  imwebGroupCode String?  @unique
+  imwebProdNo    Int?
+  imwebProdCode  String?  @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+
+  owner       User?    @relation("CourseOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  lessons     Lesson[]
+  enrollments Enrollment[]
+  attachments Attachment[]
+
+  @@index([ownerId])
+}
+
+model Lesson {
+  id              String   @id @default(cuid())
+  courseId        String
+  title           String
+  position        Int
+  vimeoVideoId    String
+  durationSeconds Int?
+  isPublished     Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+
+  // 강의(차시) 설명 블록: 관리자에서 입력 → 수강생 화면의 "설명" 탭에 노출
+  description     String?
+  goals           Json?
+  outline         Json?
+
+  course      Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress    Progress[]
+  notes       Note[]
+  attachments Attachment[]
+  qnaPosts    QnaPost[]
+
+  @@unique([courseId, position])
+  @@index([courseId, isPublished])
+}
+
+model Enrollment {
+  id        String           @id @default(cuid())
+  userId    String
+  courseId  String
+  status    EnrollmentStatus @default(ACTIVE)
+  startAt   DateTime
+  endAt     DateTime
+  createdAt DateTime         @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId, status])
+  @@index([courseId, status])
+}
+
+model Progress {
+  id          String   @id @default(cuid())
+  userId      String
+  lessonId    String
+  lastSeconds Float    @default(0)
+  percent     Float    @default(0)
+  completedAt DateTime?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId, updatedAt])
+  @@index([lessonId])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  userId    String
+  lessonId  String
+  body      String   @default("")
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId, updatedAt])
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  courseId     String?
+  lessonId     String?
+  title        String
+  storedPath   String
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  createdAt    DateTime @default(now())
+
+  course Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson Lesson? @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  qnaImages QnaImage[]
+
+  @@index([courseId])
+  @@index([lessonId])
+}
+
+model QnaPost {
+  id         String   @id @default(cuid())
+  lessonId   String
+  userId     String
+  body       String
+  authorRole QnaAuthorRole @default(STUDENT)
+  parentId   String?
+  deletedAt  DateTime?
+  pinnedAt   DateTime?
+  pinnedById String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  lesson    Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pinnedBy  User?     @relation("QnaPinnedBy", fields: [pinnedById], references: [id], onDelete: SetNull)
+  parent    QnaPost?  @relation("QnaThread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   QnaPost[] @relation("QnaThread")
+  images    QnaImage[]
+
+  @@index([lessonId, pinnedAt, createdAt])
+  @@index([userId, createdAt])
+  @@index([parentId])
+}
+
+model QnaImage {
+  id           String   @id @default(cuid())
+  postId       String
+  attachmentId String
+  createdAt    DateTime @default(now())
+
+  post       QnaPost    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  attachment Attachment @relation(fields: [attachmentId], references: [id], onDelete: Cascade)
+
+  @@unique([attachmentId])
+  @@index([postId])
+}
+
+model OrderEvent {
+  id              String   @id @default(cuid())
+  provider        String   @default("imweb")
+  eventType       String
+  payload         Json
+  orderNo         String?
+  memberCode      String?
+  receivedAt      DateTime @default(now())
+  processedAt     DateTime?
+  processingError String?
+
+  @@index([provider, eventType, receivedAt])
+  @@index([orderNo])
+  @@index([memberCode])
+}
