@@ -125,6 +125,7 @@ function SearchBox({
 
 export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, enrolledCourses }: Props) {
   const pathname = usePathname();
+  const isAdminArea = pathname?.startsWith("/admin");
   const router = useRouter();
   const searchParams = useSearchParams();
   const qParam = searchParams.get("q") ?? "";
@@ -263,17 +264,30 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
 
   const Nav = (
     <nav className="space-y-1 text-sm">
+      {/* 관리자 페이지에서는 빠른 생성/관리 버튼을 사이드바 상단에 노출 */}
+      {isAdminArea ? (
+        <div className="mb-4">
+          <p className="px-3 text-xs font-semibold text-white/60">관리</p>
+          <div className="mt-2 space-y-1">
+            <NavItem href="/admin/textbooks" label="교재 만들기" icon="note_add" />
+            <NavItem href="/admin/courses" label="강좌 만들기" icon="add_circle" />
+            <NavItem href="/admin/notices" label="공지사항 만들기" icon="edit_note" />
+          </div>
+        </div>
+      ) : null}
+
       {/* 순서: 공지사항 -> 교재 다운로드 -> 수강중인 강좌 */}
       <NavItem href="/notices" label="선생님 공지사항" icon="campaign" />
       <NavItem href="/materials" label="교재 다운로드" icon="menu_book" />
       <NavItem href="/dashboard" label="수강중인 강좌" icon="school" />
       {/* 수강중인 강좌 버튼 아래: 강좌 리스트 */}
       {EnrolledCoursesSection}
-      {isAdmin ? (
+      {/* admin 영역이 아니어도(예: 대시보드) 관리자라면 노출 */}
+      {isAdmin && !isAdminArea ? (
         <>
-          <NavItem href="/admin/textbooks" label="교재 관리하기" icon="note_add" />
-          <NavItem href="/admin/courses" label="강좌 관리하기" icon="add_circle" />
-          <NavItem href="/admin/notices" label="새 공지사항 만들기" icon="edit_note" />
+          <NavItem href="/admin/textbooks" label="교재 만들기" icon="note_add" />
+          <NavItem href="/admin/courses" label="강좌 만들기" icon="add_circle" />
+          <NavItem href="/admin/notices" label="공지사항 만들기" icon="edit_note" />
         </>
       ) : null}
     </nav>
