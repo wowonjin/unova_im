@@ -51,6 +51,17 @@ function createPrismaClient(): PrismaClient {
     return new PrismaClient({ adapter });
   }
 
+  // Vercel/production must use a real Postgres connection string.
+  // Serverless functions do not reliably support local SQLite files (and the filesystem is ephemeral/read-only).
+  if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+    throw new Error(
+      [
+        "DATABASE_URL is not set. This deployment requires Postgres on Vercel.",
+        "Set DATABASE_URL (or Vercel Postgres envs like POSTGRES_URL/POSTGRES_PRISMA_URL) and redeploy.",
+      ].join(" ")
+    );
+  }
+
   // 로컬 개발 환경: SQLite (better-sqlite3 어댑터)
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { PrismaBetterSqlite3 } = require("@prisma/adapter-better-sqlite3");
