@@ -93,6 +93,9 @@ npm run dev
 ### 2) Vercel에 Import
 
 - Vercel 대시보드 → **Add New → Project** → GitHub 레포 선택 → Import
+- **중요(모노레포)**: 이 프로젝트는 Next 앱이 `classroom/` 아래에 있습니다.
+  - Import 화면(또는 Project Settings)에서 **Root Directory를 `classroom`로 설정**하세요.
+  - Framework Preset은 **Next.js**로 잡히는 게 정상입니다.
 
 ### 3) Vercel Postgres 생성
 
@@ -107,6 +110,8 @@ npm run dev
 - `DEFAULT_USER_EMAIL`: (선택) 데모/공개 모드 기본 사용자
 - `IMWEB_API_KEY`, `IMWEB_API_SECRET`: 아임웹 주문 조회용
 - `IMWEB_WEBHOOK_TOKEN`: 웹훅 보호용 토큰(권장)
+
+> 빌드 시 `npm run vercel-build`가 실행되며, `DATABASE_URL`이 설정되어 있으면 `prisma migrate deploy`까지 자동 수행합니다.
 
 ### 5) 배포 후 확인
 

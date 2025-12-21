@@ -1,7 +1,42 @@
 import prismaPkg from "@prisma/client";
+import { createRequire } from "node:module";
 
+const require = createRequire(import.meta.url);
 const { PrismaClient } = prismaPkg;
-const prisma = new PrismaClient();
+
+function createPrisma() {
+  const dbUrl =
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.POSTGRES_URL;
+
+  const isPostgres = dbUrl && (dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://"));
+
+  if (isPostgres) {
+    const { Pool } = require("pg");
+    const { PrismaPg } = require("@prisma/adapter-pg");
+    const pool = new Pool({ connectionString: dbUrl });
+    const adapter = new PrismaPg(pool);
+    return new PrismaClient({ adapter });
+  }
+
+  // Local fallback: SQLite (dev.db by default)
+  const { PrismaBetterSqlite3 } = require("@prisma/adapter-better-sqlite3");
+
+  let dbPath = process.env.DATABASE_PATH || "dev.db";
+  let sqliteUrl;
+  if (dbUrl && dbUrl.startsWith("file:")) {
+    sqliteUrl = dbUrl;
+  } else {
+    sqliteUrl = `file:${dbPath}`;
+  }
+
+  const adapter = new PrismaBetterSqlite3({ url: sqliteUrl });
+  return new PrismaClient({ adapter });
+}
+
+const prisma = createPrisma();
 async function main() {
   const seedEmail =
     (process.env.DEFAULT_USER_EMAIL || process.env.ADMIN_SEED_EMAIL || "admin@gmail.com").toLowerCase().trim();

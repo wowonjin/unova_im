@@ -1,4 +1,28 @@
 import { PrismaClient } from "@prisma/client";
+import fs from "node:fs";
+import path from "node:path";
+
+// In some Next.js build/prerender worker processes, `.env` isn't always loaded early enough.
+// If DB env vars are missing but a local `.env` file exists, load it defensively.
+(() => {
+  const hasDbEnv =
+    Boolean(process.env.DATABASE_URL) ||
+    Boolean(process.env.POSTGRES_PRISMA_URL) ||
+    Boolean(process.env.POSTGRES_URL_NON_POOLING) ||
+    Boolean(process.env.POSTGRES_URL);
+
+  if (hasDbEnv) return;
+
+  const envPath = path.join(process.cwd(), ".env");
+  if (!fs.existsSync(envPath)) return;
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require("dotenv").config({ path: envPath });
+  } catch {
+    // ignore (dotenv is a transitive dep of next in most setups)
+  }
+})();
 
 declare global {
   var __prisma: PrismaClient | undefined;
@@ -29,17 +53,20 @@ function createPrismaClient(): PrismaClient {
 
   // 로컬 개발 환경: SQLite (better-sqlite3 어댑터)
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const Database = require("better-sqlite3");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { PrismaBetterSQLite3 } = require("@prisma/adapter-better-sqlite3");
+  const { PrismaBetterSqlite3 } = require("@prisma/adapter-better-sqlite3");
 
   // file:./dev_local.db 또는 DATABASE_PATH 형식 지원
   let dbPath = process.env.DATABASE_PATH || "dev.db";
+  let sqliteUrl: string | undefined;
   if (dbUrl && dbUrl.startsWith("file:")) {
+    sqliteUrl = dbUrl;
     dbPath = dbUrl.replace("file:", "");
   }
-  const db = new Database(dbPath);
-  const adapter = new PrismaBetterSQLite3(db);
+  if (!sqliteUrl) {
+    sqliteUrl = `file:${dbPath}`;
+  }
+  // Prisma 7 adapter-better-sqlite3 expects a config object with a `url` (file:...) string.
+  const adapter = new PrismaBetterSqlite3({ url: sqliteUrl });
   return new PrismaClient({ adapter });
 }
 
