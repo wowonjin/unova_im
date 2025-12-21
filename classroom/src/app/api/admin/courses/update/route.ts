@@ -10,7 +10,6 @@ const Schema = z.object({
   courseId: z.string().min(1),
   title: z.string().min(1).max(200),
   slug: z.string().min(1).max(200),
-  description: z.string().optional(),
   thumbnailUrl: z.string().optional(),
   isPublished: z
     .string()
@@ -27,7 +26,6 @@ export async function POST(req: Request) {
     courseId: form.get("courseId"),
     title: form.get("title"),
     slug: form.get("slug"),
-    description: form.get("description"),
     thumbnailUrl: form.get("thumbnailUrl"),
     isPublished: form.get("isPublished"),
   };
@@ -36,7 +34,6 @@ export async function POST(req: Request) {
     courseId: typeof raw.courseId === "string" ? raw.courseId : "",
     title: typeof raw.title === "string" ? raw.title.trim() : "",
     slug: typeof raw.slug === "string" ? raw.slug.trim() : "",
-    description: typeof raw.description === "string" ? raw.description : undefined,
     thumbnailUrl: typeof raw.thumbnailUrl === "string" ? raw.thumbnailUrl : undefined,
     isPublished: typeof raw.isPublished === "string" ? raw.isPublished : undefined,
   });
@@ -58,7 +55,6 @@ export async function POST(req: Request) {
     data: {
       title: parsed.data.title,
       slug: cleanSlug,
-      description: parsed.data.description?.trim().length ? parsed.data.description.trim() : null,
       thumbnailUrl: parsed.data.thumbnailUrl?.trim().length ? parsed.data.thumbnailUrl.trim() : null,
       isPublished: parsed.data.isPublished,
     },

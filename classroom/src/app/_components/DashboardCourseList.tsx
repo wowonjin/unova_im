@@ -10,6 +10,7 @@ type Card = {
   courseId: string;
   title: string;
   thumbnail: boolean;
+  isEnrolled: boolean;
   startAtISO: string;
   endAtISO: string;
   totalLessons: number;
@@ -48,6 +49,12 @@ function parseCourseMeta(title: string) {
   const subject = subjectFromBracket ?? subjectFromText ?? null;
   const teacher = title.match(/\]\s*([^\s]+?)T\b/)?.[1]?.trim() ?? null;
   return { subject, teacher };
+}
+
+function formatTeacher(teacher: string) {
+  const t = teacher.trim();
+  if (!t) return t;
+  return t.endsWith("T") ? t : `${t}T`;
 }
 
 export default function DashboardCourseList({
@@ -120,7 +127,7 @@ export default function DashboardCourseList({
           const meta = parseCourseMeta(en.title);
           const recentISO = en.lastProgressAtISO ?? en.startAtISO;
           const selected = Boolean(selectedCourseId && selectedCourseId === en.courseId);
-          const thumbSrc = en.thumbnail ? `/api/courses/${en.courseId}/thumbnail` : null;
+          const thumbSrc = en.thumbnail ? `/api/courses/${en.courseId}/thumbnail` : "/course-placeholder.svg";
           return (
           <div
             key={en.enrollmentId}
@@ -143,29 +150,41 @@ export default function DashboardCourseList({
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-start gap-4">
-                {thumbSrc ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={thumbSrc}
-                    alt="강좌 썸네일"
-                    className="h-20 w-36 shrink-0 rounded-lg object-cover opacity-90"
-                    loading="lazy"
-                  />
-                ) : null}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={thumbSrc}
+                  alt="강좌 썸네일"
+                  className="h-20 w-36 shrink-0 rounded-lg object-cover opacity-90"
+                  loading="lazy"
+                />
 
                 <div className="min-w-0">
                   <p className="truncate text-lg font-semibold">{en.title}</p>
-                  <p className="mt-1 text-sm text-white/70">
-                    {(meta.subject ?? "수학")} {" | "} {(meta.teacher ?? "백하욱")} {" | "} 수강기간{" "}
-                    {fmtISO(en.startAtISO)}~{fmtISO(en.endAtISO)} {" | "} 총 {en.totalLessons}강
-                  </p>
-                  <p className="mt-2 text-sm text-white/70">최근 수강일: {fmtISO(recentISO)}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {(
+                      [
+                        meta.subject ?? "수학",
+                        formatTeacher(meta.teacher ?? "백하욱"),
+                        en.isEnrolled ? `수강기간 ${fmtISO(en.startAtISO)}~${fmtISO(en.endAtISO)}` : "미수강",
+                        `총 ${en.totalLessons}강`,
+                      ] as const
+                    ).map((label) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex h-8 items-center rounded-xl border border-white/10 bg-white/5 px-3 text-xs text-white/80 hover:bg-white/10"
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
               <FavoriteStarButton courseId={en.courseId} />
             </div>
 
-            <div className="mt-4">
+            <div className="mt-4 border-t border-white/10 pt-4">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-white/70">나의 학습 진도율</span>
                 <span className="font-medium">
@@ -181,22 +200,24 @@ export default function DashboardCourseList({
             </div>
 
             {en.lastLessonId ? (
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <p className="truncate text-sm text-white/80">
-                  최근 수강: <span className="font-medium">{en.lastLessonTitle}</span>
-                </p>
-                <Link
-                  href={`/lesson/${en.lastLessonId}`}
-                  className="rounded-xl border border-white/15 px-3 py-2 text-sm hover:bg-white/10"
+              <div className="mt-4">
+                <button
+                  type="button"
+                  className="min-w-0 truncate text-left text-sm text-white/80 hover:text-white hover:underline focus:outline-none focus:ring-2 focus:ring-white/10 rounded-lg"
                   onClick={(e) => {
                     // 카드 전체 클릭(강좌 이동)과 충돌 방지
                     e.stopPropagation();
+                    router.push(`/lesson/${en.lastLessonId}`);
                   }}
+                  aria-label={`최근 수강: ${fmtISO(recentISO)} · ${en.lastLessonTitle} 이동`}
                 >
-                  이어보기
-                </Link>
+                  최근 수강: <span className="font-medium">{fmtISO(recentISO)}</span> ·{" "}
+                  <span className="font-medium">{en.lastLessonTitle}</span>
+                </button>
               </div>
-            ) : null}
+            ) : (
+              <p className="mt-4 text-sm text-white/70">최근 수강일: {fmtISO(recentISO)}</p>
+            )}
           </div>
         );
         })}

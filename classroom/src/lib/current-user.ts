@@ -9,20 +9,27 @@ export type CurrentUser = {
 };
 
 const TEACHER_COOKIE = "unova_teacher_email";
-const ALLOWED_TEACHERS = new Set(
-  [
-    "admin@gmail.com",
-    "admin1@gmail.com",
-    "admin2@gmail.com",
-    "admin3@gmail.com",
-    "admin4@gmail.com",
-    "admin5@gmail.com",
-    "admin6@gmail.com",
-  ].map((x) => x.toLowerCase())
+function parseAdminEmailsEnv() {
+  const raw = process.env.ADMIN_EMAILS || "";
+  const emails = raw
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return new Set(emails);
+}
+
+// 운영에서는 env로 제어(권장). 미설정 시 개발 편의용 기본 목록 fallback.
+const DEFAULT_ALLOWED_TEACHERS = new Set(
+  ["admin@gmail.com", "admin1@gmail.com", "admin2@gmail.com", "admin3@gmail.com", "admin4@gmail.com"].map((x) =>
+    x.toLowerCase()
+  )
 );
 
 function isAllowedTeacherEmail(email: string) {
-  return ALLOWED_TEACHERS.has(email.toLowerCase().trim());
+  const normalized = email.toLowerCase().trim();
+  const fromEnv = parseAdminEmailsEnv();
+  if (fromEnv.size) return fromEnv.has(normalized);
+  return DEFAULT_ALLOWED_TEACHERS.has(normalized);
 }
 
 async function getDefaultUser(): Promise<CurrentUser> {
@@ -37,7 +44,7 @@ async function getDefaultUser(): Promise<CurrentUser> {
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
-  // 교사 쿠키가 있으면(강의 관리 플랫폼에서 로그인한 상태) 그 교사를 현재 사용자로 취급
+  // 교사 쿠키가 있으면(관리 플랫폼에서 로그인한 상태) 그 교사를 현재 사용자로 취급
   const teacher = await getCurrentTeacherUser();
   if (teacher) return teacher;
 

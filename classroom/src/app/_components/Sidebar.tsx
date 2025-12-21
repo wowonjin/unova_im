@@ -59,6 +59,7 @@ export default async function Sidebar() {
     return {
       courseId: e.course.id,
       title: e.course.title,
+      lastLessonId: latest?.lesson?.id ?? null,
       lastLessonTitle: latest?.lesson?.title ?? null,
       lastWatchedAtISO: latest ? latest.updatedAt.toISOString() : null,
       lastSeconds: latest ? latest.lastSeconds : null,

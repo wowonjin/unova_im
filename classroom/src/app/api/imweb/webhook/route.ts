@@ -35,11 +35,28 @@ function shouldProcessEvent(eventType: string | null) {
 }
 
 export async function POST(req: Request) {
+  // 보안:
+  // - IMWEB_WEBHOOK_SECRET 설정 시: HMAC 서명 검증
+  // - 아니면 IMWEB_WEBHOOK_TOKEN 설정 시: ?token= 또는 x-imweb-token 헤더로 검증
+  // - 둘 다 없으면: 개발 편의상 dev에서는 허용, production에서는 차단
+  const url = new URL(req.url);
+  const tokenEnv = process.env.IMWEB_WEBHOOK_TOKEN || null;
+  const tokenProvided = (req.headers.get("x-imweb-token") || url.searchParams.get("token") || "").trim();
+
   const raw = await req.text().catch(() => "");
   const cfg = getImwebSignatureConfig();
   const signature = cfg ? req.headers.get(cfg.headerName) : null;
-  if (!verifyHmacSignature(raw, signature, cfg)) {
-    return NextResponse.json({ ok: false, error: "INVALID_SIGNATURE" }, { status: 401 });
+
+  if (cfg) {
+    if (!verifyHmacSignature(raw, signature, cfg)) {
+      return NextResponse.json({ ok: false, error: "INVALID_SIGNATURE" }, { status: 401 });
+    }
+  } else if (tokenEnv) {
+    if (!tokenProvided || tokenProvided !== tokenEnv) {
+      return NextResponse.json({ ok: false, error: "INVALID_TOKEN" }, { status: 401 });
+    }
+  } else if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ ok: false, error: "WEBHOOK_NOT_CONFIGURED" }, { status: 401 });
   }
 
   const payload = parseJson(raw);

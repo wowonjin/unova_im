@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 type Lesson = {
   id: string;
@@ -62,6 +63,8 @@ export default function DashboardCourseSidePanel({
   courseTitle: string | null;
   onClose: () => void;
 }) {
+  const searchParams = useSearchParams();
+  const allowAll = searchParams.get("all") === "1";
   const [loading, setLoading] = useState(false);
   const [lessons, setLessons] = useState<Lesson[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +74,7 @@ export default function DashboardCourseSidePanel({
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch(`/api/courses/${courseId}/curriculum`)
+    fetch(`/api/courses/${courseId}/curriculum${allowAll ? "?all=1" : ""}`)
       .then(async (r) => {
         const data = await r.json().catch(() => null);
         if (!r.ok) throw new Error(data?.error || `HTTP_${r.status}`);
@@ -93,7 +96,7 @@ export default function DashboardCourseSidePanel({
     return () => {
       cancelled = true;
     };
-  }, [open, courseId]);
+  }, [open, courseId, allowAll]);
 
   const headerTitle = courseTitle || "커리큘럼";
   const list = useMemo(() => lessons ?? [], [lessons]);

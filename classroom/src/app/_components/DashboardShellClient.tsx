@@ -9,6 +9,7 @@ type Card = {
   courseId: string;
   title: string;
   thumbnail: boolean;
+  isEnrolled: boolean;
   startAtISO: string;
   endAtISO: string;
   totalLessons: number;

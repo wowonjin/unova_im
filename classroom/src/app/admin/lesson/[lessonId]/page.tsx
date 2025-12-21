@@ -35,9 +35,6 @@ export default async function AdminLessonPage({ params }: { params: Promise<{ le
         description={lesson.title}
         right={
           <>
-            <Button href={`/lesson/${lesson.id}`} variant="secondary">
-              차시 미리보기
-            </Button>
             <Button href={`/admin/course/${lesson.courseId}?tab=curriculum`} variant="ghost">
               강좌로
             </Button>
@@ -52,20 +49,17 @@ export default async function AdminLessonPage({ params }: { params: Promise<{ le
             <CardBody>
               <form className="grid grid-cols-1 gap-3 md:grid-cols-12" action="/api/admin/lessons/update" method="post">
                 <input type="hidden" name="lessonId" value={lesson.id} />
+                {/* durationSeconds 입력 UI는 제거하지만, 값은 유지되도록 hidden으로 전송 */}
+                <input type="hidden" name="durationSeconds" value={lesson.durationSeconds ?? ""} />
 
                 <div className="md:col-span-7">
                   <Field label="제목">
-                    <Input name="title" defaultValue={lesson.title} required />
+                    <Input name="title" defaultValue={lesson.title} required className="bg-transparent" />
                   </Field>
                 </div>
-                <div className="md:col-span-3">
+                <div className="md:col-span-5">
                   <Field label="Vimeo ID">
-                    <Input name="vimeoVideoId" defaultValue={lesson.vimeoVideoId} required />
-                  </Field>
-                </div>
-                <div className="md:col-span-2">
-                  <Field label="길이(초)">
-                    <Input name="durationSeconds" type="number" min={0} defaultValue={lesson.durationSeconds ?? ""} />
+                    <Input name="vimeoVideoId" defaultValue={lesson.vimeoVideoId} required className="bg-transparent" />
                   </Field>
                 </div>
 
@@ -123,7 +117,7 @@ export default async function AdminLessonPage({ params }: { params: Promise<{ le
             <CardHeader title="강좌" description="현재 차시가 속한 강좌입니다." />
             <CardBody className="space-y-2">
               <div className="text-sm font-medium">{lesson.course.title}</div>
-              <div className="text-xs text-white/60">slug: {lesson.course.slug}</div>
+              <div className="text-xs text-white/60">주소: {lesson.course.slug}</div>
               <div className="pt-2">
                 <Button href={`/admin/course/${lesson.courseId}?tab=curriculum`} variant="secondary">
                   강좌 커리큘럼
@@ -178,11 +172,8 @@ export default async function AdminLessonPage({ params }: { params: Promise<{ le
           <Card>
             <CardHeader title="바로가기" />
             <CardBody className="space-y-2">
-              <Link className="text-sm text-white/70 underline" href={`/course/${lesson.courseId}`}>
-                강좌 수강생 화면(미리보기)
-              </Link>
               <Link className="text-sm text-white/70 underline" href={`/admin`}>
-                강의 관리 플랫폼
+                관리 플랫폼
               </Link>
             </CardBody>
           </Card>

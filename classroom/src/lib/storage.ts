@@ -10,9 +10,23 @@ export async function ensureDir(p: string) {
 }
 
 export function safeJoin(root: string, rel: string) {
-  const resolved = path.resolve(root, rel);
-  if (!resolved.startsWith(root)) throw new Error("INVALID_PATH");
+  // Safer than `startsWith`:
+  // - Works on Windows (drive letter casing)
+  // - Avoids prefix-trick (e.g. root="/a/b", resolved="/a/bad/..")
+  const absRoot = path.resolve(root);
+  const resolved = path.resolve(absRoot, rel);
+
+  const relToRoot = path.relative(absRoot, resolved);
+  const escapesRoot =
+    relToRoot === "" ? false : relToRoot.startsWith("..") || relToRoot.startsWith(`..${path.sep}`) || path.isAbsolute(relToRoot);
+  if (escapesRoot) throw new Error("INVALID_PATH");
+
   return resolved;
 }
+
+
+
+
+
 
 

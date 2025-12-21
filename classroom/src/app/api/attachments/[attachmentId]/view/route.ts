@@ -3,22 +3,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireCurrentUser } from "@/lib/current-user";
 import fs from "node:fs";
-import path from "node:path";
 import { Readable } from "node:stream";
+import { getStorageRoot, safeJoin } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
 const ParamsSchema = z.object({ attachmentId: z.string().min(1) });
-
-function getStorageRoot() {
-  return path.resolve(process.cwd(), "storage");
-}
-
-function safeJoin(root: string, rel: string) {
-  const resolved = path.resolve(root, rel);
-  if (!resolved.startsWith(root)) throw new Error("INVALID_PATH");
-  return resolved;
-}
 
 async function canAccessAttachment(userId: string, isAdmin: boolean, attachmentId: string) {
   const att = await prisma.attachment.findUnique({
@@ -51,7 +41,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ attachmentId: 
   const att = await canAccessAttachment(user.id, user.isAdmin, attachmentId);
   if (!att) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
-  const filePath = safeJoin(getStorageRoot(), att.storedPath);
+  let filePath: string;
+  try {
+    filePath = safeJoin(getStorageRoot(), att.storedPath);
+  } catch {
+    return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+  }
   if (!fs.existsSync(filePath)) return NextResponse.json({ ok: false, error: "FILE_MISSING" }, { status: 404 });
 
   const stat = fs.statSync(filePath);

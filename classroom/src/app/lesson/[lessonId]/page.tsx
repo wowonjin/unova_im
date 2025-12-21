@@ -2,7 +2,7 @@ import Link from "next/link";
 import AppShell from "@/app/_components/AppShell";
 import { requireCurrentUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
-import YouTubePlayer from "./YouTubePlayer";
+import VimeoPlayer from "./VimeoPlayer";
 import LessonResourcesTabs from "./LessonResourcesTabs";
 import LessonCurriculumSidebar from "./LessonCurriculumSidebar";
 import LessonPlayerLayoutClient from "./LessonPlayerLayoutClient";
@@ -111,7 +111,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
         left={
           <>
             {/* VimeoPlayer 내부에 이미 surface가 있어서 추가 래퍼를 얹지 않음(덜 덕지덕지) */}
-            <YouTubePlayer />
+            <VimeoPlayer lessonId={lesson.id} vimeoVideoId={lesson.vimeoVideoId} />
 
             <LessonResourcesTabs
               lessonId={lesson.id}

@@ -33,7 +33,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ courseId: stri
     if (!ok) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
   }
 
-  const filePath = safeJoin(getStorageRoot(), course.thumbnailStoredPath);
+  let filePath: string;
+  try {
+    filePath = safeJoin(getStorageRoot(), course.thumbnailStoredPath);
+  } catch {
+    return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+  }
   if (!fs.existsSync(filePath)) return NextResponse.json({ ok: false, error: "FILE_MISSING" }, { status: 404 });
 
   const stat = fs.statSync(filePath);

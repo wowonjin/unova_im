@@ -13,6 +13,7 @@ type Props = {
   enrolledCourses: {
     courseId: string;
     title: string;
+    lastLessonId: string | null;
     lastLessonTitle: string | null;
     lastWatchedAtISO: string | null;
     lastSeconds: number | null;
@@ -235,10 +236,11 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
         <p className="px-3 text-xs font-semibold text-white/60">강의 시청 기록</p>
         <ul className="mt-2 space-y-1">
           {enrolledCourses.map((c) => {
+            const href = c.lastLessonId ? `/lesson/${c.lastLessonId}` : `/course/${c.courseId}`;
             return (
               <Link
                 key={c.courseId}
-                href={`/course/${c.courseId}`}
+                href={href}
                 className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 hover:bg-white/10"
               >
                 <div className="min-w-0">
@@ -262,12 +264,18 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
   const Nav = (
     <nav className="space-y-1 text-sm">
       {/* 순서: 공지사항 -> 교재 다운로드 -> 수강중인 강좌 */}
-      <NavItem href="/notices" label="공지사항" icon="campaign" />
+      <NavItem href="/notices" label="선생님 공지사항" icon="campaign" />
       <NavItem href="/materials" label="교재 다운로드" icon="menu_book" />
       <NavItem href="/dashboard" label="수강중인 강좌" icon="school" />
       {/* 수강중인 강좌 버튼 아래: 강좌 리스트 */}
       {EnrolledCoursesSection}
-      {isAdmin ? <NavItem href="/admin" label="관리자" /> : null}
+      {isAdmin ? (
+        <>
+          <NavItem href="/admin/textbooks" label="교재 관리하기" icon="note_add" />
+          <NavItem href="/admin/courses" label="강좌 관리하기" icon="add_circle" />
+          <NavItem href="/admin/notices" label="새 공지사항 만들기" icon="edit_note" />
+        </>
+      ) : null}
     </nav>
   );
 

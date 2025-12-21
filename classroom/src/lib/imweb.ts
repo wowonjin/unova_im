@@ -88,10 +88,6 @@ function getStr(v: unknown): string | null {
   return typeof v === "string" && v.length ? v : null;
 }
 
-function getNum(v: unknown): number | null {
-  return typeof v === "number" && Number.isFinite(v) ? v : null;
-}
-
 function getArr(v: unknown): unknown[] | null {
   return Array.isArray(v) ? v : null;
 }
@@ -136,41 +132,58 @@ export async function syncImwebOrderToEnrollments(orderNo: string) {
     getArr(prodOrdersDataObj?.prod_orders) ??
     [];
 
-  const matched: { courseId: string; by: string }[] = [];
+  const matchedCourses: { courseId: string; by: string }[] = [];
+  const matchedTextbooks: { textbookId: string; by: string }[] = [];
 
   for (const rawIt of items) {
     const it = getObj(rawIt);
     const productObj = getObj(it?.product);
 
-    const prodNo = getNum(it?.prod_no) ?? getNum(productObj?.prod_no);
     const prodCode =
       getStr(it?.prod_custom_code) ??
       getStr(it?.prod_cu_tom_code) ??
       getStr(productObj?.prod_custom_code);
 
-    const course = await prisma.course.findFirst({
+    // 아임웹 ‘상품 코드(prod_custom_code)’만 지원
+    if (!prodCode) continue;
+    const by = `code:${prodCode}`;
+
+    // 1) 강좌 매칭 → Enrollment 부여
+    const courseCode = await prisma.courseImwebProdCode.findUnique({
+      where: { code: prodCode },
+      select: { courseId: true },
+    });
+    if (courseCode) {
+      const startAt = new Date();
+      const endAt = new Date(startAt.getTime() + 365 * 24 * 60 * 60 * 1000);
+      await prisma.enrollment.upsert({
+        where: { userId_courseId: { userId: user.id, courseId: courseCode.courseId } },
+        update: { status: "ACTIVE", startAt, endAt },
+        create: { userId: user.id, courseId: courseCode.courseId, status: "ACTIVE", startAt, endAt },
+      });
+      matchedCourses.push({ courseId: courseCode.courseId, by });
+    }
+
+    // 2) 교재 매칭 → TextbookEntitlement 부여
+    const textbook = await prisma.textbook.findFirst({
       where: {
-        OR: [
-          prodNo != null ? { imwebProdNo: prodNo } : undefined,
-          prodCode ? { imwebProdCode: prodCode } : undefined,
-        ].filter(Boolean) as Array<{ imwebProdNo?: number; imwebProdCode?: string }>,
+        imwebProdCode: prodCode,
       },
       select: { id: true },
     });
-    if (!course) continue;
-
-    const startAt = new Date();
-    const endAt = new Date(startAt.getTime() + 365 * 24 * 60 * 60 * 1000);
-    await prisma.enrollment.upsert({
-      where: { userId_courseId: { userId: user.id, courseId: course.id } },
-      update: { status: "ACTIVE", startAt, endAt },
-      create: { userId: user.id, courseId: course.id, status: "ACTIVE", startAt, endAt },
-    });
-
-    matched.push({ courseId: course.id, by: prodCode ? `code:${prodCode}` : `no:${prodNo}` });
+    if (textbook) {
+      const startAt = new Date();
+      const endAt = new Date(startAt.getTime() + 365 * 24 * 60 * 60 * 1000);
+      await prisma.textbookEntitlement.upsert({
+        where: { userId_textbookId: { userId: user.id, textbookId: textbook.id } },
+        update: { status: "ACTIVE", startAt, endAt, orderNo },
+        create: { userId: user.id, textbookId: textbook.id, status: "ACTIVE", startAt, endAt, orderNo },
+      });
+      matchedTextbooks.push({ textbookId: textbook.id, by });
+    }
   }
 
-  return { ok: true, userId: user.id, matched } as const;
+  return { ok: true, userId: user.id, matchedCourses, matchedTextbooks } as const;
 }
 
 

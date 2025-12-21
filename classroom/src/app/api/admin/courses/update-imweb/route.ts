@@ -7,16 +7,12 @@ export const runtime = "nodejs";
 
 const Schema = z.object({
   courseId: z.string().min(1),
-  imwebProdNo: z
-    .string()
-    .optional()
-    .transform((s) => (s && s.trim() !== "" ? Number(s) : null))
-    .refine((v) => v === null || (Number.isInteger(v) && v > 0), { message: "INVALID_PROD_NO" }),
+  op: z.enum(["set", "add", "remove"]).optional(),
   imwebProdCode: z
     .string()
     .optional()
-    .transform((s) => (s ? s.trim() : ""))
-    .transform((s) => (s.length ? s : null)),
+    .transform((s) => (s ? s.trim() : "")),
+  imwebProdCodeId: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -25,14 +21,16 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const raw = {
     courseId: form.get("courseId"),
-    imwebProdNo: form.get("imwebProdNo"),
+    op: form.get("op"),
     imwebProdCode: form.get("imwebProdCode"),
+    imwebProdCodeId: form.get("imwebProdCodeId"),
   };
 
   const parsed = Schema.safeParse({
     courseId: typeof raw.courseId === "string" ? raw.courseId : "",
-    imwebProdNo: typeof raw.imwebProdNo === "string" ? raw.imwebProdNo : undefined,
+    op: typeof raw.op === "string" ? raw.op : undefined,
     imwebProdCode: typeof raw.imwebProdCode === "string" ? raw.imwebProdCode : undefined,
+    imwebProdCodeId: typeof raw.imwebProdCodeId === "string" ? raw.imwebProdCodeId : undefined,
   });
   if (!parsed.success) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
 
@@ -42,13 +40,68 @@ export async function POST(req: Request) {
   });
   if (!course || course.ownerId !== teacher.id) return NextResponse.json({ ok: false, error: "COURSE_NOT_FOUND" }, { status: 404 });
 
-  await prisma.course.update({
-    where: { id: course.id },
-    data: {
-      imwebProdNo: parsed.data.imwebProdNo,
-      imwebProdCode: parsed.data.imwebProdCode,
-    },
-  });
+  const op = parsed.data.op ?? "set"; // 기본은 단일 코드 "저장"
+
+  if (op === "set") {
+    const code = (parsed.data.imwebProdCode || "").trim();
+    // 빈 값이면 "연동 해제" (이 강좌의 코드 매핑 제거)
+    if (!code.length) {
+      await prisma.courseImwebProdCode.deleteMany({ where: { courseId: course.id } });
+      const url = new URL(req.headers.get("referer") || "/admin", req.url);
+      url.searchParams.set("imweb", "cleared");
+      url.searchParams.set("tab", "settings");
+      return NextResponse.redirect(url);
+    }
+
+    const existing = await prisma.courseImwebProdCode.findUnique({
+      where: { code },
+      select: { id: true, courseId: true },
+    });
+    // 다른 강좌에서 이미 쓰는 코드면 저장 불가
+    if (existing && existing.courseId !== course.id) {
+      const url = new URL(req.headers.get("referer") || "/admin", req.url);
+      url.searchParams.set("imweb", "duplicate");
+      url.searchParams.set("tab", "settings");
+      return NextResponse.redirect(url);
+    }
+
+    // 이 강좌는 "상품 코드 1개"만 유지하도록 정리
+    await prisma.$transaction(async (tx) => {
+      // 기존에 여러 개가 있다면, 현재 코드 외는 제거
+      await tx.courseImwebProdCode.deleteMany({ where: { courseId: course.id, code: { not: code } } });
+      // 현재 코드는 없으면 생성 (있으면 그대로)
+      const ok = await tx.courseImwebProdCode.findUnique({ where: { code }, select: { id: true } });
+      if (!ok) await tx.courseImwebProdCode.create({ data: { courseId: course.id, code } });
+    });
+
+    const url = new URL(req.headers.get("referer") || "/admin", req.url);
+    url.searchParams.set("imweb", "saved");
+    url.searchParams.set("tab", "settings");
+    return NextResponse.redirect(url);
+  } else if (op === "add") {
+    // (레거시) 여러 코드 추가 지원 (현재 UI에서는 사용하지 않음)
+    const code = (parsed.data.imwebProdCode || "").trim();
+    if (!code.length) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
+
+    const existing = await prisma.courseImwebProdCode.findUnique({
+      where: { code },
+      select: { id: true, courseId: true },
+    });
+    if (existing && existing.courseId !== course.id) {
+      return NextResponse.json({ ok: false, error: "IMWEB_PROD_CODE_IN_USE" }, { status: 409 });
+    }
+    if (!existing) {
+      await prisma.courseImwebProdCode.create({
+        data: { courseId: course.id, code },
+      });
+    }
+  } else {
+    const id = (parsed.data.imwebProdCodeId || "").trim();
+    if (!id.length) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
+    await prisma.courseImwebProdCode.deleteMany({
+      where: { id, courseId: course.id },
+    });
+  }
 
   return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin", req.url));
 }

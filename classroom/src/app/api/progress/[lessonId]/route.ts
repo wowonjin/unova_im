@@ -13,16 +13,19 @@ const UpsertSchema = z.object({
   durationSeconds: z.number().min(1).optional(),
 });
 
-async function assertCanAccessLesson(userId: string, lessonId: string) {
+async function assertCanAccessLesson(user: { id: string; isAdmin: boolean }, lessonId: string) {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
     select: { id: true, courseId: true, durationSeconds: true },
   });
   if (!lesson) return null;
 
+  // 관리자(교사)는 수강권 없이도 접근 가능(lesson 페이지/커리큘럼 API와 정책 일치)
+  if (user.isAdmin) return lesson;
+
   const now = new Date();
   const ok = await prisma.enrollment.findFirst({
-    where: { userId, courseId: lesson.courseId, status: "ACTIVE", endAt: { gt: now } },
+    where: { userId: user.id, courseId: lesson.courseId, status: "ACTIVE", endAt: { gt: now } },
     select: { id: true },
   });
   if (!ok) return null;
@@ -34,7 +37,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ lessonId: stri
   const user = await requireCurrentUser();
   const params = ParamsSchema.parse(await ctx.params);
 
-  const lesson = await assertCanAccessLesson(user.id, params.lessonId);
+  const lesson = await assertCanAccessLesson(user, params.lessonId);
   if (!lesson) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
   const p = await prisma.progress.findUnique({
@@ -52,7 +55,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
   const body = UpsertSchema.safeParse(json);
   if (!body.success) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
 
-  const lesson = await assertCanAccessLesson(user.id, params.lessonId);
+  const lesson = await assertCanAccessLesson(user, params.lessonId);
   if (!lesson) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
   const lastSeconds = body.data.lastSeconds;

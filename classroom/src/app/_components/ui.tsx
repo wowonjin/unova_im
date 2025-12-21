@@ -64,7 +64,7 @@ export function Button({
   formAction,
 }: {
   children: React.ReactNode;
-  variant?: "primary" | "secondary" | "ghost" | "danger";
+  variant?: "primary" | "secondary" | "ghost" | "ghostSolid" | "danger" | "dangerGhost";
   size?: "sm" | "md";
   href?: string;
   type?: "button" | "submit";
@@ -78,15 +78,19 @@ export function Button({
       ? "border-white/15 bg-white/10 text-white hover:bg-white/15"
       : variant === "secondary"
         ? "border-white/10 bg-white/5 text-white/90 hover:bg-white/10"
+        : variant === "ghostSolid"
+          ? "border-transparent bg-white/10 text-white/90 hover:bg-white/10"
         : variant === "danger"
           ? "border-red-500/30 bg-red-500/10 text-red-100 hover:bg-red-500/15"
+          : variant === "dangerGhost"
+            ? "border-transparent bg-transparent text-red-100 hover:bg-red-500/10"
           : "border-transparent bg-transparent text-white/80 hover:bg-white/10";
 
   const cls = `${base} ${sizes} ${variants}`;
 
   if (href) return <Link className={cls} href={href}>{children}</Link>;
   return (
-    <button className={cls} type={type ?? "button"} formAction={formAction}>
+    <button className={cls} type={type || "submit"} formAction={formAction}>
       {children}
     </button>
   );
@@ -102,13 +106,29 @@ export function Badge({ children, tone = "neutral" }: { children: React.ReactNod
   return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${cls}`}>{children}</span>;
 }
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+export function Field({ label, hint, children }: { label: React.ReactNode; hint?: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="block text-xs font-medium text-white/80">{label}</label>
       <div className="mt-1">{children}</div>
       {hint ? <p className="mt-1 text-xs text-white/50">{hint}</p> : null}
     </div>
+  );
+}
+
+export function HelpTip({ text }: { text: string }) {
+  return (
+    <span className="relative inline-flex align-middle group">
+      <span
+        className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/15 bg-white/5 text-[11px] font-bold leading-none text-white/80"
+        aria-label="도움말"
+      >
+        ?
+      </span>
+      <span className="pointer-events-none absolute left-1/2 top-0 z-50 hidden w-[360px] -translate-x-1/2 -translate-y-[calc(100%+10px)] rounded-xl border border-white/10 bg-[#1d1d1f] px-3 py-2 text-xs text-white/80 shadow-lg group-hover:block">
+        {text}
+      </span>
+    </span>
   );
 }
 
