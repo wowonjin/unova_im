@@ -1,13 +1,7 @@
-import { PrismaClient } from "@prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import path from "node:path";
+import prismaPkg from "@prisma/client";
 
-const sqliteUrl = process.env.DATABASE_URL || "file:./dev.db";
-const sqlitePath = sqliteUrl.startsWith("file:")
-  ? sqliteUrl.slice("file:".length)
-  : sqliteUrl;
-const adapter = new PrismaBetterSqlite3({ url: path.resolve(process.cwd(), sqlitePath) });
-const prisma = new PrismaClient({ adapter });
+const { PrismaClient } = prismaPkg;
+const prisma = new PrismaClient();
 async function main() {
   const seedEmail =
     (process.env.DEFAULT_USER_EMAIL || process.env.ADMIN_SEED_EMAIL || "admin@gmail.com").toLowerCase().trim();
