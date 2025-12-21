@@ -62,6 +62,8 @@ export function Button({
   href,
   type,
   formAction,
+  disabled,
+  onClick,
 }: {
   children: React.ReactNode;
   variant?: "primary" | "secondary" | "ghost" | "ghostSolid" | "danger" | "dangerGhost";
@@ -69,6 +71,8 @@ export function Button({
   href?: string;
   type?: "button" | "submit";
   formAction?: string;
+  disabled?: boolean;
+  onClick?: React.ButtonHTMLAttributes<HTMLButtonElement>["onClick"];
 }) {
   const base =
     "inline-flex items-center justify-center rounded-xl border text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-white/10 disabled:opacity-50";
@@ -88,9 +92,22 @@ export function Button({
 
   const cls = `${base} ${sizes} ${variants}`;
 
-  if (href) return <Link className={cls} href={href}>{children}</Link>;
+  if (href) {
+    if (disabled) {
+      return (
+        <span className={`${cls} opacity-50`} aria-disabled="true">
+          {children}
+        </span>
+      );
+    }
+    return (
+      <Link className={cls} href={href}>
+        {children}
+      </Link>
+    );
+  }
   return (
-    <button className={cls} type={type || "submit"} formAction={formAction}>
+    <button className={cls} type={type || "submit"} formAction={formAction} disabled={disabled} onClick={onClick}>
       {children}
     </button>
   );

@@ -3,6 +3,7 @@ import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import { Badge, Button, Card, CardBody, CardHeader, Field, HelpTip, Input, PageHeader, Tabs } from "@/app/_components/ui";
 import ConfirmDeleteCourseForm from "@/app/_components/ConfirmDeleteCourseForm";
+import ImwebProdCodeFormClient from "@/app/_components/ImwebProdCodeFormClient";
 
 export default async function AdminCoursePage({
   params,
@@ -163,38 +164,10 @@ export default async function AdminCoursePage({
                   <p className="mb-3 text-sm text-white/70">상품 코드가 저장되었습니다.</p>
                 ) : imwebMsg === "cleared" ? (
                   <p className="mb-3 text-sm text-white/70">아임웹 연동이 해제되었습니다.</p>
+                ) : imwebMsg === "error" ? (
+                  <p className="mb-3 text-sm text-red-600">저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.</p>
                 ) : null}
-
-                <form className="grid grid-cols-1 gap-3 md:grid-cols-12" action="/api/admin/courses/update-imweb" method="post">
-                  <input type="hidden" name="courseId" value={course.id} />
-                  <div className="md:col-span-12">
-                    <Field
-                      label={
-                        <span className="inline-flex items-center">
-                          상품 코드
-                          <HelpTip text="아임웹 상품에 설정한 ‘상품 코드’(prod_custom_code)와 똑같이 입력하세요. 이 코드로 결제 상품이 어떤 강좌인지 연결됩니다." />
-                        </span>
-                      }
-                      hint="예: conphy2_1"
-                    >
-                      <Input
-                        name="imwebProdCode"
-                        defaultValue={course.imwebProdCodes[0]?.code ?? ""}
-                        placeholder="예: conphy2_1"
-                        className="bg-transparent"
-                      />
-                    </Field>
-                  </div>
-                  <div className="md:col-span-12 flex items-center justify-between">
-                    <p className="text-xs text-white/50">
-                      비워두고 저장하면 연동이 해제됩니다.
-                      <span className="ml-2">
-                        <HelpTip text="자동 발급이 실제로 되려면 아임웹 ‘결제 완료 알림(웹훅)’ 설정과 서버 환경변수(IMWEB_WEBHOOK_TOKEN, IMWEB_API_KEY, IMWEB_API_SECRET)가 필요합니다." />
-                      </span>
-                    </p>
-                    <Button type="submit">저장</Button>
-                  </div>
-                </form>
+                <ImwebProdCodeFormClient courseId={course.id} initialCode={course.imwebProdCodes[0]?.code ?? ""} />
               </CardBody>
             </Card>
 
