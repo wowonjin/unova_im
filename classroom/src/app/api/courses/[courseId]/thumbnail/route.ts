@@ -16,9 +16,16 @@ export async function GET(_req: Request, ctx: { params: Promise<{ courseId: stri
 
   const course = await prisma.course.findUnique({
     where: { id: courseId },
-    select: { id: true, ownerId: true, thumbnailStoredPath: true, thumbnailMimeType: true },
+    select: { id: true, ownerId: true, thumbnailStoredPath: true, thumbnailMimeType: true, thumbnailUrl: true },
   });
-  if (!course?.thumbnailStoredPath) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+  if (!course) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+  // If we have a hosted URL (e.g. Vercel Blob), redirect to it.
+  if (course.thumbnailUrl) {
+    const res = NextResponse.redirect(course.thumbnailUrl);
+    res.headers.set("cache-control", "private, max-age=60");
+    return res;
+  }
+  if (!course.thumbnailStoredPath) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
   // 교사(소유자)는 수강권 없이도 썸네일 미리보기 가능
   const teacher = await getCurrentTeacherUser();

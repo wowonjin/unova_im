@@ -4,13 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { Badge, Button, Card, CardBody, CardHeader, Field, HelpTip, Input, PageHeader, Tabs } from "@/app/_components/ui";
 import ConfirmDeleteCourseForm from "@/app/_components/ConfirmDeleteCourseForm";
 import ImwebProdCodeFormClient from "@/app/_components/ImwebProdCodeFormClient";
+import CourseThumbnailUploadClient from "@/app/_components/CourseThumbnailUploadClient";
 
 export default async function AdminCoursePage({
   params,
   searchParams,
 }: {
   params: Promise<{ courseId: string }>;
-  searchParams?: Promise<{ tab?: string; imweb?: string }>;
+  searchParams?: Promise<{ tab?: string; imweb?: string; thumb?: string }>;
 }) {
   const teacher = await requireAdminUser();
   const { courseId } = await params;
@@ -21,6 +22,7 @@ export default async function AdminCoursePage({
     | "students"
     | "settings";
   const imwebMsg = sp.imweb || null;
+  const thumbMsg = sp.thumb || null;
 
   const course = await prisma.course.findUnique({
     where: { id: courseId, ownerId: teacher.id },
@@ -127,8 +129,13 @@ export default async function AdminCoursePage({
                 <div className="mt-6 border-t border-white/10 pt-6">
                   <div className="text-sm font-medium text-white">썸네일</div>
                   <p className="mt-1 text-xs text-white/50">이미지 파일로 업로드합니다.</p>
+                  {thumbMsg === "saved" ? (
+                    <p className="mt-2 text-sm text-white/70">썸네일이 저장되었습니다.</p>
+                  ) : thumbMsg === "error" ? (
+                    <p className="mt-2 text-sm text-red-600">업로드에 실패했습니다. (Vercel에서는 Blob 설정이 필요할 수 있어요)</p>
+                  ) : null}
 
-                  {course.thumbnailStoredPath ? (
+                  {course.thumbnailStoredPath || course.thumbnailUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={`/api/courses/${course.id}/thumbnail`}
@@ -137,17 +144,7 @@ export default async function AdminCoursePage({
                     />
                   ) : null}
 
-                  <form className="mt-3 flex flex-col gap-2 md:flex-row md:items-end" action="/api/admin/courses/thumbnail" method="post" encType="multipart/form-data">
-                    <input type="hidden" name="courseId" value={course.id} />
-                    <div className="flex-1">
-                      <Field label="이미지 파일">
-                        <input className="block w-full text-sm" type="file" name="thumbnail" accept="image/*" required />
-                      </Field>
-                    </div>
-                    <Button type="submit" variant="secondary">
-                      업로드
-                    </Button>
-                  </form>
+                  <CourseThumbnailUploadClient courseId={course.id} />
                 </div>
               </CardBody>
             </Card>
