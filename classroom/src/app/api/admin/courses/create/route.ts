@@ -66,25 +66,36 @@ export async function POST(req: Request) {
   });
 
   // 썸네일 파일(선택)
-  if (raw.thumbnail instanceof File) {
-    const bytes = Buffer.from(await raw.thumbnail.arrayBuffer());
-    const ext = path.extname(raw.thumbnail.name || "").slice(0, 10);
-    const dir = path.join(getStorageRoot(), "course-thumbnails", course.id);
-    await ensureDir(dir);
-    const storedName = `${crypto.randomUUID()}${ext || ""}`;
-    const relPath = path.join("course-thumbnails", course.id, storedName).replace(/\\/g, "/");
-    const fullPath = path.join(dir, storedName);
-    await fs.writeFile(fullPath, bytes);
+  const thumbnailFile =
+    raw.thumbnail instanceof File && (raw.thumbnail.size ?? 0) > 0 && (raw.thumbnail.name ?? "").trim().length
+      ? raw.thumbnail
+      : null;
 
-    await prisma.course.update({
-      where: { id: course.id },
-      data: {
-        thumbnailStoredPath: relPath,
-        thumbnailOriginalName: raw.thumbnail.name || null,
-        thumbnailMimeType: raw.thumbnail.type || "application/octet-stream",
-        thumbnailSizeBytes: bytes.length,
-      },
-    });
+  if (thumbnailFile) {
+    try {
+      const bytes = Buffer.from(await thumbnailFile.arrayBuffer());
+      const ext = path.extname(thumbnailFile.name || "").slice(0, 10);
+      const dir = path.join(getStorageRoot(), "course-thumbnails", course.id);
+      await ensureDir(dir);
+      const storedName = `${crypto.randomUUID()}${ext || ""}`;
+      const relPath = path.join("course-thumbnails", course.id, storedName).replace(/\\/g, "/");
+      const fullPath = path.join(dir, storedName);
+      await fs.writeFile(fullPath, bytes);
+
+      await prisma.course.update({
+        where: { id: course.id },
+        data: {
+          thumbnailStoredPath: relPath,
+          thumbnailOriginalName: thumbnailFile.name || null,
+          thumbnailMimeType: thumbnailFile.type || "application/octet-stream",
+          thumbnailSizeBytes: bytes.length,
+        },
+      });
+    } catch (e) {
+      // On serverless environments, local filesystem storage may be unavailable.
+      // Course creation should still succeed even if thumbnail persistence fails.
+      console.error("[admin/courses/create] failed to persist thumbnail:", e);
+    }
   }
 
   return NextResponse.redirect(new URL(`/admin/course/${course.id}`, req.url));
