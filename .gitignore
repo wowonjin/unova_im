@@ -34,3 +34,5 @@ _local_git_backup/
 classroom/dev.db
 
 
+.vercel
+.env*.local
