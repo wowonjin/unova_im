@@ -44,3 +44,7 @@ next-env.d.ts
 
 # local dev database
 dev.db
+dev_local.db
+
+# local uploaded files / runtime storage
+/storage/

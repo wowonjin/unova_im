@@ -21,15 +21,49 @@ const Schema = z.object({
 });
 
 export async function POST(req: Request) {
-  const form = await req.formData();
-  const parsed = Schema.safeParse({
-    email: typeof form.get("email") === "string" ? form.get("email") : "",
-  });
-  if (!parsed.success) return NextResponse.redirect(new URL("/enter?error=1", req.url));
+  let body: unknown;
+  
+  // JSON 또는 FormData 둘 다 지원
+  const contentType = req.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+  
+  if (isJson) {
+    body = await req.json();
+  } else {
+    const form = await req.formData();
+    body = { email: form.get("email") };
+  }
 
-  if (!ALLOWED.has(parsed.data.email)) return NextResponse.redirect(new URL("/enter?error=1", req.url));
+  const parsed = Schema.safeParse(body);
+  
+  if (!parsed.success) {
+    if (isJson) {
+      return NextResponse.json({ success: false, error: "Invalid email" }, { status: 400 });
+    }
+    return NextResponse.redirect(new URL("/enter?error=1", req.url), 303);
+  }
 
-  const res = NextResponse.redirect(new URL("/admin", req.url));
+  if (!ALLOWED.has(parsed.data.email)) {
+    if (isJson) {
+      return NextResponse.json({ success: false, error: "Email not allowed" }, { status: 403 });
+    }
+    return NextResponse.redirect(new URL("/enter?error=1", req.url), 303);
+  }
+
+  // JSON 요청이면 JSON 응답
+  if (isJson) {
+    const res = NextResponse.json({ success: true });
+    res.cookies.set(TEACHER_COOKIE, parsed.data.email, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30, // 30d
+    });
+    return res;
+  }
+
+  // HTML Form 요청이면 리다이렉트 응답
+  const res = NextResponse.redirect(new URL("/admin", req.url), 303);
   res.cookies.set(TEACHER_COOKIE, parsed.data.email, {
     httpOnly: true,
     sameSite: "lax",
@@ -38,5 +72,11 @@ export async function POST(req: Request) {
   });
   return res;
 }
+
+
+
+
+
+
 
 
