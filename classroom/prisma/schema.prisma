@@ -57,6 +57,7 @@ model Course {
   id             String   @id @default(cuid())
   ownerId        String?
   title          String
+  teacherName    String?
   slug           String   @unique
   description    String?
   // (legacy) 외부 URL 썸네일을 쓰는 경우를 위해 남겨둠
@@ -78,6 +79,7 @@ model Course {
   imwebProdCodes CourseImwebProdCode[]
 
   @@index([ownerId])
+  @@index([teacherName])
 }
 
 model CourseImwebProdCode {

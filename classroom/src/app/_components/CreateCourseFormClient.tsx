@@ -8,6 +8,7 @@ export default function CreateCourseFormClient() {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   return (
     <form
@@ -15,6 +16,7 @@ export default function CreateCourseFormClient() {
       onSubmit={async (e) => {
         e.preventDefault();
         setError(null);
+        setSuccess(null);
         setPending(true);
         try {
           const formEl = e.currentTarget;
@@ -30,9 +32,10 @@ export default function CreateCourseFormClient() {
           });
 
           const payload = await res.json().catch(() => null);
-          const redirectTo: string | undefined = payload?.redirectTo;
-          if (redirectTo) {
-            router.push(redirectTo);
+          if (res.ok && payload?.ok) {
+            formEl.reset();
+            router.refresh(); // stay on this page; just refresh the server-rendered course list
+            setSuccess("강좌가 생성되었습니다. 내 강좌 목록에 추가되었습니다.");
             return;
           }
 
@@ -53,6 +56,12 @@ export default function CreateCourseFormClient() {
             className="bg-transparent"
             disabled={pending}
           />
+        </Field>
+      </div>
+
+      <div>
+        <Field label="선생님">
+          <Input name="teacherName" placeholder="예: 김OO" className="bg-transparent" disabled={pending} />
         </Field>
       </div>
 
@@ -79,6 +88,7 @@ export default function CreateCourseFormClient() {
       </Field>
 
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
+      {success ? <p className="text-sm text-emerald-300">{success}</p> : null}
 
       <div className="flex justify-start">
         <Button type="submit" variant="ghostSolid" disabled={pending}>

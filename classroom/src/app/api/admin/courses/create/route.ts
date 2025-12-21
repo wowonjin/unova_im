@@ -13,6 +13,11 @@ export const runtime = "nodejs";
 
 const Schema = z.object({
   title: z.string().min(1).max(200),
+  teacherName: z
+    .string()
+    .optional()
+    .transform((s) => (typeof s === "string" ? s.trim() : ""))
+    .refine((s) => s.length <= 80, { message: "teacherName too long" }),
   description: z.string().optional().transform((s) => (typeof s === "string" ? s.trim() : "")),
   isPublished: z
     .string()
@@ -45,6 +50,7 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const raw = {
     title: form.get("title"),
+    teacherName: form.get("teacherName"),
     description: form.get("description"),
     isPublished: form.get("isPublished"),
     thumbnail: form.get("thumbnail"),
@@ -52,6 +58,7 @@ export async function POST(req: Request) {
 
   const parsed = Schema.safeParse({
     title: typeof raw.title === "string" ? raw.title : "",
+    teacherName: typeof raw.teacherName === "string" ? raw.teacherName : undefined,
     description: typeof raw.description === "string" ? raw.description : undefined,
     isPublished: typeof raw.isPublished === "string" ? raw.isPublished : undefined,
   });
@@ -64,6 +71,7 @@ export async function POST(req: Request) {
     data: {
       ownerId: teacher.id,
       title,
+      teacherName: parsed.data.teacherName?.length ? parsed.data.teacherName : null,
       slug,
       description: parsed.data.description?.length ? parsed.data.description : null,
       thumbnailUrl: null,
