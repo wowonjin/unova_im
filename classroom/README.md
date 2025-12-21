@@ -20,8 +20,9 @@
 
 `env.example`을 복사해서 `.env`를 만들고 값만 채워주세요.
 
-- `JWT_SECRET`: 길고 랜덤한 문자열(필수)
-- `ADMIN_EMAILS`: 관리자 이메일(쉼표로 여러 개 가능)
+- `DATABASE_URL`: Postgres 연결 문자열(운영 권장)
+- `ADMIN_EMAILS`: 관리자(선생님) 이메일(쉼표로 여러 개 가능)
+- `DEFAULT_USER_EMAIL`: (선택) 데모/공개 모드에서 기본 사용자 이메일
 
 ### 2) DB 마이그레이션/시드
 
@@ -51,8 +52,8 @@ npm run dev
 
 아임웹 “회원그룹 이용권” 상품이 결제되면, 주문 API로부터 품목 주문 목록을 조회해 어떤 상품이 결제되었는지 알 수 있습니다.
 
-- 관리자(`/admin`) → 강좌 선택 → **아임웹 상품 매핑**
-  - `prod_no` (숫자) 또는 `prod_custom_code` (문자) 중 하나 이상을 입력
+- 관리자(`/admin`) → 강좌 선택 → **설정/연동 → 아임웹 연동(상품 코드)**
+  - 아임웹 상품에 설정한 **상품 코드(prod_custom_code)** 를 입력
 
 ### 2) 주문번호로 수동 동기화(테스트)
 
@@ -69,7 +70,7 @@ npm run dev
 
 #### 웹훅 설정 체크리스트(개발자센터)
 
-- **수신 URL**: `https://class.yourdomain.com/api/imweb/webhook`
+- **수신 URL**: `https://class.yourdomain.com/api/imweb/webhook?token=YOUR_TOKEN`
 - **이벤트 선택**: 결제 완료/주문 관련 이벤트만 선택(권장)
 - **서명/시크릿**:
   - 개발자센터에서 서명(시크릿) 설정을 켰다면 `.env`에도 동일하게 설정
@@ -80,3 +81,34 @@ npm run dev
     - `IMWEB_WEBHOOK_SIGNATURE_PREFIX`
 - **이벤트 타입 필터(권장)**:
   - `IMWEB_WEBHOOK_EVENTS`에 실제 이벤트 타입 문자열을 콤마로 넣으면, 그 이벤트만 처리합니다.
+
+---
+
+## Vercel 배포(권장: Vercel Postgres)
+
+### 1) GitHub에 올리기
+
+- 이 레포를 GitHub에 push 합니다.
+
+### 2) Vercel에 Import
+
+- Vercel 대시보드 → **Add New → Project** → GitHub 레포 선택 → Import
+
+### 3) Vercel Postgres 생성
+
+- Vercel 대시보드 → 프로젝트 → **Storage → Postgres** 추가(또는 별도 Postgres 생성 후 연결)
+
+### 4) Environment Variables 설정
+
+프로젝트 → **Settings → Environment Variables**에 아래를 추가합니다:
+
+- `DATABASE_URL`: Vercel Postgres 연결 문자열(예: `postgresql://...`)
+- `ADMIN_EMAILS`: 관리자(선생님) 이메일(쉼표로 여러 개)
+- `DEFAULT_USER_EMAIL`: (선택) 데모/공개 모드 기본 사용자
+- `IMWEB_API_KEY`, `IMWEB_API_SECRET`: 아임웹 주문 조회용
+- `IMWEB_WEBHOOK_TOKEN`: 웹훅 보호용 토큰(권장)
+
+### 5) 배포 후 확인
+
+- `/admin/events`에서 웹훅/주문 이벤트 로그 확인
+- 아임웹에서 웹훅 URL을 `https://YOUR_DOMAIN/api/imweb/webhook?token=...` 형태로 등록
