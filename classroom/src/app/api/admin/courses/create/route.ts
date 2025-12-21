@@ -19,6 +19,11 @@ const Schema = z.object({
     .transform((v) => v === "on" || v === "true" || v === "1"),
 });
 
+function wantsJson(req: Request) {
+  const accept = req.headers.get("accept") || "";
+  return req.headers.get("x-unova-client") === "1" || accept.includes("application/json");
+}
+
 async function ensureUniqueSlug(base: string) {
   const cleanBase = slugify(base) || "course";
   let attempt = cleanBase;
@@ -32,6 +37,7 @@ async function ensureUniqueSlug(base: string) {
 }
 
 export async function POST(req: Request) {
+  const json = wantsJson(req);
   const teacher = await getCurrentTeacherUser();
   if (!teacher) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
 
@@ -98,7 +104,9 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.redirect(new URL(`/admin/course/${course.id}`, req.url));
+  const redirectTo = `/admin/course/${course.id}`;
+  if (json) return NextResponse.json({ ok: true, courseId: course.id, redirectTo });
+  return NextResponse.redirect(new URL(redirectTo, req.url));
 }
 
 

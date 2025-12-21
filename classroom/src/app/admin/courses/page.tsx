@@ -1,9 +1,10 @@
 import AppShell from "@/app/_components/AppShell";
 import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
-import { Badge, Button, Card, CardBody, CardHeader, Field, Input, PageHeader } from "@/app/_components/ui";
+import { Badge, Button, Card, CardBody, CardHeader, PageHeader } from "@/app/_components/ui";
 import ConfirmDeleteCourseForm from "@/app/_components/ConfirmDeleteCourseForm";
 import CoursePublishedSelect from "@/app/_components/CoursePublishedSelect";
+import CreateCourseFormClient from "@/app/_components/CreateCourseFormClient";
 
 export default async function AdminCoursesPage() {
   const teacher = await requireAdminUser();
@@ -48,49 +49,7 @@ export default async function AdminCoursesPage() {
           <Card className="bg-transparent">
             <CardHeader title="강좌 관리하기" />
             <CardBody>
-              <form
-                className="grid grid-cols-1 gap-4"
-                action="/api/admin/courses/create"
-                method="post"
-                encType="multipart/form-data"
-              >
-                <div>
-                  <Field label="강좌 제목">
-                    <Input
-                      name="title"
-                      required
-                      placeholder="예: [2027] 김OO T 커넥트 수학"
-                      className="bg-transparent"
-                    />
-                  </Field>
-                </div>
-
-                <Field label="공개 상태">
-                  <select
-                    name="isPublished"
-                    defaultValue="1"
-                    className="h-10 w-full rounded-xl border border-white/10 bg-[#29292a] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
-                  >
-                    <option value="1">공개</option>
-                    <option value="0">비공개</option>
-                  </select>
-                </Field>
-
-                <Field label="썸네일(선택)">
-                  <input
-                    className="block w-full text-sm text-white/80 file:mr-3 file:rounded-lg file:border file:border-white/10 file:bg-transparent file:px-3 file:py-2 file:text-sm file:text-white/80 hover:file:bg-transparent"
-                    type="file"
-                    name="thumbnail"
-                    accept="image/*"
-                  />
-                </Field>
-
-                <div className="flex justify-start">
-                  <Button type="submit" variant="ghostSolid">
-                    강좌 생성하기
-                  </Button>
-                </div>
-              </form>
+              <CreateCourseFormClient />
             </CardBody>
           </Card>
         </div>

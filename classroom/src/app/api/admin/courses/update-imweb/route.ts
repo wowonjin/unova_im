@@ -15,7 +15,13 @@ const Schema = z.object({
   imwebProdCodeId: z.string().optional(),
 });
 
+function wantsJson(req: Request) {
+  const accept = req.headers.get("accept") || "";
+  return req.headers.get("x-unova-client") === "1" || accept.includes("application/json");
+}
+
 export async function POST(req: Request) {
+  const json = wantsJson(req);
   const teacher = await getCurrentTeacherUser();
   if (!teacher) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
   const form = await req.formData();
@@ -41,16 +47,17 @@ export async function POST(req: Request) {
   if (!course || course.ownerId !== teacher.id) return NextResponse.json({ ok: false, error: "COURSE_NOT_FOUND" }, { status: 404 });
 
   const op = parsed.data.op ?? "set"; // 기본은 단일 코드 "저장"
+  const baseUrl = new URL(req.headers.get("referer") || `/admin/course/${course.id}?tab=settings`, req.url);
+  baseUrl.searchParams.set("tab", "settings");
 
   if (op === "set") {
     const code = (parsed.data.imwebProdCode || "").trim();
     // 빈 값이면 "연동 해제" (이 강좌의 코드 매핑 제거)
     if (!code.length) {
       await prisma.courseImwebProdCode.deleteMany({ where: { courseId: course.id } });
-      const url = new URL(req.headers.get("referer") || "/admin", req.url);
-      url.searchParams.set("imweb", "cleared");
-      url.searchParams.set("tab", "settings");
-      return NextResponse.redirect(url);
+      baseUrl.searchParams.set("imweb", "cleared");
+      if (json) return NextResponse.json({ ok: true, status: "cleared", redirectTo: baseUrl.toString() });
+      return NextResponse.redirect(baseUrl);
     }
 
     const existing = await prisma.courseImwebProdCode.findUnique({
@@ -59,10 +66,9 @@ export async function POST(req: Request) {
     });
     // 다른 강좌에서 이미 쓰는 코드면 저장 불가
     if (existing && existing.courseId !== course.id) {
-      const url = new URL(req.headers.get("referer") || "/admin", req.url);
-      url.searchParams.set("imweb", "duplicate");
-      url.searchParams.set("tab", "settings");
-      return NextResponse.redirect(url);
+      baseUrl.searchParams.set("imweb", "duplicate");
+      if (json) return NextResponse.json({ ok: false, error: "IMWEB_PROD_CODE_IN_USE", redirectTo: baseUrl.toString() }, { status: 409 });
+      return NextResponse.redirect(baseUrl);
     }
 
     // 이 강좌는 "상품 코드 1개"만 유지하도록 정리
@@ -74,10 +80,9 @@ export async function POST(req: Request) {
       if (!ok) await tx.courseImwebProdCode.create({ data: { courseId: course.id, code } });
     });
 
-    const url = new URL(req.headers.get("referer") || "/admin", req.url);
-    url.searchParams.set("imweb", "saved");
-    url.searchParams.set("tab", "settings");
-    return NextResponse.redirect(url);
+    baseUrl.searchParams.set("imweb", "saved");
+    if (json) return NextResponse.json({ ok: true, status: "saved", redirectTo: baseUrl.toString() });
+    return NextResponse.redirect(baseUrl);
   } else if (op === "add") {
     // (레거시) 여러 코드 추가 지원 (현재 UI에서는 사용하지 않음)
     const code = (parsed.data.imwebProdCode || "").trim();
@@ -103,7 +108,8 @@ export async function POST(req: Request) {
     });
   }
 
-  return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin", req.url));
+  if (json) return NextResponse.json({ ok: true, status: "ok", redirectTo: baseUrl.toString() });
+  return NextResponse.redirect(baseUrl);
 }
 
 

@@ -29,30 +29,32 @@ export default function ImwebProdCodeFormClient({
       const res = await fetch(actionUrl, {
         method: "POST",
         body: fd,
-        redirect: "manual",
+        headers: {
+          "x-unova-client": "1",
+          accept: "application/json",
+        },
       });
 
-      // Success path uses redirects (307) to show a message via query string.
-      const loc = res.headers.get("location");
-      if (loc) {
-        router.push(loc);
+      let payload: any = null;
+      try {
+        payload = await res.json();
+      } catch {
+        payload = null;
+      }
+
+      const redirectTo: string | undefined = payload?.redirectTo;
+      if (redirectTo) {
+        router.push(redirectTo);
         return;
       }
 
-      if (!res.ok) {
-        // Fallback: show a stable error state via query string.
-        const next = new URL(pathname, window.location.origin);
-        const qs = new URLSearchParams(sp.toString());
-        qs.set("tab", "settings");
-        qs.set("imweb", "error");
-        next.search = qs.toString();
-        router.push(next.toString());
-        return;
-      }
-
-      // If the platform follows redirects automatically (some environments),
-      // just refresh to reflect latest state.
-      router.refresh();
+      // Fallback: show a stable error state via query string.
+      const next = new URL(pathname, window.location.origin);
+      const qs = new URLSearchParams(sp.toString());
+      qs.set("tab", "settings");
+      qs.set("imweb", "error");
+      next.search = qs.toString();
+      router.push(next.toString());
     } finally {
       setPending(false);
     }
