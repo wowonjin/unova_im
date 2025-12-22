@@ -1,0 +1,70 @@
+databases:
+  - name: unova-classroom-db
+    plan: free
+
+services:
+  - type: web
+    name: unova-classroom
+    env: node
+    plan: free
+    region: oregon
+    rootDir: classroom
+    buildCommand: npm ci && npm run build
+    startCommand: node scripts/migrate-if-db.cjs && npm run start -- -p $PORT
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.1
+      - key: NODE_ENV
+        value: production
+
+      # DB
+      - key: DATABASE_URL
+        fromDatabase:
+          name: unova-classroom-db
+          property: connectionString
+
+      # File storage (uploads)
+      - key: STORAGE_ROOT
+        value: /var/data
+
+      # App-required envs (set these in Render dashboard after first deploy)
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: DEFAULT_USER_EMAIL
+        sync: false
+      - key: IMWEB_API_KEY
+        sync: false
+      - key: IMWEB_API_SECRET
+        sync: false
+      - key: IMWEB_WEBHOOK_TOKEN
+        sync: false
+      - key: IMWEB_WEBHOOK_SECRET
+        sync: false
+      - key: IMWEB_WEBHOOK_SIGNATURE_HEADER
+        sync: false
+      - key: IMWEB_WEBHOOK_HMAC_ALG
+        sync: false
+      - key: IMWEB_WEBHOOK_SIGNATURE_ENCODING
+        sync: false
+      - key: IMWEB_WEBHOOK_SIGNATURE_PREFIX
+        sync: false
+      - key: IMWEB_WEBHOOK_EVENTS
+        sync: false
+      - key: IMWEB_ACCESS_AFFILIATE
+        sync: false
+      - key: IMWEB_DEFAULT_MEMBER_CODE
+        sync: false
+      - key: NEXT_PUBLIC_EXIT_URL
+        sync: false
+      - key: NEXT_PUBLIC_KAKAO_CHAT_URL
+        sync: false
+      - key: UNOVA_TEST_SHOW_ALL_COURSES
+        sync: false
+
+    disk:
+      name: unova-classroom-storage
+      mountPath: /var/data
+      sizeGB: 1
+
+

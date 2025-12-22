@@ -2,6 +2,14 @@ import path from "node:path";
 import fs from "node:fs/promises";
 
 export function getStorageRoot() {
+  const fromEnv =
+    process.env.STORAGE_ROOT ||
+    process.env.UNOVA_STORAGE_ROOT ||
+    process.env.UPLOADS_DIR ||
+    process.env.DATA_DIR;
+  if (fromEnv && fromEnv.trim()) return path.resolve(fromEnv.trim());
+
+  // Default: repo-local folder (good for local dev). On Render, prefer mounting a disk and setting STORAGE_ROOT.
   return path.resolve(process.cwd(), "storage");
 }
 

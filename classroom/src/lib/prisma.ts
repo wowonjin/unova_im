@@ -51,13 +51,13 @@ function createPrismaClient(): PrismaClient {
     return new PrismaClient({ adapter });
   }
 
-  // Vercel/production must use a real Postgres connection string.
-  // Serverless functions do not reliably support local SQLite files (and the filesystem is ephemeral/read-only).
-  if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+  // Production deployments must use a real Postgres connection string.
+  // In production environments (e.g. Vercel/Render), local SQLite files are not a reliable persistence layer.
+  if (process.env.VERCEL || process.env.RENDER || process.env.NODE_ENV === "production") {
     throw new Error(
       [
-        "DATABASE_URL is not set. This deployment requires Postgres on Vercel.",
-        "Set DATABASE_URL (or Vercel Postgres envs like POSTGRES_URL/POSTGRES_PRISMA_URL) and redeploy.",
+        "DATABASE_URL is not set. This deployment requires Postgres.",
+        "Set DATABASE_URL (or platform-provided Postgres envs like POSTGRES_URL/POSTGRES_PRISMA_URL) and redeploy.",
       ].join(" ")
     );
   }
