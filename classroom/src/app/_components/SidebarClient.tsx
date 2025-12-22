@@ -132,7 +132,7 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
   const searchParams = useSearchParams();
   const qParam = searchParams.get("q") ?? "";
   const [q, setQ] = useState(qParam);
-  const debounceRef = useRef<number | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [openRequested, setOpenRequested] = useState(false);
   const [openedAtPath, setOpenedAtPath] = useState<string>("");
   const open = openRequested && openedAtPath === pathname;
@@ -164,14 +164,15 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
         /* ignore */
       }
     };
-    if ("requestIdleCallback" in window) {
-      const handle = (window as any).requestIdleCallback(() => doWarmup(), { timeout: 8000 });
+    const requestIdle = (window as any).requestIdleCallback as undefined | ((cb: () => void, opts?: { timeout?: number }) => unknown);
+    if (typeof requestIdle === "function") {
+      const handle = requestIdle(() => doWarmup(), { timeout: 8000 });
       return () => {
         cancelled = true;
         (window as any).cancelIdleCallback?.(handle);
       };
     } else {
-      const tid = window.setTimeout(() => doWarmup(), 2000);
+      const tid = setTimeout(() => doWarmup(), 2000);
       return () => {
         cancelled = true;
         clearTimeout(tid);
@@ -181,8 +182,8 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
 
   const onSearchChange = (next: string) => {
     setQ(next);
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
       const sp = new URLSearchParams(searchParams.toString());
       if (next.trim().length) sp.set("q", next);
       else sp.delete("q");

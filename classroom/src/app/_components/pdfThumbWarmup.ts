@@ -1,6 +1,6 @@
 "use client";
 
-import { getCache, setCache, inflight } from "./pdfFirstPageThumbCache";
+import { generatePdfFirstPageThumbDataUrl, readCachedPdfThumb, writeCachedPdfThumb } from "./pdfFirstPageThumbCache";
 
 /**
  * 주어진 PDF src를 미리 캔버스 렌더링해서 세션/메모리 캐시에 저장.
@@ -9,6 +9,9 @@ import { getCache, setCache, inflight } from "./pdfFirstPageThumbCache";
  */
 let warmupQueue: string[] = [];
 let running = false;
+const inflight = new Map<string, Promise<void>>();
+const TARGET_WIDTH = 240;
+const TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 
 async function processQueue() {
   if (running) return;
@@ -16,7 +19,7 @@ async function processQueue() {
   while (warmupQueue.length > 0) {
     const src = warmupQueue.shift()!;
     // 이미 캐시 or 진행 중이면 skip
-    if (getCache(src) || inflight.has(src)) continue;
+    if (readCachedPdfThumb({ src, targetWidth: TARGET_WIDTH, ttlMs: TTL_MS }) || inflight.has(src)) continue;
     try {
       await generateThumb(src);
     } catch {
@@ -41,31 +44,8 @@ async function generateThumb(src: string): Promise<void> {
   // 같은 src에 대한 중복 inflight 방지
   if (inflight.has(src)) return;
   const p = (async () => {
-    const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    const lib: any = pdfjs?.default ?? pdfjs;
-    if (!lib?.getDocument) throw new Error("PDFJS_GETDOCUMENT_MISSING");
-    if (lib?.GlobalWorkerOptions) {
-      lib.GlobalWorkerOptions.workerSrc = new URL(
-        "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
-        import.meta.url
-      ).toString();
-    }
-    const task = lib.getDocument({ url: src, withCredentials: true });
-    const pdf = await task.promise;
-    const page = await pdf.getPage(1);
-    const viewport = page.getViewport({ scale: 1 });
-    const targetWidth = 240;
-    const scale = viewport.width > 0 ? targetWidth / viewport.width : 1;
-    const v = page.getViewport({ scale });
-
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("NO_CANVAS_CTX");
-    canvas.width = Math.max(1, Math.floor(v.width));
-    canvas.height = Math.max(1, Math.floor(v.height));
-    await page.render({ canvasContext: ctx, viewport: v }).promise;
-    const url = canvas.toDataURL("image/jpeg", 0.86);
-    setCache(src, url);
+    const dataUrl = await generatePdfFirstPageThumbDataUrl({ src, targetWidth: TARGET_WIDTH });
+    writeCachedPdfThumb({ src, targetWidth: TARGET_WIDTH, dataUrl });
   })();
   inflight.set(src, p);
   try {
