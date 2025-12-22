@@ -37,6 +37,15 @@ function createPrismaClient(): PrismaClient {
     process.env.POSTGRES_URL_NON_POOLING ||
     process.env.POSTGRES_URL;
 
+  if (!dbUrl) {
+    throw new Error(
+      [
+        "DATABASE_URL is not set. This app requires Postgres.",
+        "Set DATABASE_URL (or platform-provided Postgres envs like POSTGRES_URL/POSTGRES_PRISMA_URL) and restart/redeploy.",
+      ].join(" ")
+    );
+  }
+
   const isPostgres = dbUrl && (dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://"));
 
   if (isPostgres) {
@@ -51,34 +60,14 @@ function createPrismaClient(): PrismaClient {
     return new PrismaClient({ adapter });
   }
 
-  // Production deployments must use a real Postgres connection string.
-  // In production environments (e.g. Vercel/Render), local SQLite files are not a reliable persistence layer.
-  if (process.env.VERCEL || process.env.RENDER || process.env.NODE_ENV === "production") {
-    throw new Error(
-      [
-        "DATABASE_URL is not set. This deployment requires Postgres.",
-        "Set DATABASE_URL (or platform-provided Postgres envs like POSTGRES_URL/POSTGRES_PRISMA_URL) and redeploy.",
-      ].join(" ")
-    );
-  }
-
-  // 로컬 개발 환경: SQLite (better-sqlite3 어댑터)
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { PrismaBetterSqlite3 } = require("@prisma/adapter-better-sqlite3");
-
-  // file:./dev_local.db 또는 DATABASE_PATH 형식 지원
-  let dbPath = process.env.DATABASE_PATH || "dev.db";
-  let sqliteUrl: string | undefined;
-  if (dbUrl && dbUrl.startsWith("file:")) {
-    sqliteUrl = dbUrl;
-    dbPath = dbUrl.replace("file:", "");
-  }
-  if (!sqliteUrl) {
-    sqliteUrl = `file:${dbPath}`;
-  }
-  // Prisma 7 adapter-better-sqlite3 expects a config object with a `url` (file:...) string.
-  const adapter = new PrismaBetterSqlite3({ url: sqliteUrl });
-  return new PrismaClient({ adapter });
+  // This repo's Prisma schema uses `provider = "postgresql"`.
+  // SQLite adapters are not compatible with that provider.
+  throw new Error(
+    [
+      "DATABASE_URL must be a Postgres connection string (postgres:// or postgresql://).",
+      `Received: ${String(dbUrl).slice(0, 32)}...`,
+    ].join(" ")
+  );
 }
 
 // Lazy initialization

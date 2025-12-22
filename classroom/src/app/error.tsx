@@ -15,15 +15,24 @@ export default function GlobalError({
     msg.includes("requires postgres") ||
     msg.includes("prisma");
 
+  const host = typeof window !== "undefined" ? window.location.hostname : "";
+  const isLocalhost = host === "localhost" || host === "127.0.0.1";
+  const isRenderHost = host.endsWith(".onrender.com");
+
   return (
     <html lang="ko">
       <body style={{ background: "#0b0b0b", color: "#fff", padding: 24, fontFamily: "system-ui" }}>
         <h2 style={{ margin: "0 0 12px" }}>서버 오류가 발생했습니다.</h2>
         {looksLikeMissingDbEnv ? (
           <p style={{ margin: "0 0 12px", opacity: 0.8 }}>
-            운영(Render)에서는 DB(Postgres) 환경변수 설정이 필요합니다. Render 서비스의 Environment에{" "}
+            {isLocalhost
+              ? "로컬(내 컴퓨터)에서 실행하려면 프로젝트의 `classroom/.env` 파일에 DB(Postgres) 연결 문자열을 설정해야 합니다."
+              : isRenderHost
+                ? "운영(Render)에서는 DB(Postgres) 환경변수 설정이 필요합니다. Render 서비스의 Environment에"
+                : "운영 환경에서는 DB(Postgres) 환경변수 설정이 필요합니다. 배포 환경의 Environment에"}{" "}
             <code>DATABASE_URL</code> (또는 <code>POSTGRES_PRISMA_URL</code>/<code>POSTGRES_URL_NON_POOLING</code>/
-            <code>POSTGRES_URL</code>)을 설정한 뒤 다시 배포하세요.
+            <code>POSTGRES_URL</code>)
+            {isLocalhost ? "을 설정한 뒤 개발 서버를 재시작하세요." : "을 설정한 뒤 다시 배포하세요."}
           </p>
         ) : (
           <p style={{ margin: "0 0 12px", opacity: 0.8 }}>잠시 후 다시 시도해주세요.</p>
