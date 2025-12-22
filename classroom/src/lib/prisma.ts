@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 // In some Next.js build/prerender worker processes, `.env` isn't always loaded early enough.
-// If DB env vars are missing but a local `.env` file exists, load it defensively.
+// If DB env vars are missing but a local `.env`/`.env.local` file exists, load it defensively.
 (() => {
   const hasDbEnv =
     Boolean(process.env.DATABASE_URL) ||
@@ -13,12 +13,15 @@ import path from "node:path";
 
   if (hasDbEnv) return;
 
+  const envLocalPath = path.join(process.cwd(), ".env.local");
   const envPath = path.join(process.cwd(), ".env");
-  if (!fs.existsSync(envPath)) return;
+  if (!fs.existsSync(envLocalPath) && !fs.existsSync(envPath)) return;
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require("dotenv").config({ path: envPath });
+    const dotenv = require("dotenv");
+    if (fs.existsSync(envLocalPath)) dotenv.config({ path: envLocalPath });
+    if (fs.existsSync(envPath)) dotenv.config({ path: envPath });
   } catch {
     // ignore (dotenv is a transitive dep of next in most setups)
   }
@@ -29,6 +32,22 @@ declare global {
 }
 
 let _prisma: PrismaClient | undefined;
+
+function shouldUsePgSsl(dbUrl: string): boolean {
+  if (process.env.PGSSLMODE === "require") return true;
+  try {
+    const u = new URL(dbUrl);
+    const sslmode = (u.searchParams.get("sslmode") || "").toLowerCase();
+    const ssl = (u.searchParams.get("ssl") || "").toLowerCase();
+    if (sslmode === "require") return true;
+    if (ssl === "true" || ssl === "1") return true;
+    // Render external Postgres hostnames end with ".render.com" (internal hostnames often don't).
+    if (u.hostname.endsWith(".render.com")) return true;
+  } catch {
+    // ignore
+  }
+  return false;
+}
 
 function createPrismaClient(): PrismaClient {
   const dbUrl =
@@ -55,7 +74,10 @@ function createPrismaClient(): PrismaClient {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { PrismaPg } = require("@prisma/adapter-pg");
 
-    const pool = new Pool({ connectionString: dbUrl });
+    const pool = new Pool({
+      connectionString: dbUrl,
+      ssl: shouldUsePgSsl(dbUrl) ? { rejectUnauthorized: false } : undefined,
+    });
     const adapter = new PrismaPg(pool);
     return new PrismaClient({ adapter });
   }

@@ -1,4 +1,35 @@
 const { PrismaClient } = require("@prisma/client");
+const fs = require("node:fs");
+const path = require("node:path");
+
+// Load `.env.local` / `.env` for local runs.
+(() => {
+  const envLocalPath = path.join(process.cwd(), ".env.local");
+  const envPath = path.join(process.cwd(), ".env");
+  if (!fs.existsSync(envLocalPath) && !fs.existsSync(envPath)) return;
+  try {
+    const dotenv = require("dotenv");
+    if (fs.existsSync(envLocalPath)) dotenv.config({ path: envLocalPath });
+    if (fs.existsSync(envPath)) dotenv.config({ path: envPath });
+  } catch {
+    // ignore
+  }
+})();
+
+function shouldUsePgSsl(dbUrl) {
+  if (process.env.PGSSLMODE === "require") return true;
+  try {
+    const u = new URL(dbUrl);
+    const sslmode = String(u.searchParams.get("sslmode") || "").toLowerCase();
+    const ssl = String(u.searchParams.get("ssl") || "").toLowerCase();
+    if (sslmode === "require") return true;
+    if (ssl === "true" || ssl === "1") return true;
+    if (String(u.hostname || "").endsWith(".render.com")) return true;
+  } catch {
+    // ignore
+  }
+  return false;
+}
 
 function createPrisma() {
   const dbUrl =
@@ -12,7 +43,10 @@ function createPrisma() {
   if (isPostgres) {
     const { Pool } = require("pg");
     const { PrismaPg } = require("@prisma/adapter-pg");
-    const pool = new Pool({ connectionString: dbUrl });
+    const pool = new Pool({
+      connectionString: dbUrl,
+      ssl: shouldUsePgSsl(dbUrl) ? { rejectUnauthorized: false } : undefined,
+    });
     const adapter = new PrismaPg(pool);
     return new PrismaClient({ adapter });
   }

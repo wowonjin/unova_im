@@ -18,9 +18,10 @@
 
 ### 1) 환경변수 설정
 
-`env.example`을 복사해서 `.env`를 만들고 값만 채워주세요.
+`env.example`을 복사해서 `.env.local`(권장) 또는 `.env`를 만들고 값만 채워주세요.
 
 - `DATABASE_URL`: Postgres 연결 문자열(운영 권장)
+- (Render 외부 DB에 로컬에서 붙는 경우) `PGSSLMODE=require` 설정 권장
 - `ADMIN_EMAILS`: 관리자(선생님) 이메일(쉼표로 여러 개 가능)
 - `DEFAULT_USER_EMAIL`: (선택) 데모/공개 모드에서 기본 사용자 이메일
 
