@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { warmupThumb } from "./pdfThumbWarmup";
 
 type Props = {
   email: string;
@@ -145,6 +146,38 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
+
+  // 앱 첫 진입 시 교재 썸네일을 idle 타이밍에 미리 준비 (warmup)
+  useEffect(() => {
+    let cancelled = false;
+    const doWarmup = async () => {
+      try {
+        const res = await fetch("/api/textbooks/available", { credentials: "include" });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const textbooks: { id: string; title: string }[] = Array.isArray(data.textbooks) ? data.textbooks : [];
+        for (const { id } of textbooks) {
+          if (cancelled) return;
+          warmupThumb(`/api/textbooks/${id}/view`);
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    if ("requestIdleCallback" in window) {
+      const handle = (window as any).requestIdleCallback(() => doWarmup(), { timeout: 8000 });
+      return () => {
+        cancelled = true;
+        (window as any).cancelIdleCallback?.(handle);
+      };
+    } else {
+      const tid = window.setTimeout(() => doWarmup(), 2000);
+      return () => {
+        cancelled = true;
+        clearTimeout(tid);
+      };
+    }
+  }, []);
 
   const onSearchChange = (next: string) => {
     setQ(next);

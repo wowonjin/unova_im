@@ -13,8 +13,8 @@ export default function GlobalError({
         <h2 style={{ margin: "0 0 12px" }}>서버 오류가 발생했습니다.</h2>
         <p style={{ margin: "0 0 12px", opacity: 0.8 }}>
           운영(Vercel)에서는 DB(Postgres) 환경변수 설정이 필요합니다. Vercel 프로젝트의 Environment Variables에{" "}
-          <code>DATABASE_URL</code> (또는 <code>POSTGRES_URL</code>/<code>POSTGRES_PRISMA_URL</code>)을 설정한 뒤
-          다시 배포하세요.
+          <code>DATABASE_URL</code> (또는 <code>POSTGRES_PRISMA_URL</code>/<code>POSTGRES_URL_NON_POOLING</code>/
+          <code>POSTGRES_URL</code>)을 설정한 뒤 다시 배포하세요.
         </p>
         {error?.digest ? (
           <p style={{ margin: "0 0 16px", opacity: 0.7 }}>

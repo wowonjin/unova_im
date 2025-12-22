@@ -48,3 +48,5 @@ dev_local.db
 
 # local uploaded files / runtime storage
 /storage/
+
+.vercel

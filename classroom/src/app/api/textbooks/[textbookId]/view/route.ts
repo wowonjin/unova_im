@@ -47,7 +47,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
   }
 
   const headers = new Headers();
-  headers.set("cache-control", "public, max-age=3600");
+  // private: 인증 기반 콘텐츠이므로 CDN에는 캐시 안 됨, 브라우저에만 캐시
+  headers.set("cache-control", "private, max-age=86400, stale-while-revalidate=604800");
+  headers.set("vary", "Cookie");
   headers.set("content-disposition", `inline; filename="${encodeURIComponent(tb.originalName || tb.title)}"`);
 
   // 외부 URL(GCS 등): 서버가 fetch 해서 same-origin으로 전달 → pdf.js CORS 문제 회피
