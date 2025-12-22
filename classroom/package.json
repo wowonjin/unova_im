@@ -14,6 +14,7 @@
     "db:seed": "node prisma/seed.mjs"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.7.4",
     "@neondatabase/serverless": "^1.0.0",
     "@prisma/adapter-better-sqlite3": "^7.2.0",
     "@prisma/adapter-neon": "^7.2.0",
@@ -39,6 +40,9 @@
     "react-dom": "19.2.1",
     "sanitize-html": "^2.17.0",
     "zod": "^4.2.1"
+  },
+  "engines": {
+    "node": ">=20 <23"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
