@@ -64,6 +64,7 @@ export function Button({
   formAction,
   disabled,
   onClick,
+  className: extraClassName,
 }: {
   children: React.ReactNode;
   variant?: "primary" | "secondary" | "ghost" | "ghostSolid" | "danger" | "dangerGhost";
@@ -73,6 +74,7 @@ export function Button({
   formAction?: string;
   disabled?: boolean;
   onClick?: React.ButtonHTMLAttributes<HTMLButtonElement>["onClick"];
+  className?: string;
 }) {
   const base =
     "inline-flex items-center justify-center rounded-xl border text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-white/10 disabled:opacity-50";
@@ -90,7 +92,7 @@ export function Button({
             ? "border-transparent bg-transparent text-red-100 hover:bg-red-500/10"
           : "border-transparent bg-transparent text-white/80 hover:bg-white/10";
 
-  const cls = `${base} ${sizes} ${variants}`;
+  const cls = `${base} ${sizes} ${variants}${extraClassName ? ` ${extraClassName}` : ""}`;
 
   if (href) {
     if (disabled) {

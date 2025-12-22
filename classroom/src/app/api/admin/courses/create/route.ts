@@ -6,7 +6,6 @@ import { slugify } from "@/lib/slugify";
 import crypto from "node:crypto";
 import path from "node:path";
 import fs from "node:fs/promises";
-import { put } from "@vercel/blob";
 import { ensureDir, getStorageRoot } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -107,44 +106,24 @@ export async function POST(req: Request) {
       const bytes = Buffer.from(await thumbnailFile.arrayBuffer());
       const ext = path.extname(thumbnailFile.name || "").slice(0, 10);
       const storedName = `${crypto.randomUUID()}${ext || ""}`;
-      const hasBlob = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 
-      if (process.env.VERCEL && hasBlob) {
-        const key = `course-thumbnails/${course.id}/${storedName}`;
-        const blob = await put(key, bytes, {
-          access: "public",
-          contentType: thumbnailFile.type || "application/octet-stream",
-        });
-        await prisma.course.update({
-          where: { id: course.id },
-          data: {
-            thumbnailUrl: blob.url,
-            thumbnailStoredPath: null,
-            thumbnailOriginalName: thumbnailFile.name || null,
-            thumbnailMimeType: thumbnailFile.type || "application/octet-stream",
-            thumbnailSizeBytes: bytes.length,
-          },
-        });
-      } else {
-        const dir = path.join(getStorageRoot(), "course-thumbnails", course.id);
-        await ensureDir(dir);
-        const relPath = path.join("course-thumbnails", course.id, storedName).replace(/\\/g, "/");
-        const fullPath = path.join(dir, storedName);
-        await fs.writeFile(fullPath, bytes);
+      // Store on filesystem (Render disk mount)
+      const dir = path.join(getStorageRoot(), "course-thumbnails", course.id);
+      await ensureDir(dir);
+      const relPath = path.join("course-thumbnails", course.id, storedName).replace(/\\/g, "/");
+      const fullPath = path.join(dir, storedName);
+      await fs.writeFile(fullPath, bytes);
 
-        await prisma.course.update({
-          where: { id: course.id },
-          data: {
-            thumbnailStoredPath: relPath,
-            thumbnailOriginalName: thumbnailFile.name || null,
-            thumbnailMimeType: thumbnailFile.type || "application/octet-stream",
-            thumbnailSizeBytes: bytes.length,
-          },
-        });
-      }
+      await prisma.course.update({
+        where: { id: course.id },
+        data: {
+          thumbnailStoredPath: relPath,
+          thumbnailOriginalName: thumbnailFile.name || null,
+          thumbnailMimeType: thumbnailFile.type || "application/octet-stream",
+          thumbnailSizeBytes: bytes.length,
+        },
+      });
     } catch (e) {
-      // On serverless environments, local filesystem storage may be unavailable.
-      // Course creation should still succeed even if thumbnail persistence fails.
       console.error("[admin/courses/create] failed to persist thumbnail:", e);
     }
   }

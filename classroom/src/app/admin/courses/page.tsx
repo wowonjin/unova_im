@@ -48,9 +48,6 @@ export default async function AdminCoursesPage({
     },
     // Prefer explicit ordering if available; fall back to updatedAt for stability.
     orderBy: [{ position: "asc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
-    include: {
-      lessons: { select: { id: true, isPublished: true } },
-    },
     select: {
       id: true,
       title: true,

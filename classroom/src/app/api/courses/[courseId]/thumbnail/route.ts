@@ -21,7 +21,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ courseId: stri
     select: { id: true, ownerId: true, thumbnailStoredPath: true, thumbnailMimeType: true, thumbnailUrl: true },
   });
   if (!course) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
-  // If we have a hosted URL (e.g. Vercel Blob), redirect to it.
+  // If we have a hosted URL, redirect to it.
   if (course.thumbnailUrl) {
     const res = NextResponse.redirect(course.thumbnailUrl);
     res.headers.set("cache-control", "private, max-age=60");

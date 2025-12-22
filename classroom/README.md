@@ -85,36 +85,39 @@ npm run dev
 
 ---
 
-## Vercel 배포(권장: Vercel Postgres)
+## Render 배포
 
 ### 1) GitHub에 올리기
 
 - 이 레포를 GitHub에 push 합니다.
 
-### 2) Vercel에 Import
+### 2) Render에서 Blueprint 배포
 
-- Vercel 대시보드 → **Add New → Project** → GitHub 레포 선택 → Import
-- **중요(모노레포)**: 이 프로젝트는 Next 앱이 `classroom/` 아래에 있습니다.
-  - Import 화면(또는 Project Settings)에서 **Root Directory를 `classroom`로 설정**하세요.
-  - Framework Preset은 **Next.js**로 잡히는 게 정상입니다.
+이 프로젝트는 `render.yaml` Blueprint를 포함하고 있어 한 번에 모든 리소스를 생성할 수 있습니다.
 
-### 3) Vercel Postgres 생성
+1. Render 대시보드 → **New → Blueprint**
+2. GitHub 레포 연결 → `render.yaml` 자동 감지
+3. **Apply** 클릭 → 다음 리소스가 자동 생성됩니다:
+   - `unova-classroom`: Next.js 웹 서비스
+   - `unova-classroom-db`: PostgreSQL 데이터베이스
+   - `unova-classroom-storage`: 파일 저장용 디스크 (1GB)
 
-- Vercel 대시보드 → 프로젝트 → **Storage → Postgres** 추가(또는 별도 Postgres 생성 후 연결)
+### 3) Environment Variables 설정
 
-### 4) Environment Variables 설정
+Render 대시보드 → 서비스 → **Environment**에서 다음 환경변수를 설정합니다:
 
-프로젝트 → **Settings → Environment Variables**에 아래를 추가합니다:
-
-- `DATABASE_URL`: Vercel Postgres 연결 문자열(예: `postgresql://...`)
 - `ADMIN_EMAILS`: 관리자(선생님) 이메일(쉼표로 여러 개)
 - `DEFAULT_USER_EMAIL`: (선택) 데모/공개 모드 기본 사용자
 - `IMWEB_API_KEY`, `IMWEB_API_SECRET`: 아임웹 주문 조회용
 - `IMWEB_WEBHOOK_TOKEN`: 웹훅 보호용 토큰(권장)
 
-> 빌드 시 `npm run vercel-build`가 실행되며, `DATABASE_URL`이 설정되어 있으면 `prisma migrate deploy`까지 자동 수행합니다.
+> `DATABASE_URL`과 `STORAGE_ROOT`는 Blueprint에서 자동 설정됩니다.
 
-### 5) 배포 후 확인
+### 4) 배포 후 확인
 
 - `/admin/events`에서 웹훅/주문 이벤트 로그 확인
 - 아임웹에서 웹훅 URL을 `https://YOUR_DOMAIN/api/imweb/webhook?token=...` 형태로 등록
+
+### 5) 수동 재배포
+
+Render 대시보드 → 서비스 → **Manual Deploy** → **Clear build cache & deploy**를 선택하면 캐시를 삭제하고 재배포합니다.
