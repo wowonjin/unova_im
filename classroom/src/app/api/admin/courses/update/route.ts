@@ -11,6 +11,16 @@ const Schema = z.object({
   title: z.string().min(1).max(200),
   slug: z.string().min(1).max(200),
   thumbnailUrl: z.string().optional(),
+  teacherName: z
+    .string()
+    .optional()
+    .transform((s) => (typeof s === "string" ? s.trim() : ""))
+    .refine((s) => s.length <= 80, { message: "teacherName too long" }),
+  subjectName: z
+    .string()
+    .optional()
+    .transform((s) => (typeof s === "string" ? s.trim() : ""))
+    .refine((s) => s.length <= 80, { message: "subjectName too long" }),
   isPublished: z
     .string()
     .optional()
@@ -27,6 +37,8 @@ export async function POST(req: Request) {
     title: form.get("title"),
     slug: form.get("slug"),
     thumbnailUrl: form.get("thumbnailUrl"),
+    teacherName: form.get("teacherName"),
+    subjectName: form.get("subjectName"),
     isPublished: form.get("isPublished"),
   };
 
@@ -35,6 +47,8 @@ export async function POST(req: Request) {
     title: typeof raw.title === "string" ? raw.title.trim() : "",
     slug: typeof raw.slug === "string" ? raw.slug.trim() : "",
     thumbnailUrl: typeof raw.thumbnailUrl === "string" ? raw.thumbnailUrl : undefined,
+    teacherName: typeof raw.teacherName === "string" ? raw.teacherName : undefined,
+    subjectName: typeof raw.subjectName === "string" ? raw.subjectName : undefined,
     isPublished: typeof raw.isPublished === "string" ? raw.isPublished : undefined,
   });
   if (!parsed.success) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
@@ -56,6 +70,8 @@ export async function POST(req: Request) {
       title: parsed.data.title,
       slug: cleanSlug,
       thumbnailUrl: parsed.data.thumbnailUrl?.trim().length ? parsed.data.thumbnailUrl.trim() : null,
+      teacherName: parsed.data.teacherName?.length ? parsed.data.teacherName : null,
+      subjectName: parsed.data.subjectName?.length ? parsed.data.subjectName : null,
       isPublished: parsed.data.isPublished,
     },
   });

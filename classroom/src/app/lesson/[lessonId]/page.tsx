@@ -6,10 +6,34 @@ import VimeoPlayer from "./VimeoPlayer";
 import LessonResourcesTabs from "./LessonResourcesTabs";
 import LessonCurriculumSidebar from "./LessonCurriculumSidebar";
 import LessonPlayerLayoutClient from "./LessonPlayerLayoutClient";
+import { isAllCoursesTestModeFromAllParam } from "@/lib/test-mode";
+import { fetchVimeoOembedMeta } from "@/lib/vimeo-oembed";
 
-export default async function LessonPage({ params }: { params: Promise<{ lessonId: string }> }) {
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length) as R[];
+  let idx = 0;
+  const workers = Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, async () => {
+    while (true) {
+      const i = idx++;
+      if (i >= items.length) break;
+      out[i] = await fn(items[i]);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+export default async function LessonPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lessonId: string }>;
+  searchParams?: Promise<{ all?: string }>;
+}) {
   const user = await requireCurrentUser();
   const { lessonId } = await params;
+  const sp = (await searchParams) ?? {};
+  const allowAll = isAllCoursesTestModeFromAllParam(typeof sp.all === "string" ? sp.all : null);
   const now = new Date();
 
   const lesson = await prisma.lesson.findUnique({
@@ -29,7 +53,22 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
     );
   }
 
-  if (!user.isAdmin) {
+  // Keep current lesson title in sync with Vimeo (best-effort, single fetch).
+  let syncedLessonTitle = lesson.title;
+  try {
+    const meta = await fetchVimeoOembedMeta(lesson.vimeoVideoId);
+    if (meta.title && meta.title !== lesson.title) {
+      syncedLessonTitle = meta.title;
+      await prisma.lesson.update({
+        where: { id: lesson.id },
+        data: { title: meta.title, durationSeconds: meta.durationSeconds ?? lesson.durationSeconds },
+      });
+    }
+  } catch {
+    // ignore
+  }
+
+  if (!user.isAdmin && !allowAll) {
     const enrollment = await prisma.enrollment.findFirst({
       where: { userId: user.id, courseId: lesson.courseId, status: "ACTIVE", endAt: { gt: now } },
       select: { id: true },
@@ -68,6 +107,27 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
     select: { id: true, title: true, position: true, vimeoVideoId: true, durationSeconds: true },
   });
 
+  // Sync titles for sidebar curriculum too (so changes reflect across the lesson page).
+  const syncedTitleByLessonId = new Map<string, string>();
+  const syncedDurationByLessonId = new Map<string, number | null>();
+  const toSync = lessons.filter((l) => l.vimeoVideoId);
+  if (toSync.length) {
+    await mapLimit(toSync, 4, async (l) => {
+      const meta = await fetchVimeoOembedMeta(l.vimeoVideoId);
+      if (meta.title) syncedTitleByLessonId.set(l.id, meta.title);
+      if (meta.durationSeconds != null) syncedDurationByLessonId.set(l.id, meta.durationSeconds);
+      try {
+        const nextTitle = meta.title ?? l.title;
+        const nextDuration = meta.durationSeconds ?? l.durationSeconds ?? null;
+        if (nextTitle !== l.title || nextDuration !== (l.durationSeconds ?? null)) {
+          await prisma.lesson.update({ where: { id: l.id }, data: { title: nextTitle, durationSeconds: nextDuration } });
+        }
+      } catch {
+        // ignore
+      }
+    });
+  }
+
   const progress = await prisma.progress.findMany({
     where: { userId: user.id, lessonId: { in: lessons.map((l) => l.id) } },
     select: { lessonId: true, percent: true, updatedAt: true, completedAt: true },
@@ -92,10 +152,10 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
     const completed = Boolean(p?.completedAt) || pct >= 99;
     return {
       id: l.id,
-      title: l.title,
+      title: syncedTitleByLessonId.get(l.id) ?? l.title,
       position: l.position,
       vimeoVideoId: l.vimeoVideoId,
-      durationSeconds: l.durationSeconds,
+      durationSeconds: syncedDurationByLessonId.get(l.id) ?? l.durationSeconds,
       percent: pct,
       completed,
     };
@@ -116,7 +176,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
             <LessonResourcesTabs
               lessonId={lesson.id}
               lessonPosition={lesson.position}
-              lessonTitle={lesson.title}
+              lessonTitle={syncedLessonTitle}
               lessonDescription={lesson.description ?? null}
               lessonGoals={lessonGoals}
               lessonOutline={lessonOutline}

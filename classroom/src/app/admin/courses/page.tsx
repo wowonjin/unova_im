@@ -13,6 +13,13 @@ function inferTeacherFromTitle(title: string) {
   return m[1].trim();
 }
 
+function inferSubjectFromTitle(title: string) {
+  // Rough fallback when subjectName isn't stored yet.
+  const bracket = title.match(/\[\s*([^\]]+)\]/)?.[1]?.trim() ?? null;
+  if (bracket && !/^\d{2,4}$/.test(bracket)) return bracket;
+  return title.match(/(수학|국어|영어|과학|사회)/)?.[1] ?? "";
+}
+
 export default async function AdminCoursesPage({
   searchParams,
 }: {
@@ -34,11 +41,13 @@ export default async function AdminCoursesPage({
             OR: [
               { title: { contains: q } },
               { teacherName: { contains: q } },
+              { subjectName: { contains: q } },
             ],
           }
         : {}),
     },
-    orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+    // Prefer explicit ordering if available; fall back to updatedAt for stability.
+    orderBy: [{ position: "asc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
     include: {
       lessons: { select: { id: true, isPublished: true } },
     },
@@ -70,18 +79,14 @@ export default async function AdminCoursesPage({
         }
       />
 
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[360px_1fr] lg:items-start">
-        {/* Left: create new course */}
-        <div className="lg:sticky lg:top-6">
-          <Card className="bg-transparent">
-            <CardHeader title="강좌 관리하기" />
-            <CardBody>
-              <CreateCourseFormClient />
-            </CardBody>
-          </Card>
-        </div>
+      <div className="mt-6 space-y-4">
+        <Card className="bg-transparent">
+          <CardHeader title="강좌 관리하기" description="강좌를 생성하고 기본 정보를 설정합니다." />
+          <CardBody>
+            <CreateCourseFormClient />
+          </CardBody>
+        </Card>
 
-        {/* Right: course list */}
         <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
           <div className="border-b border-white/10 px-5 py-4">
             <div className="flex items-center justify-between gap-3">
@@ -93,7 +98,7 @@ export default async function AdminCoursesPage({
               <input
                 name="q"
                 defaultValue={q}
-                placeholder="제목/선생님 검색"
+                placeholder="제목/선생님/과목 검색"
                 className="h-9 w-full rounded-xl border border-white/10 bg-[#1d1d1f] px-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/20 focus:ring-2 focus:ring-white/10 sm:w-72"
               />
               <select
@@ -119,8 +124,10 @@ export default async function AdminCoursesPage({
           <table className="w-full text-sm">
             <thead className="text-left text-white/60">
               <tr className="border-b border-white/10">
-                <th className="px-5 py-3 pr-3">제목</th>
+                <th className="px-5 py-3 pr-3">번호</th>
+                <th className="py-3 pr-3">제목</th>
                 <th className="py-3 pr-3">선생님</th>
+                <th className="py-3 pr-3">과목</th>
                 <th className="py-3 pr-3">상태</th>
                 <th className="py-3 pr-3">수강 인원</th>
                 <th className="py-3 pr-3">차시(공개/전체)</th>
@@ -132,14 +139,36 @@ export default async function AdminCoursesPage({
               {courses.map((c) => {
                 const publishedLessons = c.lessons.filter((l) => l.isPublished).length;
                 const teacherLabel = c.teacherName?.trim() || inferTeacherFromTitle(c.title) || "-";
+                const subjectLabel = c.subjectName?.trim() || inferSubjectFromTitle(c.title) || "-";
+                const pos = c.position ?? 0;
                 return (
                   <tr key={c.id} className="border-b border-white/10">
-                    <td className="px-5 py-3 pr-3">
+                    <td className="px-5 py-3 pr-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <Badge>{pos || "-"}</Badge>
+                        <form action="/api/admin/courses/move" method="post">
+                          <input type="hidden" name="courseId" value={c.id} />
+                          <input type="hidden" name="dir" value="up" />
+                          <Button type="submit" variant="ghost" size="sm">
+                            ↑
+                          </Button>
+                        </form>
+                        <form action="/api/admin/courses/move" method="post">
+                          <input type="hidden" name="courseId" value={c.id} />
+                          <input type="hidden" name="dir" value="down" />
+                          <Button type="submit" variant="ghost" size="sm">
+                            ↓
+                          </Button>
+                        </form>
+                      </div>
+                    </td>
+                    <td className="py-3 pr-3 min-w-[280px]">
                       <div className="min-w-0">
                         <div className="truncate font-medium text-white">{c.title}</div>
                       </div>
                     </td>
                     <td className="py-3 pr-3 text-white/70">{teacherLabel}</td>
+                    <td className="py-3 pr-3 text-white/70">{subjectLabel}</td>
                     <td className="py-3 pr-3">
                       <CoursePublishedSelect courseId={c.id} isPublished={c.isPublished} />
                     </td>
@@ -161,7 +190,7 @@ export default async function AdminCoursesPage({
               })}
               {courses.length === 0 ? (
                 <tr>
-                  <td className="px-5 py-6 text-sm text-white/60" colSpan={7}>
+                  <td className="px-5 py-6 text-sm text-white/60" colSpan={9}>
                     아직 생성된 강좌가 없습니다.
                   </td>
                 </tr>

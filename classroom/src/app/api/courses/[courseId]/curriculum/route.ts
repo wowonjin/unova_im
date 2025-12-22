@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/current-user";
-import { fetchVimeoDurationSeconds } from "@/lib/vimeo-oembed";
+import { fetchVimeoOembedMeta } from "@/lib/vimeo-oembed";
+import { isAllCoursesTestModeFromRequest } from "@/lib/test-mode";
 
 export const runtime = "nodejs";
 
@@ -27,14 +28,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
   if (!user) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
 
   const { courseId } = ParamsSchema.parse(await ctx.params);
-  const url = new URL(req.url);
-  const allowAll = url.searchParams.get("all") === "1";
   const now = new Date();
+  const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
 
   // 관리자(교사)는 항상 접근 가능
   if (!user.isAdmin) {
-    // 테스트 모드(/dashboard?all=1)에서만 수강권 체크를 우회(운영 안전장치)
-    const bypassEnrollment = allowAll && process.env.NODE_ENV !== "production";
     if (!bypassEnrollment) {
       const enrollment = await prisma.enrollment.findFirst({
         where: { userId: user.id, courseId, status: "ACTIVE", endAt: { gt: now } },
@@ -50,31 +48,31 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
     select: { id: true, title: true, position: true, vimeoVideoId: true, durationSeconds: true },
   });
 
-  // Vimeo에서 duration을 가져와서 비어있는 강의 시간 채우기(캐시: DB)
-  const missing = lessons.filter((l) => !l.durationSeconds && l.vimeoVideoId);
-  if (missing.length) {
-    await mapLimit(missing, 4, async (l) => {
-      const d = await fetchVimeoDurationSeconds(l.vimeoVideoId);
-      if (!d) return;
+  // Vimeo oEmbed로 제목/시간을 최신으로 동기화 (Vimeo에서 제목 변경 시 우리 웹도 자동 반영)
+  const toSync = lessons.filter((l) => l.vimeoVideoId);
+  const syncedTitleByLessonId = new Map<string, string>();
+  const syncedDurationByLessonId = new Map<string, number | null>();
+
+  if (toSync.length) {
+    await mapLimit(toSync, 4, async (l) => {
+      const meta = await fetchVimeoOembedMeta(l.vimeoVideoId);
+      if (meta.title) syncedTitleByLessonId.set(l.id, meta.title);
+      if (meta.durationSeconds != null) syncedDurationByLessonId.set(l.id, meta.durationSeconds);
+
+      // Update DB if changed (best-effort)
       try {
-        await prisma.lesson.update({
-          where: { id: l.id },
-          data: { durationSeconds: d },
-        });
+        const nextTitle = meta.title ?? l.title;
+        const nextDuration = meta.durationSeconds ?? l.durationSeconds ?? null;
+        if (nextTitle !== l.title || nextDuration !== (l.durationSeconds ?? null)) {
+          await prisma.lesson.update({
+            where: { id: l.id },
+            data: { title: nextTitle, durationSeconds: nextDuration },
+          });
+        }
       } catch {
         // ignore (race/locking/etc)
       }
     });
-  }
-
-  // durationSeconds는 최신 DB 값을 우선 사용
-  const durationByLessonId = new Map<string, number | null>();
-  if (missing.length) {
-    const refreshed = await prisma.lesson.findMany({
-      where: { id: { in: missing.map((l) => l.id) } },
-      select: { id: true, durationSeconds: true },
-    });
-    for (const r of refreshed) durationByLessonId.set(r.id, r.durationSeconds);
   }
 
   const progresses = lessons.length
@@ -94,10 +92,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
       const pct = p ? Math.max(0, Math.min(100, Math.round(p.percent))) : 0;
       return {
         id: l.id,
-        title: l.title,
+        title: syncedTitleByLessonId.get(l.id) ?? l.title,
         position: l.position,
         vimeoVideoId: l.vimeoVideoId,
-        durationSeconds: durationByLessonId.get(l.id) ?? l.durationSeconds,
+        durationSeconds: syncedDurationByLessonId.get(l.id) ?? l.durationSeconds,
         percent: pct,
         completed: Boolean(p?.completedAt) || pct >= 99,
       };

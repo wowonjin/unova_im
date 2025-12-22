@@ -10,6 +10,7 @@ type Props = {
   displayName: string;
   avatarUrl: string | null;
   isAdmin: boolean;
+  showAllCourses?: boolean;
   enrolledCourses: {
     courseId: string;
     title: string;
@@ -123,7 +124,7 @@ function SearchBox({
   );
 }
 
-export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, enrolledCourses }: Props) {
+export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, showAllCourses, enrolledCourses }: Props) {
   const pathname = usePathname();
   const isAdminArea = pathname?.startsWith("/admin");
   const router = useRouter();
@@ -234,7 +235,7 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
     if (!enrolledCourses.length) return null;
     return (
       <div className="mt-6">
-        <p className="px-3 text-xs font-semibold text-white/60">강의 시청 기록</p>
+        <p className="px-3 text-xs font-semibold text-white/60">{showAllCourses ? "강좌 목록(테스트)" : "강의 시청 기록"}</p>
         <ul className="mt-2 space-y-1">
           {enrolledCourses.map((c) => {
             const href = c.lastLessonId ? `/lesson/${c.lastLessonId}` : `/course/${c.courseId}`;
@@ -250,7 +251,7 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
                     <p className="mt-0.5 truncate text-xs text-white/70">{c.lastLessonTitle}</p>
                   ) : null}
                   {!c.lastLessonTitle && !c.lastWatchedAtISO ? (
-                    <p className="truncate text-xs text-white/60">시청 기록 없음</p>
+                    <p className="truncate text-xs text-white/60">{showAllCourses ? "미수강" : "시청 기록 없음"}</p>
                   ) : null}
                 </div>
                 <ProgressRing percent={c.percent} />
@@ -260,7 +261,7 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
         </ul>
       </div>
     );
-  }, [enrolledCourses]);
+  }, [enrolledCourses, showAllCourses]);
 
   const Nav = (
     <nav className="space-y-1 text-sm">

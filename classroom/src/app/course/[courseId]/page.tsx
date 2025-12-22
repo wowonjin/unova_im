@@ -3,10 +3,34 @@ import AppShell from "@/app/_components/AppShell";
 import { requireCurrentUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import CourseCurriculumClient from "./CourseCurriculumClient";
+import { isAllCoursesTestModeFromAllParam } from "@/lib/test-mode";
+import { fetchVimeoOembedMeta } from "@/lib/vimeo-oembed";
 
-export default async function CoursePage({ params }: { params: Promise<{ courseId: string }> }) {
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length) as R[];
+  let idx = 0;
+  const workers = Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, async () => {
+    while (true) {
+      const i = idx++;
+      if (i >= items.length) break;
+      out[i] = await fn(items[i]);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+export default async function CoursePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ courseId: string }>;
+  searchParams?: Promise<{ all?: string }>;
+}) {
   const user = await requireCurrentUser();
   const { courseId } = await params;
+  const sp = (await searchParams) ?? {};
+  const allowAll = isAllCoursesTestModeFromAllParam(typeof sp.all === "string" ? sp.all : null);
   const now = new Date();
 
   function fmt(d: Date) {
@@ -22,16 +46,16 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
     return { subject, teacher };
   }
 
-  const enrollment = user.isAdmin
-    ? null
-    : await prisma.enrollment.findFirst({
-        where: { userId: user.id, courseId, status: "ACTIVE", endAt: { gt: now } },
-        include: { course: true },
-      });
+  const enrollment =
+    user.isAdmin || allowAll
+      ? null
+      : await prisma.enrollment.findFirst({
+          where: { userId: user.id, courseId, status: "ACTIVE", endAt: { gt: now } },
+          include: { course: true },
+        });
 
-  const course = user.isAdmin
-    ? await prisma.course.findUnique({ where: { id: courseId } })
-    : enrollment?.course ?? null;
+  const course =
+    user.isAdmin || allowAll ? await prisma.course.findUnique({ where: { id: courseId } }) : enrollment?.course ?? null;
 
   if (!course) {
     return (
@@ -52,6 +76,28 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
     select: { id: true, title: true, position: true, vimeoVideoId: true, durationSeconds: true },
   });
 
+  // Keep lesson titles in sync with Vimeo (so Vimeo title changes reflect on our site).
+  const syncedTitleByLessonId = new Map<string, string>();
+  const syncedDurationByLessonId = new Map<string, number | null>();
+  const toSync = lessons.filter((l) => l.vimeoVideoId);
+  if (toSync.length) {
+    await mapLimit(toSync, 4, async (l) => {
+      const meta = await fetchVimeoOembedMeta(l.vimeoVideoId);
+      if (meta.title) syncedTitleByLessonId.set(l.id, meta.title);
+      if (meta.durationSeconds != null) syncedDurationByLessonId.set(l.id, meta.durationSeconds);
+      // Best-effort DB cache update
+      try {
+        const nextTitle = meta.title ?? l.title;
+        const nextDuration = meta.durationSeconds ?? l.durationSeconds ?? null;
+        if (nextTitle !== l.title || nextDuration !== (l.durationSeconds ?? null)) {
+          await prisma.lesson.update({ where: { id: l.id }, data: { title: nextTitle, durationSeconds: nextDuration } });
+        }
+      } catch {
+        // ignore
+      }
+    });
+  }
+
   const progress = await prisma.progress.findMany({
     where: { userId: user.id, lessonId: { in: lessons.map((l) => l.id) } },
     select: { lessonId: true, percent: true, lastSeconds: true, updatedAt: true, completedAt: true },
@@ -66,9 +112,9 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
     const completed = Boolean(p?.completedAt) || pct >= 99;
     return {
       id: l.id,
-      title: l.title,
+      title: syncedTitleByLessonId.get(l.id) ?? l.title,
       position: l.position,
-      durationSeconds: l.durationSeconds,
+      durationSeconds: syncedDurationByLessonId.get(l.id) ?? l.durationSeconds,
       percent: pct,
       completed,
     };
@@ -98,6 +144,8 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
               <p className="mt-2 text-sm text-white/70">
                 {user.isAdmin && !enrollment ? (
                   <>총 {lessons.length}강</>
+                ) : allowAll ? (
+                  <>테스트 모드(수강권 없이) · 총 {lessons.length}강</>
                 ) : (
                   <>수강 기간: {fmt(enrollment!.startAt)} ~ {fmt(enrollment!.endAt)} · 총 {lessons.length}강</>
                 )}

@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import LessonQna from "./LessonQna";
+import { useSearchParams } from "next/navigation";
+import { isAllCoursesTestModeFromAllParam, withAllParamIfNeeded } from "@/lib/test-mode";
 
 type Attachment = {
   id: string;
@@ -56,6 +57,8 @@ export default function LessonResourcesTabs({
   courseAttachments,
   lessonAttachments,
 }: Props) {
+  const searchParams = useSearchParams();
+  const allowAll = isAllCoursesTestModeFromAllParam(searchParams.get("all"));
   const [tab, setTab] = useState<"description" | "files" | "qa">("description");
   const displayTitle = lessonTitle
     .replace(new RegExp(`^(?:\\s*${lessonPosition}\\s*강\\s*\\.?\\s*)+`), "")
@@ -159,7 +162,7 @@ export default function LessonResourcesTabs({
               {allFiles.map((f) => (
                 <li key={f.id}>
                   <a
-                    href={`/api/attachments/${f.id}/download`}
+                    href={withAllParamIfNeeded(`/api/attachments/${f.id}/download`, allowAll)}
                     className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#343335] p-3 hover:bg-[#3e3d40] focus:outline-none focus:ring-2 focus:ring-white/10"
                   >
                     {isPdfFileName(f.originalName || f.title) ? (

@@ -58,6 +58,10 @@ model Course {
   ownerId        String?
   title          String
   teacherName    String?
+  subjectName    String?
+  // Admin course list ordering within the teacher (owner).
+  // Use positive integers (1..N). 0 is reserved for legacy/uninitialized.
+  position       Int      @default(0)
   slug           String   @unique
   description    String?
   // (legacy) 외부 URL 썸네일을 쓰는 경우를 위해 남겨둠
@@ -80,6 +84,8 @@ model Course {
 
   @@index([ownerId])
   @@index([teacherName])
+  @@index([subjectName])
+  @@unique([ownerId, position])
 }
 
 model CourseImwebProdCode {

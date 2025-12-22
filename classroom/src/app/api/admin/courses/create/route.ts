@@ -18,6 +18,11 @@ const Schema = z.object({
     .optional()
     .transform((s) => (typeof s === "string" ? s.trim() : ""))
     .refine((s) => s.length <= 80, { message: "teacherName too long" }),
+  subjectName: z
+    .string()
+    .optional()
+    .transform((s) => (typeof s === "string" ? s.trim() : ""))
+    .refine((s) => s.length <= 80, { message: "subjectName too long" }),
   description: z.string().optional().transform((s) => (typeof s === "string" ? s.trim() : "")),
   isPublished: z
     .string()
@@ -51,6 +56,7 @@ export async function POST(req: Request) {
   const raw = {
     title: form.get("title"),
     teacherName: form.get("teacherName"),
+    subjectName: form.get("subjectName"),
     description: form.get("description"),
     isPublished: form.get("isPublished"),
     thumbnail: form.get("thumbnail"),
@@ -59,6 +65,7 @@ export async function POST(req: Request) {
   const parsed = Schema.safeParse({
     title: typeof raw.title === "string" ? raw.title : "",
     teacherName: typeof raw.teacherName === "string" ? raw.teacherName : undefined,
+    subjectName: typeof raw.subjectName === "string" ? raw.subjectName : undefined,
     description: typeof raw.description === "string" ? raw.description : undefined,
     isPublished: typeof raw.isPublished === "string" ? raw.isPublished : undefined,
   });
@@ -67,11 +74,20 @@ export async function POST(req: Request) {
   const title = parsed.data.title.trim();
   const slug = await ensureUniqueSlug(title);
 
+  const last = await prisma.course.findFirst({
+    where: { ownerId: teacher.id },
+    orderBy: { position: "desc" },
+    select: { position: true },
+  });
+  const position = Math.max(0, last?.position ?? 0) + 1;
+
   const course = await prisma.course.create({
     data: {
       ownerId: teacher.id,
       title,
       teacherName: parsed.data.teacherName?.length ? parsed.data.teacherName : null,
+      subjectName: parsed.data.subjectName?.length ? parsed.data.subjectName : null,
+      position,
       slug,
       description: parsed.data.description?.length ? parsed.data.description : null,
       thumbnailUrl: null,

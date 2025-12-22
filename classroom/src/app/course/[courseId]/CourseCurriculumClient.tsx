@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { isAllCoursesTestModeFromAllParam, withAllParamIfNeeded } from "@/lib/test-mode";
 
 type CurriculumLesson = {
   id: string;
@@ -30,6 +32,8 @@ function fmtTime(totalSeconds: number | null) {
 }
 
 export default function CourseCurriculumClient({ lessons }: Props) {
+  const searchParams = useSearchParams();
+  const allowAll = isAllCoursesTestModeFromAllParam(searchParams.get("all"));
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "notStarted" | "inProgress" | "completed">("all");
 
@@ -102,7 +106,7 @@ export default function CourseCurriculumClient({ lessons }: Props) {
             return (
               <li key={l.id} className="px-5 py-4">
                 <Link
-                  href={`/lesson/${l.id}`}
+                  href={withAllParamIfNeeded(`/lesson/${l.id}`, allowAll)}
                   className="group flex items-start gap-4 rounded-xl p-3 hover:bg-white/5"
                 >
                   <div className="min-w-0">

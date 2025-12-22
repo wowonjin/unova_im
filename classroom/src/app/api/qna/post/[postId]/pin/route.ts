@@ -2,17 +2,20 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireCurrentUser } from "@/lib/current-user";
+import { isAllCoursesTestModeFromRequest } from "@/lib/test-mode";
 
 export const runtime = "nodejs";
 
 const ParamsSchema = z.object({ postId: z.string().min(1) });
 
-async function canAccessPost(userId: string, postId: string) {
+async function canAccessPost(userId: string, postId: string, bypassEnrollment: boolean) {
   const post = await prisma.qnaPost.findUnique({
     where: { id: postId },
     include: { lesson: { select: { id: true, courseId: true } } },
   });
   if (!post) return null;
+
+  if (bypassEnrollment) return post;
 
   const now = new Date();
   const ok = await prisma.enrollment.findFirst({
@@ -28,7 +31,8 @@ export async function POST(_req: Request, ctx: { params: Promise<{ postId: strin
   if (!user.isAdmin) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
 
   const { postId } = ParamsSchema.parse(await ctx.params);
-  const post = await canAccessPost(user.id, postId);
+  const bypassEnrollment = isAllCoursesTestModeFromRequest(_req);
+  const post = await canAccessPost(user.id, postId, bypassEnrollment);
   if (!post) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
   // 답변(댓글)은 고정 불가(질문만)
   if (post.parentId) return NextResponse.json({ ok: false, error: "INVALID_TARGET" }, { status: 400 });

@@ -2,18 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTeacherUser } from "@/lib/current-user";
+import { fetchVimeoOembedMeta, normalizeVimeoVideoId } from "@/lib/vimeo-oembed";
 
 export const runtime = "nodejs";
 
 const Schema = z.object({
   courseId: z.string().min(1),
-  title: z.string().min(1).max(200),
-  vimeoVideoId: z.string().min(1).max(64),
-  durationSeconds: z
-    .string()
-    .optional()
-    .transform((s) => (typeof s === "string" && s.trim() !== "" ? Number(s) : null))
-    .refine((v) => v === null || (Number.isFinite(v) && v >= 0), { message: "INVALID_DURATION" }),
+  vimeoVideoId: z.string().min(1).max(256),
   isPublished: z
     .string()
     .optional()
@@ -27,9 +22,7 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const parsed = Schema.safeParse({
     courseId: typeof form.get("courseId") === "string" ? form.get("courseId") : "",
-    title: typeof form.get("title") === "string" ? form.get("title") : "",
     vimeoVideoId: typeof form.get("vimeoVideoId") === "string" ? form.get("vimeoVideoId") : "",
-    durationSeconds: typeof form.get("durationSeconds") === "string" ? form.get("durationSeconds") : undefined,
     isPublished: typeof form.get("isPublished") === "string" ? form.get("isPublished") : undefined,
   });
   if (!parsed.success) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
@@ -47,13 +40,21 @@ export async function POST(req: Request) {
   });
   const position = (last?.position ?? 0) + 1;
 
+  const normalizedId = normalizeVimeoVideoId(parsed.data.vimeoVideoId);
+  if (!normalizedId) return NextResponse.json({ ok: false, error: "INVALID_VIMEO_ID" }, { status: 400 });
+
+  // Fetch current Vimeo title (and duration as a bonus) via oEmbed (no auth).
+  // This keeps the lesson title derived from Vimeo, not manually edited.
+  const meta = await fetchVimeoOembedMeta(normalizedId);
+  if (!meta.title) return NextResponse.json({ ok: false, error: "VIMEO_NOT_FOUND" }, { status: 400 });
+
   await prisma.lesson.create({
     data: {
       courseId: parsed.data.courseId,
-      title: parsed.data.title.trim(),
+      title: meta.title,
       position,
-      vimeoVideoId: parsed.data.vimeoVideoId.trim(),
-      durationSeconds: parsed.data.durationSeconds,
+      vimeoVideoId: normalizedId,
+      durationSeconds: meta.durationSeconds,
       isPublished: parsed.data.isPublished,
     },
   });

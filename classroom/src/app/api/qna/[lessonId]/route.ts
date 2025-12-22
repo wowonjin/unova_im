@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireCurrentUser } from "@/lib/current-user";
 import { readJsonBody } from "@/lib/read-json";
+import { isAllCoursesTestModeFromRequest } from "@/lib/test-mode";
 
 export const runtime = "nodejs";
 
@@ -13,12 +14,14 @@ const CreateSchema = z.object({
   parentId: z.string().min(1).optional(),
 });
 
-async function assertCanAccessLesson(userId: string, lessonId: string) {
+async function assertCanAccessLesson(userId: string, lessonId: string, bypassEnrollment: boolean) {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
     select: { id: true, courseId: true },
   });
   if (!lesson) return null;
+
+  if (bypassEnrollment) return lesson;
 
   const now = new Date();
   const ok = await prisma.enrollment.findFirst({
@@ -29,10 +32,11 @@ async function assertCanAccessLesson(userId: string, lessonId: string) {
   return lesson;
 }
 
-export async function GET(_req: Request, ctx: { params: Promise<{ lessonId: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ lessonId: string }> }) {
   const user = await requireCurrentUser();
   const { lessonId } = ParamsSchema.parse(await ctx.params);
-  const lesson = await assertCanAccessLesson(user.id, lessonId);
+  const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
+  const lesson = await assertCanAccessLesson(user.id, lessonId, bypassEnrollment);
   if (!lesson) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
   const posts = await prisma.qnaPost.findMany({
@@ -73,7 +77,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ lessonId: stri
 export async function POST(req: Request, ctx: { params: Promise<{ lessonId: string }> }) {
   const user = await requireCurrentUser();
   const { lessonId } = ParamsSchema.parse(await ctx.params);
-  const lesson = await assertCanAccessLesson(user.id, lessonId);
+  const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
+  const lesson = await assertCanAccessLesson(user.id, lessonId, bypassEnrollment);
   if (!lesson) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
   const json = await readJsonBody(req);

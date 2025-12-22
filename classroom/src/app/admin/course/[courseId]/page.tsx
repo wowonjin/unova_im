@@ -117,6 +117,17 @@ export default async function AdminCoursePage({
                     </Field>
                   </div>
 
+                  <div className="md:col-span-6">
+                    <Field label="선생님" hint="검색/정렬에 사용됩니다.">
+                      <Input name="teacherName" defaultValue={course.teacherName ?? ""} className="bg-transparent" />
+                    </Field>
+                  </div>
+                  <div className="md:col-span-6">
+                    <Field label="과목" hint="검색/정렬에 사용됩니다. 예: 수학/국어/영어">
+                      <Input name="subjectName" defaultValue={course.subjectName ?? ""} className="bg-transparent" />
+                    </Field>
+                  </div>
+
                   <div className="md:col-span-12 flex items-center justify-between">
                     <label className="inline-flex items-center gap-2 text-sm text-white/70">
                       <input type="checkbox" name="isPublished" defaultChecked={course.isPublished} />
@@ -260,41 +271,27 @@ export default async function AdminCoursePage({
               <CardBody>
               <form className="grid grid-cols-1 gap-3 md:grid-cols-12" action="/api/admin/lessons/create" method="post">
                 <input type="hidden" name="courseId" value={course.id} />
-                <div className="md:col-span-7">
-                  <div>
-                    <div className="flex h-5 items-center gap-2 mt-0.5">
-                      <label htmlFor="lessonTitle" className="block text-xs font-medium text-white/80">
-                        차시 제목
-                      </label>
-                      {/* Vimeo ID 라벨과 높이 정렬용(동일한 버튼 자리) */}
-                      <span className="h-5 w-5" aria-hidden="true" />
-                    </div>
-                    <div className="mt-1">
-                      <Input id="lessonTitle" name="title" required placeholder="예: 5강. 함수의 극한" className="bg-transparent" />
-                    </div>
-                  </div>
-                </div>
-                <div className="md:col-span-5">
+                <div className="md:col-span-12">
                   <div>
                     <div className="flex items-center gap-2">
                       <label htmlFor="lessonVimeoId" className="block text-xs font-medium text-white/80">
-                        Vimeo ID
+                        Vimeo 영상
                       </label>
                       <div className="relative group">
                         <button
                           type="button"
                           className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/15 bg-white/5 text-[11px] font-bold leading-none text-white/80 hover:bg-white/10"
-                          aria-label="Vimeo ID 안내"
+                          aria-label="Vimeo 영상 입력 안내"
                         >
                           !
                         </button>
                         <div className="pointer-events-none absolute left-1/2 top-0 z-50 hidden w-[360px] -translate-x-1/2 -translate-y-[calc(100%+10px)] rounded-xl border border-white/10 bg-[#1d1d1f] px-3 py-2 text-xs text-white/80 shadow-lg group-hover:block">
-                          https://vimeo.com/123456789라면, 여기서 123456789만 복사해서 넣으면 됩니다.
+                          Vimeo URL 또는 ID를 넣으면, 차시 제목은 Vimeo 제목으로 자동 설정됩니다. (예: https://vimeo.com/123456789 또는 123456789)
                         </div>
                       </div>
                     </div>
                     <div className="mt-1">
-                      <Input id="lessonVimeoId" name="vimeoVideoId" required placeholder="76979871" className="bg-transparent" />
+                      <Input id="lessonVimeoId" name="vimeoVideoId" required placeholder="https://vimeo.com/123456789" className="bg-transparent" />
                     </div>
                   </div>
                 </div>

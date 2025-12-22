@@ -65,6 +65,12 @@ export default function CreateCourseFormClient() {
         </Field>
       </div>
 
+      <div>
+        <Field label="과목">
+          <Input name="subjectName" placeholder="예: 수학" className="bg-transparent" disabled={pending} />
+        </Field>
+      </div>
+
       <Field label="공개 상태">
         <select
           name="isPublished"

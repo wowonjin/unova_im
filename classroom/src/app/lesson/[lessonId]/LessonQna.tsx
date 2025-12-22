@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { isAllCoursesTestModeFromAllParam, withAllParamIfNeeded } from "@/lib/test-mode";
 
 type QnaImage = {
   id: string;
@@ -45,6 +47,8 @@ function fmtKst(iso: string) {
 }
 
 export default function LessonQna({ lessonId, isTeacher, currentUserEmail }: Props) {
+  const searchParams = useSearchParams();
+  const allowAll = isAllCoursesTestModeFromAllParam(searchParams.get("all"));
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,7 +103,7 @@ export default function LessonQna({ lessonId, isTeacher, currentUserEmail }: Pro
   async function refresh() {
     setLoading(true);
     setError(null);
-    const res = await fetch(`/api/qna/${lessonId}`, { method: "GET" });
+    const res = await fetch(withAllParamIfNeeded(`/api/qna/${lessonId}`, allowAll), { method: "GET" });
     const data = await res.json().catch(() => null);
     if (!res.ok || !data?.ok) {
       setLoading(false);
@@ -121,7 +125,7 @@ export default function LessonQna({ lessonId, isTeacher, currentUserEmail }: Pro
       const form = new FormData();
       form.set("lessonId", lessonId);
       form.set("file", f);
-      const res = await fetch("/api/qna/upload", { method: "POST", body: form });
+      const res = await fetch(withAllParamIfNeeded("/api/qna/upload", allowAll), { method: "POST", body: form });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok) throw new Error("UPLOAD_FAILED");
       ids.push(data.attachmentId);
@@ -139,7 +143,7 @@ export default function LessonQna({ lessonId, isTeacher, currentUserEmail }: Pro
     setError(null);
     try {
       const attachmentIds = files.length ? await uploadImages() : [];
-      const res = await fetch(`/api/qna/${lessonId}`, {
+      const res = await fetch(withAllParamIfNeeded(`/api/qna/${lessonId}`, allowAll), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ body: body.trim(), attachmentIds }),
@@ -167,7 +171,7 @@ export default function LessonQna({ lessonId, isTeacher, currentUserEmail }: Pro
     setPosting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/qna/${lessonId}`, {
+      const res = await fetch(withAllParamIfNeeded(`/api/qna/${lessonId}`, allowAll), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ body: bodyTrim, attachmentIds: [], parentId }),
@@ -185,7 +189,7 @@ export default function LessonQna({ lessonId, isTeacher, currentUserEmail }: Pro
   }
 
   async function togglePin(postId: string) {
-    const res = await fetch(`/api/qna/post/${postId}/pin`, { method: "POST" });
+    const res = await fetch(withAllParamIfNeeded(`/api/qna/post/${postId}/pin`, allowAll), { method: "POST" });
     const data = await res.json().catch(() => null);
     if (!res.ok || !data?.ok) {
       setError("고정 처리에 실패했습니다.");
@@ -196,7 +200,7 @@ export default function LessonQna({ lessonId, isTeacher, currentUserEmail }: Pro
 
   async function remove(postId: string) {
     if (!confirm("삭제할까요?")) return;
-    const res = await fetch(`/api/qna/post/${postId}`, { method: "DELETE" });
+    const res = await fetch(withAllParamIfNeeded(`/api/qna/post/${postId}`, allowAll), { method: "DELETE" });
     const data = await res.json().catch(() => null);
     if (!res.ok || !data?.ok) {
       setError("삭제에 실패했습니다.");
@@ -213,7 +217,7 @@ export default function LessonQna({ lessonId, isTeacher, currentUserEmail }: Pro
   async function saveEdit(postId: string) {
     const next = editBody.trim();
     if (!next) return;
-    const res = await fetch(`/api/qna/post/${postId}`, {
+    const res = await fetch(withAllParamIfNeeded(`/api/qna/post/${postId}`, allowAll), {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ body: next }),
@@ -382,7 +386,7 @@ export default function LessonQna({ lessonId, isTeacher, currentUserEmail }: Pro
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               key={img.id}
-                              src={`/api/attachments/${img.attachmentId}/view`}
+                              src={withAllParamIfNeeded(`/api/attachments/${img.attachmentId}/view`, allowAll)}
                               alt={img.title}
                               className="aspect-square w-full rounded-xl border border-white/10 object-cover"
                               loading="lazy"
@@ -474,7 +478,7 @@ export default function LessonQna({ lessonId, isTeacher, currentUserEmail }: Pro
                                             // eslint-disable-next-line @next/next/no-img-element
                                             <img
                                               key={img.id}
-                                              src={`/api/attachments/${img.attachmentId}/view`}
+                                              src={withAllParamIfNeeded(`/api/attachments/${img.attachmentId}/view`, allowAll)}
                                               alt={img.title}
                                               className="aspect-square w-full rounded-xl border border-white/10 object-cover"
                                               loading="lazy"

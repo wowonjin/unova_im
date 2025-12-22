@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Player from "@vimeo/player";
 import { emitProgressUpdated } from "@/lib/progress-events";
+import { useSearchParams } from "next/navigation";
+import { isAllCoursesTestModeFromAllParam, withAllParamIfNeeded } from "@/lib/test-mode";
 
 type Props = {
   lessonId: string;
@@ -10,6 +12,8 @@ type Props = {
 };
 
 export default function VimeoPlayer({ lessonId, vimeoVideoId }: Props) {
+  const searchParams = useSearchParams();
+  const allowAll = isAllCoursesTestModeFromAllParam(searchParams.get("all"));
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const playerRef = useRef<Player | null>(null);
   const flushTimerRef = useRef<number | null>(null);
@@ -25,7 +29,7 @@ export default function VimeoPlayer({ lessonId, vimeoVideoId }: Props) {
 
   const saveProgress = useCallback(async (seconds: number, duration?: number) => {
     try {
-      const res = await fetch(`/api/progress/${lessonId}`, {
+      const res = await fetch(withAllParamIfNeeded(`/api/progress/${lessonId}`, allowAll), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ lastSeconds: seconds, durationSeconds: duration }),
@@ -35,7 +39,7 @@ export default function VimeoPlayer({ lessonId, vimeoVideoId }: Props) {
     } catch {
       // ignore
     }
-  }, [lessonId]);
+  }, [lessonId, allowAll]);
 
   const scheduleFlush = useCallback(() => {
     if (flushTimerRef.current) return;
@@ -74,7 +78,7 @@ export default function VimeoPlayer({ lessonId, vimeoVideoId }: Props) {
       if (!Number.isFinite(seconds) || seconds <= 0) return;
 
       const payload = JSON.stringify({ lastSeconds: seconds, durationSeconds: duration });
-      const url = new URL(`/api/progress/${lessonId}`, window.location.origin).toString();
+      const url = new URL(withAllParamIfNeeded(`/api/progress/${lessonId}`, allowAll), window.location.origin).toString();
       try {
         if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
           const blob = new Blob([payload], { type: "application/json" });
@@ -107,7 +111,7 @@ export default function VimeoPlayer({ lessonId, vimeoVideoId }: Props) {
       window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [lessonId]);
+  }, [lessonId, allowAll]);
 
   useEffect(() => {
     if (!numericId || !/^\d+$/.test(numericId)) {
@@ -138,7 +142,7 @@ export default function VimeoPlayer({ lessonId, vimeoVideoId }: Props) {
         await player!.ready().catch(() => null);
 
         // 이어보기 위치 가져오기
-        const res = await fetch(`/api/progress/${lessonId}`, { method: "GET" });
+        const res = await fetch(withAllParamIfNeeded(`/api/progress/${lessonId}`, allowAll), { method: "GET" });
         const data = await res.json().catch(() => null);
         const lastSeconds = data?.progress?.lastSeconds ?? 0;
         lastSecondsRef.current = Math.max(0, lastSeconds);
@@ -231,7 +235,7 @@ export default function VimeoPlayer({ lessonId, vimeoVideoId }: Props) {
         flushTimerRef.current = null;
       }
     };
-  }, [lessonId, numericId, saveProgress, scheduleFlush]);
+  }, [lessonId, numericId, saveProgress, scheduleFlush, allowAll]);
 
   return (
     <div>

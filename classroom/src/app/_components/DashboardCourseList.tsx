@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import FavoriteStarButton from "@/app/_components/FavoriteStarButton";
+import { isAllCoursesTestModeFromAllParam, withAllParamIfNeeded } from "@/lib/test-mode";
 
 type Card = {
   enrollmentId: string;
@@ -57,6 +57,18 @@ function formatTeacher(teacher: string) {
   return t.endsWith("T") ? t : `${t}T`;
 }
 
+type SortKey = "recent" | "teacher" | "subject" | "progress" | "subjectWatch";
+type SortDir = "asc" | "desc";
+
+function getSortKey(v: string | null): SortKey {
+  if (v === "teacher" || v === "subject" || v === "progress" || v === "subjectWatch") return v;
+  return "recent";
+}
+
+function getSortDir(v: string | null): SortDir {
+  return v === "asc" ? "asc" : "desc";
+}
+
 export default function DashboardCourseList({
   cards,
   query,
@@ -70,6 +82,10 @@ export default function DashboardCourseList({
 }) {
   const [fav, setFav] = useState<Set<string>>(() => readFavorites());
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const allowAll = isAllCoursesTestModeFromAllParam(searchParams.get("all"));
+  const sortKey = getSortKey(searchParams.get("sort"));
+  const sortDir = getSortDir(searchParams.get("dir"));
 
   const shouldOpenSidePanel = () => {
     if (!onSelectCourse) return false;
@@ -87,21 +103,79 @@ export default function DashboardCourseList({
     };
   }, []);
 
+  const subjectAvgPercent = useMemo(() => {
+    const sumBy = new Map<string, { sum: number; n: number }>();
+    for (const c of cards) {
+      const meta = parseCourseMeta(c.title);
+      const subject = (meta.subject ?? "").trim();
+      if (!subject) continue;
+      const cur = sumBy.get(subject) ?? { sum: 0, n: 0 };
+      cur.sum += Number.isFinite(c.avgPercent) ? c.avgPercent : 0;
+      cur.n += 1;
+      sumBy.set(subject, cur);
+    }
+    const out = new Map<string, number>();
+    for (const [k, v] of sumBy.entries()) out.set(k, v.n ? v.sum / v.n : 0);
+    return out;
+  }, [cards]);
+
   const sorted = useMemo(() => {
     const arr = [...cards];
-    arr.sort((a, b) => {
-      const af = fav.has(a.courseId) ? 1 : 0;
-      const bf = fav.has(b.courseId) ? 1 : 0;
-      if (af !== bf) return bf - af; // 즐겨찾기 먼저
+    const dirMul = sortDir === "asc" ? 1 : -1;
+    const cmpStr = (a: string, b: string) => a.localeCompare(b, "ko");
+    const cmpNum = (a: number, b: number) => (a === b ? 0 : a < b ? -1 : 1);
 
+    const recentCmp = (a: typeof arr[number], b: typeof arr[number]) => {
       const ad = a.lastProgressAtISO ?? a.startAtISO;
       const bd = b.lastProgressAtISO ?? b.startAtISO;
       if (ad !== bd) return bd.localeCompare(ad); // 최근 수강일(ISO desc)
-
       return a.endAtISO.localeCompare(b.endAtISO);
+    };
+
+    const keyCmp = (a: typeof arr[number], b: typeof arr[number]) => {
+      if (sortKey === "recent") return recentCmp(a, b);
+
+      const am = parseCourseMeta(a.title);
+      const bm = parseCourseMeta(b.title);
+      if (sortKey === "teacher") {
+        const at = (am.teacher ?? "").trim();
+        const bt = (bm.teacher ?? "").trim();
+        const r = cmpStr(at, bt) * dirMul;
+        return r !== 0 ? r : recentCmp(a, b);
+      }
+      if (sortKey === "subject") {
+        const as = (am.subject ?? "").trim();
+        const bs = (bm.subject ?? "").trim();
+        const r = cmpStr(as, bs) * dirMul;
+        return r !== 0 ? r : recentCmp(a, b);
+      }
+      if (sortKey === "progress") {
+        const r = cmpNum(a.avgPercent, b.avgPercent) * dirMul;
+        return r !== 0 ? r : recentCmp(a, b);
+      }
+      if (sortKey === "subjectWatch") {
+        const as = (am.subject ?? "").trim();
+        const bs = (bm.subject ?? "").trim();
+        const av = subjectAvgPercent.get(as) ?? 0;
+        const bv = subjectAvgPercent.get(bs) ?? 0;
+        const r = cmpNum(av, bv) * dirMul;
+        if (r !== 0) return r;
+        // tie-break: course progress, then recent
+        const r2 = cmpNum(a.avgPercent, b.avgPercent) * dirMul;
+        return r2 !== 0 ? r2 : recentCmp(a, b);
+      }
+      return recentCmp(a, b);
+    };
+
+    arr.sort((a, b) => {
+      // keep favorites first regardless of chosen sort
+      const af = fav.has(a.courseId) ? 1 : 0;
+      const bf = fav.has(b.courseId) ? 1 : 0;
+      if (af !== bf) return bf - af;
+      return keyCmp(a, b);
     });
     return arr;
-  }, [cards, fav]);
+  }, [cards, fav, sortKey, sortDir, subjectAvgPercent]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -127,7 +201,9 @@ export default function DashboardCourseList({
           const meta = parseCourseMeta(en.title);
           const recentISO = en.lastProgressAtISO ?? en.startAtISO;
           const selected = Boolean(selectedCourseId && selectedCourseId === en.courseId);
-          const thumbSrc = en.thumbnail ? `/api/courses/${en.courseId}/thumbnail` : "/course-placeholder.svg";
+          const thumbSrc = en.thumbnail
+            ? withAllParamIfNeeded(`/api/courses/${en.courseId}/thumbnail`, allowAll)
+            : "/course-placeholder.svg";
           return (
           <div
             key={en.enrollmentId}
@@ -135,13 +211,13 @@ export default function DashboardCourseList({
             tabIndex={0}
             onClick={() => {
               if (shouldOpenSidePanel()) onSelectCourse?.(en.courseId);
-              else router.push(`/course/${en.courseId}`);
+              else router.push(withAllParamIfNeeded(`/course/${en.courseId}`, allowAll));
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 if (shouldOpenSidePanel()) onSelectCourse?.(en.courseId);
-                else router.push(`/course/${en.courseId}`);
+                else router.push(withAllParamIfNeeded(`/course/${en.courseId}`, allowAll));
               }
             }}
             className={`cursor-pointer rounded-2xl border p-5 focus:outline-none focus:ring-2 focus:ring-white/10 ${
@@ -207,7 +283,7 @@ export default function DashboardCourseList({
                   onClick={(e) => {
                     // 카드 전체 클릭(강좌 이동)과 충돌 방지
                     e.stopPropagation();
-                    router.push(`/lesson/${en.lastLessonId}`);
+                    router.push(withAllParamIfNeeded(`/lesson/${en.lastLessonId}`, allowAll));
                   }}
                   aria-label={`최근 수강: ${fmtISO(recentISO)} · ${en.lastLessonTitle} 이동`}
                 >

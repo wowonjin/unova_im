@@ -5,6 +5,7 @@ import { requireCurrentUser } from "@/lib/current-user";
 import path from "node:path";
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
+import { isAllCoursesTestModeFromRequest } from "@/lib/test-mode";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,7 @@ const MetaSchema = z.object({
 
 export async function POST(req: Request) {
   const user = await requireCurrentUser();
+  const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
   const form = await req.formData();
 
   const file = form.get("file");
@@ -41,12 +43,14 @@ export async function POST(req: Request) {
   });
   if (!lesson) return NextResponse.json({ ok: false, error: "LESSON_NOT_FOUND" }, { status: 404 });
 
-  const now = new Date();
-  const ok = await prisma.enrollment.findFirst({
-    where: { userId: user.id, courseId: lesson.courseId, status: "ACTIVE", endAt: { gt: now } },
-    select: { id: true },
-  });
-  if (!ok) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+  if (!user.isAdmin && !bypassEnrollment) {
+    const now = new Date();
+    const ok = await prisma.enrollment.findFirst({
+      where: { userId: user.id, courseId: lesson.courseId, status: "ACTIVE", endAt: { gt: now } },
+      select: { id: true },
+    });
+    if (!ok) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+  }
 
   const ext = path.extname(file.name || "").slice(0, 10) || ".png";
   const dir = path.join(getStorageRoot(), lesson.courseId, "qna");

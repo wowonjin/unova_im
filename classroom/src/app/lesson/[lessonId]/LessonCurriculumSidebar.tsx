@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { onProgressUpdated } from "@/lib/progress-events";
+import { useSearchParams } from "next/navigation";
+import { isAllCoursesTestModeFromAllParam, withAllParamIfNeeded } from "@/lib/test-mode";
 
 type CurriculumLesson = {
   id: string;
@@ -68,6 +70,8 @@ function vimeoThumbUrl(vimeoVideoId: string) {
 export default function LessonCurriculumSidebar({ courseId, courseTitle, currentLessonId, curriculum }: Props) {
   const activeRef = useRef<HTMLAnchorElement | null>(null);
   const [items, setItems] = useState<CurriculumLesson[]>(curriculum);
+  const searchParams = useSearchParams();
+  const allowAll = isAllCoursesTestModeFromAllParam(searchParams.get("all"));
 
   useEffect(() => {
     // 현재 강의가 우측 커리큘럼 목록에서 자동으로 보이도록 스크롤
@@ -114,7 +118,7 @@ export default function LessonCurriculumSidebar({ courseId, courseTitle, current
             return (
               <li key={l.id}>
                 <Link
-                  href={`/lesson/${l.id}`}
+                  href={withAllParamIfNeeded(`/lesson/${l.id}`, allowAll)}
                   ref={active ? activeRef : undefined}
                   className="group relative block -mx-3 px-3 py-3"
                 >

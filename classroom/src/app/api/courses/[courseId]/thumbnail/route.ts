@@ -5,6 +5,7 @@ import { Readable } from "node:stream";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTeacherUser, requireCurrentUser } from "@/lib/current-user";
 import { getStorageRoot, safeJoin } from "@/lib/storage";
+import { isAllCoursesTestModeFromRequest } from "@/lib/test-mode";
 
 export const runtime = "nodejs";
 
@@ -12,6 +13,7 @@ const ParamsSchema = z.object({ courseId: z.string().min(1) });
 
 export async function GET(_req: Request, ctx: { params: Promise<{ courseId: string }> }) {
   const user = await requireCurrentUser();
+  const bypassEnrollment = isAllCoursesTestModeFromRequest(_req);
   const { courseId } = ParamsSchema.parse(await ctx.params);
 
   const course = await prisma.course.findUnique({
@@ -31,7 +33,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ courseId: stri
   const teacher = await getCurrentTeacherUser();
   if (teacher && course.ownerId && teacher.id === course.ownerId) {
     // ok
-  } else if (!user.isAdmin) {
+  } else if (!user.isAdmin && !bypassEnrollment) {
     const now = new Date();
     const ok = await prisma.enrollment.findFirst({
       where: { userId: user.id, courseId, status: "ACTIVE", endAt: { gt: now } },

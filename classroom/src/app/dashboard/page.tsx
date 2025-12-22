@@ -1,7 +1,9 @@
 import AppShell from "@/app/_components/AppShell";
 import DashboardShellClient from "@/app/_components/DashboardShellClient";
+import DashboardSortControls from "@/app/_components/DashboardSortControls";
 import { requireCurrentUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
+import { isAllCoursesTestModeFromAllParam } from "@/lib/test-mode";
 
 export default async function DashboardPage({
   searchParams,
@@ -12,7 +14,7 @@ export default async function DashboardPage({
   const now = new Date();
   const sp = (await searchParams) ?? {};
   const query = typeof sp.q === "string" ? sp.q : "";
-  const showAll = sp.all === "1";
+  const showAll = isAllCoursesTestModeFromAllParam(typeof sp.all === "string" ? sp.all : null);
 
   const enrollments = await prisma.enrollment.findMany({
     where: {
@@ -142,6 +144,9 @@ export default async function DashboardPage({
             <h1 className="text-2xl font-semibold">수강중인 강좌</h1>
             <span className="text-sm text-white/70">총 {cards.length}개</span>
           </div>
+        </div>
+        <div className="shrink-0">
+          <DashboardSortControls />
         </div>
       </div>
 

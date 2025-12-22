@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { isAllCoursesTestModeFromAllParam, withAllParamIfNeeded } from "@/lib/test-mode";
 
 type Lesson = {
   id: string;
@@ -64,7 +65,7 @@ export default function DashboardCourseSidePanel({
   onClose: () => void;
 }) {
   const searchParams = useSearchParams();
-  const allowAll = searchParams.get("all") === "1";
+  const allowAll = isAllCoursesTestModeFromAllParam(searchParams.get("all"));
   const [loading, setLoading] = useState(false);
   const [lessons, setLessons] = useState<Lesson[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +75,7 @@ export default function DashboardCourseSidePanel({
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch(`/api/courses/${courseId}/curriculum${allowAll ? "?all=1" : ""}`)
+    fetch(withAllParamIfNeeded(`/api/courses/${courseId}/curriculum`, allowAll))
       .then(async (r) => {
         const data = await r.json().catch(() => null);
         if (!r.ok) throw new Error(data?.error || `HTTP_${r.status}`);

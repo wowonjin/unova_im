@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireCurrentUser } from "@/lib/current-user";
 import { readJsonBody } from "@/lib/read-json";
+import { isAllCoursesTestModeFromRequest } from "@/lib/test-mode";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,7 @@ const UpsertSchema = z.object({
   durationSeconds: z.number().min(1).optional(),
 });
 
-async function assertCanAccessLesson(user: { id: string; isAdmin: boolean }, lessonId: string) {
+async function assertCanAccessLesson(user: { id: string; isAdmin: boolean }, lessonId: string, bypassEnrollment: boolean) {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
     select: { id: true, courseId: true, durationSeconds: true },
@@ -22,6 +23,7 @@ async function assertCanAccessLesson(user: { id: string; isAdmin: boolean }, les
 
   // 관리자(교사)는 수강권 없이도 접근 가능(lesson 페이지/커리큘럼 API와 정책 일치)
   if (user.isAdmin) return lesson;
+  if (bypassEnrollment) return lesson;
 
   const now = new Date();
   const ok = await prisma.enrollment.findFirst({
@@ -33,11 +35,12 @@ async function assertCanAccessLesson(user: { id: string; isAdmin: boolean }, les
   return lesson;
 }
 
-export async function GET(_req: Request, ctx: { params: Promise<{ lessonId: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ lessonId: string }> }) {
   const user = await requireCurrentUser();
   const params = ParamsSchema.parse(await ctx.params);
+  const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
 
-  const lesson = await assertCanAccessLesson(user, params.lessonId);
+  const lesson = await assertCanAccessLesson(user, params.lessonId, bypassEnrollment);
   if (!lesson) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
   const p = await prisma.progress.findUnique({
@@ -51,11 +54,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ lessonId: stri
 export async function POST(req: Request, ctx: { params: Promise<{ lessonId: string }> }) {
   const user = await requireCurrentUser();
   const params = ParamsSchema.parse(await ctx.params);
+  const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
   const json = await readJsonBody(req);
   const body = UpsertSchema.safeParse(json);
   if (!body.success) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
 
-  const lesson = await assertCanAccessLesson(user, params.lessonId);
+  const lesson = await assertCanAccessLesson(user, params.lessonId, bypassEnrollment);
   if (!lesson) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
   const lastSeconds = body.data.lastSeconds;

@@ -3,6 +3,7 @@ import AppShell from "@/app/_components/AppShell";
 import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import { Badge, Button, Card, CardBody, CardHeader, Field, Input, PageHeader, Textarea } from "@/app/_components/ui";
+import { fetchVimeoOembedMeta } from "@/lib/vimeo-oembed";
 
 function joinLines(v: unknown) {
   return Array.isArray(v) ? v.filter((x) => typeof x === "string").join("\n") : "";
@@ -28,11 +29,26 @@ export default async function AdminLessonPage({ params }: { params: Promise<{ le
     );
   }
 
+  // Best-effort: keep title in sync with Vimeo on admin view too (single video, cheap).
+  let syncedTitle = lesson.title;
+  try {
+    const meta = await fetchVimeoOembedMeta(lesson.vimeoVideoId);
+    if (meta.title && meta.title !== lesson.title) {
+      syncedTitle = meta.title;
+      await prisma.lesson.update({
+        where: { id: lesson.id },
+        data: { title: meta.title, durationSeconds: meta.durationSeconds ?? lesson.durationSeconds },
+      });
+    }
+  } catch {
+    // ignore
+  }
+
   return (
     <AppShell>
       <PageHeader
         title={`차시 편집 · ${lesson.position}강`}
-        description={lesson.title}
+        description={syncedTitle}
         right={
           <>
             <Button href={`/admin/course/${lesson.courseId}?tab=curriculum`} variant="ghost">
@@ -51,14 +67,16 @@ export default async function AdminLessonPage({ params }: { params: Promise<{ le
                 <input type="hidden" name="lessonId" value={lesson.id} />
                 {/* durationSeconds 입력 UI는 제거하지만, 값은 유지되도록 hidden으로 전송 */}
                 <input type="hidden" name="durationSeconds" value={lesson.durationSeconds ?? ""} />
+                {/* Vimeo 제목 동기화(저장 시) */}
+                <input type="hidden" name="refreshVimeoTitle" value="1" />
 
                 <div className="md:col-span-7">
-                  <Field label="제목">
-                    <Input name="title" defaultValue={lesson.title} required className="bg-transparent" />
+                  <Field label="차시 제목(자동)" hint="Vimeo 제목이 자동으로 적용되며, Vimeo에서 바꾸면 우리 사이트도 자동으로 갱신됩니다.">
+                    <Input value={syncedTitle} readOnly disabled className="bg-transparent opacity-90" />
                   </Field>
                 </div>
                 <div className="md:col-span-5">
-                  <Field label="Vimeo ID">
+                  <Field label="Vimeo 영상(URL 또는 ID)">
                     <Input name="vimeoVideoId" defaultValue={lesson.vimeoVideoId} required className="bg-transparent" />
                   </Field>
                 </div>
@@ -84,7 +102,6 @@ export default async function AdminLessonPage({ params }: { params: Promise<{ le
             <CardBody>
               <form className="grid grid-cols-1 gap-3 md:grid-cols-12" action="/api/admin/lessons/update" method="post">
                 <input type="hidden" name="lessonId" value={lesson.id} />
-                <input type="hidden" name="title" value={lesson.title} />
                 <input type="hidden" name="vimeoVideoId" value={lesson.vimeoVideoId} />
                 <input type="hidden" name="durationSeconds" value={lesson.durationSeconds ?? ""} />
                 <input type="hidden" name="isPublished" value={lesson.isPublished ? "on" : ""} />

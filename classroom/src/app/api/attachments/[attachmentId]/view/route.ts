@@ -5,12 +5,13 @@ import { requireCurrentUser } from "@/lib/current-user";
 import fs from "node:fs";
 import { Readable } from "node:stream";
 import { getStorageRoot, safeJoin } from "@/lib/storage";
+import { isAllCoursesTestModeFromRequest } from "@/lib/test-mode";
 
 export const runtime = "nodejs";
 
 const ParamsSchema = z.object({ attachmentId: z.string().min(1) });
 
-async function canAccessAttachment(userId: string, isAdmin: boolean, attachmentId: string) {
+async function canAccessAttachment(userId: string, isAdmin: boolean, attachmentId: string, bypassEnrollment: boolean) {
   const att = await prisma.attachment.findUnique({
     where: { id: attachmentId },
     include: {
@@ -23,7 +24,7 @@ async function canAccessAttachment(userId: string, isAdmin: boolean, attachmentI
   const courseId = att.courseId ?? att.lesson?.courseId ?? null;
   if (!courseId) return null;
 
-  if (isAdmin) return att;
+  if (isAdmin || bypassEnrollment) return att;
 
   const now = new Date();
   const ok = await prisma.enrollment.findFirst({
@@ -35,10 +36,11 @@ async function canAccessAttachment(userId: string, isAdmin: boolean, attachmentI
 }
 
 export async function GET(_req: Request, ctx: { params: Promise<{ attachmentId: string }> }) {
+  const bypassEnrollment = isAllCoursesTestModeFromRequest(_req);
   const user = await requireCurrentUser();
   const { attachmentId } = ParamsSchema.parse(await ctx.params);
 
-  const att = await canAccessAttachment(user.id, user.isAdmin, attachmentId);
+  const att = await canAccessAttachment(user.id, user.isAdmin, attachmentId, bypassEnrollment);
   if (!att) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
   let filePath: string;
