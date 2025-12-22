@@ -2,7 +2,10 @@
 /**
  * 배포 시 DATABASE_URL이 설정되어 있을 때만 prisma migrate deploy 실행
  * DB가 없으면 마이그레이션을 건너뜁니다.
- * 실패한 마이그레이션이 있으면 자동으로 롤백 처리 후 재시도합니다.
+ * P3009(이전에 실패한 마이그레이션이 DB에 기록됨) 발생 시:
+ * - 실패한 마이그레이션 이름을 자동으로 추출/조회
+ * - DB에 저장된 실패 로그를 출력
+ * - 해당 마이그레이션을 rolled-back 처리 후 재시도
  */
 const { execSync } = require("child_process");
 
@@ -20,46 +23,140 @@ if (!dbUrl) {
 
 console.log("✅ DATABASE_URL 감지됨. 마이그레이션을 실행합니다...");
 
-function runMigrate() {
+function runCmd(cmd) {
   try {
-    execSync("npx prisma migrate deploy", { stdio: "inherit" });
-    return { success: true };
+    const stdout = execSync(cmd, {
+      stdio: ["ignore", "pipe", "pipe"],
+      encoding: "utf8",
+    });
+    if (stdout) process.stdout.write(stdout);
+    return { success: true, output: stdout || "" };
   } catch (err) {
-    return { success: false, error: err.message };
+    const stdout = err?.stdout?.toString?.() ?? "";
+    const stderr = err?.stderr?.toString?.() ?? "";
+    if (stdout) process.stdout.write(stdout);
+    if (stderr) process.stderr.write(stderr);
+    return {
+      success: false,
+      error: err?.message || String(err),
+      output: `${stdout}\n${stderr}`.trim(),
+    };
   }
 }
 
-// 첫 번째 시도
-let result = runMigrate();
+function runMigrateDeploy() {
+  return runCmd("npx prisma migrate deploy");
+}
 
-if (!result.success) {
-  // P3009 에러 (실패한 마이그레이션) 감지 시 자동 해결 시도
-  console.log("⚠️  마이그레이션 실패. 실패한 마이그레이션 해결 시도 중...");
-  
-  // 실패한 마이그레이션 목록 확인 및 롤백 처리
-  const failedMigrations = [
-    "0003_add_course_subject_and_position"
-  ];
-  
-  for (const migration of failedMigrations) {
-    try {
-      console.log(`🔄 마이그레이션 롤백 처리: ${migration}`);
-      execSync(`npx prisma migrate resolve --rolled-back ${migration}`, { stdio: "inherit" });
-    } catch (resolveErr) {
-      // 이미 해결되었거나 존재하지 않으면 무시
-      console.log(`   (이미 해결됨 또는 해당 없음)`);
-    }
+function extractFailedMigrationNames(output) {
+  const names = new Set();
+
+  // Example line:
+  // The `0003_add_course_subject_and_position` migration started at ... failed
+  const re = /The\s+[`'"]([^`'"]+)[`'"]\s+migration\s+started/gi;
+  let m;
+  while ((m = re.exec(output)) !== null) {
+    if (m[1]) names.add(m[1]);
   }
-  
-  // 재시도
-  console.log("🔄 마이그레이션 재시도...");
-  result = runMigrate();
-  
+
+  return [...names];
+}
+
+async function fetchFailedMigrationsFromDb(connectionString) {
+  try {
+    // Only attempt DB query if pg is installed (it is in this repo).
+    // If this fails, we still proceed with output parsing.
+    // eslint-disable-next-line global-require
+    const { Client } = require("pg");
+    const client = new Client({ connectionString });
+    await client.connect();
+    const { rows } = await client.query(`
+      SELECT
+        migration_name,
+        started_at,
+        finished_at,
+        rolled_back_at,
+        logs
+      FROM "_prisma_migrations"
+      WHERE finished_at IS NULL AND rolled_back_at IS NULL
+      ORDER BY started_at DESC
+    `);
+    await client.end();
+    return rows || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+async function main() {
+  // 첫 번째 시도
+  let result = runMigrateDeploy();
+
   if (!result.success) {
-    console.error("❌ 마이그레이션 최종 실패:", result.error);
-    process.exit(1);
+    const output = result.output || "";
+    const isP3009 = /Error:\s*P3009/i.test(output) || /P3009/i.test(output);
+
+    if (!isP3009) {
+      console.error("❌ 마이그레이션 실패:", result.error);
+      process.exit(1);
+    }
+
+    console.log("⚠️  P3009 감지: DB에 실패한 마이그레이션 기록이 있어 해결을 시도합니다...");
+
+    const dbFailed = await fetchFailedMigrationsFromDb(dbUrl);
+    if (dbFailed.length > 0) {
+      console.log("🔎 DB에 기록된 실패 마이그레이션:");
+      for (const row of dbFailed) {
+        console.log(`- ${row.migration_name} (started_at=${row.started_at})`);
+        if (row.logs) {
+          console.log("  --- logs ---");
+          // 너무 길어질 수 있어 적당히 자릅니다.
+          const text = String(row.logs);
+          console.log(text.length > 4000 ? `${text.slice(0, 4000)}\n... (truncated)` : text);
+          console.log("  --- end logs ---");
+        }
+      }
+    }
+
+    const parsed = extractFailedMigrationNames(output);
+    const namesToResolve = [
+      ...new Set([
+        ...dbFailed.map((r) => r.migration_name).filter(Boolean),
+        ...parsed,
+      ]),
+    ];
+
+    if (namesToResolve.length === 0) {
+      console.error(
+        "❌ P3009는 감지됐지만 실패한 마이그레이션 이름을 추출하지 못했습니다. 출력 로그를 확인해 주세요."
+      );
+      process.exit(1);
+    }
+
+    for (const migration of namesToResolve) {
+      try {
+        console.log(`🔄 마이그레이션 rolled-back 처리: ${migration}`);
+        runCmd(`npx prisma migrate resolve --rolled-back ${migration}`);
+      } catch {
+        // runCmd가 이미 출력하고 success=false로 반환하므로 여기선 무시
+      }
+    }
+
+    // 재시도
+    console.log("🔄 마이그레이션 재시도...");
+    result = runMigrateDeploy();
+
+    if (!result.success) {
+      console.error("❌ 마이그레이션 최종 실패:", result.error);
+      process.exit(1);
+    }
   }
 }
 
 console.log("✅ 마이그레이션 완료!");
+
+main().catch((e) => {
+  console.error("❌ 마이그레이션 스크립트 실행 중 예외:", e);
+  process.exit(1);
+});
 

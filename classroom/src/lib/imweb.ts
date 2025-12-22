@@ -11,12 +11,20 @@ function requiredEnv(name: string) {
   return v;
 }
 
+function requiredEnvAny(primary: string, aliases: string[] = []) {
+  const v = process.env[primary] || aliases.map((k) => process.env[k]).find(Boolean);
+  if (!v) throw new Error(`Missing ${primary}`);
+  return v;
+}
+
 async function getAccessToken(): Promise<string> {
   const now = Date.now();
   if (tokenCache && now - tokenCache.fetchedAt < 1000 * 60 * 20) return tokenCache.token; // 20분 캐시
 
   const key = requiredEnv("IMWEB_API_KEY");
-  const secret = requiredEnv("IMWEB_API_SECRET");
+  // Canonical: IMWEB_API_SECRET
+  // Backward-compat: allow older typo IMWEB_API_SECRET
+  const secret = requiredEnvAny("IMWEB_API_SECRET", ["IMWEB_API_SECRET"]);
   const affiliate = process.env.IMWEB_ACCESS_AFFILIATE;
 
   const url = new URL("/v2/auth", IMWEB_BASE);
