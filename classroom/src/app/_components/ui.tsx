@@ -8,7 +8,7 @@ export function Card({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <div className={`rounded-2xl border border-white/10 bg-white/5 ${className}`}>{children}</div>;
+  return <div className={`rounded-2xl border border-white/10 bg-[#212123] ${className}`}>{children}</div>;
 }
 
 export function CardHeader({

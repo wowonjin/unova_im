@@ -79,7 +79,7 @@ async function NoticesBoard({
       </div>
 
       {/* 게시판 테이블 */}
-      <div className="mt-4 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
+      <div className="mt-4 overflow-x-auto rounded-2xl border border-white/10 bg-[#212123]">
         <table className="w-full text-sm">
           <thead className="text-left text-white/60">
             <tr className="border-b border-white/10">

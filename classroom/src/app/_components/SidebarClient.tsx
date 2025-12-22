@@ -136,7 +136,7 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
   const [openRequested, setOpenRequested] = useState(false);
   const [openedAtPath, setOpenedAtPath] = useState<string>("");
   const open = openRequested && openedAtPath === pathname;
-  const exitUrl = process.env.NEXT_PUBLIC_EXIT_URL || "/";
+  const exitUrl = process.env.NEXT_PUBLIC_EXIT_URL || "https://unova.co.kr";
 
   useEffect(() => {
     if (!open) return;

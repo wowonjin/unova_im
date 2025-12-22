@@ -12,7 +12,7 @@ export default function CreateCourseFormClient() {
 
   return (
     <form
-      className="grid grid-cols-1 gap-4"
+      className="grid grid-cols-1 gap-4 md:grid-cols-2"
       onSubmit={async (e) => {
         e.preventDefault();
         setError(null);
@@ -34,7 +34,7 @@ export default function CreateCourseFormClient() {
           const payload = await res.json().catch(() => null);
           if (res.ok && payload?.ok) {
             formEl.reset();
-            router.refresh(); // stay on this page; just refresh the server-rendered course list
+            router.refresh();
             setSuccess("강좌가 생성되었습니다. 내 강좌 목록에 추가되었습니다.");
             return;
           }
@@ -47,36 +47,30 @@ export default function CreateCourseFormClient() {
         }
       }}
     >
-      <div>
-        <Field label="강좌 제목">
-          <Input
-            name="title"
-            required
-            placeholder="예: [2027] 김OO T 커넥트 수학"
-            className="bg-transparent"
-            disabled={pending}
-          />
-        </Field>
-      </div>
+      <Field label="강좌 제목">
+        <Input
+          name="title"
+          required
+          placeholder="예: [2027] 김OO T 커넥트 수학"
+          className="bg-transparent"
+          disabled={pending}
+        />
+      </Field>
 
-      <div>
-        <Field label="선생님">
-          <Input name="teacherName" placeholder="예: 김OO" className="bg-transparent" disabled={pending} />
-        </Field>
-      </div>
+      <Field label="선생님">
+        <Input name="teacherName" placeholder="예: 김OO" className="bg-transparent" disabled={pending} />
+      </Field>
 
-      <div>
-        <Field label="과목">
-          <Input name="subjectName" placeholder="예: 수학" className="bg-transparent" disabled={pending} />
-        </Field>
-      </div>
+      <Field label="과목">
+        <Input name="subjectName" placeholder="예: 수학" className="bg-transparent" disabled={pending} />
+      </Field>
 
       <Field label="공개 상태">
         <select
           name="isPublished"
           defaultValue="1"
           disabled={pending}
-          className="h-10 w-full rounded-xl border border-white/10 bg-[#29292a] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10 disabled:opacity-50"
+          className="h-10 w-full rounded-xl border border-white/10 bg-[#212123] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10 disabled:opacity-50"
         >
           <option value="1">공개</option>
           <option value="0">비공개</option>
@@ -93,16 +87,18 @@ export default function CreateCourseFormClient() {
         />
       </Field>
 
-      {error ? <p className="text-sm text-red-400">{error}</p> : null}
-      {success ? <p className="text-sm text-emerald-300">{success}</p> : null}
-
-      <div className="flex justify-start">
+      <div className="flex items-end">
         <Button type="submit" variant="ghostSolid" disabled={pending}>
           {pending ? "생성 중..." : "강좌 생성하기"}
         </Button>
       </div>
+
+      {(error || success) && (
+        <div className="md:col-span-2">
+          {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          {success ? <p className="text-sm text-emerald-300">{success}</p> : null}
+        </div>
+      )}
     </form>
   );
 }
-
-

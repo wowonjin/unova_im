@@ -84,7 +84,6 @@ export async function POST(req: Request) {
     if (json) return NextResponse.json({ ok: true, status: "saved", redirectTo: baseUrl.toString() });
     return NextResponse.redirect(baseUrl);
   } else if (op === "add") {
-    // (레거시) 여러 코드 추가 지원 (현재 UI에서는 사용하지 않음)
     const code = (parsed.data.imwebProdCode || "").trim();
     if (!code.length) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
 
@@ -93,13 +92,16 @@ export async function POST(req: Request) {
       select: { id: true, courseId: true },
     });
     if (existing && existing.courseId !== course.id) {
-      return NextResponse.json({ ok: false, error: "IMWEB_PROD_CODE_IN_USE" }, { status: 409 });
+      return NextResponse.json({ ok: false, error: "DUPLICATE" }, { status: 409 });
     }
-    if (!existing) {
-      await prisma.courseImwebProdCode.create({
-        data: { courseId: course.id, code },
-      });
+    if (existing && existing.courseId === course.id) {
+      // 이미 이 강좌에 등록된 코드
+      return NextResponse.json({ ok: true, status: "already_exists" });
     }
+    await prisma.courseImwebProdCode.create({
+      data: { courseId: course.id, code },
+    });
+    return NextResponse.json({ ok: true, status: "added" });
   } else {
     const id = (parsed.data.imwebProdCodeId || "").trim();
     if (!id.length) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });

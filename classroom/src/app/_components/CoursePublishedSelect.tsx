@@ -18,7 +18,7 @@ export default function CoursePublishedSelect({
         name="isPublished"
         defaultValue={isPublished ? "1" : "0"}
         onChange={() => formRef.current?.requestSubmit()}
-        className="h-9 rounded-xl border border-white/10 bg-[#29292a] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
+        className="h-9 rounded-xl border border-white/10 bg-[#212123] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
         aria-label="공개 상태"
       >
         <option value="1">공개</option>

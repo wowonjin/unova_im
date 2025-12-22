@@ -19,8 +19,8 @@ export default function CourseThumbnailUploadClient({
   const thumbSrc = hasThumbnail ? `/api/courses/${courseId}/thumbnail` : "/course-placeholder.svg";
 
   return (
-    <div className="mt-3">
-      <Field label="썸네일" hint="썸네일 이미지를 클릭하면 바로 파일을 선택하고, 선택 즉시 업로드됩니다.">
+    <div>
+      <Field label="썸네일">
         <div className="flex items-start gap-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

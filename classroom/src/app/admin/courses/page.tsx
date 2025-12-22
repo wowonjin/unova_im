@@ -51,6 +51,18 @@ export default async function AdminCoursesPage({
     include: {
       lessons: { select: { id: true, isPublished: true } },
     },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      teacherName: true,
+      subjectName: true,
+      isPublished: true,
+      position: true,
+      thumbnailStoredPath: true,
+      thumbnailUrl: true,
+      lessons: { select: { id: true, isPublished: true } },
+    },
   });
 
   const courseIds = courses.map((c) => c.id);
@@ -80,14 +92,14 @@ export default async function AdminCoursesPage({
       />
 
       <div className="mt-6 space-y-4">
-        <Card className="bg-transparent">
+        <Card className="bg-[#212123]">
           <CardHeader title="강좌 관리하기" description="강좌를 생성하고 기본 정보를 설정합니다." />
           <CardBody>
             <CreateCourseFormClient />
           </CardBody>
         </Card>
 
-        <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
+        <div className="rounded-2xl border border-white/10 bg-[#212123]">
           <div className="border-b border-white/10 px-5 py-4">
             <div className="flex items-center justify-between gap-3">
               <div className="text-sm font-semibold">내 강좌 목록</div>
@@ -98,105 +110,116 @@ export default async function AdminCoursesPage({
               <input
                 name="q"
                 defaultValue={q}
-                placeholder="제목/선생님/과목 검색"
+                placeholder="제목/선생님/과목 검색 후 Enter"
                 className="h-9 w-full rounded-xl border border-white/10 bg-[#1d1d1f] px-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/20 focus:ring-2 focus:ring-white/10 sm:w-72"
               />
               <select
                 name="published"
                 defaultValue={publishedRaw}
-                className="h-9 w-full rounded-xl border border-white/10 bg-[#29292a] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10 sm:w-40"
+                className="h-9 w-full rounded-xl border border-white/10 bg-[#212123] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10 sm:w-40"
                 aria-label="공개 상태 필터"
               >
                 <option value="all">전체</option>
                 <option value="1">공개만</option>
                 <option value="0">비공개만</option>
               </select>
-              <div className="flex gap-2">
-                <Button type="submit" size="sm" variant="secondary">
-                  필터
-                </Button>
-                <Button href="/admin/courses" size="sm" variant="ghost">
-                  초기화
-                </Button>
-              </div>
             </form>
           </div>
-          <table className="w-full text-sm">
-            <thead className="text-left text-white/60">
-              <tr className="border-b border-white/10">
-                <th className="px-5 py-3 pr-3">번호</th>
-                <th className="py-3 pr-3">제목</th>
-                <th className="py-3 pr-3">선생님</th>
-                <th className="py-3 pr-3">과목</th>
-                <th className="py-3 pr-3">상태</th>
-                <th className="py-3 pr-3">수강 인원</th>
-                <th className="py-3 pr-3">차시(공개/전체)</th>
-                <th className="py-3 pr-3">주소</th>
-                <th className="px-5 py-3 text-right" aria-label="액션" />
-              </tr>
-            </thead>
-            <tbody>
+
+          {courses.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
               {courses.map((c) => {
                 const publishedLessons = c.lessons.filter((l) => l.isPublished).length;
-                const teacherLabel = c.teacherName?.trim() || inferTeacherFromTitle(c.title) || "-";
-                const subjectLabel = c.subjectName?.trim() || inferSubjectFromTitle(c.title) || "-";
+                const teacherLabel = c.teacherName?.trim() || inferTeacherFromTitle(c.title) || "";
+                const subjectLabel = c.subjectName?.trim() || inferSubjectFromTitle(c.title) || "";
                 const pos = c.position ?? 0;
+                const hasThumbnail = Boolean(c.thumbnailStoredPath || c.thumbnailUrl);
+                const thumbSrc = hasThumbnail ? `/api/courses/${c.id}/thumbnail` : "/course-placeholder.svg";
+
                 return (
-                  <tr key={c.id} className="border-b border-white/10">
-                    <td className="px-5 py-3 pr-3 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <Badge>{pos || "-"}</Badge>
-                        <form action="/api/admin/courses/move" method="post">
-                          <input type="hidden" name="courseId" value={c.id} />
-                          <input type="hidden" name="dir" value="up" />
-                          <Button type="submit" variant="ghost" size="sm">
-                            ↑
+                  <div
+                    key={c.id}
+                    className="group relative overflow-hidden rounded-xl border border-white/10 bg-[#1a1a1c] transition-all hover:border-white/20 hover:bg-[#1f1f21]"
+                  >
+                    {/* 썸네일 */}
+                    <div className="relative aspect-video w-full overflow-hidden bg-gradient-to-br from-white/5 to-white/[0.02]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={thumbSrc}
+                        alt={c.title}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                      />
+                      {/* 순서 뱃지 */}
+                      <div className="absolute left-2 top-2 flex items-center gap-1">
+                        <span className="rounded-md bg-black/60 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
+                          #{pos || "-"}
+                        </span>
+                      </div>
+                      {/* 공개 상태 */}
+                      <div className="absolute right-2 top-2">
+                        <span className={`rounded-md px-2 py-0.5 text-xs font-medium backdrop-blur-sm ${
+                          c.isPublished ? "bg-emerald-500/20 text-emerald-300" : "bg-white/10 text-white/60"
+                        }`}>
+                          {c.isPublished ? "공개" : "비공개"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 정보 */}
+                    <div className="p-4">
+                      <h3 className="truncate font-medium text-white">{c.title}</h3>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/50">
+                        {teacherLabel && <span>{teacherLabel}</span>}
+                        {teacherLabel && subjectLabel && <span>·</span>}
+                        {subjectLabel && <span>{subjectLabel}</span>}
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between text-xs text-white/60">
+                        <div className="flex items-center gap-3">
+                          <span>수강 {enrollmentCountByCourseId.get(c.id) ?? 0}명</span>
+                          <span>차시 {publishedLessons}/{c.lessons.length}</span>
+                        </div>
+                      </div>
+
+                      {/* 액션 버튼 */}
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1">
+                          <form action="/api/admin/courses/move" method="post">
+                            <input type="hidden" name="courseId" value={c.id} />
+                            <input type="hidden" name="dir" value="up" />
+                            <button type="submit" className="rounded-lg p-1.5 text-white/40 hover:bg-white/10 hover:text-white">
+                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                          </form>
+                          <form action="/api/admin/courses/move" method="post">
+                            <input type="hidden" name="courseId" value={c.id} />
+                            <input type="hidden" name="dir" value="down" />
+                            <button type="submit" className="rounded-lg p-1.5 text-white/40 hover:bg-white/10 hover:text-white">
+                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </form>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button href={`/admin/course/${c.id}`} size="sm" variant="ghost">
+                            관리
                           </Button>
-                        </form>
-                        <form action="/api/admin/courses/move" method="post">
-                          <input type="hidden" name="courseId" value={c.id} />
-                          <input type="hidden" name="dir" value="down" />
-                          <Button type="submit" variant="ghost" size="sm">
-                            ↓
-                          </Button>
-                        </form>
+                          <ConfirmDeleteCourseForm courseId={c.id} size="sm" />
+                        </div>
                       </div>
-                    </td>
-                    <td className="py-3 pr-3 min-w-[280px]">
-                      <div className="min-w-0">
-                        <div className="truncate font-medium text-white">{c.title}</div>
-                      </div>
-                    </td>
-                    <td className="py-3 pr-3 text-white/70">{teacherLabel}</td>
-                    <td className="py-3 pr-3 text-white/70">{subjectLabel}</td>
-                    <td className="py-3 pr-3">
-                      <CoursePublishedSelect courseId={c.id} isPublished={c.isPublished} />
-                    </td>
-                    <td className="py-3 pr-3 text-white/70">{enrollmentCountByCourseId.get(c.id) ?? 0}명</td>
-                    <td className="py-3 pr-3 text-white/70">
-                      {publishedLessons}/{c.lessons.length}
-                    </td>
-                    <td className="py-3 pr-3 text-white/60">{c.slug}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end gap-2">
-                        <Button href={`/admin/course/${c.id}`} size="sm" variant="ghost">
-                          관리
-                        </Button>
-                        <ConfirmDeleteCourseForm courseId={c.id} size="sm" />
-                      </div>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 );
               })}
-              {courses.length === 0 ? (
-                <tr>
-                  <td className="px-5 py-6 text-sm text-white/60" colSpan={9}>
-                    아직 생성된 강좌가 없습니다.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+            </div>
+          ) : (
+            <div className="p-6 text-center text-sm text-white/60">
+              아직 생성된 강좌가 없습니다.
+            </div>
+          )}
         </div>
       </div>
     </AppShell>

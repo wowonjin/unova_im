@@ -151,7 +151,7 @@ export default async function DashboardPage({
       </div>
 
       {cards.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
+        <div className="mt-8 rounded-2xl border border-white/10 bg-[#212123] p-6">
           <p className="text-white/80">현재 수강 가능한 강좌가 없습니다.</p>
         </div>
       ) : (

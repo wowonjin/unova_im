@@ -221,7 +221,7 @@ export default function DashboardCourseList({
               }
             }}
             className={`cursor-pointer rounded-2xl border p-5 focus:outline-none focus:ring-2 focus:ring-white/10 ${
-              selected ? "border-white/30 bg-white/10" : "border-white/10 bg-white/5 hover:bg-white/10"
+              selected ? "border-white/30 bg-white/10" : "border-white/10 bg-[#212123] hover:bg-white/10"
             }`}
           >
             <div className="flex items-start justify-between gap-3">
