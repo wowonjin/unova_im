@@ -5,6 +5,7 @@ import { Badge, Button, Card, CardBody, CardHeader, Field, HelpTip, Input, PageH
 import ConfirmDeleteCourseForm from "@/app/_components/ConfirmDeleteCourseForm";
 import ImwebProdCodeFormClient from "@/app/_components/ImwebProdCodeFormClient";
 import CourseThumbnailUploadClient from "@/app/_components/CourseThumbnailUploadClient";
+import CourseSettingsAutoSaveClient from "@/app/_components/CourseSettingsAutoSaveClient";
 
 export default async function AdminCoursePage({
   params,
@@ -96,66 +97,25 @@ export default async function AdminCoursePage({
             <Card>
               <CardHeader title="강좌 설정" description="기본 정보 + 공개 상태" />
               <CardBody>
-                <form className="grid grid-cols-1 gap-3 md:grid-cols-12" action="/api/admin/courses/update" method="post">
-                  <input type="hidden" name="courseId" value={course.id} />
-                  <div className="md:col-span-7">
-                    <Field label="강좌 제목" hint="학생에게 보이는 강좌 이름입니다.">
-                      <Input name="title" defaultValue={course.title} required className="bg-transparent" />
-                    </Field>
-                  </div>
-                  <div className="md:col-span-5">
-                    <Field
-                      label={
-                        <span className="inline-flex items-center">
-                          주소 이름(링크용)
-                          <HelpTip text="강좌 링크 주소에 들어가는 짧은 이름입니다. 보통 영어/숫자/하이픈(-)을 사용합니다. 예: connect-math-2027" />
-                        </span>
-                      }
-                      hint="예: connect-math-2027"
-                    >
-                      <Input name="slug" defaultValue={course.slug} required className="bg-transparent" />
-                    </Field>
-                  </div>
-
-                  <div className="md:col-span-6">
-                    <Field label="선생님" hint="검색/정렬에 사용됩니다.">
-                      <Input name="teacherName" defaultValue={course.teacherName ?? ""} className="bg-transparent" />
-                    </Field>
-                  </div>
-                  <div className="md:col-span-6">
-                    <Field label="과목" hint="검색/정렬에 사용됩니다. 예: 수학/국어/영어">
-                      <Input name="subjectName" defaultValue={course.subjectName ?? ""} className="bg-transparent" />
-                    </Field>
-                  </div>
-
-                  <div className="md:col-span-12 flex items-center justify-between">
-                    <label className="inline-flex items-center gap-2 text-sm text-white/70">
-                      <input type="checkbox" name="isPublished" defaultChecked={course.isPublished} />
-                      공개
-                    </label>
-                    <Button type="submit">저장</Button>
-                  </div>
-                </form>
+                <CourseSettingsAutoSaveClient
+                  courseId={course.id}
+                  initial={{
+                    title: course.title,
+                    slug: course.slug,
+                    teacherName: course.teacherName,
+                    subjectName: course.subjectName,
+                    isPublished: course.isPublished,
+                  }}
+                />
 
                 <div className="mt-6 border-t border-white/10 pt-6">
-                  <div className="text-sm font-medium text-white">썸네일</div>
-                  <p className="mt-1 text-xs text-white/50">이미지 파일로 업로드합니다.</p>
                   {thumbMsg === "saved" ? (
                     <p className="mt-2 text-sm text-white/70">썸네일이 저장되었습니다.</p>
                   ) : thumbMsg === "error" ? (
                     <p className="mt-2 text-sm text-red-600">업로드에 실패했습니다. 잠시 후 다시 시도해주세요.</p>
                   ) : null}
 
-                  {course.thumbnailStoredPath || course.thumbnailUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={`/api/courses/${course.id}/thumbnail`}
-                      alt="강좌 썸네일"
-                      className="mt-3 h-28 w-52 rounded-xl object-cover border border-white/10 bg-white/5"
-                    />
-                  ) : null}
-
-                  <CourseThumbnailUploadClient courseId={course.id} />
+                  <CourseThumbnailUploadClient courseId={course.id} hasThumbnail={Boolean(course.thumbnailStoredPath || course.thumbnailUrl)} />
                 </div>
               </CardBody>
             </Card>

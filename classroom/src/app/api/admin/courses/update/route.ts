@@ -6,6 +6,11 @@ import { slugify } from "@/lib/slugify";
 
 export const runtime = "nodejs";
 
+function wantsJson(req: Request) {
+  const accept = req.headers.get("accept") || "";
+  return req.headers.get("x-unova-client") === "1" || accept.includes("application/json");
+}
+
 const Schema = z.object({
   courseId: z.string().min(1),
   title: z.string().min(1).max(200),
@@ -28,6 +33,7 @@ const Schema = z.object({
 });
 
 export async function POST(req: Request) {
+  const json = wantsJson(req);
   const teacher = await getCurrentTeacherUser();
   if (!teacher) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
 
@@ -64,18 +70,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "COURSE_NOT_FOUND" }, { status: 404 });
   }
 
-  await prisma.course.update({
-    where: { id: course.id },
-    data: {
-      title: parsed.data.title,
-      slug: cleanSlug,
-      thumbnailUrl: parsed.data.thumbnailUrl?.trim().length ? parsed.data.thumbnailUrl.trim() : null,
-      teacherName: parsed.data.teacherName?.length ? parsed.data.teacherName : null,
-      subjectName: parsed.data.subjectName?.length ? parsed.data.subjectName : null,
-      isPublished: parsed.data.isPublished,
-    },
-  });
+  try {
+    await prisma.course.update({
+      where: { id: course.id },
+      data: {
+        title: parsed.data.title,
+        slug: cleanSlug,
+        thumbnailUrl: parsed.data.thumbnailUrl?.trim().length ? parsed.data.thumbnailUrl.trim() : null,
+        teacherName: parsed.data.teacherName?.length ? parsed.data.teacherName : null,
+        subjectName: parsed.data.subjectName?.length ? parsed.data.subjectName : null,
+        // NOTE: To allow flipping false via client auto-save, the client sends "1"/"0".
+        // If omitted (legacy form submit), Prisma treats undefined as "do not change".
+        isPublished: parsed.data.isPublished,
+      },
+    });
+  } catch (e: any) {
+    // Unique constraint (e.g. slug already taken)
+    if (e?.code === "P2002") {
+      return NextResponse.json({ ok: false, error: "SLUG_TAKEN" }, { status: 409 });
+    }
+    throw e;
+  }
 
+  if (json) return NextResponse.json({ ok: true });
   return NextResponse.redirect(new URL(req.headers.get("referer") || `/admin/course/${parsed.data.courseId}`, req.url));
 }
 

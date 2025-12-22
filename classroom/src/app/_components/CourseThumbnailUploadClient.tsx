@@ -1,57 +1,88 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Field } from "@/app/_components/ui";
+import { Field } from "@/app/_components/ui";
 
-export default function CourseThumbnailUploadClient({ courseId }: { courseId: string }) {
+export default function CourseThumbnailUploadClient({
+  courseId,
+  hasThumbnail,
+}: {
+  courseId: string;
+  hasThumbnail: boolean;
+}) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const thumbSrc = hasThumbnail ? `/api/courses/${courseId}/thumbnail` : "/course-placeholder.svg";
 
   return (
-    <form
-      className="mt-3 flex flex-col gap-2 md:flex-row md:items-end"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        setError(null);
-        setPending(true);
-        try {
-          const fd = new FormData(e.currentTarget);
-          fd.set("courseId", courseId);
+    <div className="mt-3">
+      <Field label="썸네일" hint="썸네일 이미지를 클릭하면 바로 파일을 선택하고, 선택 즉시 업로드됩니다.">
+        <div className="flex items-start gap-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={thumbSrc}
+            alt="강좌 썸네일"
+            className={`h-28 w-52 rounded-xl object-cover border border-white/10 bg-white/5 ${
+              pending ? "opacity-60" : "cursor-pointer hover:opacity-95"
+            }`}
+            onClick={() => {
+              if (pending) return;
+              inputRef.current?.click();
+            }}
+          />
 
-          const res = await fetch("/api/admin/courses/thumbnail", {
-            method: "POST",
-            body: fd,
-            headers: { "x-unova-client": "1", accept: "application/json" },
-          });
+          <div className="flex-1">
+            <input
+              ref={inputRef}
+              className="hidden"
+              type="file"
+              accept="image/*"
+              disabled={pending}
+              onChange={async (e) => {
+                const file = e.currentTarget.files?.[0] ?? null;
+                // allow re-selecting the same file later
+                e.currentTarget.value = "";
+                if (!file) return;
 
-          const payload = await res.json().catch(() => null);
-          const redirectTo: string | undefined = payload?.redirectTo;
-          if (redirectTo) {
-            router.push(redirectTo);
-            return;
-          }
+                setError(null);
+                setPending(true);
+                try {
+                  const fd = new FormData();
+                  fd.set("courseId", courseId);
+                  fd.set("thumbnail", file);
 
-          setError("업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
-        } catch {
-          setError("업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
-        } finally {
-          setPending(false);
-        }
-      }}
-    >
-      <input type="hidden" name="courseId" value={courseId} />
-      <div className="flex-1">
-        <Field label="이미지 파일">
-          <input className="block w-full text-sm" type="file" name="thumbnail" accept="image/*" required disabled={pending} />
-        </Field>
-      </div>
-      <Button type="submit" variant="secondary" disabled={pending}>
-        {pending ? "업로드 중..." : "업로드"}
-      </Button>
-      {error ? <p className="text-sm text-red-400">{error}</p> : null}
-    </form>
+                  const res = await fetch("/api/admin/courses/thumbnail", {
+                    method: "POST",
+                    body: fd,
+                    headers: { "x-unova-client": "1", accept: "application/json" },
+                  });
+
+                  const payload = await res.json().catch(() => null);
+                  const redirectTo: string | undefined = payload?.redirectTo;
+                  if (!res.ok) {
+                    setError("업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
+                    return;
+                  }
+                  // Server returns a redirectTo with ?thumb=saved. This also refreshes the server component.
+                  if (redirectTo) router.replace(redirectTo);
+                  else router.refresh();
+                } catch {
+                  setError("업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
+                } finally {
+                  setPending(false);
+                }
+              }}
+            />
+            {pending ? <p className="text-sm text-white/60">업로드 중...</p> : null}
+            {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          </div>
+        </div>
+      </Field>
+    </div>
   );
 }
 
