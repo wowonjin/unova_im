@@ -33,7 +33,7 @@ export default function CourseThumbnailUploadClient({ courseId }: { courseId: st
             return;
           }
 
-          setError("업로드에 실패했습니다. Vercel에서는 Blob 설정이 필요할 수 있습니다.");
+          setError("업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
         } catch {
           setError("업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
         } finally {

@@ -143,7 +143,7 @@ export default async function AdminCoursePage({
                   {thumbMsg === "saved" ? (
                     <p className="mt-2 text-sm text-white/70">썸네일이 저장되었습니다.</p>
                   ) : thumbMsg === "error" ? (
-                    <p className="mt-2 text-sm text-red-600">업로드에 실패했습니다. (Vercel에서는 Blob 설정이 필요할 수 있어요)</p>
+                    <p className="mt-2 text-sm text-red-600">업로드에 실패했습니다. 잠시 후 다시 시도해주세요.</p>
                   ) : null}
 
                   {course.thumbnailStoredPath || course.thumbnailUrl ? (
