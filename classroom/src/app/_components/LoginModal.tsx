@@ -90,7 +90,7 @@ export default function LoginModal({ isOpen, onClose }: Props) {
                 placeholder="example@email.com"
                 required
                 autoFocus
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 focus:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/10"
+                className="w-full rounded-xl border border-white/20 bg-transparent px-4 py-3 text-white placeholder:text-white/30 focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/10"
               />
             </div>
 
