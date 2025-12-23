@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import LessonQna from "./LessonQna";
+// import LessonQna from "./LessonQna"; // Q&A 탭 임시 비활성화
 import { useSearchParams } from "next/navigation";
 import { isAllCoursesTestModeFromAllParam, withAllParamIfNeeded } from "@/lib/test-mode";
 
@@ -59,7 +59,7 @@ export default function LessonResourcesTabs({
 }: Props) {
   const searchParams = useSearchParams();
   const allowAll = isAllCoursesTestModeFromAllParam(searchParams.get("all"));
-  const [tab, setTab] = useState<"description" | "files" | "qa">("description");
+  const [tab, setTab] = useState<"description" | "files">("description");
   const displayTitle = lessonTitle
     .replace(new RegExp(`^(?:\\s*${lessonPosition}\\s*강\\s*\\.?\\s*)+`), "")
     .trim();
@@ -109,14 +109,7 @@ export default function LessonResourcesTabs({
             자료{allFiles.length ? `(${allFiles.length})` : ""}
             {tab === "files" ? <span className="absolute inset-x-0 -bottom-[1px] h-0.5 bg-white" /> : null}
           </button>
-          <button
-            type="button"
-            onClick={() => setTab("qa")}
-            className={`relative py-4 text-base ${tab === "qa" ? "font-semibold text-white" : "text-white/70 hover:text-white"}`}
-          >
-            Q&amp;A
-            {tab === "qa" ? <span className="absolute inset-x-0 -bottom-[1px] h-0.5 bg-white" /> : null}
-          </button>
+          {/* Q&A 탭 임시 비활성화 */}
         </div>
       </div>
 
@@ -185,9 +178,7 @@ export default function LessonResourcesTabs({
             </ul>
           )}
         </div>
-      ) : (
-        <LessonQna lessonId={lessonId} isTeacher={isTeacher} currentUserEmail={currentUserEmail} />
-      )}
+      ) : null}
     </div>
   );
 }
