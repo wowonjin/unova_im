@@ -27,6 +27,13 @@ const Schema = z.object({
     .string()
     .optional()
     .transform((v) => v === "on" || v === "true" || v === "1"),
+  enrollmentDays: z
+    .string()
+    .optional()
+    .transform((v) => {
+      if (!v || !/^\d+$/.test(v.trim())) return 365;
+      return Math.max(1, Math.min(3650, parseInt(v.trim(), 10)));
+    }),
 });
 
 function wantsJson(req: Request) {
@@ -61,12 +68,14 @@ export async function POST(req: Request) {
     thumbnail: form.get("thumbnail"),
   };
 
+  const enrollmentDaysRaw = form.get("enrollmentDays");
   const parsed = Schema.safeParse({
     title: typeof raw.title === "string" ? raw.title : "",
     teacherName: typeof raw.teacherName === "string" ? raw.teacherName : undefined,
     subjectName: typeof raw.subjectName === "string" ? raw.subjectName : undefined,
     description: typeof raw.description === "string" ? raw.description : undefined,
     isPublished: typeof raw.isPublished === "string" ? raw.isPublished : undefined,
+    enrollmentDays: typeof enrollmentDaysRaw === "string" ? enrollmentDaysRaw : undefined,
   });
   if (!parsed.success) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
 
@@ -91,6 +100,7 @@ export async function POST(req: Request) {
       description: parsed.data.description?.length ? parsed.data.description : null,
       thumbnailUrl: null,
       isPublished: parsed.data.isPublished,
+      enrollmentDays: parsed.data.enrollmentDays,
     },
     select: { id: true, slug: true },
   });

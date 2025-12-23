@@ -51,17 +51,29 @@ export default async function AdminTextbooksPage() {
               action="/api/admin/textbooks/create"
               method="post"
             >
-              <div className="md:col-span-5">
+              <div className="md:col-span-4">
                 <Field label="교재 제목(선택)">
                   <Input name="title" placeholder="예: 2027 수학 교재 PDF" className="bg-transparent" />
                 </Field>
               </div>
-              <div className="md:col-span-5">
+              <div className="md:col-span-4">
                 <Field label="구글 업로드 URL">
                   <Input
                     name="url"
                     required
                     placeholder="예: https://storage.googleapis.com/버킷/파일.pdf"
+                    className="bg-transparent"
+                  />
+                </Field>
+              </div>
+              <div className="md:col-span-2">
+                <Field label="이용 기간(일)">
+                  <Input
+                    name="entitlementDays"
+                    type="number"
+                    min={1}
+                    max={3650}
+                    defaultValue={365}
                     className="bg-transparent"
                   />
                 </Field>

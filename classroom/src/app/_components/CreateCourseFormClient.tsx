@@ -77,6 +77,18 @@ export default function CreateCourseFormClient() {
         </select>
       </Field>
 
+      <Field label="수강 기간(일)">
+        <Input
+          name="enrollmentDays"
+          type="number"
+          min={1}
+          max={3650}
+          defaultValue={365}
+          className="bg-transparent"
+          disabled={pending}
+        />
+      </Field>
+
       <Field label="썸네일(선택)">
         <input
           className="block w-full text-sm text-white/80 file:mr-3 file:rounded-lg file:border file:border-white/10 file:bg-transparent file:px-3 file:py-2 file:text-sm file:text-white/80 hover:file:bg-transparent disabled:opacity-50"

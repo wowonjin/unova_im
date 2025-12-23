@@ -31,8 +31,12 @@ export async function POST(req: Request) {
   const urlRaw = form.get("url");
   const titleRaw = form.get("title");
   const isPublishedRaw = form.get("isPublished");
+  const entitlementDaysRaw = form.get("entitlementDays");
 
   const isPublished = typeof isPublishedRaw === "string" ? isPublishedRaw === "1" || isPublishedRaw === "true" || isPublishedRaw === "on" : true;
+  const entitlementDays = typeof entitlementDaysRaw === "string" && /^\d+$/.test(entitlementDaysRaw.trim())
+    ? Math.max(1, Math.min(3650, parseInt(entitlementDaysRaw.trim(), 10)))
+    : 365;
 
   // URL 방식(구글 콘솔/GCS 등)
   if (typeof urlRaw === "string" && urlRaw.trim().length > 0) {
@@ -61,6 +65,7 @@ export async function POST(req: Request) {
         mimeType,
         sizeBytes: 0,
         isPublished,
+        entitlementDays,
       },
     });
 
@@ -95,6 +100,7 @@ export async function POST(req: Request) {
       mimeType: file.type || "application/octet-stream",
       sizeBytes: bytes.length,
       isPublished,
+      entitlementDays,
     },
   });
 
