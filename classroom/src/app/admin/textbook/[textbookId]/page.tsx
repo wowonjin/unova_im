@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { Badge, Button, Card, CardBody, CardHeader, Field, HelpTip, Input, PageHeader } from "@/app/_components/ui";
 import TextbookPublishedSelect from "@/app/_components/TextbookPublishedSelect";
 import TextbookThumbnailGenerator from "@/app/_components/TextbookThumbnailGenerator";
-import Link from "next/link";
 
 function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
@@ -44,6 +43,9 @@ export default async function AdminTextbookPage({
       </AppShell>
     );
   }
+
+  // entitlementDays 필드 안전 처리 (마이그레이션 미적용 시 기본값)
+  const entitlementDays = (textbook as { entitlementDays?: number }).entitlementDays ?? 365;
 
   const fmtShortDate = (d: Date) => d.toISOString().slice(2, 10).replace(/-/g, ".");
 
@@ -116,7 +118,7 @@ export default async function AdminTextbookPage({
                     type="number"
                     min={1}
                     max={3650}
-                    defaultValue={textbook.entitlementDays}
+                    defaultValue={entitlementDays}
                     className="bg-transparent"
                   />
                 </Field>
@@ -228,7 +230,7 @@ export default async function AdminTextbookPage({
                     추가
                   </button>
                 </div>
-                <HelpTip text={`이용 기간: ${textbook.entitlementDays}일`} />
+                <HelpTip text={`이용 기간: ${entitlementDays}일`} />
               </div>
             </form>
 

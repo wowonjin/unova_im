@@ -15,21 +15,16 @@ function formatBytes(bytes: number) {
 export default async function AdminTextbooksPage() {
   const teacher = await requireAdminUser();
 
-  const textbooks = await prisma.textbook.findMany({
+  const textbooksRaw = await prisma.textbook.findMany({
     where: { ownerId: teacher.id },
     orderBy: [{ createdAt: "desc" }],
-    select: {
-      id: true,
-      title: true,
-      isPublished: true,
-      originalName: true,
-      sizeBytes: true,
-      createdAt: true,
-      imwebProdCode: true,
-      thumbnailUrl: true,
-      entitlementDays: true,
-    },
   });
+
+  // entitlementDays 안전 처리 (마이그레이션 미적용 시 기본값)
+  const textbooks = textbooksRaw.map((t) => ({
+    ...t,
+    entitlementDays: (t as { entitlementDays?: number }).entitlementDays ?? 365,
+  }));
 
   return (
     <AppShell>
