@@ -47,7 +47,7 @@ export default function LessonPlayerLayoutClient({ left, right }: Props) {
       </div>
 
       <div 
-        className="xl:sticky xl:top-24"
+        className="xl:sticky xl:top-4"
         style={sidebarHeight ? { maxHeight: sidebarHeight } : undefined}
       >
         {right}
