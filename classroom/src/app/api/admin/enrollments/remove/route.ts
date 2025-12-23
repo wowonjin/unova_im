@@ -17,7 +17,6 @@ export async function POST(req: Request) {
   const refererUrl = new URL(refererRaw, req.url);
   const buildRedirect = (param: string, value: string) => {
     const url = new URL(refererUrl.pathname, req.url);
-    // 기존 쿼리 파라미터 복사 (enroll 제외)
     refererUrl.searchParams.forEach((v, k) => {
       if (k !== "enroll") url.searchParams.set(k, v);
     });
