@@ -54,17 +54,38 @@ export async function GET(req: Request) {
   }
 
   // 4. 회원 조회 또는 생성
+  // code가 이메일 형식인지 확인
+  const isEmailCode = memberCode.includes("@");
+  const lookupEmail = isEmailCode ? memberCode.toLowerCase() : (email?.toLowerCase() || null);
+
   let user = await prisma.user.findFirst({
-    where: { imwebMemberCode: memberCode },
+    where: isEmailCode
+      ? { email: memberCode.toLowerCase() }
+      : { imwebMemberCode: memberCode },
   });
 
+  // 이메일로 검색 실패 시 imwebMemberCode로 재시도
+  if (!user && !isEmailCode) {
+    user = await prisma.user.findFirst({
+      where: { imwebMemberCode: memberCode },
+    });
+  }
+
+  // 이메일로도 못 찾으면 email 파라미터로 검색
+  if (!user && lookupEmail) {
+    user = await prisma.user.findFirst({
+      where: { email: lookupEmail },
+    });
+  }
+
   if (!user) {
-    // 아임웹에서 전달된 정보가 없으면 API로 조회 시도
-    let fetchedEmail = email;
+    // 새 회원 생성
+    let fetchedEmail = lookupEmail;
     let fetchedName = name;
     let fetchedProfileImage = profileImageUrl;
 
-    if (!fetchedEmail) {
+    // 이메일이 없고 회원코드로 아임웹 API 조회 시도
+    if (!fetchedEmail && !isEmailCode) {
       try {
         const memberData = await imwebFetchMember(memberCode);
         const data = (memberData as { data?: Record<string, unknown> })?.data ?? memberData;
@@ -87,7 +108,7 @@ export async function GET(req: Request) {
     user = await prisma.user.create({
       data: {
         email: fetchedEmail.toLowerCase(),
-        imwebMemberCode: memberCode,
+        imwebMemberCode: isEmailCode ? null : memberCode,
         name: fetchedName || null,
         profileImageUrl: fetchedProfileImage || null,
         lastLoginAt: new Date(),
@@ -97,8 +118,12 @@ export async function GET(req: Request) {
     // 기존 회원 정보 업데이트
     const updateData: Record<string, unknown> = { lastLoginAt: new Date() };
     if (name && !user.name) updateData.name = name;
-    if (email && user.email.includes("@unova.classroom")) updateData.email = email.toLowerCase();
+    if (lookupEmail && user.email.includes("@unova.classroom")) updateData.email = lookupEmail;
     if (profileImageUrl && !user.profileImageUrl) updateData.profileImageUrl = profileImageUrl;
+    // 회원코드가 없으면 저장
+    if (!isEmailCode && memberCode && !user.imwebMemberCode) {
+      updateData.imwebMemberCode = memberCode;
+    }
 
     if (Object.keys(updateData).length > 1) {
       user = await prisma.user.update({
