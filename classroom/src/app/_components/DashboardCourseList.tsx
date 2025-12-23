@@ -277,8 +277,10 @@ export default function DashboardCourseList({
                       <span className="text-white/40">·</span>{" "}
                       <span className="text-white/60 hover:underline">{en.lastLessonTitle}</span>
                     </button>
-                  ) : (
+                  ) : en.lastProgressAtISO ? (
                     <span className="text-white/40">최근 수강: {fmtISO(recentISO)}</span>
+                  ) : (
+                    <span className="text-white/40">최근 수강이 없습니다</span>
                   )}
                 </div>
               </div>
