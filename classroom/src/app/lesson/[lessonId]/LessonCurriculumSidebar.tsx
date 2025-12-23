@@ -107,8 +107,8 @@ export default function LessonCurriculumSidebar({ courseId, courseTitle, current
         <p className="mt-1 truncate text-sm font-semibold">{courseTitle}</p>
       </div>
 
-      {/* 강의 목차 리스트 */}
-      <div className="overflow-auto px-3 py-3 scrollbar-hide">
+      {/* 강의 목차 리스트 - 비디오 플레이어 높이에 맞춤 */}
+      <div className="max-h-[360px] overflow-auto px-3 py-3 scrollbar-hide">
         <ul className="space-y-0">
           {items.map((l) => {
             const pct = Math.max(0, Math.min(100, Math.round(l.percent)));
