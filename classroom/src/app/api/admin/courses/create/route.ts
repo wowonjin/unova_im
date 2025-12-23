@@ -69,6 +69,11 @@ export async function POST(req: Request) {
   };
 
   const enrollmentDaysRaw = form.get("enrollmentDays");
+  const imwebProdCodeRaw = form.get("imwebProdCode");
+  const imwebProdCode = typeof imwebProdCodeRaw === "string" && imwebProdCodeRaw.trim().length > 0
+    ? imwebProdCodeRaw.trim()
+    : null;
+  
   const parsed = Schema.safeParse({
     title: typeof raw.title === "string" ? raw.title : "",
     teacherName: typeof raw.teacherName === "string" ? raw.teacherName : undefined,
@@ -104,6 +109,16 @@ export async function POST(req: Request) {
     },
     select: { id: true, slug: true },
   });
+
+  // 상품 코드(선택)
+  if (imwebProdCode) {
+    await prisma.courseImwebProdCode.create({
+      data: {
+        courseId: course.id,
+        code: imwebProdCode,
+      },
+    });
+  }
 
   // 썸네일 파일(선택)
   const thumbnailFile =

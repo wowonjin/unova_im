@@ -67,6 +67,15 @@ export default async function AdminTextbooksPage() {
                 </Field>
               </div>
               <div className="md:col-span-2">
+                <Field label="상품 코드">
+                  <Input
+                    name="imwebProdCode"
+                    placeholder="예: PROD001"
+                    className="bg-transparent"
+                  />
+                </Field>
+              </div>
+              <div className="md:col-span-1">
                 <Field label="이용 기간(일)">
                   <Input
                     name="entitlementDays"
@@ -78,7 +87,7 @@ export default async function AdminTextbooksPage() {
                   />
                 </Field>
               </div>
-              <div className="md:col-span-2 flex items-end">
+              <div className="md:col-span-1 flex items-end">
                 <input type="hidden" name="isPublished" value="1" />
                 <Button type="submit" variant="secondary" className="w-full">
                   추가
