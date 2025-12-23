@@ -28,6 +28,7 @@ export default async function AdminTextbooksPage() {
       createdAt: true,
       imwebProdCode: true,
       thumbnailUrl: true,
+      entitlementDays: true,
     },
   });
 
@@ -109,15 +110,26 @@ export default async function AdminTextbooksPage() {
                         <span>{new Date(t.createdAt).toLocaleDateString()}</span>
                       </div>
 
-                      {/* 상품 코드 입력 */}
+                      {/* 상품 코드 및 이용 기간 입력 */}
                       <form className="mt-3" action="/api/admin/textbooks/update-imweb" method="post">
                         <input type="hidden" name="textbookId" value={t.id} />
-                        <div className="flex items-center gap-2">
-                          <div className="relative flex-1 max-w-[280px]">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="relative flex-1 max-w-[180px]">
                             <input
                               name="imwebProdCode"
                               defaultValue={t.imwebProdCode ?? ""}
                               placeholder="아임웹 상품 코드"
+                              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white placeholder:text-white/30 focus:border-white/20 focus:outline-none"
+                            />
+                          </div>
+                          <div className="relative w-24">
+                            <input
+                              name="entitlementDays"
+                              type="number"
+                              min={1}
+                              max={3650}
+                              defaultValue={t.entitlementDays}
+                              placeholder="기간(일)"
                               className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white placeholder:text-white/30 focus:border-white/20 focus:outline-none"
                             />
                           </div>
@@ -127,7 +139,7 @@ export default async function AdminTextbooksPage() {
                           >
                             저장
                           </button>
-                          <HelpTip text="상품 코드를 설정하면 구매자만 다운로드할 수 있습니다." />
+                          <HelpTip text="상품 코드를 설정하면 구매자만 다운로드할 수 있습니다. 기간은 구매 시 부여되는 이용 기간(일)입니다." />
                         </div>
                       </form>
                     </div>

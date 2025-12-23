@@ -15,12 +15,14 @@ export default function CourseSettingsAutoSaveClient({
     slug: string;
     teacherName: string | null;
     subjectName: string | null;
+    enrollmentDays: number;
   };
 }) {
   const [title, setTitle] = useState(initial.title);
   const [slug, setSlug] = useState(initial.slug);
   const [teacherName, setTeacherName] = useState(initial.teacherName ?? "");
   const [subjectName, setSubjectName] = useState(initial.subjectName ?? "");
+  const [enrollmentDays, setEnrollmentDays] = useState(initial.enrollmentDays);
 
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export default function CourseSettingsAutoSaveClient({
     fd.set("slug", slug.trim());
     fd.set("teacherName", teacherName);
     fd.set("subjectName", subjectName);
+    fd.set("enrollmentDays", String(enrollmentDays));
 
     const res = await fetch("/api/admin/courses/update", {
       method: "POST",
@@ -91,7 +94,7 @@ export default function CourseSettingsAutoSaveClient({
   useEffect(() => {
     scheduleSave();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, slug, teacherName, subjectName]);
+  }, [title, slug, teacherName, subjectName, enrollmentDays]);
 
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
@@ -144,6 +147,27 @@ export default function CourseSettingsAutoSaveClient({
             name="subjectName"
             value={subjectName}
             onChange={(e) => setSubjectName(e.target.value)}
+            className="bg-transparent"
+          />
+        </Field>
+      </div>
+
+      <div className="md:col-span-6">
+        <Field
+          label={
+            <span className="inline-flex items-center">
+              수강 기간 (일)
+              <HelpTip text="아임웹에서 구매 시 자동으로 부여되는 수강권의 유효 기간입니다. 기본값은 365일입니다." />
+            </span>
+          }
+        >
+          <Input
+            name="enrollmentDays"
+            type="number"
+            min={1}
+            max={3650}
+            value={enrollmentDays}
+            onChange={(e) => setEnrollmentDays(Math.max(1, parseInt(e.target.value, 10) || 365))}
             className="bg-transparent"
           />
         </Field>

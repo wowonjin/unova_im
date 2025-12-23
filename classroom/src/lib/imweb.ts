@@ -152,18 +152,19 @@ export async function syncImwebOrderToEnrollments(orderNo: string) {
       getStr(it?.prod_cu_tom_code) ??
       getStr(productObj?.prod_custom_code);
 
-    // 아임웹 ‘상품 코드(prod_custom_code)’만 지원
+    // 아임웹 '상품 코드(prod_custom_code)'만 지원
     if (!prodCode) continue;
     const by = `code:${prodCode}`;
 
-    // 1) 강좌 매칭 → Enrollment 부여
-    const courseCode = await prisma.courseImwebProdCode.findUnique({
+    // 1) 강좌 매칭 → Enrollment 부여 (같은 상품 코드가 여러 강좌에 있을 수 있음)
+    const courseCodes = await prisma.courseImwebProdCode.findMany({
       where: { code: prodCode },
-      select: { courseId: true },
+      select: { courseId: true, course: { select: { enrollmentDays: true } } },
     });
-    if (courseCode) {
+    for (const courseCode of courseCodes) {
       const startAt = new Date();
-      const endAt = new Date(startAt.getTime() + 365 * 24 * 60 * 60 * 1000);
+      const days = courseCode.course?.enrollmentDays ?? 365;
+      const endAt = new Date(startAt.getTime() + days * 24 * 60 * 60 * 1000);
       await prisma.enrollment.upsert({
         where: { userId_courseId: { userId: user.id, courseId: courseCode.courseId } },
         update: { status: "ACTIVE", startAt, endAt },
@@ -172,16 +173,15 @@ export async function syncImwebOrderToEnrollments(orderNo: string) {
       matchedCourses.push({ courseId: courseCode.courseId, by });
     }
 
-    // 2) 교재 매칭 → TextbookEntitlement 부여
-    const textbook = await prisma.textbook.findFirst({
-      where: {
-        imwebProdCode: prodCode,
-      },
-      select: { id: true },
+    // 2) 교재 매칭 → TextbookEntitlement 부여 (같은 상품 코드가 여러 교재에 있을 수 있음)
+    const textbooks = await prisma.textbook.findMany({
+      where: { imwebProdCode: prodCode },
+      select: { id: true, entitlementDays: true },
     });
-    if (textbook) {
+    for (const textbook of textbooks) {
       const startAt = new Date();
-      const endAt = new Date(startAt.getTime() + 365 * 24 * 60 * 60 * 1000);
+      const days = textbook.entitlementDays ?? 365;
+      const endAt = new Date(startAt.getTime() + days * 24 * 60 * 60 * 1000);
       await prisma.textbookEntitlement.upsert({
         where: { userId_textbookId: { userId: user.id, textbookId: textbook.id } },
         update: { status: "ACTIVE", startAt, endAt, orderNo },

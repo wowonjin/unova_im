@@ -60,24 +60,20 @@ export async function POST(req: Request) {
       return NextResponse.redirect(baseUrl);
     }
 
-    const existing = await prisma.courseImwebProdCode.findUnique({
-      where: { code },
-      select: { id: true, courseId: true },
+    // 이 강좌에 이미 같은 코드가 있는지 확인 (중복 코드 허용하되, 같은 강좌에 중복 등록 방지)
+    const existingInThisCourse = await prisma.courseImwebProdCode.findFirst({
+      where: { code, courseId: course.id },
+      select: { id: true },
     });
-    // 다른 강좌에서 이미 쓰는 코드면 저장 불가
-    if (existing && existing.courseId !== course.id) {
-      baseUrl.searchParams.set("imweb", "duplicate");
-      if (json) return NextResponse.json({ ok: false, error: "IMWEB_PROD_CODE_IN_USE", redirectTo: baseUrl.toString() }, { status: 409 });
-      return NextResponse.redirect(baseUrl);
-    }
 
     // 이 강좌는 "상품 코드 1개"만 유지하도록 정리
     await prisma.$transaction(async (tx) => {
       // 기존에 여러 개가 있다면, 현재 코드 외는 제거
       await tx.courseImwebProdCode.deleteMany({ where: { courseId: course.id, code: { not: code } } });
       // 현재 코드는 없으면 생성 (있으면 그대로)
-      const ok = await tx.courseImwebProdCode.findUnique({ where: { code }, select: { id: true } });
-      if (!ok) await tx.courseImwebProdCode.create({ data: { courseId: course.id, code } });
+      if (!existingInThisCourse) {
+        await tx.courseImwebProdCode.create({ data: { courseId: course.id, code } });
+      }
     });
 
     baseUrl.searchParams.set("imweb", "saved");
@@ -87,17 +83,16 @@ export async function POST(req: Request) {
     const code = (parsed.data.imwebProdCode || "").trim();
     if (!code.length) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
 
-    const existing = await prisma.courseImwebProdCode.findUnique({
-      where: { code },
-      select: { id: true, courseId: true },
+    // 이 강좌에 이미 같은 코드가 있는지 확인 (같은 강좌에 중복 등록 방지)
+    const existingInThisCourse = await prisma.courseImwebProdCode.findFirst({
+      where: { code, courseId: course.id },
+      select: { id: true },
     });
-    if (existing && existing.courseId !== course.id) {
-      return NextResponse.json({ ok: false, error: "DUPLICATE" }, { status: 409 });
-    }
-    if (existing && existing.courseId === course.id) {
+    if (existingInThisCourse) {
       // 이미 이 강좌에 등록된 코드
       return NextResponse.json({ ok: true, status: "already_exists" });
     }
+    // 다른 강좌에 같은 코드가 있어도 허용 (중복 허용)
     await prisma.courseImwebProdCode.create({
       data: { courseId: course.id, code },
     });

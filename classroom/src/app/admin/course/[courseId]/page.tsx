@@ -108,6 +108,7 @@ export default async function AdminCoursePage({
                     slug: course.slug,
                     teacherName: course.teacherName,
                     subjectName: course.subjectName,
+                    enrollmentDays: course.enrollmentDays,
                   }}
                 />
 

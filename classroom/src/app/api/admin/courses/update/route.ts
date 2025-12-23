@@ -30,6 +30,11 @@ const Schema = z.object({
     .string()
     .optional()
     .transform((v) => v === "on" || v === "true" || v === "1"),
+  enrollmentDays: z
+    .string()
+    .optional()
+    .transform((v) => (v ? parseInt(v, 10) : undefined))
+    .refine((v) => v === undefined || (v >= 1 && v <= 3650), { message: "enrollmentDays out of range" }),
 });
 
 export async function POST(req: Request) {
@@ -46,6 +51,7 @@ export async function POST(req: Request) {
     teacherName: form.get("teacherName"),
     subjectName: form.get("subjectName"),
     isPublished: form.get("isPublished"),
+    enrollmentDays: form.get("enrollmentDays"),
   };
 
   const parsed = Schema.safeParse({
@@ -56,6 +62,7 @@ export async function POST(req: Request) {
     teacherName: typeof raw.teacherName === "string" ? raw.teacherName : undefined,
     subjectName: typeof raw.subjectName === "string" ? raw.subjectName : undefined,
     isPublished: typeof raw.isPublished === "string" ? raw.isPublished : undefined,
+    enrollmentDays: typeof raw.enrollmentDays === "string" ? raw.enrollmentDays : undefined,
   });
   if (!parsed.success) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
 
@@ -85,6 +92,11 @@ export async function POST(req: Request) {
     // thumbnailUrl이 폼에서 명시적으로 전달된 경우에만 업데이트
     if (raw.thumbnailUrl !== null && typeof raw.thumbnailUrl === "string") {
       updateData.thumbnailUrl = raw.thumbnailUrl.trim().length ? raw.thumbnailUrl.trim() : null;
+    }
+
+    // enrollmentDays가 전달된 경우 업데이트
+    if (parsed.data.enrollmentDays !== undefined) {
+      updateData.enrollmentDays = parsed.data.enrollmentDays;
     }
 
     await prisma.course.update({
