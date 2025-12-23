@@ -1,6 +1,7 @@
 import AppShell from "@/app/_components/AppShell";
 import DashboardShellClient from "@/app/_components/DashboardShellClient";
 import DashboardHeader from "@/app/_components/DashboardHeader";
+import DashboardEmptyState from "@/app/_components/DashboardEmptyState";
 import { getCurrentUserOrGuest } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import { isAllCoursesTestModeFromAllParam } from "@/lib/test-mode";
@@ -176,50 +177,7 @@ export default async function DashboardPage({
 
       {cards.length === 0 ? (
         <div className="mt-8 rounded-2xl border border-white/10 bg-[#212123] p-8 text-center">
-          {!user.isLoggedIn ? (
-            <div className="space-y-4">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/5">
-                <span
-                  className="material-symbols-outlined text-white/50"
-                  style={{ fontSize: "32px" }}
-                >
-                  login
-                </span>
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-white">로그인이 필요합니다</p>
-                <p className="mt-1 text-sm text-white/60">
-                  이메일을 입력하여 로그인하세요.
-                </p>
-              </div>
-              <a
-                href="/login"
-                className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-white/90"
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                  login
-                </span>
-                로그인
-              </a>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/5">
-                <span
-                  className="material-symbols-outlined text-white/50"
-                  style={{ fontSize: "32px" }}
-                >
-                  inbox
-                </span>
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-white">수강 중인 강좌가 없습니다</p>
-                <p className="mt-1 text-sm text-white/60">
-                  등록된 강좌가 없습니다.
-                </p>
-              </div>
-            </div>
-          )}
+          <DashboardEmptyState isLoggedIn={user.isLoggedIn} />
         </div>
       ) : (
         <DashboardShellClient cards={cards} initialQuery={query} />
