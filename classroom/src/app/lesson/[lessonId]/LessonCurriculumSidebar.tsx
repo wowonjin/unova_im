@@ -101,14 +101,14 @@ export default function LessonCurriculumSidebar({ courseId, courseTitle, current
   }, []);
 
   return (
-    <aside className="rounded-2xl border border-white/10">
-      <div className="border-b border-white/10 px-4 py-3">
+    <aside className="flex h-full flex-col rounded-2xl border border-white/10">
+      <div className="shrink-0 border-b border-white/10 px-4 py-3">
         <p className="text-xs text-white/60">강의 목차</p>
         <p className="mt-1 truncate text-sm font-semibold">{courseTitle}</p>
       </div>
 
       {/* 강의 목차 리스트 - 비디오 플레이어 높이에 맞춤 */}
-      <div className="max-h-[520px] overflow-auto px-3 py-3 scrollbar-hide">
+      <div className="min-h-0 flex-1 overflow-auto px-3 py-3 scrollbar-hide">
         <ul className="space-y-0">
           {items.map((l) => {
             const pct = Math.max(0, Math.min(100, Math.round(l.percent)));
