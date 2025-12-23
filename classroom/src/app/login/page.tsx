@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import LoginFormClient from "./LoginFormClient";
 
 export default async function LoginPage({
   searchParams,
@@ -32,7 +33,7 @@ export default async function LoginPage({
           />
           <h1 className="mt-6 text-2xl font-bold text-white">나의 강의실</h1>
           <p className="mt-2 text-center text-white/60">
-            유노바 사이트에서 로그인 후 이용해주세요
+            이메일로 로그인하세요
           </p>
         </div>
 
@@ -43,26 +44,35 @@ export default async function LoginPage({
           </div>
         )}
 
-        {/* 안내 카드 */}
+        {/* 로그인 폼 */}
+        <div className="rounded-2xl border border-white/10 bg-[#1a1a1c] p-6">
+          <LoginFormClient redirectTo={redirect} />
+        </div>
+
+        {/* 구분선 */}
+        <div className="flex items-center gap-4">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="text-xs text-white/40">또는</span>
+          <div className="h-px flex-1 bg-white/10" />
+        </div>
+
+        {/* 유노바 사이트 링크 */}
         <div className="rounded-2xl border border-white/10 bg-[#1a1a1c] p-6">
           <div className="space-y-4 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/5">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/5">
               <span
                 className="material-symbols-outlined text-white/70"
-                style={{ fontSize: "32px" }}
+                style={{ fontSize: "24px" }}
               >
-                login
+                open_in_new
               </span>
             </div>
 
-            <div className="space-y-2">
-              <h2 className="text-lg font-semibold text-white">로그인 방법</h2>
+            <div className="space-y-1">
               <p className="text-sm text-white/60">
-                유노바 사이트(unova.co.kr)에서 로그인하신 후,
+                유노바 사이트에서 로그인하시면
                 <br />
-                &quot;나의 강의실&quot; 버튼을 클릭하시면
-                <br />
-                자동으로 로그인됩니다.
+                자동으로 강의실에 로그인됩니다.
               </p>
             </div>
 
@@ -70,7 +80,7 @@ export default async function LoginPage({
               href="https://unova.co.kr"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-white/90"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/10"
             >
               <span
                 className="material-symbols-outlined"
@@ -96,4 +106,3 @@ export default async function LoginPage({
     </div>
   );
 }
-

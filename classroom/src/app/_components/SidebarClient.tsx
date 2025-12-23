@@ -290,10 +290,8 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
         </div>
       </div>
       
-      <a
-        href="https://unova.co.kr"
-        target="_blank"
-        rel="noopener noreferrer"
+      <Link
+        href="/login"
         className="flex w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-black transition-colors hover:bg-white/90"
       >
         <span
@@ -302,8 +300,8 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
         >
           login
         </span>
-        유노바에서 로그인
-      </a>
+        로그인
+      </Link>
     </div>
   );
 
