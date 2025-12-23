@@ -11,6 +11,7 @@ type Props = {
   displayName: string;
   avatarUrl: string | null;
   isAdmin: boolean;
+  isLoggedIn: boolean;
   showAllCourses?: boolean;
   enrolledCourses: {
     courseId: string;
@@ -80,7 +81,7 @@ function NavItem({ href, label, icon }: { href: string; label: string; icon?: st
   );
 }
 
-export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, showAllCourses, enrolledCourses }: Props) {
+export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, isLoggedIn, showAllCourses, enrolledCourses }: Props) {
   const pathname = usePathname();
   const isAdminArea = pathname?.startsWith("/admin");
   const [openRequested, setOpenRequested] = useState(false);
@@ -242,21 +243,67 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
     </nav>
   );
 
-  const Profile = (
-    <div className="flex items-center gap-3">
-      {avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={avatarUrl} alt="회원 프로필" className="h-10 w-10 rounded-full object-cover" />
-      ) : (
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-semibold">
-          {initials(displayName)}
-        </div>
-      )}
+  const Profile = isLoggedIn ? (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={avatarUrl} alt="회원 프로필" className="h-10 w-10 rounded-full object-cover" />
+        ) : (
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-semibold">
+            {initials(displayName)}
+          </div>
+        )}
 
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-white">{displayName}</p>
-        <p className="truncate text-xs text-white/60">{email}</p>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-white">{displayName}</p>
+          <p className="truncate text-xs text-white/60">{email}</p>
+        </div>
       </div>
+      
+      <a
+        href="/api/auth/logout"
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+      >
+        <span
+          className="material-symbols-outlined"
+          style={{ fontSize: "16px" }}
+        >
+          logout
+        </span>
+        로그아웃
+      </a>
+    </div>
+  ) : (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+          <span
+            className="material-symbols-outlined text-white/50"
+            style={{ fontSize: "20px" }}
+          >
+            person
+          </span>
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm text-white/60">로그인하지 않음</p>
+        </div>
+      </div>
+      
+      <a
+        href="https://unova.co.kr"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-black transition-colors hover:bg-white/90"
+      >
+        <span
+          className="material-symbols-outlined"
+          style={{ fontSize: "16px" }}
+        >
+          login
+        </span>
+        유노바에서 로그인
+      </a>
     </div>
   );
 

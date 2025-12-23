@@ -25,6 +25,8 @@ model User {
   email           String   @unique
   imwebMemberCode String?  @unique
   phone           String?
+  name            String?
+  profileImageUrl String?
   createdAt       DateTime @default(now())
   lastLoginAt     DateTime?
 
@@ -37,8 +39,23 @@ model User {
   notes       Note[]
   qnaPosts    QnaPost[]
   qnaPinned   QnaPost[] @relation("QnaPinnedBy")
+  sessions    Session[]
 
   @@index([imwebMemberCode])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model OtpCode {

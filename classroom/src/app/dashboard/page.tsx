@@ -1,27 +1,30 @@
 import AppShell from "@/app/_components/AppShell";
 import DashboardShellClient from "@/app/_components/DashboardShellClient";
 import DashboardHeader from "@/app/_components/DashboardHeader";
-import { requireCurrentUser } from "@/lib/current-user";
+import { getCurrentUserOrGuest } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import { isAllCoursesTestModeFromAllParam } from "@/lib/test-mode";
+import Link from "next/link";
 
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams?: Promise<{ q?: string; all?: string }>;
 }) {
-  const user = await requireCurrentUser();
+  const user = await getCurrentUserOrGuest();
   const now = new Date();
   const sp = (await searchParams) ?? {};
   const query = typeof sp.q === "string" ? sp.q : "";
   const showAll = isAllCoursesTestModeFromAllParam(typeof sp.all === "string" ? sp.all : null);
 
-  const enrollments = await prisma.enrollment.findMany({
-    where: {
-      userId: user.id,
-      status: "ACTIVE",
-      endAt: { gt: now },
-    },
+  // 로그인하지 않은 경우 빈 배열
+  const enrollments = user.id
+    ? await prisma.enrollment.findMany({
+        where: {
+          userId: user.id,
+          status: "ACTIVE",
+          endAt: { gt: now },
+        },
     select: {
       id: true,
       courseId: true,
@@ -39,8 +42,9 @@ export default async function DashboardPage({
         },
       },
     },
-    orderBy: { endAt: "asc" },
-  });
+        orderBy: { endAt: "asc" },
+      })
+    : [];
 
   const allCourses = showAll
     ? await prisma.course.findMany({
@@ -56,11 +60,13 @@ export default async function DashboardPage({
 
   // 각 강좌별 최근 시청 차시/진행률(단순 평균)
   const courseIds = (showAll ? (allCourses ?? []).map((c) => c.id) : enrollments.map((e) => e.courseId));
-  const progress = await prisma.progress.findMany({
-    where: { userId: user.id, lesson: { courseId: { in: courseIds } } },
-    orderBy: { updatedAt: "desc" },
-    include: { lesson: { select: { id: true, courseId: true, title: true } } },
-  });
+  const progress = user.id && courseIds.length > 0
+    ? await prisma.progress.findMany({
+        where: { userId: user.id, lesson: { courseId: { in: courseIds } } },
+        orderBy: { updatedAt: "desc" },
+        include: { lesson: { select: { id: true, courseId: true, title: true } } },
+      })
+    : [];
 
   const progressListByCourseId = new Map<string, typeof progress>();
   for (const p of progress) {
@@ -141,8 +147,64 @@ export default async function DashboardPage({
       <DashboardHeader totalCount={cards.length} />
 
       {cards.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-white/10 bg-[#212123] p-6">
-          <p className="text-white/80">현재 수강 가능한 강좌가 없습니다.</p>
+        <div className="mt-8 rounded-2xl border border-white/10 bg-[#212123] p-8 text-center">
+          {!user.isLoggedIn ? (
+            <div className="space-y-4">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/5">
+                <span
+                  className="material-symbols-outlined text-white/50"
+                  style={{ fontSize: "32px" }}
+                >
+                  school
+                </span>
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-white">로그인이 필요합니다</p>
+                <p className="mt-1 text-sm text-white/60">
+                  유노바 사이트에서 로그인하시면 구매하신 강좌를 수강하실 수 있습니다.
+                </p>
+              </div>
+              <a
+                href="https://unova.co.kr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-white/90"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                  open_in_new
+                </span>
+                유노바 사이트로 이동
+              </a>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/5">
+                <span
+                  className="material-symbols-outlined text-white/50"
+                  style={{ fontSize: "32px" }}
+                >
+                  inbox
+                </span>
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-white">수강 중인 강좌가 없습니다</p>
+                <p className="mt-1 text-sm text-white/60">
+                  유노바 사이트에서 강좌를 구매하시면 이곳에서 수강하실 수 있습니다.
+                </p>
+              </div>
+              <a
+                href="https://unova.co.kr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/10"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                  shopping_cart
+                </span>
+                강좌 둘러보기
+              </a>
+            </div>
+          )}
         </div>
       ) : (
         <DashboardShellClient cards={cards} initialQuery={query} />

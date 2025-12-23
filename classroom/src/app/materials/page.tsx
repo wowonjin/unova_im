@@ -1,10 +1,10 @@
 import AppShell from "@/app/_components/AppShell";
 import PdfFirstPageThumb from "@/app/_components/PdfFirstPageThumb";
-import { requireCurrentUser } from "@/lib/current-user";
+import { getCurrentUserOrGuest } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 
 export default async function MaterialsPage() {
-  const user = await requireCurrentUser();
+  const user = await getCurrentUserOrGuest();
   const now = new Date();
 
   // 교재(관리 플랫폼에서 업로드):
@@ -28,7 +28,7 @@ export default async function MaterialsPage() {
     .map((t) => t.id);
 
   const entitledIdSet =
-    paywalledIds.length > 0
+    paywalledIds.length > 0 && user.id
       ? new Set(
           (
             await prisma.textbookEntitlement.findMany({
@@ -45,24 +45,28 @@ export default async function MaterialsPage() {
     return entitledIdSet.has(t.id);
   });
 
-  const enrollments = await prisma.enrollment.findMany({
-    where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
-    select: { courseId: true, course: { select: { id: true, title: true } } },
-    orderBy: { endAt: "asc" },
-  });
+  const enrollments = user.id
+    ? await prisma.enrollment.findMany({
+        where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
+        select: { courseId: true, course: { select: { id: true, title: true } } },
+        orderBy: { endAt: "asc" },
+      })
+    : [];
 
   const courseIds = enrollments.map((e) => e.courseId);
 
-  const attachments = await prisma.attachment.findMany({
-    where: {
-      OR: [
-        { courseId: { in: courseIds } },
-        { lesson: { courseId: { in: courseIds } } },
-      ],
-    },
-    orderBy: { createdAt: "desc" },
-    include: { lesson: { select: { id: true, title: true, position: true, courseId: true } } },
-  });
+  const attachments = courseIds.length > 0
+    ? await prisma.attachment.findMany({
+        where: {
+          OR: [
+            { courseId: { in: courseIds } },
+            { lesson: { courseId: { in: courseIds } } },
+          ],
+        },
+        orderBy: { createdAt: "desc" },
+        include: { lesson: { select: { id: true, title: true, position: true, courseId: true } } },
+      })
+    : [];
 
   const courseTitleById = new Map(enrollments.map((e) => [e.course.id, e.course.title]));
 
@@ -205,10 +209,30 @@ export default async function MaterialsPage() {
       {totalMaterials === 0 && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02] py-16">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.04]">
-            <span className="material-symbols-outlined text-[32px] text-white/30">folder_off</span>
+            <span className="material-symbols-outlined text-[32px] text-white/30">
+              {user.isLoggedIn ? "folder_off" : "login"}
+            </span>
           </div>
-          <p className="mt-4 text-sm font-medium text-white/60">다운로드 가능한 자료가 없습니다</p>
-          <p className="mt-1 text-xs text-white/40">수강 중인 강좌에서 자료가 등록되면 여기에 표시됩니다</p>
+          {!user.isLoggedIn ? (
+            <>
+              <p className="mt-4 text-sm font-medium text-white/60">로그인이 필요합니다</p>
+              <p className="mt-1 text-xs text-white/40">유노바 사이트에서 로그인하시면 구매하신 교재를 다운로드할 수 있습니다</p>
+              <a
+                href="https://unova.co.kr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-white/90"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>open_in_new</span>
+                유노바 사이트로 이동
+              </a>
+            </>
+          ) : (
+            <>
+              <p className="mt-4 text-sm font-medium text-white/60">다운로드 가능한 자료가 없습니다</p>
+              <p className="mt-1 text-xs text-white/40">수강 중인 강좌에서 자료가 등록되면 여기에 표시됩니다</p>
+            </>
+          )}
         </div>
       )}
     </AppShell>

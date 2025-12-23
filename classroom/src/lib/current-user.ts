@@ -1,55 +1,100 @@
 import { prisma } from "@/lib/prisma";
+import { getSessionUser, SessionUser } from "@/lib/session";
 
 export type CurrentUser = {
   id: string;
   email: string;
+  name: string | null;
+  profileImageUrl: string | null;
   isAdmin: boolean;
+  isLoggedIn: boolean;
 };
 
-async function getDefaultUser(): Promise<CurrentUser> {
-  const email = (process.env.DEFAULT_USER_EMAIL || "admin@example.com").toLowerCase().trim();
-  const user = await prisma.user.upsert({
-    where: { email },
-    update: { lastLoginAt: new Date() },
-    create: { email, lastLoginAt: new Date() },
-    select: { id: true, email: true },
-  });
-  return { id: user.id, email: user.email, isAdmin: false };
-}
-
 async function getDefaultAdminUser(): Promise<CurrentUser> {
-  // 로그인 기능 제거: 별도 인증 없이 관리 기능을 사용할 수 있도록 "고정 관리자"를 사용
+  // 관리자 페이지용 고정 관리자 계정
   const email = (process.env.DEFAULT_ADMIN_EMAIL || "admin@local").toLowerCase().trim();
   const user = await prisma.user.upsert({
     where: { email },
     update: { lastLoginAt: new Date() },
     create: { email, lastLoginAt: new Date() },
-    select: { id: true, email: true },
+    select: { id: true, email: true, name: true, profileImageUrl: true },
   });
-  return { id: user.id, email: user.email, isAdmin: true };
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    profileImageUrl: user.profileImageUrl,
+    isAdmin: true,
+    isLoggedIn: true,
+  };
 }
 
+function sessionUserToCurrentUser(sessionUser: SessionUser): CurrentUser {
+  return {
+    id: sessionUser.id,
+    email: sessionUser.email,
+    name: sessionUser.name,
+    profileImageUrl: sessionUser.profileImageUrl,
+    isAdmin: false,
+    isLoggedIn: true,
+  };
+}
+
+/**
+ * 현재 로그인한 사용자 가져오기
+ * - 세션이 있으면: 세션 사용자 반환
+ * - 세션이 없으면: null 반환 (로그인 필요)
+ */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
-  // 그 외에는 기본 사용자(데모/공개 강의실)
-  return await getDefaultUser();
+  const sessionUser = await getSessionUser();
+  if (sessionUser) {
+    return sessionUserToCurrentUser(sessionUser);
+  }
+  return null;
 }
 
+/**
+ * 현재 사용자 또는 게스트 정보 가져오기
+ * - 세션이 있으면: 세션 사용자 반환
+ * - 세션이 없으면: 게스트 정보 반환 (로그인하지 않은 상태)
+ */
+export async function getCurrentUserOrGuest(): Promise<CurrentUser> {
+  const sessionUser = await getSessionUser();
+  if (sessionUser) {
+    return sessionUserToCurrentUser(sessionUser);
+  }
+  // 게스트 (로그인하지 않은 상태)
+  return {
+    id: "",
+    email: "",
+    name: null,
+    profileImageUrl: null,
+    isAdmin: false,
+    isLoggedIn: false,
+  };
+}
+
+/**
+ * 로그인 필수 - 로그인하지 않으면 에러
+ */
 export async function requireCurrentUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user) throw new Error("UNAUTHORIZED");
+  if (!user) {
+    throw new Error("UNAUTHORIZED");
+  }
   return user;
 }
 
+/**
+ * 관리자 페이지용 - 항상 고정 관리자 반환
+ */
 export async function requireAdminUser(): Promise<CurrentUser> {
-  // 로그인 기능 제거: 관리자 페이지는 인증 없이 접근 가능
   return await getDefaultAdminUser();
 }
 
+/**
+ * 교사(관리) 기능용 - 항상 고정 관리자 반환
+ */
 export async function getCurrentTeacherUser(): Promise<CurrentUser | null> {
-  // 로그인 기능 제거: 교사(관리) 기능도 별도 인증 없이 "고정 관리자"를 사용
-  // NOTE: 관리자 화면(`requireAdminUser`)과 동일한 사용자로 맞춰야
-  //       ownerId 기반 쿼리/권한 체크가 일관됩니다.
   return await getDefaultAdminUser();
 }
-
-

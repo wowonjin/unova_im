@@ -1,25 +1,34 @@
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/current-user";
+import { getCurrentUserOrGuest } from "@/lib/current-user";
 import { getImwebProfile } from "@/lib/imweb-profile";
 import SidebarClient from "@/app/_components/SidebarClient";
 import { Suspense } from "react";
 import { isAllCoursesTestModeFromAllParam } from "@/lib/test-mode";
 
 export default async function Sidebar() {
-  const user = await getCurrentUser();
-  const email = user?.email ?? "guest";
+  const user = await getCurrentUserOrGuest();
+  const isLoggedIn = user.isLoggedIn;
+  const email = user.email || "guest";
   const showAllCourses = isAllCoursesTestModeFromAllParam(null);
 
-  // DB에 저장된 member_code가 있으면 우선 사용, 없으면 env fallback(데모/공개모드 편의)
-  const dbUser = user?.id
-    ? await prisma.user.findUnique({ where: { id: user.id }, select: { imwebMemberCode: true } })
+  // DB에서 추가 정보 조회 (name, profileImageUrl, imwebMemberCode)
+  const dbUser = user.id
+    ? await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { imwebMemberCode: true, name: true, profileImageUrl: true },
+      })
     : null;
   const memberCode = dbUser?.imwebMemberCode ?? process.env.IMWEB_DEFAULT_MEMBER_CODE ?? null;
 
-  const imweb = memberCode ? await getImwebProfile(memberCode) : null;
-  const displayName = imweb?.displayName ?? email.split("@")[0] ?? "회원";
+  // 아임웹 프로필 조회 (DB에 이름이 없는 경우)
+  const imweb = memberCode && !dbUser?.name ? await getImwebProfile(memberCode) : null;
+  
+  // 우선순위: DB 이름 > 아임웹 이름 > 이메일 앞부분
+  const displayName = dbUser?.name || imweb?.displayName || (email !== "guest" ? email.split("@")[0] : "게스트");
+  // 우선순위: DB 프로필 이미지 > 아임웹 프로필 이미지
+  const avatarUrl = dbUser?.profileImageUrl || imweb?.avatarUrl || null;
 
-  const enrollments = user?.id
+  const enrollments = user.id
     ? await prisma.enrollment.findMany({
         where: { userId: user.id, status: "ACTIVE" },
         orderBy: { createdAt: "desc" },
@@ -48,7 +57,7 @@ export default async function Sidebar() {
 
   const courseList = showAllCourses ? (allCourses ?? []) : enrollments.map((e) => e.course);
   const enrolledLessonIds = courseList.flatMap((c) => c.lessons.map((l) => l.id));
-  const progresses = user?.id
+  const progresses = user.id
     ? await prisma.progress.findMany({
         where: { userId: user.id, lessonId: { in: enrolledLessonIds } },
         orderBy: { updatedAt: "desc" },
@@ -92,8 +101,9 @@ export default async function Sidebar() {
       <SidebarClient
         email={email}
         displayName={displayName}
-        avatarUrl={imweb?.avatarUrl ?? null}
-        isAdmin={Boolean(user?.isAdmin)}
+        avatarUrl={avatarUrl}
+        isAdmin={user.isAdmin}
+        isLoggedIn={isLoggedIn}
         showAllCourses={showAllCourses}
         enrolledCourses={enrolledCourses}
       />
