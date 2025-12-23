@@ -120,9 +120,8 @@ export default function DashboardCourseSidePanel({
         aria-hidden={!open}
       >
         <div className="flex h-full flex-col">
-          {/* 헤더 공간 확보 */}
-          <div className="h-16 shrink-0" />
-          <div className="flex items-start justify-between gap-3 border-b border-white/10 p-5">
+          {/* 헤더 */}
+          <div className="flex items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
             <div className="min-w-0">
               <p className="text-xs text-white/60">커리큘럼</p>
               <p className="mt-1 truncate text-base font-semibold">{headerTitle}</p>
@@ -139,7 +138,7 @@ export default function DashboardCourseSidePanel({
             </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto p-4">
+          <div className="min-h-0 flex-1 overflow-auto p-4 scrollbar-hide">
             {loading ? <p className="text-sm text-white/70">불러오는 중…</p> : null}
             {error ? <p className="text-sm text-red-300">불러오기 실패: {error}</p> : null}
 
