@@ -87,6 +87,7 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
   const [openRequested, setOpenRequested] = useState(false);
   const [openedAtPath, setOpenedAtPath] = useState<string>("");
   const open = openRequested && openedAtPath === pathname;
+  const [showLogout, setShowLogout] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -244,35 +245,42 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
   );
 
   const Profile = isLoggedIn ? (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatarUrl} alt="회원 프로필" className="h-10 w-10 rounded-full object-cover" />
-        ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-semibold">
-            {initials(displayName)}
-          </div>
-        )}
-
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-white">{displayName}</p>
-          <p className="truncate text-xs text-white/60">{email}</p>
-        </div>
-      </div>
-      
-      <a
-        href="/api/auth/logout"
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+    <div className="space-y-2">
+      {/* 이메일 클릭 시 로그아웃 버튼 표시 */}
+      <button
+        type="button"
+        onClick={() => setShowLogout(!showLogout)}
+        className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/5"
       >
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold">
+          {initials(email)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm text-white/80">{email}</p>
+        </div>
         <span
-          className="material-symbols-outlined"
-          style={{ fontSize: "16px" }}
+          className="material-symbols-outlined text-white/40"
+          style={{ fontSize: "16px", transform: showLogout ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
         >
-          logout
+          expand_more
         </span>
-        로그아웃
-      </a>
+      </button>
+      
+      {/* 로그아웃 버튼 (토글) */}
+      {showLogout && (
+        <a
+          href="/api/auth/logout"
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/60 transition-colors hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20"
+        >
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: "16px" }}
+          >
+            logout
+          </span>
+          로그아웃
+        </a>
+      )}
     </div>
   ) : (
     <div className="space-y-3">
