@@ -7,6 +7,34 @@ import { imwebFetchMember } from "@/lib/imweb";
 export const runtime = "nodejs";
 
 /**
+ * 요청에서 올바른 Base URL을 추출
+ * Render 등 프록시 뒤에서도 정확한 외부 URL 반환
+ */
+function getBaseUrl(req: Request): string {
+  // 1. 환경변수에서 Base URL 확인 (가장 신뢰할 수 있음)
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    return process.env.NEXT_PUBLIC_BASE_URL;
+  }
+  
+  // 2. x-forwarded-host 헤더 확인 (프록시/로드밸런서)
+  const forwardedHost = req.headers.get("x-forwarded-host");
+  const forwardedProto = req.headers.get("x-forwarded-proto") || "https";
+  if (forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+  
+  // 3. host 헤더 확인
+  const host = req.headers.get("host");
+  if (host && !host.includes("localhost")) {
+    return `https://${host}`;
+  }
+  
+  // 4. 폴백: 요청 URL 사용
+  const url = new URL(req.url);
+  return url.origin;
+}
+
+/**
  * 아임웹 SSO 로그인 엔드포인트
  * 
  * URL 형식:
@@ -17,6 +45,8 @@ export const runtime = "nodejs";
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
+  const baseUrl = getBaseUrl(req);
+  
   const memberCode = url.searchParams.get("code");
   const timestamp = url.searchParams.get("ts");
   const signature = url.searchParams.get("sig");
@@ -27,21 +57,21 @@ export async function GET(req: Request) {
 
   // 1. 필수 파라미터 확인
   if (!memberCode || !timestamp || !signature) {
-    return NextResponse.redirect(new URL("/login?error=missing_params", req.url));
+    return NextResponse.redirect(new URL("/login?error=missing_params", baseUrl));
   }
 
   // 2. 타임스탬프 유효성 검사 (5분 이내)
   const now = Math.floor(Date.now() / 1000);
   const ts = parseInt(timestamp, 10);
   if (isNaN(ts) || Math.abs(now - ts) > 300) {
-    return NextResponse.redirect(new URL("/login?error=expired", req.url));
+    return NextResponse.redirect(new URL("/login?error=expired", baseUrl));
   }
 
   // 3. 서명 검증
   const secret = process.env.IMWEB_SSO_SECRET;
   if (!secret) {
     console.error("IMWEB_SSO_SECRET is not configured");
-    return NextResponse.redirect(new URL("/login?error=config", req.url));
+    return NextResponse.redirect(new URL("/login?error=config", baseUrl));
   }
 
   const expectedSig = crypto
@@ -50,7 +80,7 @@ export async function GET(req: Request) {
     .digest("hex");
 
   if (signature !== expectedSig) {
-    return NextResponse.redirect(new URL("/login?error=invalid_signature", req.url));
+    return NextResponse.redirect(new URL("/login?error=invalid_signature", baseUrl));
   }
 
   // 4. 회원 조회 또는 생성
@@ -136,8 +166,8 @@ export async function GET(req: Request) {
   // 5. 세션 생성
   await createSession(user.id);
 
-  // 6. 대시보드로 리다이렉트
-  const redirectUrl = new URL(redirectTo, req.url);
+  // 6. 대시보드로 리다이렉트 (외부 URL 사용)
+  const redirectUrl = new URL(redirectTo, baseUrl);
   return NextResponse.redirect(redirectUrl);
 }
 
