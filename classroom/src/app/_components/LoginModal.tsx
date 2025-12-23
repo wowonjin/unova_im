@@ -63,9 +63,9 @@ export default function LoginModal({ isOpen, onClose }: Props) {
     >
       <div className="relative w-full max-w-md mx-4 animate-in fade-in zoom-in-95 duration-200">
         {/* 모달 본체 */}
-        <div className="rounded-2xl border border-white/10 bg-[#1a1a1c] p-6 shadow-2xl">
+        <div className="rounded-2xl border border-white/10 bg-[#1a1a1c] px-6 py-8 shadow-2xl">
           {/* 로고 */}
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-8">
             <Image
               src="/unova-logo.png"
               alt="UNOVA"
@@ -78,9 +78,9 @@ export default function LoginModal({ isOpen, onClose }: Props) {
 
           {/* 로그인 폼 */}
           <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="modal-email" className="block text-sm font-medium text-white/70">
-                이메일을 입력하세요
+            <div className="space-y-3">
+              <label htmlFor="modal-email" className="block text-left text-sm font-medium text-white/70">
+                유노바에 회원 가입한 이메일을 입력하세요
               </label>
               <input
                 type="email"
