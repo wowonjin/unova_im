@@ -12,10 +12,8 @@ export default async function LoginPage({
   const redirect = sp.redirect || "/dashboard";
 
   const errorMessages: Record<string, string> = {
-    missing_params: "필수 정보가 누락되었습니다.",
-    expired: "로그인 링크가 만료되었습니다. 다시 시도해주세요.",
-    invalid_signature: "유효하지 않은 로그인 요청입니다.",
-    config: "서버 설정 오류가 발생했습니다.",
+    session_expired: "세션이 만료되었습니다. 다시 로그인해주세요.",
+    unauthorized: "로그인이 필요합니다.",
   };
 
   return (
@@ -32,65 +30,18 @@ export default async function LoginPage({
             className="h-10 w-auto"
           />
           <h1 className="mt-6 text-2xl font-bold text-white">나의 강의실</h1>
-          <p className="mt-2 text-center text-white/60">
-            이메일로 로그인하세요
-          </p>
         </div>
 
         {/* 에러 메시지 */}
         {error && (
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-400">
-            {errorMessages[error] || "로그인 중 오류가 발생했습니다."}
+            {errorMessages[error] || "오류가 발생했습니다."}
           </div>
         )}
 
         {/* 로그인 폼 */}
         <div className="rounded-2xl border border-white/10 bg-[#1a1a1c] p-6">
           <LoginFormClient redirectTo={redirect} />
-        </div>
-
-        {/* 구분선 */}
-        <div className="flex items-center gap-4">
-          <div className="h-px flex-1 bg-white/10" />
-          <span className="text-xs text-white/40">또는</span>
-          <div className="h-px flex-1 bg-white/10" />
-        </div>
-
-        {/* 유노바 사이트 링크 */}
-        <div className="rounded-2xl border border-white/10 bg-[#1a1a1c] p-6">
-          <div className="space-y-4 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/5">
-              <span
-                className="material-symbols-outlined text-white/70"
-                style={{ fontSize: "24px" }}
-              >
-                open_in_new
-              </span>
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-sm text-white/60">
-                유노바 사이트에서 로그인하시면
-                <br />
-                자동으로 강의실에 로그인됩니다.
-              </p>
-            </div>
-
-            <a
-              href="https://unova.co.kr"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/10"
-            >
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: "18px" }}
-              >
-                open_in_new
-              </span>
-              유노바 사이트로 이동
-            </a>
-          </div>
         </div>
 
         {/* 하단 링크 */}

@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 
 const SESSION_COOKIE_NAME = "unova_session";
-const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7일
+const SESSION_DURATION_MS = 6 * 60 * 60 * 1000; // 6시간
 
 export type SessionUser = {
   id: string;
