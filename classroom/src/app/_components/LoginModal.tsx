@@ -62,21 +62,10 @@ export default function LoginModal({ isOpen, onClose }: Props) {
       onClick={handleBackdropClick}
     >
       <div className="relative w-full max-w-md mx-4 animate-in fade-in zoom-in-95 duration-200">
-        {/* 닫기 버튼 */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute -top-12 right-0 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
-            close
-          </span>
-        </button>
-
         {/* 모달 본체 */}
         <div className="rounded-2xl border border-white/10 bg-[#1a1a1c] p-6 shadow-2xl">
           {/* 로고 */}
-          <div className="flex flex-col items-center mb-6">
+          <div className="flex justify-center mb-6">
             <Image
               src="/unova-logo.png"
               alt="UNOVA"
@@ -85,7 +74,6 @@ export default function LoginModal({ isOpen, onClose }: Props) {
               priority
               className="h-8 w-auto"
             />
-            <p className="mt-3 text-sm text-white/60">나의 강의실</p>
           </div>
 
           {/* 로그인 폼 */}
@@ -128,10 +116,6 @@ export default function LoginModal({ isOpen, onClose }: Props) {
                 "로그인"
               )}
             </button>
-
-            <p className="text-center text-xs text-white/40">
-              로그인 후 6시간 동안 자동 로그인됩니다
-            </p>
           </form>
         </div>
       </div>
