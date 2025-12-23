@@ -29,7 +29,10 @@ const Schema = z.object({
   isPublished: z
     .string()
     .optional()
-    .transform((v) => v === "on" || v === "true" || v === "1"),
+    .transform((v) => {
+      if (v === undefined || v === null || v === "") return undefined;
+      return v === "on" || v === "true" || v === "1";
+    }),
   enrollmentDays: z
     .string()
     .optional()
@@ -84,10 +87,12 @@ export async function POST(req: Request) {
       slug: cleanSlug,
       teacherName: parsed.data.teacherName?.length ? parsed.data.teacherName : null,
       subjectName: parsed.data.subjectName?.length ? parsed.data.subjectName : null,
-      // NOTE: To allow flipping false via client auto-save, the client sends "1"/"0".
-      // If omitted (legacy form submit), Prisma treats undefined as "do not change".
-      isPublished: parsed.data.isPublished,
     };
+
+    // isPublished가 명시적으로 전달된 경우에만 업데이트
+    if (parsed.data.isPublished !== undefined) {
+      updateData.isPublished = parsed.data.isPublished;
+    }
 
     // thumbnailUrl이 폼에서 명시적으로 전달된 경우에만 업데이트
     if (raw.thumbnailUrl !== null && typeof raw.thumbnailUrl === "string") {
