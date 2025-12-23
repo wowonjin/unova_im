@@ -40,8 +40,13 @@ export default async function MaterialsPage() {
       : new Set<string>();
 
   const textbooks = textbooksRaw.filter((t) => {
+    // 로그인하지 않으면 모든 교재 숨김
+    if (!user.isLoggedIn) return false;
+    
     const isPaywalled = t.imwebProdCode != null && t.imwebProdCode.length > 0;
+    // 상품 코드 없는 교재 = 로그인한 모든 사용자에게 공개
     if (!isPaywalled) return true;
+    // 상품 코드 있는 교재 = 권한 필요
     return entitledIdSet.has(t.id);
   });
 
