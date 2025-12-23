@@ -238,7 +238,7 @@ export default function VimeoPlayer({ lessonId, vimeoVideoId }: Props) {
   }, [lessonId, numericId, saveProgress, scheduleFlush, allowAll]);
 
   return (
-    <div>
+    <div className="mb-6">
       <div className="w-full overflow-hidden rounded-2xl bg-black">
         {/* aspect-ratio 유틸이 누락되어도 안정적으로 16:9 유지 */}
         <div className="relative w-full pt-[56.25%]">
@@ -253,7 +253,6 @@ export default function VimeoPlayer({ lessonId, vimeoVideoId }: Props) {
           />
         </div>
       </div>
-      {!ready && !error ? <p className="mt-3 text-sm text-white/70">플레이어 로딩 중...</p> : null}
       {error ? <p className="mt-3 text-sm text-white/60">{error}</p> : null}
     </div>
   );

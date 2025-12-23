@@ -97,7 +97,7 @@ export default function LessonResourcesTabs({
             }`}
           >
             설명
-            {tab === "description" ? <span className="absolute inset-x-0 -bottom-[1px] h-1 bg-blue-500" /> : null}
+            {tab === "description" ? <span className="absolute inset-x-0 -bottom-[1px] h-0.5 bg-white" /> : null}
           </button>
           <button
             type="button"
@@ -107,7 +107,7 @@ export default function LessonResourcesTabs({
             }`}
           >
             자료{allFiles.length ? `(${allFiles.length})` : ""}
-            {tab === "files" ? <span className="absolute inset-x-0 -bottom-[1px] h-1 bg-blue-500" /> : null}
+            {tab === "files" ? <span className="absolute inset-x-0 -bottom-[1px] h-0.5 bg-white" /> : null}
           </button>
           <button
             type="button"
@@ -115,7 +115,7 @@ export default function LessonResourcesTabs({
             className={`relative py-4 text-base ${tab === "qa" ? "font-semibold text-white" : "text-white/70 hover:text-white"}`}
           >
             Q&amp;A
-            {tab === "qa" ? <span className="absolute inset-x-0 -bottom-[1px] h-1 bg-blue-500" /> : null}
+            {tab === "qa" ? <span className="absolute inset-x-0 -bottom-[1px] h-0.5 bg-white" /> : null}
           </button>
         </div>
       </div>
