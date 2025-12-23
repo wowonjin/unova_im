@@ -107,19 +107,21 @@ export default function DashboardCourseSidePanel({
       {/* Desktop overlay */}
       {open ? (
         <div
-          className="fixed inset-0 z-[80] hidden bg-black/40 lg:block"
+          className="fixed inset-0 z-[99] hidden bg-black/40 lg:block"
           onClick={onClose}
           aria-hidden="true"
         />
       ) : null}
 
       <aside
-        className={`fixed bottom-0 right-0 top-16 z-[90] hidden w-[420px] border-l border-white/10 bg-[#1d1d1f] transition-transform duration-200 lg:block ${
+        className={`fixed bottom-0 right-0 top-0 z-[100] hidden w-[420px] border-l border-white/10 bg-[#1d1d1f] transition-transform duration-200 lg:block ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
         aria-hidden={!open}
       >
         <div className="flex h-full flex-col">
+          {/* 헤더 공간 확보 */}
+          <div className="h-16 shrink-0" />
           <div className="flex items-start justify-between gap-3 border-b border-white/10 p-5">
             <div className="min-w-0">
               <p className="text-xs text-white/60">커리큘럼</p>

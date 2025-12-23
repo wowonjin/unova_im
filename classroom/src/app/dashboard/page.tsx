@@ -1,6 +1,6 @@
 import AppShell from "@/app/_components/AppShell";
 import DashboardShellClient from "@/app/_components/DashboardShellClient";
-import DashboardSortControls from "@/app/_components/DashboardSortControls";
+import DashboardHeader from "@/app/_components/DashboardHeader";
 import { requireCurrentUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import { isAllCoursesTestModeFromAllParam } from "@/lib/test-mode";
@@ -138,17 +138,7 @@ export default async function DashboardPage({
 
   return (
     <AppShell>
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold">수강중인 강좌</h1>
-            <span className="text-sm text-white/70">총 {cards.length}개</span>
-          </div>
-        </div>
-        <div className="shrink-0">
-          <DashboardSortControls />
-        </div>
-      </div>
+      <DashboardHeader totalCount={cards.length} />
 
       {cards.length === 0 ? (
         <div className="mt-8 rounded-2xl border border-white/10 bg-[#212123] p-6">

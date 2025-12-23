@@ -38,23 +38,17 @@ function readFavorites(): Set<string> {
 }
 
 function fmtISO(iso: string) {
-  // iso: 2025-12-18T...
   return iso.slice(2, 10).replace(/-/g, ".");
 }
 
 function parseCourseMeta(title: string) {
   const bracket = title.match(/\[\s*([^\]]+)\]/)?.[1]?.trim() ?? null;
   const subjectFromBracket = bracket && !/^\d{2,4}$/.test(bracket) ? bracket : null;
-  const subjectFromText = title.match(/(수학|국어|영어|과학|사회)/)?.[1] ?? null;
+  // 과목 패턴: 물리학I, 물리학II, 물리, 화학, 생물, 지구과학, 수학, 국어, 영어, 과학, 사회 등
+  const subjectFromText = title.match(/(물리학[IⅠⅡ]*|화학[IⅠⅡ]*|생물[IⅠⅡ]*|지구과학[IⅠⅡ]*|수학|국어|영어|과학|사회)/)?.[1] ?? null;
   const subject = subjectFromBracket ?? subjectFromText ?? null;
   const teacher = title.match(/\]\s*([^\s]+?)T\b/)?.[1]?.trim() ?? null;
   return { subject, teacher };
-}
-
-function formatTeacher(teacher: string) {
-  const t = teacher.trim();
-  if (!t) return t;
-  return t.endsWith("T") ? t : `${t}T`;
 }
 
 type SortKey = "recent" | "teacher" | "subject" | "progress" | "subjectWatch";
@@ -128,7 +122,7 @@ export default function DashboardCourseList({
     const recentCmp = (a: typeof arr[number], b: typeof arr[number]) => {
       const ad = a.lastProgressAtISO ?? a.startAtISO;
       const bd = b.lastProgressAtISO ?? b.startAtISO;
-      if (ad !== bd) return bd.localeCompare(ad); // 최근 수강일(ISO desc)
+      if (ad !== bd) return bd.localeCompare(ad);
       return a.endAtISO.localeCompare(b.endAtISO);
     };
 
@@ -160,7 +154,6 @@ export default function DashboardCourseList({
         const bv = subjectAvgPercent.get(bs) ?? 0;
         const r = cmpNum(av, bv) * dirMul;
         if (r !== 0) return r;
-        // tie-break: course progress, then recent
         const r2 = cmpNum(a.avgPercent, b.avgPercent) * dirMul;
         return r2 !== 0 ? r2 : recentCmp(a, b);
       }
@@ -168,7 +161,6 @@ export default function DashboardCourseList({
     };
 
     arr.sort((a, b) => {
-      // keep favorites first regardless of chosen sort
       const af = fav.has(a.courseId) ? 1 : 0;
       const bf = fav.has(b.courseId) ? 1 : 0;
       if (af !== bf) return bf - af;
@@ -196,7 +188,7 @@ export default function DashboardCourseList({
 
   return (
     <div className="mt-6">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {filtered.map((en) => {
           const meta = parseCourseMeta(en.title);
           const recentISO = en.lastProgressAtISO ?? en.startAtISO;
@@ -204,102 +196,96 @@ export default function DashboardCourseList({
           const thumbSrc = en.thumbnail
             ? withAllParamIfNeeded(`/api/courses/${en.courseId}/thumbnail`, allowAll)
             : "/course-placeholder.svg";
+          const teacherLabel = meta.teacher?.trim() || "";
+          const subjectLabel = meta.subject?.trim() || "";
+
           return (
-          <div
-            key={en.enrollmentId}
-            role="button"
-            tabIndex={0}
-            onClick={() => {
-              if (shouldOpenSidePanel()) onSelectCourse?.(en.courseId);
-              else router.push(withAllParamIfNeeded(`/course/${en.courseId}`, allowAll));
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
+            <div
+              key={en.enrollmentId}
+              role="button"
+              tabIndex={0}
+              onClick={() => {
                 if (shouldOpenSidePanel()) onSelectCourse?.(en.courseId);
                 else router.push(withAllParamIfNeeded(`/course/${en.courseId}`, allowAll));
-              }
-            }}
-            className={`cursor-pointer rounded-2xl border p-5 focus:outline-none focus:ring-2 focus:ring-white/10 ${
-              selected ? "border-white/30 bg-white/10" : "border-white/10 bg-[#212123] hover:bg-white/10"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-start gap-4">
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  if (shouldOpenSidePanel()) onSelectCourse?.(en.courseId);
+                  else router.push(withAllParamIfNeeded(`/course/${en.courseId}`, allowAll));
+                }
+              }}
+              className={`group relative cursor-pointer overflow-hidden rounded-xl border transition-colors focus:outline-none focus:ring-2 focus:ring-white/10 ${
+                selected
+                  ? "border-white/30 bg-white/10"
+                  : "border-white/10 bg-[#1a1a1c] hover:bg-[#1f1f21]"
+              }`}
+            >
+              {/* 썸네일 */}
+              <div className="relative aspect-video w-full overflow-hidden bg-gradient-to-br from-white/5 to-white/[0.02]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={thumbSrc}
-                  alt="강좌 썸네일"
-                  className="h-20 w-36 shrink-0 rounded-lg object-cover opacity-90"
+                  alt={en.title}
+                  className="h-full w-full object-cover"
                   loading="lazy"
                 />
-
-                <div className="min-w-0">
-                  <p className="truncate text-lg font-semibold">{en.title}</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    {(
-                      [
-                        meta.subject ?? "수학",
-                        formatTeacher(meta.teacher ?? "백하욱"),
-                        en.isEnrolled ? `수강기간 ${fmtISO(en.startAtISO)}~${fmtISO(en.endAtISO)}` : "미수강",
-                        `총 ${en.totalLessons}강`,
-                      ] as const
-                    ).map((label) => (
-                      <button
-                        key={label}
-                        type="button"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex h-8 items-center rounded-xl border border-white/10 bg-white/5 px-3 text-xs text-white/80 hover:bg-white/10"
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
+                {/* 즐겨찾기 별 (주황색) */}
+                <div className="absolute right-2 top-2">
+                  <FavoriteStarButton courseId={en.courseId} />
                 </div>
               </div>
-              <FavoriteStarButton courseId={en.courseId} />
-            </div>
 
-            <div className="mt-4 border-t border-white/10 pt-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-white/70">나의 학습 진도율</span>
-                <span className="font-medium">
-                  ({en.completedLessons}/{en.totalLessons}강) {en.avgPercent}%
-                </span>
-              </div>
-              <div className="mt-2 h-2 w-full rounded-full bg-white/10">
-                <div
-                  className="h-2 rounded-full bg-white"
-                  style={{ width: `${Math.min(100, Math.max(0, en.avgPercent))}%` }}
-                />
+              {/* 정보 */}
+              <div className="p-4">
+                <h3 className="font-medium text-white leading-snug">{en.title}</h3>
+                <div className="mt-2 flex items-center gap-2 text-xs text-white/50">
+                  {teacherLabel && <span>{teacherLabel}T</span>}
+                  {teacherLabel && subjectLabel && <span>·</span>}
+                  {subjectLabel && <span>{subjectLabel}</span>}
+                </div>
+
+                {/* 진도율 */}
+                <div className="mt-3 border-t border-white/10 pt-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-white/50">학습 진도율</span>
+                    <span className="font-medium text-white/70">
+                      {en.completedLessons}/{en.totalLessons}강 ({en.avgPercent}%)
+                    </span>
+                  </div>
+                  <div className="mt-2 h-1.5 w-full rounded-full bg-white/10">
+                    <div
+                      className="h-1.5 rounded-full bg-white/60"
+                      style={{ width: `${Math.min(100, Math.max(0, en.avgPercent))}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* 최근 수강 */}
+                <div className="mt-3 text-xs">
+                  {en.lastLessonId && en.lastLessonTitle ? (
+                    <button
+                      type="button"
+                      className="w-full text-left text-white/50 hover:text-white/80 focus:outline-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(withAllParamIfNeeded(`/lesson/${en.lastLessonId}`, allowAll));
+                      }}
+                    >
+                      <span className="text-white/40">최근 수강:</span>{" "}
+                      <span className="text-white/60">{fmtISO(recentISO)}</span>{" "}
+                      <span className="text-white/40">·</span>{" "}
+                      <span className="text-white/60 hover:underline">{en.lastLessonTitle}</span>
+                    </button>
+                  ) : (
+                    <span className="text-white/40">최근 수강: {fmtISO(recentISO)}</span>
+                  )}
+                </div>
               </div>
             </div>
-
-            {en.lastLessonId ? (
-              <div className="mt-4">
-                <button
-                  type="button"
-                  className="min-w-0 truncate text-left text-sm text-white/80 hover:text-white hover:underline focus:outline-none focus:ring-2 focus:ring-white/10 rounded-lg"
-                  onClick={(e) => {
-                    // 카드 전체 클릭(강좌 이동)과 충돌 방지
-                    e.stopPropagation();
-                    router.push(withAllParamIfNeeded(`/lesson/${en.lastLessonId}`, allowAll));
-                  }}
-                  aria-label={`최근 수강: ${fmtISO(recentISO)} · ${en.lastLessonTitle} 이동`}
-                >
-                  최근 수강: <span className="font-medium">{fmtISO(recentISO)}</span> ·{" "}
-                  <span className="font-medium">{en.lastLessonTitle}</span>
-                </button>
-              </div>
-            ) : (
-              <p className="mt-4 text-sm text-white/70">최근 수강일: {fmtISO(recentISO)}</p>
-            )}
-          </div>
-        );
+          );
         })}
       </div>
     </div>
   );
 }
-
-

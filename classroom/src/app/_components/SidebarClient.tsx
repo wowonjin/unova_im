@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { warmupThumb } from "./pdfThumbWarmup";
 
@@ -80,63 +80,12 @@ function NavItem({ href, label, icon }: { href: string; label: string; icon?: st
   );
 }
 
-function SearchBox({
-  containerClassName,
-  value,
-  onChangeValue,
-  onClear,
-}: {
-  containerClassName: string;
-  value: string;
-  onChangeValue: (next: string) => void;
-  onClear: () => void;
-}) {
-  return (
-    <div className={containerClassName}>
-      <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/50">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
-            stroke="currentColor"
-            strokeWidth="2"
-          />
-          <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        </svg>
-      </div>
-      <input
-        value={value}
-        onChange={(e) => onChangeValue(e.target.value)}
-        placeholder="강좌/선생님/최근 수강 강의 검색"
-        className="h-10 w-full rounded-lg border border-white/10 bg-transparent pl-10 pr-10 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/20 focus:ring-2 focus:ring-white/10"
-      />
-      {value.trim().length ? (
-        <button
-          type="button"
-          aria-label="검색어 지우기"
-          onClick={onClear}
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-2 text-white/60 hover:bg-white/10 hover:text-white"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
 export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, showAllCourses, enrolledCourses }: Props) {
   const pathname = usePathname();
   const isAdminArea = pathname?.startsWith("/admin");
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const qParam = searchParams.get("q") ?? "";
-  const [q, setQ] = useState(qParam);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [openRequested, setOpenRequested] = useState(false);
   const [openedAtPath, setOpenedAtPath] = useState<string>("");
   const open = openRequested && openedAtPath === pathname;
-  const exitUrl = process.env.NEXT_PUBLIC_EXIT_URL || "https://unova.co.kr";
 
   useEffect(() => {
     if (!open) return;
@@ -180,54 +129,10 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
     }
   }, []);
 
-  const onSearchChange = (next: string) => {
-    setQ(next);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      const sp = new URLSearchParams(searchParams.toString());
-      if (next.trim().length) sp.set("q", next);
-      else sp.delete("q");
-      const qs = sp.toString();
-      const target = qs ? `/dashboard?${qs}` : "/dashboard";
-      if (pathname !== "/dashboard") router.push(target);
-      else router.replace(target);
-    }, 200);
-  };
-
-  const onSearchClear = () => {
-    setQ("");
-    const sp = new URLSearchParams(searchParams.toString());
-    sp.delete("q");
-    if (pathname !== "/dashboard") router.push("/dashboard");
-    else router.replace("/dashboard");
-  };
-
-  const DesktopHeader = (
-    <header className="fixed left-0 right-0 top-0 z-50 hidden h-16 items-center justify-between border-b border-white/10 bg-[#1d1d1f]/95 px-4 backdrop-blur md:flex md:px-6">
-      <Link href="/dashboard" className="inline-flex items-center">
-        <Image src="/unova-logo.png" alt="UNOVA" width={180} height={32} priority className="h-6 w-auto" />
-      </Link>
-
-      <div className="flex items-center gap-2">
-        <SearchBox
-          containerClassName="relative w-44 sm:w-72 md:w-[380px]"
-          value={q}
-          onChangeValue={onSearchChange}
-          onClear={onSearchClear}
-        />
-        <a
-          href={exitUrl}
-          className="inline-flex h-10 items-center rounded-lg border border-white/10 bg-white/5 px-4 text-sm text-white/90 hover:bg-white/10"
-        >
-          나가기
-        </a>
-      </div>
-    </header>
-  );
 
   const MobileHeader = (
     <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/10 bg-[#1d1d1f]/95 px-4 py-3 backdrop-blur md:hidden">
-      <div className="grid grid-cols-3 items-center">
+      <div className="flex items-center justify-between">
         <button
           type="button"
           onClick={() => {
@@ -235,64 +140,54 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
             setOpenRequested(true);
           }}
           aria-label="메뉴 열기"
-          className="justify-self-start rounded-lg p-2 hover:bg-white/10"
+          className="rounded-lg p-2 hover:bg-white/10"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </button>
 
-        <Link href="/dashboard" className="inline-flex items-center justify-self-center">
+        <Link href="/dashboard" className="inline-flex items-center">
           <Image src="/unova-logo.png" alt="UNOVA" width={160} height={28} priority className="h-6 w-auto" />
         </Link>
 
-        <a
-          href={exitUrl}
-          className="justify-self-end inline-flex h-10 items-center rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white/90 hover:bg-white/10"
-        >
-          나가기
-        </a>
-      </div>
-
-      <div className="mt-3">
-        <SearchBox
-          containerClassName="relative w-full"
-          value={q}
-          onChangeValue={onSearchChange}
-          onClear={onSearchClear}
-        />
+        {/* 빈 공간으로 좌우 균형 맞춤 */}
+        <div className="w-10" />
       </div>
     </header>
   );
 
   const EnrolledCoursesSection = useMemo(() => {
-    if (!enrolledCourses.length) return null;
     return (
       <div className="mt-6">
-        <p className="px-3 text-xs font-semibold text-white/60">{showAllCourses ? "강좌 목록(테스트)" : "강의 시청 기록"}</p>
-        <ul className="mt-2 space-y-1">
-          {enrolledCourses.map((c) => {
-            const href = c.lastLessonId ? `/lesson/${c.lastLessonId}` : `/course/${c.courseId}`;
-            return (
-              <Link
-                key={c.courseId}
-                href={href}
-                className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 hover:bg-white/10"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm">{c.title}</p>
-                  {c.lastLessonTitle ? (
-                    <p className="mt-0.5 truncate text-xs text-white/70">{c.lastLessonTitle}</p>
-                  ) : null}
-                  {!c.lastLessonTitle && !c.lastWatchedAtISO ? (
-                    <p className="truncate text-xs text-white/60">{showAllCourses ? "미수강" : "시청 기록 없음"}</p>
-                  ) : null}
-                </div>
-                <ProgressRing percent={c.percent} />
-              </Link>
-            );
-          })}
-        </ul>
+        <p className="px-3 text-xs font-semibold text-white/60">{showAllCourses ? "강좌 목록(테스트)" : "최근 수강 목록"}</p>
+        {enrolledCourses.length > 0 ? (
+          <ul className="mt-2 space-y-1">
+            {enrolledCourses.map((c) => {
+              const href = c.lastLessonId ? `/lesson/${c.lastLessonId}` : `/course/${c.courseId}`;
+              return (
+                <Link
+                  key={c.courseId}
+                  href={href}
+                  className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 hover:bg-white/10"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm">{c.title}</p>
+                    {c.lastLessonTitle ? (
+                      <p className="mt-0.5 truncate text-xs text-white/70">{c.lastLessonTitle}</p>
+                    ) : null}
+                    {!c.lastLessonTitle && !c.lastWatchedAtISO ? (
+                      <p className="truncate text-xs text-white/60">{showAllCourses ? "미수강" : "시청 기록 없음"}</p>
+                    ) : null}
+                  </div>
+                  <ProgressRing percent={c.percent} />
+                </Link>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="mt-2 px-3 text-sm text-white/50">최근 수강 목록이 없습니다.</p>
+        )}
       </div>
     );
   }, [enrolledCourses, showAllCourses]);
@@ -311,11 +206,30 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
         </div>
       ) : null}
 
-      {/* 순서: 공지사항 -> 교재 다운로드 -> 수강중인 강좌 */}
-      <NavItem href="/notices" label="선생님 공지사항" icon="campaign" />
+      {/* 순서: 교재 다운로드 -> 수강중인 강좌 -> 선생님 공지사항 -> 유노바 홈페이지 -> 최근 수강 목록 */}
       <NavItem href="/materials" label="교재 다운로드" icon="menu_book" />
       <NavItem href="/dashboard" label="수강중인 강좌" icon="school" />
-      {/* 수강중인 강좌 버튼 아래: 강좌 리스트 */}
+      <NavItem href="/notices" label="선생님 공지사항" icon="campaign" />
+      {/* 유노바 홈페이지 (새 창 열림) */}
+      <a
+        href="https://unova.co.kr"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-white/10 text-white/90"
+      >
+        <span
+          className="material-symbols-outlined shrink-0 leading-none text-white/70"
+          style={{
+            fontSize: "14px",
+            fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 30",
+          }}
+          aria-hidden="true"
+        >
+          home
+        </span>
+        <span className="truncate">유노바 홈페이지</span>
+      </a>
+      {/* 최근 수강 목록 */}
       {EnrolledCoursesSection}
       {/* admin 영역이 아니어도(예: 대시보드) 관리자라면 노출 */}
       {isAdmin && !isAdminArea ? (
@@ -349,7 +263,6 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
   return (
     <>
       {MobileHeader}
-      {DesktopHeader}
 
       {/* 모바일 드로어 */}
       {open ? (
@@ -391,6 +304,12 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
       {/* 데스크탑 사이드바 */}
       <aside className="hidden w-64 shrink-0 border-r border-white/10 bg-[#1d1d1f] p-5 md:block">
         <div className="flex h-full flex-col">
+          {/* 로고 - 아이콘들과 왼쪽 끝 맞춤 (px-3 = 12px) */}
+          <div className="mb-6 px-3">
+            <Link href="/dashboard" className="inline-flex items-center">
+              <Image src="/unova-logo.png" alt="UNOVA" width={140} height={24} priority className="h-5 w-auto" />
+            </Link>
+          </div>
           {Nav}
           <div className="mt-auto pt-6">
             {Profile}

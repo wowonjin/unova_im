@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import DashboardCourseList from "@/app/_components/DashboardCourseList";
 import DashboardCourseSidePanel from "@/app/_components/DashboardCourseSidePanel";
 
@@ -20,14 +21,6 @@ type Card = {
   lastProgressAtISO: string | null;
 };
 
-type RecentCourse = {
-  courseId: string;
-  title: string;
-  lastLessonId: string | null;
-  lastLessonTitle: string | null;
-  lastProgressAtISO: string;
-};
-
 export default function DashboardShellClient({
   cards,
   initialQuery,
@@ -35,7 +28,8 @@ export default function DashboardShellClient({
   cards: Card[];
   initialQuery: string;
 }) {
-  const [query, setQuery] = useState(initialQuery);
+  const searchParams = useSearchParams();
+  const query = searchParams.get("q") ?? initialQuery;
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseTitle, setSelectedCourseTitle] = useState<string | null>(null);
   const open = Boolean(selectedCourseId);
@@ -63,5 +57,3 @@ export default function DashboardShellClient({
     </div>
   );
 }
-
-
