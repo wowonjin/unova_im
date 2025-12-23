@@ -11,11 +11,23 @@ const Schema = z.object({
 
 export async function POST(req: Request) {
   const teacher = await requireAdminUser();
-  const referer = req.headers.get("referer") || "/admin/courses";
+  const refererRaw = req.headers.get("referer") || "/admin/courses";
+  
+  // referer URL에서 기존 쿼리 파라미터 유지
+  const refererUrl = new URL(refererRaw, req.url);
+  const buildRedirect = (param: string, value: string) => {
+    const url = new URL(refererUrl.pathname, req.url);
+    // 기존 쿼리 파라미터 복사 (enroll 제외)
+    refererUrl.searchParams.forEach((v, k) => {
+      if (k !== "enroll") url.searchParams.set(k, v);
+    });
+    url.searchParams.set(param, value);
+    return url;
+  };
   
   const raw = await req.formData().catch(() => null);
   if (!raw) {
-    return NextResponse.redirect(new URL(`${referer}?enroll=error`, req.url));
+    return NextResponse.redirect(buildRedirect("enroll", "error"));
   }
   
   const parsed = Schema.safeParse({
@@ -23,7 +35,7 @@ export async function POST(req: Request) {
   });
   
   if (!parsed.success) {
-    return NextResponse.redirect(new URL(`${referer}?enroll=error`, req.url));
+    return NextResponse.redirect(buildRedirect("enroll", "error"));
   }
   
   const { enrollmentId } = parsed.data;
@@ -35,7 +47,7 @@ export async function POST(req: Request) {
   });
   
   if (!enrollment || enrollment.course.ownerId !== teacher.id) {
-    return NextResponse.redirect(new URL(`${referer}?enroll=not_found`, req.url));
+    return NextResponse.redirect(buildRedirect("enroll", "not_found"));
   }
   
   // 삭제
@@ -43,6 +55,5 @@ export async function POST(req: Request) {
     where: { id: enrollmentId },
   });
   
-  return NextResponse.redirect(new URL(`${referer}?enroll=removed`, req.url));
+  return NextResponse.redirect(buildRedirect("enroll", "removed"));
 }
-
