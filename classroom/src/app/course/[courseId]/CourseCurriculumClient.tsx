@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { isAllCoursesTestModeFromAllParam, withAllParamIfNeeded } from "@/lib/test-mode";
 
@@ -36,6 +36,11 @@ export default function CourseCurriculumClient({ lessons }: Props) {
   const allowAll = isAllCoursesTestModeFromAllParam(searchParams.get("all"));
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "notStarted" | "inProgress" | "completed">("all");
+
+  // 페이지 로드 시 스크롤을 맨 위로
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const stats = useMemo(() => {
     const total = lessons.length;
