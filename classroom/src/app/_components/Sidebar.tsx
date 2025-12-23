@@ -77,8 +77,10 @@ export default async function Sidebar() {
     const total = c.lessons.length || 1;
     let sum = 0;
     for (const l of c.lessons) sum += percentByLesson.get(l.id) ?? 0;
-    const percent = Math.max(0, Math.min(100, Math.round(sum / total)));
+    const coursePercent = Math.max(0, Math.min(100, Math.round(sum / total)));
     const latest = latestByCourse.get(c.id) ?? null;
+    // 마지막으로 시청한 강의의 진도율 (해당 강의를 얼마나 봤는지)
+    const lastLessonPercent = latest ? Math.max(0, Math.min(100, Math.round(latest.percent))) : 0;
     return {
       courseId: c.id,
       title: c.title,
@@ -86,7 +88,8 @@ export default async function Sidebar() {
       lastLessonTitle: latest?.lesson?.title ?? null,
       lastWatchedAtISO: latest ? latest.updatedAt.toISOString() : null,
       lastSeconds: latest ? latest.lastSeconds : null,
-      percent,
+      percent: lastLessonPercent, // 마지막 강의 진도율
+      coursePercent, // 전체 강좌 진도율 (필요시 사용)
     };
   });
 
