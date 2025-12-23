@@ -7,48 +7,43 @@ export default async function MaterialsPage() {
   const user = await getCurrentUserOrGuest();
   const now = new Date();
 
-  // 교재(관리 플랫폼에서 업로드):
-  // - 기본: 공개된 교재만 노출
-  // - 단, 아임웹 상품 매핑이 된 교재는 구매(Entitlement)가 있어야 노출
-  const textbooksRaw = await prisma.textbook.findMany({
-    where: { isPublished: true },
-    orderBy: [{ createdAt: "desc" }],
-    select: {
-      id: true,
-      title: true,
-      originalName: true,
-      createdAt: true,
-      imwebProdCode: true,
-      thumbnailUrl: true,
-    },
-  });
+  // 교재: 이용자 목록(Entitlement)에 있는 사용자만 볼 수 있음
+  // 로그인하지 않으면 교재 목록 비움
+  let textbooks: {
+    id: string;
+    title: string;
+    originalName: string;
+    createdAt: Date;
+    imwebProdCode: string | null;
+    thumbnailUrl: string | null;
+  }[] = [];
 
-  const paywalledIds = textbooksRaw
-    .filter((t) => t.imwebProdCode != null && t.imwebProdCode.length > 0)
-    .map((t) => t.id);
+  if (user.isLoggedIn && user.id) {
+    // 현재 사용자의 활성 권한이 있는 교재 ID 가져오기
+    const entitlements = await prisma.textbookEntitlement.findMany({
+      where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
+      select: { textbookId: true },
+    });
+    const entitledIds = entitlements.map((e) => e.textbookId);
 
-  const entitledIdSet =
-    paywalledIds.length > 0 && user.id
-      ? new Set(
-          (
-            await prisma.textbookEntitlement.findMany({
-              where: { userId: user.id, textbookId: { in: paywalledIds }, status: "ACTIVE", endAt: { gt: now } },
-              select: { textbookId: true },
-            })
-          ).map((e) => e.textbookId)
-        )
-      : new Set<string>();
-
-  const textbooks = textbooksRaw.filter((t) => {
-    // 로그인하지 않으면 모든 교재 숨김
-    if (!user.isLoggedIn) return false;
-    
-    const isPaywalled = t.imwebProdCode != null && t.imwebProdCode.length > 0;
-    // 상품 코드 없는 교재 = 로그인한 모든 사용자에게 공개
-    if (!isPaywalled) return true;
-    // 상품 코드 있는 교재 = 권한 필요
-    return entitledIdSet.has(t.id);
-  });
+    if (entitledIds.length > 0) {
+      textbooks = await prisma.textbook.findMany({
+        where: { 
+          isPublished: true,
+          id: { in: entitledIds },
+        },
+        orderBy: [{ createdAt: "desc" }],
+        select: {
+          id: true,
+          title: true,
+          originalName: true,
+          createdAt: true,
+          imwebProdCode: true,
+          thumbnailUrl: true,
+        },
+      });
+    }
+  }
 
   const enrollments = user.id
     ? await prisma.enrollment.findMany({
