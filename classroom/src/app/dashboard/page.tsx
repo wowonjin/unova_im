@@ -35,6 +35,7 @@ export default async function DashboardPage({
           id: true,
           title: true,
           thumbnailStoredPath: true,
+          thumbnailUrl: true,
           lessons: {
             where: { isPublished: true },
             select: { id: true },
@@ -53,6 +54,7 @@ export default async function DashboardPage({
           id: true,
           title: true,
           thumbnailStoredPath: true,
+          thumbnailUrl: true,
           lessons: { where: { isPublished: true }, select: { id: true } },
         },
       })
@@ -112,7 +114,7 @@ export default async function DashboardPage({
       enrollmentId: en?.id ?? `course-${c.id}`,
       courseId: c.id,
       title: c.title,
-      thumbnail: Boolean(c.thumbnailStoredPath),
+      thumbnail: Boolean(c.thumbnailStoredPath || c.thumbnailUrl),
       isEnrolled: Boolean(en),
       startAtISO: startAt.toISOString(),
       endAtISO: endAt.toISOString(),
@@ -129,7 +131,7 @@ export default async function DashboardPage({
       enrollmentId: en.id,
       courseId: en.courseId,
       title: en.course.title,
-      thumbnail: Boolean(en.course.thumbnailStoredPath),
+      thumbnail: Boolean(en.course.thumbnailStoredPath || en.course.thumbnailUrl),
       isEnrolled: true,
       startAtISO: en.startAt.toISOString(),
       endAtISO: en.endAt.toISOString(),
