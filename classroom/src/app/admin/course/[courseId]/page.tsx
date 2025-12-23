@@ -7,6 +7,7 @@ import ImwebProdCodeFormClient from "@/app/_components/ImwebProdCodeFormClient";
 import CourseThumbnailUploadClient from "@/app/_components/CourseThumbnailUploadClient";
 import CourseSettingsAutoSaveClient from "@/app/_components/CourseSettingsAutoSaveClient";
 import PublishToggleClient from "@/app/_components/PublishToggleClient";
+import { ConfirmDeleteIconButton } from "@/app/_components/ConfirmDeleteButton";
 
 export default async function AdminCoursePage({
   params,
@@ -221,23 +222,10 @@ export default async function AdminCoursePage({
                             <td className="py-3 pr-3 text-white/60">{s.lastAt ? fmtShortDate(s.lastAt) : "-"}</td>
                             <td className="py-3 pr-3 text-right text-white/80">{avg}%</td>
                             <td className="py-3 pr-3">
-                              <form action="/api/admin/enrollments/remove" method="post" className="flex justify-end">
-                                <input type="hidden" name="enrollmentId" value={e.id} />
-                                <button
-                                  type="submit"
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400"
-                                  title="삭제"
-                                  onClick={(ev) => {
-                                    if (!confirm("정말 삭제하시겠습니까?")) {
-                                      ev.preventDefault();
-                                    }
-                                  }}
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
-                              </form>
+                              <ConfirmDeleteIconButton
+                                action="/api/admin/enrollments/remove"
+                                hiddenInputs={[{ name: "enrollmentId", value: e.id }]}
+                              />
                             </td>
                           </tr>
                         );
