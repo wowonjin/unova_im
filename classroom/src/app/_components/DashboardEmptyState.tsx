@@ -47,22 +47,7 @@ export default function DashboardEmptyState({ isLoggedIn }: Props) {
 
   // 로그인은 했지만 강좌가 없는 경우
   return (
-    <div className="space-y-4">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/5">
-        <span
-          className="material-symbols-outlined text-white/50"
-          style={{ fontSize: "32px" }}
-        >
-          inbox
-        </span>
-      </div>
-      <div>
-        <p className="text-lg font-semibold text-white">수강 중인 강좌가 없습니다</p>
-        <p className="mt-1 text-sm text-white/60">
-          등록된 강좌가 없습니다.
-        </p>
-      </div>
-    </div>
+    <p className="text-sm text-white/60">수강 가능한 강의가 없습니다</p>
   );
 }
 
