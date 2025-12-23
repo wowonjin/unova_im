@@ -38,7 +38,7 @@ export default async function DashboardPage({
           thumbnailUrl: true,
           lessons: {
             where: { isPublished: true },
-            select: { id: true },
+            select: { id: true, durationSeconds: true },
           },
         },
       },
@@ -55,18 +55,18 @@ export default async function DashboardPage({
           title: true,
           thumbnailStoredPath: true,
           thumbnailUrl: true,
-          lessons: { where: { isPublished: true }, select: { id: true } },
+          lessons: { where: { isPublished: true }, select: { id: true, durationSeconds: true } },
         },
       })
     : null;
 
-  // 각 강좌별 최근 시청 차시/진행률(단순 평균)
+  // 각 강좌별 최근 시청 차시/진행률(전체 러닝타임 기준)
   const courseIds = (showAll ? (allCourses ?? []).map((c) => c.id) : enrollments.map((e) => e.courseId));
   const progress = user.id && courseIds.length > 0
     ? await prisma.progress.findMany({
         where: { userId: user.id, lesson: { courseId: { in: courseIds } } },
         orderBy: { updatedAt: "desc" },
-        include: { lesson: { select: { id: true, courseId: true, title: true } } },
+        include: { lesson: { select: { id: true, courseId: true, title: true, durationSeconds: true } } },
       })
     : [];
 
@@ -76,6 +76,18 @@ export default async function DashboardPage({
     const arr = progressListByCourseId.get(cid) ?? [];
     arr.push(p);
     progressListByCourseId.set(cid, arr);
+  }
+
+  // 강좌별 전체 러닝타임 계산
+  const courseLessonsMap = new Map<string, { id: string; durationSeconds: number | null }[]>();
+  if (showAll && allCourses) {
+    for (const c of allCourses) {
+      courseLessonsMap.set(c.id, c.lessons);
+    }
+  } else {
+    for (const en of enrollments) {
+      courseLessonsMap.set(en.courseId, en.course.lessons);
+    }
   }
 
   const progressByCourse = new Map<
@@ -92,12 +104,26 @@ export default async function DashboardPage({
   for (const courseId of courseIds) {
     const p = progressListByCourseId.get(courseId) ?? [];
     const last = p[0];
-    const avg = p.length === 0 ? 0 : Math.round((p.reduce((sum, x) => sum + x.percent, 0) / p.length) * 10) / 10;
     const completed = p.filter((x) => x.completedAt != null || x.percent >= 99.9).length;
+
+    // 전체 러닝타임 기준 진도율 계산
+    const lessons = courseLessonsMap.get(courseId) ?? [];
+    const totalDuration = lessons.reduce((sum, l) => sum + (l.durationSeconds ?? 0), 0);
+    
+    let watchedDuration = 0;
+    for (const prog of p) {
+      const lessonDuration = prog.lesson.durationSeconds ?? 0;
+      watchedDuration += (lessonDuration * prog.percent) / 100;
+    }
+
+    const runtimePercent = totalDuration > 0
+      ? Math.round((watchedDuration / totalDuration) * 1000) / 10
+      : 0;
+
     progressByCourse.set(courseId, {
       lastLessonId: last?.lessonId || "",
       lastLessonTitle: last?.lesson.title || "",
-      avgPercent: avg,
+      avgPercent: runtimePercent,
       completedLessons: completed,
       lastProgressAt: last?.updatedAt ?? null,
     });

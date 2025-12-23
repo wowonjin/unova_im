@@ -250,7 +250,7 @@ export default function DashboardCourseList({
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-white/50">학습 진도율</span>
                     <span className="font-medium text-white/70">
-                      {en.completedLessons}/{en.totalLessons}강 ({en.avgPercent}%)
+                      {en.totalLessons}강 ({en.avgPercent}%)
                     </span>
                   </div>
                   <div className="mt-2 h-1.5 w-full rounded-full bg-white/10">
