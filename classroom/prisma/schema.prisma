@@ -260,6 +260,8 @@ model Textbook {
   isPublished  Boolean  @default(true)
   // 아임웹 상품 매핑(옵션): 설정되면 수강생은 구매(Entitlement)가 있어야 접근 가능
   imwebProdCode String?  @unique
+  // 썸네일 (PDF 첫 페이지 이미지) - GCS URL 또는 data URL
+  thumbnailUrl  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

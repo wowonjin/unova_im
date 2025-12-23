@@ -19,6 +19,7 @@ export default async function MaterialsPage() {
       originalName: true,
       createdAt: true,
       imwebProdCode: true,
+      thumbnailUrl: true,
     },
   });
 
@@ -107,11 +108,20 @@ export default async function MaterialsPage() {
                 <div className="flex gap-4 p-4">
                   {/* PDF 썸네일 - A4 비율 (1:1.414) */}
                   <div className="relative w-[68px] shrink-0 overflow-hidden rounded-lg bg-white/[0.04]" style={{ aspectRatio: '1 / 1.414' }}>
-                    <PdfFirstPageThumb
-                      src={`/api/textbooks/${t.id}/view`}
-                      title={t.title}
-                      className="h-full w-full object-cover"
-                    />
+                    {t.thumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={t.thumbnailUrl}
+                        alt={`${t.title} 미리보기`}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <PdfFirstPageThumb
+                        src={`/api/textbooks/${t.id}/view`}
+                        title={t.title}
+                        className="h-full w-full object-cover"
+                      />
+                    )}
                     <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-white/10" />
                   </div>
                   {/* 정보 */}

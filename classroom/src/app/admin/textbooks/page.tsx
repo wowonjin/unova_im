@@ -3,6 +3,7 @@ import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import { Badge, Button, Card, CardBody, CardHeader, Field, HelpTip, Input, PageHeader } from "@/app/_components/ui";
 import TextbookPublishedSelect from "@/app/_components/TextbookPublishedSelect";
+import TextbookThumbnailGenerator from "@/app/_components/TextbookThumbnailGenerator";
 
 function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
@@ -26,6 +27,7 @@ export default async function AdminTextbooksPage() {
       sizeBytes: true,
       createdAt: true,
       imwebProdCode: true,
+      thumbnailUrl: true,
     },
   });
 
@@ -133,6 +135,7 @@ export default async function AdminTextbooksPage() {
 
                   {/* 오른쪽: 상태 및 액션 */}
                   <div className="flex items-center gap-3 lg:shrink-0">
+                    <TextbookThumbnailGenerator textbookId={t.id} hasThumbnail={!!t.thumbnailUrl} />
                     <TextbookPublishedSelect textbookId={t.id} isPublished={t.isPublished} />
                     
                     <div className="flex items-center gap-1">
