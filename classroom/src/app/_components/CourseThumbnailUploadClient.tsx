@@ -15,8 +15,12 @@ export default function CourseThumbnailUploadClient({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  // 캐시 버스팅을 위한 타임스탬프 (업로드 후 즉시 새 이미지 표시)
+  const [cacheKey, setCacheKey] = useState(() => Date.now());
 
-  const thumbSrc = hasThumbnail ? `/api/courses/${courseId}/thumbnail` : "/course-placeholder.svg";
+  const thumbSrc = hasThumbnail
+    ? `/api/courses/${courseId}/thumbnail?v=${cacheKey}`
+    : "/course-placeholder.svg";
 
   return (
     <div>
@@ -67,6 +71,8 @@ export default function CourseThumbnailUploadClient({
                     setError("업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
                     return;
                   }
+                  // 캐시 버스팅: 새 타임스탬프로 이미지 URL 갱신
+                  setCacheKey(Date.now());
                   // Server returns a redirectTo with ?thumb=saved. This also refreshes the server component.
                   if (redirectTo) router.replace(redirectTo);
                   else router.refresh();

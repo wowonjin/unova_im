@@ -71,18 +71,25 @@ export async function POST(req: Request) {
   }
 
   try {
+    // thumbnailUrl은 명시적으로 전달된 경우에만 업데이트 (자동 저장 시 삭제 방지)
+    const updateData: Record<string, unknown> = {
+      title: parsed.data.title,
+      slug: cleanSlug,
+      teacherName: parsed.data.teacherName?.length ? parsed.data.teacherName : null,
+      subjectName: parsed.data.subjectName?.length ? parsed.data.subjectName : null,
+      // NOTE: To allow flipping false via client auto-save, the client sends "1"/"0".
+      // If omitted (legacy form submit), Prisma treats undefined as "do not change".
+      isPublished: parsed.data.isPublished,
+    };
+
+    // thumbnailUrl이 폼에서 명시적으로 전달된 경우에만 업데이트
+    if (raw.thumbnailUrl !== null && typeof raw.thumbnailUrl === "string") {
+      updateData.thumbnailUrl = raw.thumbnailUrl.trim().length ? raw.thumbnailUrl.trim() : null;
+    }
+
     await prisma.course.update({
       where: { id: course.id },
-      data: {
-        title: parsed.data.title,
-        slug: cleanSlug,
-        thumbnailUrl: parsed.data.thumbnailUrl?.trim().length ? parsed.data.thumbnailUrl.trim() : null,
-        teacherName: parsed.data.teacherName?.length ? parsed.data.teacherName : null,
-        subjectName: parsed.data.subjectName?.length ? parsed.data.subjectName : null,
-        // NOTE: To allow flipping false via client auto-save, the client sends "1"/"0".
-        // If omitted (legacy form submit), Prisma treats undefined as "do not change".
-        isPublished: parsed.data.isPublished,
-      },
+      data: updateData,
     });
   } catch (e: any) {
     // Unique constraint (e.g. slug already taken)
