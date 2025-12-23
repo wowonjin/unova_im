@@ -68,7 +68,7 @@ export default function DashboardRightMenu({
           <ul className="mt-3 space-y-2">
             {recentCourses.map((c) => (
               <li key={c.courseId} className="rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
-                <Link href={`/course/${c.courseId}`} className="block">
+                <Link href={c.lastLessonId ? `/lesson/${c.lastLessonId}` : `/dashboard`} className="block">
                   <p className="truncate text-sm font-semibold">{c.title}</p>
                   <p className="mt-1 truncate text-xs text-white/60">
                     {c.lastLessonTitle ? `최근 강의: ${c.lastLessonTitle}` : "최근 강의: -"} · {fmtISO(c.lastProgressAtISO)}

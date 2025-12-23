@@ -166,7 +166,8 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
         {enrolledCourses.length > 0 ? (
           <ul className="mt-2 space-y-1">
             {enrolledCourses.map((c) => {
-              const href = c.lastLessonId ? `/lesson/${c.lastLessonId}` : `/course/${c.courseId}`;
+              // 마지막 시청 강의가 있으면 해당 강의로, 없으면 대시보드로
+              const href = c.lastLessonId ? `/lesson/${c.lastLessonId}` : `/dashboard`;
               return (
                 <Link
                   key={c.courseId}

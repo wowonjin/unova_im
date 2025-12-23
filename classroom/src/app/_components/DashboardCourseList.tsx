@@ -206,13 +206,13 @@ export default function DashboardCourseList({
               tabIndex={0}
               onClick={() => {
                 if (shouldOpenSidePanel()) onSelectCourse?.(en.courseId);
-                else router.push(withAllParamIfNeeded(`/course/${en.courseId}`, allowAll));
+                else onSelectCourse?.(en.courseId);
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
                   if (shouldOpenSidePanel()) onSelectCourse?.(en.courseId);
-                  else router.push(withAllParamIfNeeded(`/course/${en.courseId}`, allowAll));
+                  else onSelectCourse?.(en.courseId);
                 }
               }}
               className={`group relative cursor-pointer overflow-hidden rounded-xl border transition-colors focus:outline-none focus:ring-2 focus:ring-white/10 ${
