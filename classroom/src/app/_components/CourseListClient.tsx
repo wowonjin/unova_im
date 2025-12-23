@@ -238,7 +238,7 @@ export default function CourseListClient({
             return (
               <Link
                 key={c.id}
-                href={`/admin/course/${c.id}`}
+                href={`/admin/course/${c.id}?tab=settings`}
                 className="group relative overflow-hidden rounded-xl border border-white/10 bg-[#1a1a1c] transition-all hover:border-white/20 hover:bg-[#1f1f21]"
               >
                 {cardContent}
