@@ -1,0 +1,295 @@
+import AppShell from "@/app/_components/AppShell";
+import { requireAdminUser } from "@/lib/current-user";
+import { prisma } from "@/lib/prisma";
+import { Badge, Button, Card, CardBody, CardHeader, Field, HelpTip, Input, PageHeader } from "@/app/_components/ui";
+import TextbookPublishedSelect from "@/app/_components/TextbookPublishedSelect";
+import TextbookThumbnailGenerator from "@/app/_components/TextbookThumbnailGenerator";
+import Link from "next/link";
+
+function formatBytes(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+  const v = bytes / 1024 ** i;
+  return `${v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
+}
+
+export default async function AdminTextbookPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ textbookId: string }>;
+  searchParams?: Promise<{ saved?: string; entitle?: string }>;
+}) {
+  const teacher = await requireAdminUser();
+  const { textbookId } = await params;
+  const sp = (await searchParams) ?? {};
+  const savedMsg = sp.saved || null;
+  const entitleMsg = sp.entitle || null;
+
+  const textbook = await prisma.textbook.findUnique({
+    where: { id: textbookId, ownerId: teacher.id },
+    include: {
+      entitlements: {
+        orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+        include: { user: { select: { id: true, email: true } } },
+      },
+    },
+  });
+
+  if (!textbook) {
+    return (
+      <AppShell>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6">교재를 찾을 수 없습니다.</div>
+      </AppShell>
+    );
+  }
+
+  const fmtShortDate = (d: Date) => d.toISOString().slice(2, 10).replace(/-/g, ".");
+
+  return (
+    <AppShell>
+      <PageHeader
+        title="교재 관리"
+        description={textbook.title}
+        right={
+          <div className="flex items-center gap-2">
+            <Button href="/admin/textbooks" variant="secondary">
+              ← 목록으로
+            </Button>
+            <form action={`/api/admin/textbooks/${textbook.id}/delete`} method="post">
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/20"
+                onClick={(e) => {
+                  if (!confirm("정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+                    e.preventDefault();
+                  }
+                }}
+              >
+                삭제
+              </button>
+            </form>
+          </div>
+        }
+      />
+
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* 기본 정보 */}
+        <Card>
+          <CardHeader
+            title="기본 정보"
+            right={<TextbookPublishedSelect textbookId={textbook.id} isPublished={textbook.isPublished} />}
+          />
+          <CardBody>
+            {savedMsg === "success" && (
+              <p className="mb-3 text-sm text-emerald-400">저장되었습니다.</p>
+            )}
+            {savedMsg === "error" && (
+              <p className="mb-3 text-sm text-red-400">저장 중 오류가 발생했습니다.</p>
+            )}
+
+            <form action="/api/admin/textbooks/update" method="post" className="space-y-4">
+              <input type="hidden" name="textbookId" value={textbook.id} />
+              
+              <Field label="교재 제목">
+                <Input
+                  name="title"
+                  defaultValue={textbook.title}
+                  required
+                  className="bg-transparent"
+                />
+              </Field>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="아임웹 상품 코드">
+                  <Input
+                    name="imwebProdCode"
+                    defaultValue={textbook.imwebProdCode ?? ""}
+                    placeholder="미설정 시 전체 공개"
+                    className="bg-transparent"
+                  />
+                </Field>
+                <Field label="이용 기간 (일)">
+                  <Input
+                    name="entitlementDays"
+                    type="number"
+                    min={1}
+                    max={3650}
+                    defaultValue={textbook.entitlementDays}
+                    className="bg-transparent"
+                  />
+                </Field>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <Button type="submit" variant="primary">
+                  저장
+                </Button>
+                <HelpTip text="상품 코드를 설정하면 구매자만 다운로드할 수 있습니다." />
+              </div>
+            </form>
+
+            {/* 파일 정보 */}
+            <div className="mt-6 pt-4 border-t border-white/10">
+              <h4 className="text-sm font-medium text-white/60 mb-3">파일 정보</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-white/50">원본 파일명</span>
+                  <span className="text-white/80">{textbook.originalName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-white/50">파일 크기</span>
+                  <span className="text-white/80">{formatBytes(textbook.sizeBytes)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-white/50">등록일</span>
+                  <span className="text-white/80">{new Date(textbook.createdAt).toLocaleDateString()}</span>
+                </div>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* 썸네일 및 다운로드 */}
+        <Card>
+          <CardHeader title="썸네일 및 다운로드" />
+          <CardBody>
+            <div className="flex items-start gap-4">
+              {textbook.thumbnailUrl ? (
+                <div className="shrink-0 w-24 h-32 rounded-lg overflow-hidden border border-white/10 bg-white/5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={textbook.thumbnailUrl}
+                    alt="썸네일"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="shrink-0 w-24 h-32 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
+                  <span className="text-white/30 text-xs">미등록</span>
+                </div>
+              )}
+              
+              <div className="flex-1 space-y-3">
+                <TextbookThumbnailGenerator textbookId={textbook.id} hasThumbnail={!!textbook.thumbnailUrl} />
+                
+                <a
+                  href={`/api/admin/textbooks/${textbook.id}/download`}
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/10"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  다운로드
+                </a>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* 수강생 목록 */}
+        <Card className="lg:col-span-2">
+          <CardHeader
+            title="이용자 목록"
+            description="이 교재에 대한 권한이 있는 사용자 목록입니다."
+            right={<Badge tone={textbook.entitlements.length ? "neutral" : "muted"}>{textbook.entitlements.length}명</Badge>}
+          />
+          <CardBody>
+            {/* 이용자 추가 폼 */}
+            {entitleMsg === "success" && (
+              <p className="mb-3 text-sm text-emerald-400">이용자가 등록되었습니다.</p>
+            )}
+            {entitleMsg === "removed" && (
+              <p className="mb-3 text-sm text-white/70">이용자가 삭제되었습니다.</p>
+            )}
+            {entitleMsg === "invalid" && (
+              <p className="mb-3 text-sm text-red-400">올바른 이메일 주소를 입력해주세요.</p>
+            )}
+            {entitleMsg === "error" && (
+              <p className="mb-3 text-sm text-red-400">오류가 발생했습니다.</p>
+            )}
+
+            <form action="/api/admin/textbook-entitlements/add" method="post" className="mb-5">
+              <input type="hidden" name="textbookId" value={textbook.id} />
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 max-w-md">
+                  <input
+                    name="email"
+                    type="email"
+                    required
+                    placeholder="이메일 주소 입력 후 Enter"
+                    className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 pr-20 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                  />
+                  <button
+                    type="submit"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white/90 transition-colors hover:bg-white/15"
+                  >
+                    추가
+                  </button>
+                </div>
+                <HelpTip text={`이용 기간: ${textbook.entitlementDays}일`} />
+              </div>
+            </form>
+
+            {textbook.entitlements.length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-left text-white/60">
+                    <tr className="border-b border-white/10">
+                      <th className="py-3 pr-3">이메일</th>
+                      <th className="py-3 pr-3">상태</th>
+                      <th className="py-3 pr-3">이용기간</th>
+                      <th className="py-3 pr-3">등록일</th>
+                      <th className="py-3 pr-3 text-right" aria-label="액션"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {textbook.entitlements.map((e) => (
+                      <tr key={e.id} className="border-b border-white/10">
+                        <td className="py-3 pr-3">
+                          <div className="truncate font-medium text-white">{e.user.email}</div>
+                        </td>
+                        <td className="py-3 pr-3">
+                          <Badge tone={e.status === "ACTIVE" ? "success" : "muted"}>{e.status}</Badge>
+                        </td>
+                        <td className="py-3 pr-3 text-white/70">
+                          {fmtShortDate(e.startAt)}~{fmtShortDate(e.endAt)}
+                        </td>
+                        <td className="py-3 pr-3 text-white/60">{fmtShortDate(e.createdAt)}</td>
+                        <td className="py-3 pr-3">
+                          <form action="/api/admin/textbook-entitlements/remove" method="post" className="flex justify-end">
+                            <input type="hidden" name="entitlementId" value={e.id} />
+                            <button
+                              type="submit"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                              title="삭제"
+                              onClick={(ev) => {
+                                if (!confirm("정말 삭제하시겠습니까?")) {
+                                  ev.preventDefault();
+                                }
+                              }}
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-white/60">
+                {textbook.imwebProdCode ? "등록된 이용자가 없습니다." : "상품 코드가 설정되지 않아 모든 사용자가 이용할 수 있습니다."}
+              </p>
+            )}
+          </CardBody>
+        </Card>
+      </div>
+    </AppShell>
+  );
+}
+

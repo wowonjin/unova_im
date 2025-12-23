@@ -13,7 +13,7 @@ export default async function AdminCoursePage({
   searchParams,
 }: {
   params: Promise<{ courseId: string }>;
-  searchParams?: Promise<{ tab?: string; imweb?: string; thumb?: string }>;
+  searchParams?: Promise<{ tab?: string; imweb?: string; thumb?: string; enroll?: string }>;
 }) {
   const teacher = await requireAdminUser();
   const { courseId } = await params;
@@ -25,6 +25,7 @@ export default async function AdminCoursePage({
     | "settings";
   const imwebMsg = sp.imweb || null;
   const thumbMsg = sp.thumb || null;
+  const enrollMsg = sp.enroll || null;
 
   const course = await prisma.course.findUnique({
     where: { id: courseId, ownerId: teacher.id },
@@ -150,6 +151,43 @@ export default async function AdminCoursePage({
               right={<Badge tone={enrollments.length ? "neutral" : "muted"}>{enrollments.length}명</Badge>}
             />
             <CardBody>
+              {/* 등록 결과 메시지 */}
+              {enrollMsg === "success" && (
+                <p className="mb-3 text-sm text-emerald-400">수강생이 등록되었습니다.</p>
+              )}
+              {enrollMsg === "removed" && (
+                <p className="mb-3 text-sm text-white/70">수강생이 삭제되었습니다.</p>
+              )}
+              {enrollMsg === "invalid" && (
+                <p className="mb-3 text-sm text-red-400">올바른 이메일 주소를 입력해주세요.</p>
+              )}
+              {enrollMsg === "error" && (
+                <p className="mb-3 text-sm text-red-400">오류가 발생했습니다. 잠시 후 다시 시도해주세요.</p>
+              )}
+
+              {/* 수강생 추가 폼 */}
+              <form action="/api/admin/enrollments/add" method="post" className="mb-5">
+                <input type="hidden" name="courseId" value={course.id} />
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1 max-w-md">
+                    <input
+                      name="email"
+                      type="email"
+                      required
+                      placeholder="이메일 주소 입력 후 Enter"
+                      className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 pr-20 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                    />
+                    <button
+                      type="submit"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white/90 transition-colors hover:bg-white/15"
+                    >
+                      추가
+                    </button>
+                  </div>
+                  <HelpTip text={`수강 기간: ${course.enrollmentDays}일`} />
+                </div>
+              </form>
+
               {enrollments.length ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -161,6 +199,7 @@ export default async function AdminCoursePage({
                         <th className="py-3 pr-3">등록일</th>
                         <th className="py-3 pr-3">최근 학습</th>
                         <th className="py-3 pr-3 text-right">평균 진도</th>
+                        <th className="py-3 pr-3 text-right" aria-label="액션"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -181,6 +220,25 @@ export default async function AdminCoursePage({
                             <td className="py-3 pr-3 text-white/60">{fmtShortDate(e.createdAt)}</td>
                             <td className="py-3 pr-3 text-white/60">{s.lastAt ? fmtShortDate(s.lastAt) : "-"}</td>
                             <td className="py-3 pr-3 text-right text-white/80">{avg}%</td>
+                            <td className="py-3 pr-3">
+                              <form action="/api/admin/enrollments/remove" method="post" className="flex justify-end">
+                                <input type="hidden" name="enrollmentId" value={e.id} />
+                                <button
+                                  type="submit"
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                                  title="삭제"
+                                  onClick={(ev) => {
+                                    if (!confirm("정말 삭제하시겠습니까?")) {
+                                      ev.preventDefault();
+                                    }
+                                  }}
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </form>
+                            </td>
                           </tr>
                         );
                       })}

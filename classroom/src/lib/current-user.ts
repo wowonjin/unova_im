@@ -62,7 +62,7 @@ export async function getCurrentUserOrGuest(): Promise<CurrentUser> {
   const sessionUser = await getSessionUser();
   if (sessionUser) {
     return sessionUserToCurrentUser(sessionUser);
-  }
+}
   // 게스트 (로그인하지 않은 상태)
   return {
     id: "",

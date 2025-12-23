@@ -1,9 +1,8 @@
 import AppShell from "@/app/_components/AppShell";
 import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
-import { Badge, Button, Card, CardBody, CardHeader, Field, HelpTip, Input, PageHeader } from "@/app/_components/ui";
-import TextbookPublishedSelect from "@/app/_components/TextbookPublishedSelect";
-import TextbookThumbnailGenerator from "@/app/_components/TextbookThumbnailGenerator";
+import { Button, Card, CardBody, CardHeader, Field, Input, PageHeader } from "@/app/_components/ui";
+import Link from "next/link";
 
 function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
@@ -85,19 +84,27 @@ export default async function AdminTextbooksPage() {
         {textbooks.length ? (
           <div className="grid grid-cols-1 gap-3">
             {textbooks.map((t) => (
-              <div
+              <Link
                 key={t.id}
-                className="group rounded-xl border border-white/10 bg-[#212123] p-4 transition-colors hover:bg-white/[0.04]"
+                href={`/admin/textbook/${t.id}`}
+                className="group block rounded-xl border border-white/10 bg-[#212123] p-4 transition-colors hover:bg-white/[0.04] hover:border-white/20"
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   {/* 왼쪽: 교재 정보 */}
                   <div className="flex items-start gap-4 flex-1 min-w-0">
-                    {/* PDF 아이콘 */}
-                    <div className="shrink-0 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/20">
-                      <svg className="w-6 h-6 text-red-400" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM8.5 13h1.25v3.75H8.5V13zm2.5 0h1.25v3.75H11V13zm2.5 0h1.25v1.5c0 .414.336.75.75.75h.75v1.5h-.75A2.252 2.252 0 0 1 13.5 14.5V13z"/>
-                      </svg>
-                    </div>
+                    {/* PDF 아이콘 또는 썸네일 */}
+                    {t.thumbnailUrl ? (
+                      <div className="shrink-0 w-12 h-16 rounded-lg overflow-hidden border border-white/10 bg-white/5">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={t.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="shrink-0 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/20">
+                        <svg className="w-6 h-6 text-red-400" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM8.5 13h1.25v3.75H8.5V13zm2.5 0h1.25v3.75H11V13zm2.5 0h1.25v1.5c0 .414.336.75.75.75h.75v1.5h-.75A2.252 2.252 0 0 1 13.5 14.5V13z"/>
+                        </svg>
+                      </div>
+                    )}
 
                     {/* 제목 및 메타 정보 */}
                     <div className="flex-1 min-w-0">
@@ -110,71 +117,29 @@ export default async function AdminTextbooksPage() {
                         <span>{new Date(t.createdAt).toLocaleDateString()}</span>
                       </div>
 
-                      {/* 상품 코드 및 이용 기간 입력 */}
-                      <form className="mt-3" action="/api/admin/textbooks/update-imweb" method="post">
-                        <input type="hidden" name="textbookId" value={t.id} />
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <div className="relative flex-1 max-w-[180px]">
-                            <input
-                              name="imwebProdCode"
-                              defaultValue={t.imwebProdCode ?? ""}
-                              placeholder="아임웹 상품 코드"
-                              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white placeholder:text-white/30 focus:border-white/20 focus:outline-none"
-                            />
-                          </div>
-                          <div className="relative w-24">
-                            <input
-                              name="entitlementDays"
-                              type="number"
-                              min={1}
-                              max={3650}
-                              defaultValue={t.entitlementDays}
-                              placeholder="기간(일)"
-                              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white placeholder:text-white/30 focus:border-white/20 focus:outline-none"
-                            />
-                          </div>
-                          <button
-                            type="submit"
-                            className="shrink-0 rounded-lg bg-white/5 px-2.5 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-                          >
-                            저장
-                          </button>
-                          <HelpTip text="상품 코드를 설정하면 구매자만 다운로드할 수 있습니다. 기간은 구매 시 부여되는 이용 기간(일)입니다." />
-                        </div>
-                      </form>
+                      {/* 상품 코드 표시 */}
+                      <div className="mt-2 flex items-center gap-2 text-xs">
+                        {t.imwebProdCode ? (
+                          <span className="rounded-md bg-white/10 px-2 py-0.5 text-white/70">코드: {t.imwebProdCode}</span>
+                        ) : (
+                          <span className="rounded-md bg-white/5 px-2 py-0.5 text-white/40">전체 공개</span>
+                        )}
+                        <span className="text-white/40">{t.entitlementDays}일</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* 오른쪽: 상태 및 액션 */}
+                  {/* 오른쪽: 상태 */}
                   <div className="flex items-center gap-3 lg:shrink-0">
-                    <TextbookThumbnailGenerator textbookId={t.id} hasThumbnail={!!t.thumbnailUrl} />
-                    <TextbookPublishedSelect textbookId={t.id} isPublished={t.isPublished} />
-                    
-                    <div className="flex items-center gap-1">
-                      <a
-                        href={`/api/admin/textbooks/${t.id}/download`}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white"
-                        title="다운로드"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                      </a>
-                      <form action={`/api/admin/textbooks/${t.id}/delete`} method="post">
-                        <button
-                          type="submit"
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-red-500/10 hover:text-red-400"
-                          title="삭제"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </form>
-                    </div>
+                    <span className={`rounded-md px-2.5 py-1 text-xs font-medium ${
+                      t.isPublished ? "bg-emerald-500/20 text-emerald-300" : "bg-white/10 text-white/60"
+                    }`}>
+                      {t.isPublished ? "공개" : "비공개"}
+                    </span>
+                    <span className="text-white/40 text-sm">→</span>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         ) : (
