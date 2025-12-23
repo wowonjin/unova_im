@@ -183,25 +183,23 @@ export default async function DashboardPage({
                   className="material-symbols-outlined text-white/50"
                   style={{ fontSize: "32px" }}
                 >
-                  school
+                  login
                 </span>
               </div>
               <div>
                 <p className="text-lg font-semibold text-white">로그인이 필요합니다</p>
                 <p className="mt-1 text-sm text-white/60">
-                  유노바 사이트에서 로그인하시면 구매하신 강좌를 수강하실 수 있습니다.
+                  이메일을 입력하여 로그인하세요.
                 </p>
               </div>
               <a
-                href="https://unova.co.kr"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/login"
                 className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-white/90"
               >
                 <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                  open_in_new
+                  login
                 </span>
-                유노바 사이트로 이동
+                로그인
               </a>
             </div>
           ) : (
@@ -217,20 +215,9 @@ export default async function DashboardPage({
               <div>
                 <p className="text-lg font-semibold text-white">수강 중인 강좌가 없습니다</p>
                 <p className="mt-1 text-sm text-white/60">
-                  유노바 사이트에서 강좌를 구매하시면 이곳에서 수강하실 수 있습니다.
+                  등록된 강좌가 없습니다.
                 </p>
               </div>
-              <a
-                href="https://unova.co.kr"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/10"
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                  shopping_cart
-                </span>
-                강좌 둘러보기
-              </a>
             </div>
           )}
         </div>
