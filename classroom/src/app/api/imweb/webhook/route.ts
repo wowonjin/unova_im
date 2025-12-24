@@ -84,11 +84,20 @@ export async function POST(req: Request) {
     dataObj?.order_id,
     payloadObj?.order_id
   );
-  const memberCode = pickString(dataObj?.member_code, payloadObj?.member_code);
+  // member_code 또는 memberUid (테스트 페이로드) 지원
+  const memberCode = pickString(
+    dataObj?.member_code, 
+    payloadObj?.member_code,
+    dataObj?.memberCode,
+    payloadObj?.memberCode
+  );
+  // memberUid는 이메일일 수 있음 (테스트 페이로드용)
+  const memberUid = pickString(dataObj?.memberUid, payloadObj?.memberUid);
 
   console.log("[Webhook] 이벤트 타입:", eventType);
   console.log("[Webhook] 주문번호:", orderNo);
   console.log("[Webhook] 회원코드:", memberCode);
+  console.log("[Webhook] 회원UID:", memberUid);
 
   const orderEvent = await prisma.orderEvent.create({
     data: {
@@ -102,14 +111,17 @@ export async function POST(req: Request) {
   console.log("[Webhook] DB에 이벤트 저장됨:", orderEvent.id);
 
   // 이벤트 타입에 따라 처리 분기
+  // 이벤트 타입으로 회원 이벤트 판단하거나, memberUid가 있으면 회원 테스트 페이로드로 간주
   const isMemberEvent = eventType?.toLowerCase().includes("member") || 
                         eventType?.includes("회원") ||
-                        ["member_created", "member_updated", "member_deleted"].includes(eventType?.toLowerCase() ?? "");
+                        ["member_created", "member_updated", "member_deleted"].includes(eventType?.toLowerCase() ?? "") ||
+                        (memberUid && !orderNo); // memberUid만 있고 주문번호 없으면 회원 이벤트로 간주
   console.log("[Webhook] 회원 이벤트 여부:", isMemberEvent);
   
-  if (isMemberEvent && memberCode) {
+  if (isMemberEvent && (memberCode || memberUid)) {
     // 회원 생성/수정 이벤트 → 회원 정보 동기화
-    console.log("[Webhook] 회원 이벤트 처리 시작:", memberCode);
+    const identifier = memberCode || memberUid;
+    console.log("[Webhook] 회원 이벤트 처리 시작:", identifier);
     try {
       // 회원 삭제 이벤트는 별도 처리 없이 로그만 남김
       if (eventType?.toLowerCase().includes("delete") || eventType?.includes("삭제")) {
@@ -120,7 +132,18 @@ export async function POST(req: Request) {
         });
       } else {
         console.log("[Webhook] 회원 정보 동기화 시작");
-        await syncImwebMemberToUser(memberCode);
+        // memberUid가 이메일 형식이면 직접 이메일로 사용자 생성
+        if (memberUid && memberUid.includes("@")) {
+          console.log("[Webhook] 테스트 페이로드 - 이메일로 직접 사용자 생성:", memberUid);
+          await prisma.user.upsert({
+            where: { email: memberUid.toLowerCase() },
+            update: { lastLoginAt: new Date() },
+            create: { email: memberUid.toLowerCase() },
+          });
+          console.log("[Webhook] 테스트 사용자 생성/업데이트 완료");
+        } else if (memberCode) {
+          await syncImwebMemberToUser(memberCode);
+        }
         console.log("[Webhook] 회원 정보 동기화 완료");
         await prisma.orderEvent.update({ 
           where: { id: orderEvent.id }, 
