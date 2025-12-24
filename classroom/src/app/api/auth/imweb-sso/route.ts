@@ -2,76 +2,128 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
-import { imwebFetchMember } from "@/lib/imweb";
 
 export const runtime = "nodejs";
 
 /**
  * 요청에서 올바른 Base URL을 추출
- * Render 등 프록시 뒤에서도 정확한 외부 URL 반환
  */
-function getBaseUrl(req: Request): string {
-  // 1. 환경변수에서 Base URL 확인 (가장 신뢰할 수 있음)
+export function getBaseUrl(req: Request): string {
   if (process.env.NEXT_PUBLIC_BASE_URL) {
     return process.env.NEXT_PUBLIC_BASE_URL;
   }
-  
-  // 2. x-forwarded-host 헤더 확인 (프록시/로드밸런서)
   const forwardedHost = req.headers.get("x-forwarded-host");
   const forwardedProto = req.headers.get("x-forwarded-proto") || "https";
   if (forwardedHost) {
     return `${forwardedProto}://${forwardedHost}`;
   }
-  
-  // 3. host 헤더 확인
   const host = req.headers.get("host");
   if (host && !host.includes("localhost")) {
     return `https://${host}`;
   }
-  
-  // 4. 폴백: 요청 URL 사용
   const url = new URL(req.url);
   return url.origin;
 }
 
 /**
+ * 간단한 토큰 검증 함수
+ * 토큰 형식: base64(email:timestamp:hash)
+ * hash = sha256(email + timestamp + secret).slice(0, 16)
+ */
+function verifySimpleToken(token: string, secret: string): { valid: boolean; email: string | null } {
+  try {
+    const decoded = Buffer.from(token, "base64").toString("utf-8");
+    const parts = decoded.split(":");
+    if (parts.length < 3) return { valid: false, email: null };
+    
+    const email = parts[0];
+    const timestamp = parseInt(parts[1], 10);
+    const hash = parts[2];
+    
+    // 10분 이내 토큰만 유효
+    const now = Math.floor(Date.now() / 1000);
+    if (isNaN(timestamp) || Math.abs(now - timestamp) > 600) {
+      return { valid: false, email: null };
+    }
+    
+    // 해시 검증
+    const expectedHash = crypto
+      .createHash("sha256")
+      .update(email + timestamp + secret)
+      .digest("hex")
+      .slice(0, 16);
+    
+    if (hash !== expectedHash) {
+      return { valid: false, email: null };
+    }
+    
+    return { valid: true, email };
+  } catch {
+    return { valid: false, email: null };
+  }
+}
+
+/**
  * 아임웹 SSO 로그인 엔드포인트
  * 
- * URL 형식:
- * /api/auth/imweb-sso?code={member_code}&ts={timestamp}&sig={signature}&name={name}&email={email}&img={profile_image_url}
- * 
- * 서명 검증:
- * signature = HMAC-SHA256(member_code:timestamp, IMWEB_SSO_SECRET)
+ * 간단한 방식: /api/auth/imweb-sso?token={base64_token}
+ * 기존 방식도 지원: /api/auth/imweb-sso?code={code}&ts={ts}&sig={sig}
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const baseUrl = getBaseUrl(req);
+  const secret = process.env.IMWEB_SSO_SECRET;
   
+  if (!secret) {
+    console.error("IMWEB_SSO_SECRET is not configured");
+    return NextResponse.redirect(new URL("/dashboard", baseUrl));
+  }
+
+  // 간단한 토큰 방식 체크
+  const simpleToken = url.searchParams.get("token");
+  if (simpleToken) {
+    const { valid, email } = verifySimpleToken(simpleToken, secret);
+    
+    if (!valid || !email) {
+      console.log("[SSO] Invalid or expired token");
+      return NextResponse.redirect(new URL("/dashboard", baseUrl));
+    }
+    
+    // 이메일로 사용자 찾기
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+    
+    if (!user) {
+      console.log("[SSO] User not found:", email);
+      return NextResponse.redirect(new URL("/dashboard", baseUrl));
+    }
+    
+    // 세션 생성
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+    await createSession(user.id);
+    
+    console.log("[SSO] Login successful:", email);
+    return NextResponse.redirect(new URL("/dashboard", baseUrl));
+  }
+
+  // 기존 HMAC 방식 (하위 호환)
   const memberCode = url.searchParams.get("code");
   const timestamp = url.searchParams.get("ts");
   const signature = url.searchParams.get("sig");
-  const name = url.searchParams.get("name");
   const email = url.searchParams.get("email");
-  const profileImageUrl = url.searchParams.get("img");
-  const redirectTo = url.searchParams.get("redirect") || "/dashboard";
 
-  // 1. 필수 파라미터 확인
   if (!memberCode || !timestamp || !signature) {
-    return NextResponse.redirect(new URL("/login?error=missing_params", baseUrl));
+    return NextResponse.redirect(new URL("/dashboard", baseUrl));
   }
 
-  // 2. 타임스탬프 유효성 검사 (5분 이내)
   const now = Math.floor(Date.now() / 1000);
   const ts = parseInt(timestamp, 10);
   if (isNaN(ts) || Math.abs(now - ts) > 300) {
-    return NextResponse.redirect(new URL("/login?error=expired", baseUrl));
-  }
-
-  // 3. 서명 검증
-  const secret = process.env.IMWEB_SSO_SECRET;
-  if (!secret) {
-    console.error("IMWEB_SSO_SECRET is not configured");
-    return NextResponse.redirect(new URL("/login?error=config", baseUrl));
+    return NextResponse.redirect(new URL("/dashboard", baseUrl));
   }
 
   const expectedSig = crypto
@@ -80,94 +132,32 @@ export async function GET(req: Request) {
     .digest("hex");
 
   if (signature !== expectedSig) {
-    return NextResponse.redirect(new URL("/login?error=invalid_signature", baseUrl));
+    return NextResponse.redirect(new URL("/dashboard", baseUrl));
   }
 
-  // 4. 회원 조회 또는 생성
-  // code가 이메일 형식인지 확인
   const isEmailCode = memberCode.includes("@");
   const lookupEmail = isEmailCode ? memberCode.toLowerCase() : (email?.toLowerCase() || null);
 
   let user = await prisma.user.findFirst({
     where: isEmailCode
       ? { email: memberCode.toLowerCase() }
-      : { imwebMemberCode: memberCode },
+      : lookupEmail
+        ? { email: lookupEmail }
+        : { imwebMemberCode: memberCode },
   });
 
-  // 이메일로 검색 실패 시 imwebMemberCode로 재시도
-  if (!user && !isEmailCode) {
-    user = await prisma.user.findFirst({
-      where: { imwebMemberCode: memberCode },
-    });
-  }
-
-  // 이메일로도 못 찾으면 email 파라미터로 검색
   if (!user && lookupEmail) {
-    user = await prisma.user.findFirst({
-      where: { email: lookupEmail },
-    });
+    return NextResponse.redirect(new URL("/dashboard", baseUrl));
   }
 
-  if (!user) {
-    // 새 회원 생성
-    let fetchedEmail = lookupEmail;
-    let fetchedName = name;
-    let fetchedProfileImage = profileImageUrl;
-
-    // 이메일이 없고 회원코드로 아임웹 API 조회 시도
-    if (!fetchedEmail && !isEmailCode) {
-      try {
-        const memberData = await imwebFetchMember(memberCode);
-        const data = (memberData as { data?: Record<string, unknown> })?.data ?? memberData;
-        if (typeof data === "object" && data !== null) {
-          const d = data as Record<string, unknown>;
-          fetchedEmail = (d.email as string) || null;
-          fetchedName = (d.name as string) || (d.member_name as string) || (d.nickname as string) || null;
-          fetchedProfileImage = (d.profile_image as string) || (d.profile_img as string) || null;
-        }
-      } catch (e) {
-        console.error("Failed to fetch member from Imweb:", e);
-      }
-    }
-
-    if (!fetchedEmail) {
-      // 이메일을 얻을 수 없으면 임시 이메일 생성
-      fetchedEmail = `imweb_${memberCode}@unova.classroom`;
-    }
-
-    user = await prisma.user.create({
-      data: {
-        email: fetchedEmail.toLowerCase(),
-        imwebMemberCode: isEmailCode ? null : memberCode,
-        name: fetchedName || null,
-        profileImageUrl: fetchedProfileImage || null,
-        lastLoginAt: new Date(),
-      },
+  if (user) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
     });
-  } else {
-    // 기존 회원 정보 업데이트
-    const updateData: Record<string, unknown> = { lastLoginAt: new Date() };
-    if (name && !user.name) updateData.name = name;
-    if (lookupEmail && user.email.includes("@unova.classroom")) updateData.email = lookupEmail;
-    if (profileImageUrl && !user.profileImageUrl) updateData.profileImageUrl = profileImageUrl;
-    // 회원코드가 없으면 저장
-    if (!isEmailCode && memberCode && !user.imwebMemberCode) {
-      updateData.imwebMemberCode = memberCode;
-    }
-
-    if (Object.keys(updateData).length > 1) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: updateData,
-      });
-    }
+    await createSession(user.id);
   }
 
-  // 5. 세션 생성
-  await createSession(user.id);
-
-  // 6. 대시보드로 리다이렉트 (외부 URL 사용)
-  const redirectUrl = new URL(redirectTo, baseUrl);
-  return NextResponse.redirect(redirectUrl);
+  return NextResponse.redirect(new URL("/dashboard", baseUrl));
 }
 
