@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 type TokenCache = { token: string; fetchedAt: number };
 let tokenCache: TokenCache | null = null;
 
-const IMWEB_BASE = "http://api.imweb.me";
+const IMWEB_BASE = "https://api.imweb.me";
 
 function requiredEnv(name: string) {
   const v = process.env[name];
