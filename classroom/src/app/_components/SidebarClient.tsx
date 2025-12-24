@@ -247,17 +247,35 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
 
   const Profile = isLoggedIn ? (
     <div className="space-y-2">
-      {/* 이메일 클릭 시 로그아웃 버튼 표시 */}
+      {/* 프로필 클릭 시 로그아웃 버튼 표시 */}
       <button
         type="button"
         onClick={() => setShowLogout(!showLogout)}
         className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/5"
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold">
-          {initials(email)}
-        </div>
+        {/* 프로필 이미지 또는 이니셜 */}
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img 
+            src={avatarUrl} 
+            alt="프로필" 
+            className="h-8 w-8 shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold">
+            {initials(displayName || email)}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm text-white/80">{email}</p>
+          {/* 이름이 있으면 이름 표시, 아래에 이메일 */}
+          {displayName && displayName !== email.split("@")[0] ? (
+            <>
+              <p className="truncate text-sm font-medium text-white">{displayName}</p>
+              <p className="truncate text-xs text-white/50">{email}</p>
+            </>
+          ) : (
+            <p className="truncate text-sm text-white/80">{email}</p>
+          )}
         </div>
         <span
           className="material-symbols-outlined text-white/40"

@@ -100,6 +100,47 @@ function getArr(v: unknown): unknown[] | null {
   return Array.isArray(v) ? v : null;
 }
 
+/**
+ * 아임웹 회원 정보를 DB User에 동기화
+ * - 회원 생성/수정 웹훅 이벤트 발생 시 호출
+ * - 이름, 전화번호, 프로필 이미지 등을 저장
+ */
+export async function syncImwebMemberToUser(memberCode: string) {
+  const memberData = await imwebFetchMember(memberCode);
+  const memberObj = getObj(memberData);
+  const dataObj = getObj(memberObj?.data);
+  
+  // 다양한 응답 포맷 방어적 처리
+  const email = getStr(dataObj?.email) ?? getStr(memberObj?.email);
+  const name = getStr(dataObj?.name) ?? getStr(memberObj?.name);
+  const phone = getStr(dataObj?.call) ?? getStr(dataObj?.phone) ?? getStr(memberObj?.call);
+  const profileImg = getStr(dataObj?.profile_img) ?? getStr(memberObj?.profile_img);
+  
+  if (!email) {
+    throw new Error(`Member missing email: ${JSON.stringify(memberData)}`);
+  }
+  
+  // User upsert: 이메일 기준으로 생성 또는 업데이트
+  const user = await prisma.user.upsert({
+    where: { email: email.toLowerCase() },
+    update: {
+      imwebMemberCode: memberCode,
+      name: name || undefined,
+      phone: phone || undefined,
+      profileImageUrl: profileImg || undefined,
+    },
+    create: {
+      email: email.toLowerCase(),
+      imwebMemberCode: memberCode,
+      name: name || null,
+      phone: phone || null,
+      profileImageUrl: profileImg || null,
+    },
+  });
+  
+  return { ok: true, userId: user.id, email: user.email, name: user.name } as const;
+}
+
 export async function syncImwebOrderToEnrollments(orderNo: string) {
   const order = await imwebFetchOrder(orderNo);
   const orderObj = getObj(order);

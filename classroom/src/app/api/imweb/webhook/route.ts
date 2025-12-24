@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { syncImwebOrderToEnrollments } from "@/lib/imweb";
+import { syncImwebOrderToEnrollments, syncImwebMemberToUser } from "@/lib/imweb";
 import { getImwebSignatureConfig, verifyHmacSignature } from "@/lib/webhook-signature";
 
 export const runtime = "nodejs";
@@ -84,8 +84,36 @@ export async function POST(req: Request) {
     },
   });
 
-  // 결제완료 등 특정 이벤트만 처리(환경변수로 allow list 가능)
-  if (shouldProcessEvent(eventType) && orderNo) {
+  // 이벤트 타입에 따라 처리 분기
+  const isMemberEvent = eventType?.toLowerCase().includes("member") || 
+                        eventType?.includes("회원") ||
+                        ["member_created", "member_updated", "member_deleted"].includes(eventType?.toLowerCase() ?? "");
+  
+  if (isMemberEvent && memberCode) {
+    // 회원 생성/수정 이벤트 → 회원 정보 동기화
+    try {
+      // 회원 삭제 이벤트는 별도 처리 없이 로그만 남김
+      if (eventType?.toLowerCase().includes("delete") || eventType?.includes("삭제")) {
+        await prisma.orderEvent.update({ 
+          where: { id: orderEvent.id }, 
+          data: { processedAt: new Date() } 
+        });
+      } else {
+        await syncImwebMemberToUser(memberCode);
+        await prisma.orderEvent.update({ 
+          where: { id: orderEvent.id }, 
+          data: { processedAt: new Date() } 
+        });
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      await prisma.orderEvent.update({
+        where: { id: orderEvent.id },
+        data: { processingError: msg },
+      });
+    }
+  } else if (shouldProcessEvent(eventType) && orderNo) {
+    // 주문 이벤트 → 수강생 등록
     try {
       await syncImwebOrderToEnrollments(orderNo);
       await prisma.orderEvent.update({ where: { id: orderEvent.id }, data: { processedAt: new Date() } });
