@@ -3,6 +3,20 @@ import crypto from "crypto";
 
 export const runtime = "nodejs";
 
+// CORS 헤더 설정
+function corsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+}
+
+// OPTIONS 요청 처리 (CORS preflight)
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 200, headers: corsHeaders() });
+}
+
 /**
  * SSO 토큰 생성 API
  * 
@@ -19,11 +33,17 @@ export async function GET(req: Request) {
   
   // 시크릿 검증
   if (!secret || !providedSecret || providedSecret !== secret) {
-    return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+    return NextResponse.json(
+      { error: "UNAUTHORIZED" }, 
+      { status: 401, headers: corsHeaders() }
+    );
   }
   
   if (!email || !email.includes("@")) {
-    return NextResponse.json({ error: "INVALID_EMAIL" }, { status: 400 });
+    return NextResponse.json(
+      { error: "INVALID_EMAIL" }, 
+      { status: 400, headers: corsHeaders() }
+    );
   }
   
   // 토큰 생성: base64(email:timestamp:hash)
@@ -40,10 +60,9 @@ export async function GET(req: Request) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://unova-im.onrender.com";
   const ssoUrl = `${baseUrl}/api/auth/imweb-sso?token=${encodeURIComponent(token)}`;
   
-  return NextResponse.json({ 
-    token, 
-    ssoUrl,
-    expiresIn: 600 // 10분
-  });
+  return NextResponse.json(
+    { token, ssoUrl, expiresIn: 600 },
+    { headers: corsHeaders() }
+  );
 }
 
