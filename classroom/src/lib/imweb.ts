@@ -102,33 +102,93 @@ export async function imwebSearchMemberByEmail(email: string): Promise<{
 } | null> {
   try {
     // 아임웹 회원 목록 조회 (이메일로 검색)
-    // 문서: GET /v2/member?search=email 형태로 검색 가능
-    const response = await imwebGet(`/v2/member?search=${encodeURIComponent(email)}`);
-    const responseObj = getObj(response);
-    const dataObj = getObj(responseObj?.data);
-    const list = getArr(dataObj?.list) ?? getArr(responseObj?.list) ?? [];
+    // 다양한 검색 파라미터 시도: search, email, keyword
+    const searchParams = [
+      `search=${encodeURIComponent(email)}`,
+      `email=${encodeURIComponent(email)}`,
+      `keyword=${encodeURIComponent(email)}`,
+    ];
     
-    // 이메일이 정확히 일치하는 회원 찾기
-    for (const item of list) {
-      const memberObj = getObj(item);
-      const memberEmail = getStr(memberObj?.email);
-      if (memberEmail && memberEmail.toLowerCase() === email.toLowerCase()) {
-        const memberCode = getStr(memberObj?.member_code);
-        if (!memberCode) continue;
+    for (const param of searchParams) {
+      try {
+        const response = await imwebGet(`/v2/member?${param}`);
+        console.log(`[Imweb] Member search with ${param}:`, JSON.stringify(response).slice(0, 500));
         
-        return {
-          memberCode,
-          email: memberEmail,
-          name: getStr(memberObj?.name),
-          phone: getStr(memberObj?.call) ?? getStr(memberObj?.phone),
-          profileImg: getStr(memberObj?.profile_img),
-        };
+        const responseObj = getObj(response);
+        const dataObj = getObj(responseObj?.data);
+        const list = getArr(dataObj?.list) ?? getArr(responseObj?.list) ?? [];
+        
+        // 이메일이 정확히 일치하는 회원 찾기
+        for (const item of list) {
+          const memberObj = getObj(item);
+          const memberEmail = getStr(memberObj?.email);
+          if (memberEmail && memberEmail.toLowerCase() === email.toLowerCase()) {
+            const memberCode = getStr(memberObj?.member_code);
+            if (!memberCode) continue;
+            
+            console.log(`[Imweb] Found member: ${memberCode} for email: ${email}`);
+            return {
+              memberCode,
+              email: memberEmail,
+              name: getStr(memberObj?.name),
+              phone: getStr(memberObj?.call) ?? getStr(memberObj?.phone),
+              profileImg: getStr(memberObj?.profile_img),
+            };
+          }
+        }
+      } catch (searchError) {
+        console.log(`[Imweb] Search with ${param} failed:`, searchError);
+        continue;
       }
     }
     
+    // 검색으로 못 찾으면, 전체 회원 목록에서 찾기 시도 (페이지네이션 처리)
+    console.log(`[Imweb] Trying full member list for: ${email}`);
+    try {
+      let page = 1;
+      const limit = 100;
+      let hasMore = true;
+      
+      while (hasMore && page <= 10) { // 최대 10페이지 (1000명)까지만
+        const response = await imwebGet(`/v2/member?page=${page}&limit=${limit}`);
+        const responseObj = getObj(response);
+        const dataObj = getObj(responseObj?.data);
+        const list = getArr(dataObj?.list) ?? getArr(responseObj?.list) ?? [];
+        
+        if (list.length === 0) {
+          hasMore = false;
+          break;
+        }
+        
+        for (const item of list) {
+          const memberObj = getObj(item);
+          const memberEmail = getStr(memberObj?.email);
+          if (memberEmail && memberEmail.toLowerCase() === email.toLowerCase()) {
+            const memberCode = getStr(memberObj?.member_code);
+            if (!memberCode) continue;
+            
+            console.log(`[Imweb] Found member in full list: ${memberCode} for email: ${email}`);
+            return {
+              memberCode,
+              email: memberEmail,
+              name: getStr(memberObj?.name),
+              phone: getStr(memberObj?.call) ?? getStr(memberObj?.phone),
+              profileImg: getStr(memberObj?.profile_img),
+            };
+          }
+        }
+        
+        page++;
+        if (list.length < limit) hasMore = false;
+      }
+    } catch (listError) {
+      console.error("[Imweb] Full member list error:", listError);
+    }
+    
+    console.log(`[Imweb] Member not found for email: ${email}`);
     return null;
   } catch (error) {
-    console.error("Imweb member search error:", error);
+    console.error("[Imweb] Member search error:", error);
     return null;
   }
 }
