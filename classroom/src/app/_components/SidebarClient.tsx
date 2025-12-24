@@ -247,6 +247,7 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
     </nav>
   );
 
+  // 로그인하지 않은 경우 프로필 섹션 숨김
   const Profile = isLoggedIn ? (
     <div className="space-y-2">
       {/* 프로필 클릭 시 로그아웃 버튼 표시 */}
@@ -303,36 +304,7 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
         </a>
       )}
     </div>
-  ) : (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-          <span
-            className="material-symbols-outlined text-white/50"
-            style={{ fontSize: "20px" }}
-          >
-            person
-          </span>
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm text-white/60">로그인하지 않음</p>
-        </div>
-      </div>
-      
-      <Link
-        href="/login"
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-black transition-colors hover:bg-white/90"
-      >
-        <span
-          className="material-symbols-outlined"
-          style={{ fontSize: "16px" }}
-        >
-          login
-        </span>
-        로그인
-      </Link>
-    </div>
-  );
+  ) : null;
 
   return (
     <>
