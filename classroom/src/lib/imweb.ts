@@ -88,6 +88,51 @@ export async function imwebFetchMember(memberCode: string) {
   return await imwebGet(`/v2/member/${encodeURIComponent(memberCode)}`);
 }
 
+/**
+ * 이메일로 아임웹 회원 검색
+ * - 이메일이 일치하는 회원을 찾아 회원 정보 반환
+ * - 없으면 null 반환
+ */
+export async function imwebSearchMemberByEmail(email: string): Promise<{
+  memberCode: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  profileImg: string | null;
+} | null> {
+  try {
+    // 아임웹 회원 목록 조회 (이메일로 검색)
+    // 문서: GET /v2/member?search=email 형태로 검색 가능
+    const response = await imwebGet(`/v2/member?search=${encodeURIComponent(email)}`);
+    const responseObj = getObj(response);
+    const dataObj = getObj(responseObj?.data);
+    const list = getArr(dataObj?.list) ?? getArr(responseObj?.list) ?? [];
+    
+    // 이메일이 정확히 일치하는 회원 찾기
+    for (const item of list) {
+      const memberObj = getObj(item);
+      const memberEmail = getStr(memberObj?.email);
+      if (memberEmail && memberEmail.toLowerCase() === email.toLowerCase()) {
+        const memberCode = getStr(memberObj?.member_code);
+        if (!memberCode) continue;
+        
+        return {
+          memberCode,
+          email: memberEmail,
+          name: getStr(memberObj?.name),
+          phone: getStr(memberObj?.call) ?? getStr(memberObj?.phone),
+          profileImg: getStr(memberObj?.profile_img),
+        };
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("Imweb member search error:", error);
+    return null;
+  }
+}
+
 function getObj(v: unknown): Record<string, unknown> | null {
   return v && typeof v === "object" ? (v as Record<string, unknown>) : null;
 }

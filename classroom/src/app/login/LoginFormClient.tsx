@@ -30,6 +30,7 @@ export default function LoginFormClient({
       if (!res.ok) {
         const errorMessages: Record<string, string> = {
           INVALID_EMAIL: "올바른 이메일 주소를 입력해주세요.",
+          NOT_REGISTERED: "등록되지 않은 회원입니다. 유노바 홈페이지에서 먼저 회원가입해주세요.",
           SERVER_ERROR: "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
         };
         setError(errorMessages[data.error] || "오류가 발생했습니다.");
