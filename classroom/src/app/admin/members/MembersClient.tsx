@@ -25,6 +25,75 @@ type Props = {
   query: string;
 };
 
+// 인라인 편집 컴포넌트
+function EditableField({
+  value,
+  placeholder,
+  onSave,
+}: {
+  value: string | null;
+  placeholder: string;
+  onSave: (newValue: string) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [inputValue, setInputValue] = useState(value || "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (inputValue === (value || "")) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave(inputValue);
+      setEditing(false);
+    } catch {
+      alert("저장 중 오류가 발생했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSave();
+    } else if (e.key === "Escape") {
+      setInputValue(value || "");
+      setEditing(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <input
+        type="text"
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onBlur={handleSave}
+        onKeyDown={handleKeyDown}
+        disabled={saving}
+        autoFocus
+        placeholder={placeholder}
+        className="w-full rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-sm text-white outline-none focus:border-white/40"
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="group flex w-full items-center gap-1 text-left text-sm text-white/70 hover:text-white"
+    >
+      <span className={value ? "" : "italic text-white/40"}>{value || placeholder}</span>
+      <span className="material-symbols-outlined opacity-0 transition-opacity group-hover:opacity-100" style={{ fontSize: "14px" }}>
+        edit
+      </span>
+    </button>
+  );
+}
+
 function formatDate(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString("ko-KR", {
@@ -56,17 +125,58 @@ function initials(nameOrEmail: string) {
 }
 
 export default function MembersClient({
-  members,
+  members: initialMembers,
   totalCount,
   currentPage,
   totalPages,
   query,
 }: Props) {
   const router = useRouter();
+  const [members, setMembers] = useState(initialMembers);
   const [searchValue, setSearchValue] = useState(query);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; failed: number } | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 회원 정보 업데이트
+  const updateMember = async (memberId: string, field: string, value: string) => {
+    const res = await fetch("/api/admin/members/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId, field, value }),
+    });
+    if (!res.ok) throw new Error("Update failed");
+    
+    // 로컬 상태 업데이트
+    setMembers((prev) =>
+      prev.map((m) => (m.id === memberId ? { ...m, [field]: value || null } : m))
+    );
+  };
+
+  // 회원 삭제
+  const deleteMember = async (memberId: string) => {
+    if (!confirm("정말 이 회원을 삭제하시겠습니까?\n\n관련된 수강 정보, 교재 권한 등이 모두 삭제됩니다.")) {
+      return;
+    }
+    
+    setDeletingId(memberId);
+    try {
+      const res = await fetch("/api/admin/members/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId }),
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      
+      setMembers((prev) => prev.filter((m) => m.id !== memberId));
+      router.refresh();
+    } catch {
+      alert("삭제 중 오류가 발생했습니다.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -233,6 +343,9 @@ export default function MembersClient({
                   <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-white/50">
                     교재
                   </th>
+                  <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-white/50">
+                    
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -255,10 +368,12 @@ export default function MembersClient({
                             {initials(member.name || member.email)}
                           </div>
                         )}
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-white">
-                            {member.name || "-"}
-                          </p>
+                        <div className="min-w-0 flex-1">
+                          <EditableField
+                            value={member.name}
+                            placeholder="이름 입력"
+                            onSave={(v) => updateMember(member.id, "name", v)}
+                          />
                           <p className="truncate text-xs text-white/50">
                             {member.email}
                           </p>
@@ -266,9 +381,11 @@ export default function MembersClient({
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <span className="text-sm text-white/70">
-                        {member.phone || "-"}
-                      </span>
+                      <EditableField
+                        value={member.phone}
+                        placeholder="전화번호 입력"
+                        onSave={(v) => updateMember(member.id, "phone", v)}
+                      />
                     </td>
                     <td className="px-4 py-4">
                       <span className="text-sm text-white/70">
@@ -281,22 +398,47 @@ export default function MembersClient({
                       </span>
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <span className={`inline-flex min-w-[2rem] items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                        member.enrollmentCount > 0
-                          ? "bg-blue-500/20 text-blue-400"
-                          : "bg-white/5 text-white/40"
-                      }`}>
+                      <Link
+                        href={`/admin/members/${member.id}/enrollments`}
+                        className={`inline-flex min-w-[2rem] items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium transition-colors hover:ring-2 hover:ring-white/20 ${
+                          member.enrollmentCount > 0
+                            ? "bg-blue-500/20 text-blue-400"
+                            : "bg-white/5 text-white/40"
+                        }`}
+                      >
                         {member.enrollmentCount}
-                      </span>
+                      </Link>
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <span className={`inline-flex min-w-[2rem] items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                        member.textbookCount > 0
-                          ? "bg-emerald-500/20 text-emerald-400"
-                          : "bg-white/5 text-white/40"
-                      }`}>
+                      <Link
+                        href={`/admin/members/${member.id}/textbooks`}
+                        className={`inline-flex min-w-[2rem] items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium transition-colors hover:ring-2 hover:ring-white/20 ${
+                          member.textbookCount > 0
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : "bg-white/5 text-white/40"
+                        }`}
+                      >
                         {member.textbookCount}
-                      </span>
+                      </Link>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <button
+                        type="button"
+                        onClick={() => deleteMember(member.id)}
+                        disabled={deletingId === member.id}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+                        title="회원 삭제"
+                      >
+                        {deletingId === member.id ? (
+                          <span className="material-symbols-outlined animate-spin" style={{ fontSize: "16px" }}>
+                            progress_activity
+                          </span>
+                        ) : (
+                          <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                            delete
+                          </span>
+                        )}
+                      </button>
                     </td>
                   </tr>
                 ))}
