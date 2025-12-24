@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 const Schema = z.object({
   memberId: z.string().min(1),
-  field: z.enum(["name", "phone"]),
+  field: z.enum(["name", "phone", "address", "addressDetail", "birthday"]),
   value: z.string(),
 });
 

@@ -16,6 +16,9 @@ export async function GET() {
         email: true,
         name: true,
         phone: true,
+        address: true,
+        addressDetail: true,
+        birthday: true,
         imwebMemberCode: true,
         createdAt: true,
         lastLoginAt: true,
@@ -32,7 +35,10 @@ export async function GET() {
     const data = members.map((m) => ({
       이메일: m.email,
       이름: m.name || "",
-      전화번호: m.phone || "",
+      연락처: m.phone || "",
+      주소: m.address || "",
+      상세주소: m.addressDetail || "",
+      생년월일: m.birthday || "",
       아임웹회원코드: m.imwebMemberCode || "",
       가입일: m.createdAt.toISOString().slice(0, 10),
       마지막로그인: m.lastLoginAt?.toISOString().slice(0, 10) || "",
@@ -48,7 +54,10 @@ export async function GET() {
     ws["!cols"] = [
       { wch: 30 }, // 이메일
       { wch: 15 }, // 이름
-      { wch: 15 }, // 전화번호
+      { wch: 15 }, // 연락처
+      { wch: 40 }, // 주소
+      { wch: 20 }, // 상세주소
+      { wch: 12 }, // 생년월일
       { wch: 20 }, // 아임웹회원코드
       { wch: 12 }, // 가입일
       { wch: 12 }, // 마지막로그인

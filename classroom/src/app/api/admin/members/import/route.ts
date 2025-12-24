@@ -76,6 +76,21 @@ export async function POST(req: Request) {
         ).trim();
         const phone = normalizePhone(phoneRaw);
 
+        // 주소 열 찾기
+        const address = String(
+          row["주소"] ?? row["address"] ?? row["Address"] ?? ""
+        ).trim() || null;
+
+        // 상세주소 열 찾기
+        const addressDetail = String(
+          row["상세주소"] ?? row["addressDetail"] ?? row["address_detail"] ?? ""
+        ).trim() || null;
+
+        // 생년월일 열 찾기
+        const birthday = String(
+          row["생년월일"] ?? row["birthday"] ?? row["Birthday"] ?? row["birth"] ?? ""
+        ).trim() || null;
+
         // 아임웹 회원코드 (선택)
         const imwebMemberCode = String(
           row["아임웹회원코드"] ?? row["member_code"] ?? row["memberCode"] ?? ""
@@ -87,12 +102,18 @@ export async function POST(req: Request) {
           update: {
             name: name || undefined,
             phone: phone || undefined,
+            address: address || undefined,
+            addressDetail: addressDetail || undefined,
+            birthday: birthday || undefined,
             imwebMemberCode: imwebMemberCode || undefined,
           },
           create: {
             email,
             name,
             phone,
+            address,
+            addressDetail,
+            birthday,
             imwebMemberCode,
           },
         });

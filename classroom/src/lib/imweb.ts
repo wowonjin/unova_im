@@ -208,7 +208,7 @@ function getArr(v: unknown): unknown[] | null {
 /**
  * 아임웹 회원 정보를 DB User에 동기화
  * - 회원 생성/수정 웹훅 이벤트 발생 시 호출
- * - 이름, 전화번호, 프로필 이미지 등을 저장
+ * - 이름, 전화번호, 프로필 이미지, 주소, 생년월일 등을 저장
  */
 export async function syncImwebMemberToUser(memberCode: string) {
   const memberData = await imwebFetchMember(memberCode);
@@ -220,6 +220,15 @@ export async function syncImwebMemberToUser(memberCode: string) {
   const name = getStr(dataObj?.name) ?? getStr(memberObj?.name);
   const phone = getStr(dataObj?.call) ?? getStr(dataObj?.phone) ?? getStr(memberObj?.call);
   const profileImg = getStr(dataObj?.profile_img) ?? getStr(memberObj?.profile_img);
+  
+  // 추가 정보: 주소
+  const address = getStr(dataObj?.address) ?? getStr(memberObj?.address);
+  const addressDetail = getStr(dataObj?.address_detail) ?? getStr(memberObj?.address_detail) ?? 
+                        getStr(dataObj?.address2) ?? getStr(memberObj?.address2);
+  
+  // 추가 정보: 생년월일
+  const birthday = getStr(dataObj?.birthday) ?? getStr(memberObj?.birthday) ??
+                   getStr(dataObj?.birth) ?? getStr(memberObj?.birth);
   
   if (!email) {
     throw new Error(`Member missing email: ${JSON.stringify(memberData)}`);
@@ -233,6 +242,9 @@ export async function syncImwebMemberToUser(memberCode: string) {
       name: name || undefined,
       phone: phone || undefined,
       profileImageUrl: profileImg || undefined,
+      address: address || undefined,
+      addressDetail: addressDetail || undefined,
+      birthday: birthday || undefined,
     },
     create: {
       email: email.toLowerCase(),
@@ -240,6 +252,9 @@ export async function syncImwebMemberToUser(memberCode: string) {
       name: name || null,
       phone: phone || null,
       profileImageUrl: profileImg || null,
+      address: address || null,
+      addressDetail: addressDetail || null,
+      birthday: birthday || null,
     },
   });
   

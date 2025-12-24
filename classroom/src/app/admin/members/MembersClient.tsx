@@ -11,6 +11,9 @@ type Member = {
   phone: string | null;
   profileImageUrl: string | null;
   imwebMemberCode: string | null;
+  address: string | null;
+  addressDetail: string | null;
+  birthday: string | null;
   createdAt: string;
   lastLoginAt: string | null;
   enrollmentCount: number;
@@ -329,13 +332,13 @@ export default function MembersClient({
                     회원
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/50">
-                    전화번호
+                    연락처
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/50">
-                    가입일
+                    주소
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/50">
-                    마지막 로그인
+                    생년월일
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-white/50">
                     강좌
@@ -383,19 +386,32 @@ export default function MembersClient({
                     <td className="px-4 py-4">
                       <EditableField
                         value={member.phone}
-                        placeholder="전화번호 입력"
+                        placeholder="연락처 입력"
                         onSave={(v) => updateMember(member.id, "phone", v)}
                       />
                     </td>
                     <td className="px-4 py-4">
-                      <span className="text-sm text-white/70">
-                        {formatDate(member.createdAt)}
-                      </span>
+                      <div className="space-y-1">
+                        <EditableField
+                          value={member.address}
+                          placeholder="주소 입력"
+                          onSave={(v) => updateMember(member.id, "address", v)}
+                        />
+                        {(member.address || member.addressDetail) && (
+                          <EditableField
+                            value={member.addressDetail}
+                            placeholder="상세주소"
+                            onSave={(v) => updateMember(member.id, "addressDetail", v)}
+                          />
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-4">
-                      <span className="text-sm text-white/70">
-                        {formatDateTime(member.lastLoginAt)}
-                      </span>
+                      <EditableField
+                        value={member.birthday}
+                        placeholder="생년월일"
+                        onSave={(v) => updateMember(member.id, "birthday", v)}
+                      />
                     </td>
                     <td className="px-4 py-4 text-center">
                       <Link
