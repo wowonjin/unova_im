@@ -202,6 +202,7 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
         <div className="mb-4">
           <p className="px-3 text-xs font-semibold text-white/60">관리</p>
           <div className="mt-2 space-y-1">
+            <NavItem href="/admin/members" label="모든 회원 보기" icon="group" />
             <NavItem href="/admin/textbooks" label="교재 만들기" icon="note_add" />
             <NavItem href="/admin/courses" label="강좌 만들기" icon="add_circle" />
             <NavItem href="/admin/notices" label="공지사항 만들기" icon="edit_note" />
@@ -237,6 +238,7 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
       {/* admin 영역이 아니어도(예: 대시보드) 관리자라면 노출 */}
       {isAdmin && !isAdminArea ? (
         <>
+          <NavItem href="/admin/members" label="모든 회원 보기" icon="group" />
           <NavItem href="/admin/textbooks" label="교재 만들기" icon="note_add" />
           <NavItem href="/admin/courses" label="강좌 만들기" icon="add_circle" />
           <NavItem href="/admin/notices" label="공지사항 만들기" icon="edit_note" />
