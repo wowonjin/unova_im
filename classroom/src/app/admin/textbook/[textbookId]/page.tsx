@@ -42,14 +42,15 @@ export default async function AdminTextbookPage({
             createdAt: Date;
             isPublished: boolean;
             thumbnailUrl: string | null;
-            price: number | null;
-            originalPrice: number | null;
-            rating: number | null;
-            reviewCount: number;
-            tags: unknown;
-            benefits: unknown;
-            features: unknown;
-            description: string | null;
+            // detail tab fields (may be missing if old DB/migration mismatch)
+            price?: number | null;
+            originalPrice?: number | null;
+            rating?: number | null;
+            reviewCount?: number | null;
+            tags?: unknown;
+            benefits?: unknown;
+            features?: unknown;
+            description?: string | null;
             entitlementDays?: number | null;
             teacherName?: string | null;
             teacherTitle?: string | null;
@@ -64,6 +65,19 @@ export default async function AdminTextbookPage({
             createdAt: Date;
             isPublished: boolean;
             thumbnailUrl: string | null;
+            // detail tab fields (optional)
+            price?: number | null;
+            originalPrice?: number | null;
+            rating?: number | null;
+            reviewCount?: number | null;
+            tags?: unknown;
+            benefits?: unknown;
+            features?: unknown;
+            description?: string | null;
+            entitlementDays?: number | null;
+            teacherName?: string | null;
+            teacherTitle?: string | null;
+            teacherDescription?: string | null;
           }
       ) & {
         entitlements: {
