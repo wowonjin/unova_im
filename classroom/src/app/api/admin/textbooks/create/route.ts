@@ -75,6 +75,16 @@ export async function POST(req: Request) {
   const teacher = await getCurrentTeacherUser();
   if (!teacher) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
 
+  // position: admin 목록에서 드래그&드롭 정렬을 위한 값 (내림차순 정렬)
+  const last = await prisma.textbook
+    .findFirst({
+      where: { ownerId: teacher.id },
+      orderBy: { position: "desc" },
+      select: { position: true },
+    })
+    .catch(() => null);
+  const position = Math.max(0, (last as { position?: number } | null)?.position ?? 0) + 1;
+
   const form = await req.formData();
   const file = form.get("file");
   const urlRaw = form.get("url");
@@ -134,6 +144,7 @@ export async function POST(req: Request) {
 
     await createTextbookSafe({
       ownerId: teacher.id,
+      position,
       title,
       teacherName,
       subjectName,
@@ -172,6 +183,7 @@ export async function POST(req: Request) {
 
   await createTextbookSafe({
     ownerId: teacher.id,
+      position,
     title,
     teacherName,
     subjectName,

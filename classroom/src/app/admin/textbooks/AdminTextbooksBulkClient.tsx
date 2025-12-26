@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TextbookAutoThumbnail from "@/app/_components/TextbookAutoThumbnail";
 
 type TextbookRow = {
   id: string;
+  position?: number;
   title: string;
   originalName: string;
   sizeBytes: number;
@@ -42,10 +43,14 @@ function parseMoney(s: string): number | null | undefined {
 export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: TextbookRow[] }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [items, setItems] = useState<TextbookRow[]>(() => textbooks);
+  const lastItemsRef = useRef<TextbookRow[]>(textbooks);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const selectedIds = useMemo(() => Array.from(selected), [selected]);
-  const allIds = useMemo(() => textbooks.map((t) => t.id), [textbooks]);
-  const allSelected = selected.size > 0 && selected.size === textbooks.length;
+  const allIds = useMemo(() => items.map((t) => t.id), [items]);
+  const allSelected = selected.size > 0 && selected.size === items.length;
 
   const [price, setPrice] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
@@ -142,7 +147,40 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
     }
   }
 
-  if (!textbooks.length) return null;
+  async function persistOrder(next: TextbookRow[]) {
+    const ids = next.map((t) => t.id);
+    try {
+      const res = await fetch("/api/admin/textbooks/reorder", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ textbookIds: ids }),
+      });
+      if (!res.ok) throw new Error("REORDER_FAILED");
+      router.refresh();
+    } catch (e) {
+      console.error(e);
+      setError("순서 저장에 실패했습니다.");
+      // revert UI
+      setItems(lastItemsRef.current);
+    }
+  }
+
+  function moveItem(fromId: string, toId: string) {
+    if (fromId === toId) return;
+    const fromIndex = items.findIndex((t) => t.id === fromId);
+    const toIndex = items.findIndex((t) => t.id === toId);
+    if (fromIndex < 0 || toIndex < 0) return;
+
+    const next = items.slice();
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+
+    lastItemsRef.current = items;
+    setItems(next);
+    void persistOrder(next);
+  }
+
+  if (!items.length) return null;
 
   return (
     <div className="space-y-3">
@@ -232,17 +270,58 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
 
       {/* List */}
       <div className="grid grid-cols-1 gap-3">
-        {textbooks.map((t) => {
+        {items.map((t) => {
           const checked = selected.has(t.id);
           return (
             <div
               key={t.id}
+              onDragOver={(e) => {
+                if (!draggingId) return;
+                e.preventDefault();
+                setDragOverId(t.id);
+              }}
+              onDragLeave={() => {
+                if (dragOverId === t.id) setDragOverId(null);
+              }}
+              onDrop={(e) => {
+                if (!draggingId) return;
+                e.preventDefault();
+                setDragOverId(null);
+                moveItem(draggingId, t.id);
+              }}
               className={`group rounded-xl border bg-[#1a1a1c] p-4 transition-colors hover:bg-white/[0.04] ${
-                checked ? "border-white/30" : "border-white/10 hover:border-white/20"
+                dragOverId === t.id && draggingId !== t.id
+                  ? "border-white/40 bg-white/[0.05]"
+                  : checked
+                    ? "border-white/30"
+                    : "border-white/10 hover:border-white/20"
               }`}
             >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
+                  {/* Drag handle */}
+                  <button
+                    type="button"
+                    draggable
+                    onDragStart={(e) => {
+                      setError(null);
+                      setDraggingId(t.id);
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", t.id);
+                    }}
+                    onDragEnd={() => {
+                      setDraggingId(null);
+                      setDragOverId(null);
+                    }}
+                    className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white/40 hover:bg-white/10 cursor-grab active:cursor-grabbing"
+                    title="드래그하여 순서 변경"
+                    aria-label="드래그하여 순서 변경"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M7 4a1 1 0 102 0 1 1 0 00-2 0zM7 10a1 1 0 102 0 1 1 0 00-2 0zM7 16a1 1 0 102 0 1 1 0 00-2 0zM11 4a1 1 0 102 0 1 1 0 00-2 0zM11 10a1 1 0 102 0 1 1 0 00-2 0zM11 16a1 1 0 102 0 1 1 0 00-2 0z" />
+                    </svg>
+                  </button>
                   <input
                     type="checkbox"
                     checked={checked}

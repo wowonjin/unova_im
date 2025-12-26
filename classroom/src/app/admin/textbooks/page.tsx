@@ -37,9 +37,10 @@ export default async function AdminTextbooksPage() {
   try {
     textbooks = await prisma.textbook.findMany({
       where: { ownerId: teacher.id },
-      orderBy: [{ createdAt: "desc" }],
+      orderBy: [{ position: "desc" }, { createdAt: "desc" }],
       select: {
         id: true,
+        position: true,
         title: true,
         originalName: true,
         sizeBytes: true,

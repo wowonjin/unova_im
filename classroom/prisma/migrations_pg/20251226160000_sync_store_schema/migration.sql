@@ -47,10 +47,14 @@ ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "benefits" JSONB;
 ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "features" JSONB;
 ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "description" TEXT;
 ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "extraOptions" JSONB;
+ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "position" INTEGER NOT NULL DEFAULT 0;
 
 -- Indices (safe)
 CREATE INDEX IF NOT EXISTS "Textbook_teacherName_idx" ON "Textbook" ("teacherName");
 CREATE INDEX IF NOT EXISTS "Textbook_imwebProdCode_idx" ON "Textbook" ("imwebProdCode");
+CREATE INDEX IF NOT EXISTS "Textbook_ownerId_position_idx" ON "Textbook" ("ownerId", "position");
+-- avoid conflicts with legacy rows where position=0
+CREATE UNIQUE INDEX IF NOT EXISTS "Textbook_ownerId_position_pos_key" ON "Textbook" ("ownerId", "position") WHERE "position" > 0;
 
 -- === Ensure ProductType enum exists (used by Review/ProductLike/Order) ===
 DO $$
