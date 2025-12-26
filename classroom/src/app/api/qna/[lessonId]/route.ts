@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireCurrentUser } from "@/lib/current-user";
+import { getCurrentUser } from "@/lib/current-user";
 import { readJsonBody } from "@/lib/read-json";
 import { isAllCoursesTestModeFromRequest } from "@/lib/test-mode";
 
@@ -33,7 +33,9 @@ async function assertCanAccessLesson(userId: string, lessonId: string, bypassEnr
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ lessonId: string }> }) {
-  const user = await requireCurrentUser();
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+
   const { lessonId } = ParamsSchema.parse(await ctx.params);
   const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
   const lesson = await assertCanAccessLesson(user.id, lessonId, bypassEnrollment);
@@ -75,7 +77,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ lessonId: strin
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ lessonId: string }> }) {
-  const user = await requireCurrentUser();
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+
   const { lessonId } = ParamsSchema.parse(await ctx.params);
   const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
   const lesson = await assertCanAccessLesson(user.id, lessonId, bypassEnrollment);

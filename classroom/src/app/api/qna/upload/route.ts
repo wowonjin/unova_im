@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireCurrentUser } from "@/lib/current-user";
+import { getCurrentUser } from "@/lib/current-user";
 import path from "node:path";
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
@@ -22,7 +22,9 @@ const MetaSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const user = await requireCurrentUser();
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+
   const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
   const form = await req.formData();
 

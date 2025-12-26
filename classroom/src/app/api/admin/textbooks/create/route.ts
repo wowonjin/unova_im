@@ -37,6 +37,40 @@ async function getFileSizeFromUrl(url: string): Promise<number> {
   return 0;
 }
 
+async function createTextbookSafe(data: Record<string, unknown>) {
+  try {
+    await prisma.textbook.create({ data: data as never });
+    return;
+  } catch (e) {
+    console.error("[admin/textbooks/create] prisma.textbook.create failed, retrying with minimal fields:", e);
+  }
+
+  // 마이그레이션 누락 등으로 일부 컬럼이 없을 때를 대비해 최소 필드로 재시도
+  try {
+    const minimal = {
+      ownerId: data.ownerId,
+      title: data.title,
+      storedPath: data.storedPath,
+      originalName: data.originalName,
+      mimeType: data.mimeType,
+      sizeBytes: data.sizeBytes,
+      isPublished: data.isPublished ?? true,
+    };
+    await prisma.textbook.create({ data: minimal as never });
+  } catch (e) {
+    console.error("[admin/textbooks/create] prisma.textbook.create minimal retry failed:", e);
+    const minimal2 = {
+      ownerId: data.ownerId,
+      title: data.title,
+      storedPath: data.storedPath,
+      originalName: data.originalName,
+      mimeType: data.mimeType,
+      sizeBytes: data.sizeBytes,
+    };
+    await prisma.textbook.create({ data: minimal2 as never });
+  }
+}
+
 export async function POST(req: Request) {
   const teacher = await getCurrentTeacherUser();
   if (!teacher) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
@@ -51,19 +85,15 @@ export async function POST(req: Request) {
   const entitlementDaysRaw = form.get("entitlementDays");
   const imwebProdCodeRaw = form.get("imwebProdCode");
 
-  const isPublished = typeof isPublishedRaw === "string" ? isPublishedRaw === "1" || isPublishedRaw === "true" || isPublishedRaw === "on" : true;
-  const entitlementDays = typeof entitlementDaysRaw === "string" && /^\d+$/.test(entitlementDaysRaw.trim())
-    ? Math.max(1, Math.min(3650, parseInt(entitlementDaysRaw.trim(), 10)))
-    : 30;
-  const imwebProdCode = typeof imwebProdCodeRaw === "string" && imwebProdCodeRaw.trim().length > 0
-    ? imwebProdCodeRaw.trim()
-    : null;
-  const teacherName = typeof teacherNameRaw === "string" && teacherNameRaw.trim().length > 0
-    ? teacherNameRaw.trim()
-    : null;
-  const subjectName = typeof subjectNameRaw === "string" && subjectNameRaw.trim().length > 0
-    ? subjectNameRaw.trim()
-    : null;
+  const isPublished =
+    typeof isPublishedRaw === "string" ? isPublishedRaw === "1" || isPublishedRaw === "true" || isPublishedRaw === "on" : true;
+  const entitlementDays =
+    typeof entitlementDaysRaw === "string" && /^\d+$/.test(entitlementDaysRaw.trim())
+      ? Math.max(1, Math.min(3650, parseInt(entitlementDaysRaw.trim(), 10)))
+      : 30;
+  const imwebProdCode = typeof imwebProdCodeRaw === "string" && imwebProdCodeRaw.trim().length > 0 ? imwebProdCodeRaw.trim() : null;
+  const teacherName = typeof teacherNameRaw === "string" && teacherNameRaw.trim().length > 0 ? teacherNameRaw.trim() : null;
+  const subjectName = typeof subjectNameRaw === "string" && subjectNameRaw.trim().length > 0 ? subjectNameRaw.trim() : null;
 
   // URL 방식(구글 콘솔/GCS 등)
   if (typeof urlRaw === "string" && urlRaw.trim().length > 0) {
@@ -77,29 +107,26 @@ export async function POST(req: Request) {
     }
 
     const inferredName = guessFileNameFromUrl(url);
-    const title =
-      typeof titleRaw === "string" && titleRaw.trim().length > 0 ? titleRaw.trim() : inferredName || "교재";
+    const title = typeof titleRaw === "string" && titleRaw.trim().length > 0 ? titleRaw.trim() : inferredName || "교재";
     const originalName = inferredName || title;
     const mimeType = originalName.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/octet-stream";
 
     // URL에서 파일 크기 가져오기
     const sizeBytes = await getFileSizeFromUrl(url);
 
-    await prisma.textbook.create({
-      data: {
-        ownerId: teacher.id,
-        title,
-        teacherName,
-        subjectName,
-        // storedPath 컬럼을 외부 URL 저장용으로도 재사용(다운로드 라우트에서 http(s)면 redirect 처리)
-        storedPath: url,
-        originalName,
-        mimeType,
-        sizeBytes,
-        isPublished,
-        entitlementDays,
-        imwebProdCode,
-      },
+    await createTextbookSafe({
+      ownerId: teacher.id,
+      title,
+      teacherName,
+      subjectName,
+      // storedPath 컬럼을 외부 URL 저장용으로도 재사용(다운로드 라우트에서 http(s)면 redirect 처리)
+      storedPath: url,
+      originalName,
+      mimeType,
+      sizeBytes,
+      isPublished,
+      entitlementDays,
+      imwebProdCode,
     });
 
     return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin/textbooks", req.url));
@@ -110,8 +137,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "NO_URL_OR_FILE" }, { status: 400 });
   }
 
-  const title =
-    typeof titleRaw === "string" && titleRaw.trim().length > 0 ? titleRaw.trim() : file.name || "교재";
+  const title = typeof titleRaw === "string" && titleRaw.trim().length > 0 ? titleRaw.trim() : file.name || "교재";
 
   const bytes = Buffer.from(await file.arrayBuffer());
   const ext = path.extname(file.name || "").slice(0, 12);
@@ -124,20 +150,18 @@ export async function POST(req: Request) {
   const fullPath = path.join(dir, storedName);
   await fs.writeFile(fullPath, bytes);
 
-  await prisma.textbook.create({
-    data: {
-      ownerId: teacher.id,
-      title,
-      teacherName,
-      subjectName,
-      storedPath,
-      originalName: file.name || title,
-      mimeType: file.type || "application/octet-stream",
-      sizeBytes: bytes.length,
-      isPublished,
-      entitlementDays,
-      imwebProdCode,
-    },
+  await createTextbookSafe({
+    ownerId: teacher.id,
+    title,
+    teacherName,
+    subjectName,
+    storedPath,
+    originalName: file.name || title,
+    mimeType: file.type || "application/octet-stream",
+    sizeBytes: bytes.length,
+    isPublished,
+    entitlementDays,
+    imwebProdCode,
   });
 
   return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin/textbooks", req.url));

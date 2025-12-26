@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireCurrentUser } from "@/lib/current-user";
+import { getCurrentUser } from "@/lib/current-user";
 import { readJsonBody } from "@/lib/read-json";
 import { isAllCoursesTestModeFromRequest } from "@/lib/test-mode";
 
@@ -29,7 +29,9 @@ async function canAccessPost(userId: string, postId: string, bypassEnrollment: b
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ postId: string }> }) {
-  const user = await requireCurrentUser();
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+
   const { postId } = ParamsSchema.parse(await ctx.params);
   const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
   const post = await canAccessPost(user.id, postId, bypassEnrollment);
@@ -46,13 +48,18 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ postId: strin
     data: { body: parsed.data.body },
     select: { id: true, body: true, updatedAt: true },
   });
-  return NextResponse.json({ ok: true, post: { id: updated.id, body: updated.body, updatedAt: updated.updatedAt.toISOString() } });
+  return NextResponse.json({
+    ok: true,
+    post: { id: updated.id, body: updated.body, updatedAt: updated.updatedAt.toISOString() },
+  });
 }
 
-export async function DELETE(_req: Request, ctx: { params: Promise<{ postId: string }> }) {
-  const user = await requireCurrentUser();
+export async function DELETE(req: Request, ctx: { params: Promise<{ postId: string }> }) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+
   const { postId } = ParamsSchema.parse(await ctx.params);
-  const bypassEnrollment = isAllCoursesTestModeFromRequest(_req);
+  const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
   const post = await canAccessPost(user.id, postId, bypassEnrollment);
   if (!post) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 

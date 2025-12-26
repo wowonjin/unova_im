@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireCurrentUser } from "@/lib/current-user";
+import { getCurrentUser } from "@/lib/current-user";
 import { isAllCoursesTestModeFromRequest } from "@/lib/test-mode";
 
 export const runtime = "nodejs";
@@ -26,12 +26,13 @@ async function canAccessPost(userId: string, postId: string, bypassEnrollment: b
   return post;
 }
 
-export async function POST(_req: Request, ctx: { params: Promise<{ postId: string }> }) {
-  const user = await requireCurrentUser();
+export async function POST(req: Request, ctx: { params: Promise<{ postId: string }> }) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   if (!user.isAdmin) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
 
   const { postId } = ParamsSchema.parse(await ctx.params);
-  const bypassEnrollment = isAllCoursesTestModeFromRequest(_req);
+  const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
   const post = await canAccessPost(user.id, postId, bypassEnrollment);
   if (!post) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
   // 답변(댓글)은 고정 불가(질문만)

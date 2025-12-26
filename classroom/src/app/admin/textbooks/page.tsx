@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Button, Card, CardBody, CardHeader, Field, Input, PageHeader } from "@/app/_components/ui";
 import Link from "next/link";
 import TextbookAutoThumbnail from "@/app/_components/TextbookAutoThumbnail";
+import ConfirmDeleteButton from "@/app/_components/ConfirmDeleteButton";
 
 function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
@@ -89,11 +90,7 @@ export default async function AdminTextbooksPage() {
         <Card>
           <CardHeader title="교재 추가" />
           <CardBody>
-            <form
-              className="space-y-4"
-              action="/api/admin/textbooks/create"
-              method="post"
-            >
+            <form className="space-y-4" action="/api/admin/textbooks/create" method="post">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
                 <div className="md:col-span-4">
                   <Field label="교재 제목(선택)">
@@ -136,9 +133,7 @@ export default async function AdminTextbooksPage() {
               </div>
 
               <div className="flex items-center justify-between gap-3">
-                <p className="text-xs text-white/40">
-                  제목/선생님 이름/과목은 스토어 노출용 정보입니다. URL은 필수입니다.
-                </p>
+                <p className="text-xs text-white/40">제목/선생님 이름/과목은 스토어 노출용 정보입니다. URL은 필수입니다.</p>
                 <div className="shrink-0">
                   <input type="hidden" name="isPublished" value="1" />
                   <Button type="submit" variant="secondary">
@@ -153,26 +148,23 @@ export default async function AdminTextbooksPage() {
         {textbooksWithDefaults.length ? (
           <div className="grid grid-cols-1 gap-3">
             {textbooksWithDefaults.map((t) => (
-              <Link
+              <div
                 key={t.id}
-                href={`/admin/textbook/${t.id}`}
-                className="group block rounded-xl border border-white/10 bg-[#1a1a1c] p-4 transition-colors hover:bg-white/[0.04] hover:border-white/20"
+                className="group rounded-xl border border-white/10 bg-[#1a1a1c] p-4 transition-colors hover:bg-white/[0.04] hover:border-white/20"
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  {/* 왼쪽: 교재 정보 */}
-                  <div className="flex items-start gap-4 flex-1 min-w-0">
+                  {/* 왼쪽: 교재 정보 (클릭 시 상세로 이동) */}
+                  <Link href={`/admin/textbook/${t.id}`} className="flex items-start gap-4 flex-1 min-w-0">
                     {/* PDF 썸네일 (자동 생성) */}
-                    <TextbookAutoThumbnail
-                      textbookId={t.id}
-                      existingThumbnailUrl={t.thumbnailUrl}
-                      sizeBytes={t.sizeBytes}
-                    />
+                    <TextbookAutoThumbnail textbookId={t.id} existingThumbnailUrl={t.thumbnailUrl} sizeBytes={t.sizeBytes} />
 
                     {/* 제목 및 메타 정보 */}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-white truncate">{t.title}</h3>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/50">
-                        <span className="truncate max-w-[200px]" title={t.originalName}>{t.originalName}</span>
+                        <span className="truncate max-w-[200px]" title={t.originalName}>
+                          {t.originalName}
+                        </span>
                         <span>•</span>
                         <span>{formatBytes(t.sizeBytes)}</span>
                         <span>•</span>
@@ -189,26 +181,39 @@ export default async function AdminTextbooksPage() {
                         <span className="text-white/40">{t.entitlementDays}일</span>
                       </div>
                     </div>
-                  </div>
+                  </Link>
 
-                  {/* 오른쪽: 상태 */}
+                  {/* 오른쪽: 상태 + 액션 */}
                   <div className="flex items-center gap-3 lg:shrink-0">
-                    <span className={`rounded-md px-2.5 py-1 text-xs font-medium ${
-                      t.isPublished ? "bg-emerald-500/20 text-emerald-300" : "bg-white/10 text-white/60"
-                    }`}>
+                    <span
+                      className={`rounded-md px-2.5 py-1 text-xs font-medium ${
+                        t.isPublished ? "bg-emerald-500/20 text-emerald-300" : "bg-white/10 text-white/60"
+                      }`}
+                    >
                       {t.isPublished ? "공개" : "비공개"}
                     </span>
                     <span className="text-white/40 text-sm">→</span>
+                    <ConfirmDeleteButton
+                      action={`/api/admin/textbooks/${t.id}/delete`}
+                      message="정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+                      label="삭제"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/20"
+                    />
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         ) : (
           <div className="rounded-xl border border-dashed border-white/10 bg-[#1a1a1c] p-8 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/5">
               <svg className="w-6 h-6 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
             </div>
             <p className="text-sm text-white/50">업로드된 교재가 없습니다.</p>

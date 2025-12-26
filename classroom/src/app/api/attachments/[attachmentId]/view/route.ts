@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireCurrentUser } from "@/lib/current-user";
+import { getCurrentUser } from "@/lib/current-user";
 import fs from "node:fs";
 import { Readable } from "node:stream";
 import { getStorageRoot, safeJoin } from "@/lib/storage";
@@ -35,9 +35,11 @@ async function canAccessAttachment(userId: string, isAdmin: boolean, attachmentI
   return att;
 }
 
-export async function GET(_req: Request, ctx: { params: Promise<{ attachmentId: string }> }) {
-  const bypassEnrollment = isAllCoursesTestModeFromRequest(_req);
-  const user = await requireCurrentUser();
+export async function GET(req: Request, ctx: { params: Promise<{ attachmentId: string }> }) {
+  const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+
   const { attachmentId } = ParamsSchema.parse(await ctx.params);
 
   const att = await canAccessAttachment(user.id, user.isAdmin, attachmentId, bypassEnrollment);

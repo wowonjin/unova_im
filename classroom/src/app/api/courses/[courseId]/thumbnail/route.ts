@@ -3,7 +3,7 @@ import { z } from "zod";
 import fs from "node:fs";
 import { Readable } from "node:stream";
 import { prisma } from "@/lib/prisma";
-import { getCurrentTeacherUser, requireCurrentUser } from "@/lib/current-user";
+import { getCurrentTeacherUser, getCurrentUser } from "@/lib/current-user";
 import { getStorageRoot, safeJoin } from "@/lib/storage";
 import { isAllCoursesTestModeFromRequest } from "@/lib/test-mode";
 
@@ -11,9 +11,8 @@ export const runtime = "nodejs";
 
 const ParamsSchema = z.object({ courseId: z.string().min(1) });
 
-export async function GET(_req: Request, ctx: { params: Promise<{ courseId: string }> }) {
-  const user = await requireCurrentUser();
-  const bypassEnrollment = isAllCoursesTestModeFromRequest(_req);
+export async function GET(req: Request, ctx: { params: Promise<{ courseId: string }> }) {
+  const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
   const { courseId } = ParamsSchema.parse(await ctx.params);
 
   const course = await prisma.course.findUnique({
@@ -22,7 +21,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ courseId: stri
   });
   if (!course) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
-  // thumbnailUrl이 data URL인 경우: Base64 디코딩하여 이미지 반환
+  // thumbnailUrl이 data URL인 경우: Base64 디코딩하여 이미지 반환 (인증 불필요)
   if (course.thumbnailUrl && course.thumbnailUrl.startsWith("data:")) {
     const match = course.thumbnailUrl.match(/^data:([^;]+);base64,(.+)$/);
     if (match) {
@@ -39,27 +38,32 @@ export async function GET(_req: Request, ctx: { params: Promise<{ courseId: stri
     }
   }
 
-  // thumbnailUrl이 일반 URL인 경우: 리다이렉트
+  // thumbnailUrl이 일반 URL인 경우: 리다이렉트 (인증 불필요)
   if (course.thumbnailUrl) {
     const res = NextResponse.redirect(course.thumbnailUrl);
     res.headers.set("cache-control", "private, max-age=60");
     return res;
   }
 
-  // thumbnailStoredPath가 있는 경우: 로컬 파일 제공 (하위 호환성)
+  // thumbnailStoredPath가 있는 경우: 로컬 파일 제공 (보호 필요)
   if (!course.thumbnailStoredPath) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
   // 교사(소유자)는 수강권 없이도 썸네일 미리보기 가능
   const teacher = await getCurrentTeacherUser();
   if (teacher && course.ownerId && teacher.id === course.ownerId) {
     // ok
-  } else if (!user.isAdmin && !bypassEnrollment) {
-    const now = new Date();
-    const ok = await prisma.enrollment.findFirst({
-      where: { userId: user.id, courseId, status: "ACTIVE", endAt: { gt: now } },
-      select: { id: true },
-    });
-    if (!ok) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+  } else {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+
+    if (!user.isAdmin && !bypassEnrollment) {
+      const now = new Date();
+      const ok = await prisma.enrollment.findFirst({
+        where: { userId: user.id, courseId, status: "ACTIVE", endAt: { gt: now } },
+        select: { id: true },
+      });
+      if (!ok) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+    }
   }
 
   let filePath: string;

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireCurrentUser } from "@/lib/current-user";
+import { getCurrentUser } from "@/lib/current-user";
 import fs from "node:fs";
 import { Readable } from "node:stream";
 import { getStorageRoot, safeJoin } from "@/lib/storage";
@@ -15,7 +15,7 @@ function isHttpUrl(s: string) {
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ textbookId: string }> }) {
-  const user = await requireCurrentUser();
+  const user = await getCurrentUser();
   const { textbookId } = ParamsSchema.parse(await ctx.params);
   const now = new Date();
 
@@ -33,12 +33,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
   });
   if (!tb) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
-  // 관리자(교사)는 항상 접근 가능, 수강생은 공개된 교재만
-  if (!user.isAdmin && !tb.isPublished) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
-
-  // 아임웹 상품 매핑이 있으면 "구매자만" 접근 가능
   const isPaywalled = tb.imwebProdCode != null && tb.imwebProdCode.length > 0;
-  if (!user.isAdmin && isPaywalled) {
+  const isAdmin = Boolean(user?.isAdmin);
+
+  // 비관리자는 공개된 교재만
+  if (!isAdmin && !tb.isPublished) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+
+  // paywall 교재: 관리자 외에는 entitlement 필요 (게스트는 접근 불가)
+  if (!isAdmin && isPaywalled) {
+    if (!user) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+
     const ok = await prisma.textbookEntitlement.findFirst({
       where: { userId: user.id, textbookId: tb.id, status: "ACTIVE", endAt: { gt: now } },
       select: { id: true },
@@ -48,7 +52,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
 
   const headers = new Headers();
   // private: 인증 기반 콘텐츠이므로 CDN에는 캐시 안 됨, 브라우저에만 캐시
-  headers.set("cache-control", "private, max-age=86400, stale-while-revalidate=604800");
+  headers.set("cache-control", isAdmin || isPaywalled ? "private, max-age=86400, stale-while-revalidate=604800" : "public, max-age=86400");
   headers.set("vary", "Cookie");
   headers.set("content-disposition", `inline; filename="${encodeURIComponent(tb.originalName || tb.title)}"`);
 
