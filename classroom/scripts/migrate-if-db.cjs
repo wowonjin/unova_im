@@ -8,6 +8,8 @@
  * - 해당 마이그레이션을 rolled-back 처리 후 재시도
  */
 const { execSync } = require("child_process");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const dbUrl =
   process.env.DATABASE_URL ||
@@ -46,6 +48,57 @@ function runCmd(cmd) {
 
 function runMigrateDeploy() {
   return runCmd("npx prisma migrate deploy");
+}
+
+async function ensureStoreSchema(connectionString) {
+  // Safety net: even if migrate deploy doesn't apply the latest migrations (e.g. path/provider mismatch),
+  // ensure critical store/admin columns exist to prevent Prisma P2022 at runtime.
+  // eslint-disable-next-line global-require
+  const { Client } = require("pg");
+  const client = new Client({ connectionString });
+  await client.connect();
+
+  const sqlPath = path.join(
+    process.cwd(),
+    "prisma",
+    "migrations_pg",
+    "20251226160000_sync_store_schema",
+    "migration.sql"
+  );
+
+  let sql = "";
+  if (fs.existsSync(sqlPath)) {
+    sql = fs.readFileSync(sqlPath, "utf8");
+  } else {
+    // Minimal fallback (Course/Textbook core store fields)
+    sql = `
+      ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "reviewCount" INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "likeCount" INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "rating" DOUBLE PRECISION;
+      ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "tags" JSONB;
+      ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "price" INTEGER;
+      ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "originalPrice" INTEGER;
+      ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "dailyPrice" INTEGER;
+      ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "teacherName" TEXT;
+      ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "subjectName" TEXT;
+
+      ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "reviewCount" INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "likeCount" INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "rating" DOUBLE PRECISION;
+      ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "tags" JSONB;
+      ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "price" INTEGER;
+      ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "originalPrice" INTEGER;
+      ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "teacherName" TEXT;
+      ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "subjectName" TEXT;
+    `;
+  }
+
+  if (sql.trim()) {
+    await client.query(sql);
+    console.log("✅ Store schema ensured (columns/tables).");
+  }
+
+  await client.end();
 }
 
 function extractFailedMigrationNames(output) {
@@ -151,9 +204,17 @@ async function main() {
       process.exit(1);
     }
   }
+
+  // Final safety net to prevent runtime P2022 ("column does not exist")
+  try {
+    await ensureStoreSchema(dbUrl);
+  } catch (e) {
+    console.error("❌ 스키마 동기화(안전망) 실패:", e);
+    process.exit(1);
+  }
 }
 
-console.log("✅ 마이그레이션 완료!");
+console.log("🛠️  Starting migration step...");
 
 main().catch((e) => {
   console.error("❌ 마이그레이션 스크립트 실행 중 예외:", e);
