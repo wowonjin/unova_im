@@ -1,44 +1,52 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
+import { NextRequest, NextResponse } from "next/server";
+import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
-import { getCurrentTeacherUser } from "@/lib/current-user";
 
-export const runtime = "nodejs";
+export async function POST(req: NextRequest) {
+  try {
+    // 관리자 권한 확인
+    await requireAdminUser();
+    
+    const body = await req.json();
+    const { lessonId } = body as { lessonId: string };
 
-const Schema = z.object({
-  lessonId: z.string().min(1),
-});
+    if (!lessonId) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
 
-export async function POST(req: Request) {
-  const teacher = await getCurrentTeacherUser();
-  if (!teacher) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+    // Find the lesson (관리자는 모든 강의 삭제 가능)
+    const lesson = await prisma.lesson.findUnique({
+      where: { id: lessonId },
+      select: { id: true, courseId: true },
+    });
 
-  const form = await req.formData();
-  const parsed = Schema.safeParse({
-    lessonId: typeof form.get("lessonId") === "string" ? form.get("lessonId") : "",
-  });
-  if (!parsed.success) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
+    if (!lesson) {
+      return NextResponse.json({ error: "Lesson not found" }, { status: 404 });
+    }
 
-  const lesson = await prisma.lesson.findUnique({
-    where: { id: parsed.data.lessonId },
-    select: { courseId: true, course: { select: { ownerId: true } } },
-  });
-  if (!lesson) return NextResponse.json({ ok: false, error: "LESSON_NOT_FOUND" }, { status: 404 });
-  if (lesson.course.ownerId !== teacher.id) return NextResponse.json({ ok: false, error: "LESSON_NOT_FOUND" }, { status: 404 });
+    // Delete the lesson (cascade will delete attachments and progress)
+    await prisma.lesson.delete({
+      where: { id: lessonId },
+    });
 
-  await prisma.lesson.delete({ where: { id: parsed.data.lessonId } });
+    // Re-order remaining lessons
+    const remainingLessons = await prisma.lesson.findMany({
+      where: { courseId: lesson.courseId },
+      orderBy: { position: "asc" },
+    });
 
-  // position 재정렬(빈 구멍 제거)
-  const lessons = await prisma.lesson.findMany({
-    where: { courseId: lesson.courseId },
-    orderBy: { position: "asc" },
-    select: { id: true },
-  });
-  for (let i = 0; i < lessons.length; i++) {
-    await prisma.lesson.update({ where: { id: lessons[i].id }, data: { position: i + 1 } });
+    await prisma.$transaction(
+      remainingLessons.map((l, index) =>
+        prisma.lesson.update({
+          where: { id: l.id },
+          data: { position: index + 1 },
+        })
+      )
+    );
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("Failed to delete lesson:", error);
+    return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
   }
-
-  return NextResponse.redirect(new URL(req.headers.get("referer") || `/admin/course/${lesson.courseId}`, req.url));
 }
-
-

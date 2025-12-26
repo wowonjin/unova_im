@@ -13,11 +13,11 @@ type Member = {
   imwebMemberCode: string | null;
   address: string | null;
   addressDetail: string | null;
-  birthday: string | null;
   createdAt: string;
   lastLoginAt: string | null;
   enrollmentCount: number;
   textbookCount: number;
+  totalPayment: number;
 };
 
 type Props = {
@@ -337,8 +337,11 @@ export default function MembersClient({
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/50">
                     주소
                   </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-white/50">
+                    결제 금액
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/50">
-                    생년월일
+                    가입일
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-white/50">
                     강좌
@@ -406,15 +409,20 @@ export default function MembersClient({
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-4">
-                      <EditableField
-                        value={member.birthday}
-                        placeholder="생년월일"
-                        onSave={(v) => updateMember(member.id, "birthday", v)}
-                      />
+                    <td className="px-4 py-4 text-right text-sm font-medium text-white/70">
+                      {member.totalPayment > 0 ? (
+                        <span className="text-emerald-400">
+                          ₩{member.totalPayment.toLocaleString()}
+                        </span>
+                      ) : (
+                        <span className="text-white/40">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-white/70">
+                      {formatDate(member.createdAt)}
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <Link
+                      <a
                         href={`/admin/members/${member.id}/enrollments`}
                         className={`inline-flex min-w-[2rem] items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium transition-colors hover:ring-2 hover:ring-white/20 ${
                           member.enrollmentCount > 0
@@ -423,10 +431,10 @@ export default function MembersClient({
                         }`}
                       >
                         {member.enrollmentCount}
-                      </Link>
+                      </a>
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <Link
+                      <a
                         href={`/admin/members/${member.id}/textbooks`}
                         className={`inline-flex min-w-[2rem] items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium transition-colors hover:ring-2 hover:ring-white/20 ${
                           member.textbookCount > 0
@@ -435,7 +443,7 @@ export default function MembersClient({
                         }`}
                       >
                         {member.textbookCount}
-                      </Link>
+                      </a>
                     </td>
                     <td className="px-4 py-4 text-center">
                       <button

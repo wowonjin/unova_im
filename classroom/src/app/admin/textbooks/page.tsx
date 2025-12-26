@@ -3,6 +3,7 @@ import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import { Button, Card, CardBody, CardHeader, Field, Input, PageHeader } from "@/app/_components/ui";
 import Link from "next/link";
+import TextbookAutoThumbnail from "@/app/_components/TextbookAutoThumbnail";
 
 function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
@@ -23,7 +24,7 @@ export default async function AdminTextbooksPage() {
   // entitlementDays 안전 처리 (마이그레이션 미적용 시 기본값)
   const textbooks = textbooksRaw.map((t) => ({
     ...t,
-    entitlementDays: (t as { entitlementDays?: number }).entitlementDays ?? 365,
+    entitlementDays: (t as { entitlementDays?: number }).entitlementDays ?? 30,
   }));
 
   return (
@@ -51,9 +52,14 @@ export default async function AdminTextbooksPage() {
               action="/api/admin/textbooks/create"
               method="post"
             >
-              <div className="md:col-span-4">
+              <div className="md:col-span-3">
                 <Field label="교재 제목(선택)">
                   <Input name="title" placeholder="예: 2027 수학 교재 PDF" className="bg-transparent" />
+                </Field>
+              </div>
+              <div className="md:col-span-2">
+                <Field label="과목">
+                  <Input name="subjectName" placeholder="예: 수학" className="bg-transparent" />
                 </Field>
               </div>
               <div className="md:col-span-4">
@@ -66,15 +72,6 @@ export default async function AdminTextbooksPage() {
                   />
                 </Field>
               </div>
-              <div className="md:col-span-2">
-                <Field label="상품 코드">
-                  <Input
-                    name="imwebProdCode"
-                    placeholder="예: PROD001"
-                    className="bg-transparent"
-                  />
-                </Field>
-              </div>
               <div className="md:col-span-1">
                 <Field label="이용 기간(일)">
                   <Input
@@ -82,12 +79,12 @@ export default async function AdminTextbooksPage() {
                     type="number"
                     min={1}
                     max={3650}
-                    defaultValue={365}
+                    defaultValue={30}
                     className="bg-transparent"
                   />
                 </Field>
               </div>
-              <div className="md:col-span-1 flex items-end">
+              <div className="md:col-span-2 flex items-end">
                 <input type="hidden" name="isPublished" value="1" />
                 <Button type="submit" variant="secondary" className="w-full">
                   추가
@@ -103,24 +100,17 @@ export default async function AdminTextbooksPage() {
               <Link
                 key={t.id}
                 href={`/admin/textbook/${t.id}`}
-                className="group block rounded-xl border border-white/10 bg-[#212123] p-4 transition-colors hover:bg-white/[0.04] hover:border-white/20"
+                className="group block rounded-xl border border-white/10 bg-[#1a1a1c] p-4 transition-colors hover:bg-white/[0.04] hover:border-white/20"
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   {/* 왼쪽: 교재 정보 */}
                   <div className="flex items-start gap-4 flex-1 min-w-0">
-                    {/* PDF 아이콘 또는 썸네일 */}
-                    {t.thumbnailUrl ? (
-                      <div className="shrink-0 w-12 h-16 rounded-lg overflow-hidden border border-white/10 bg-white/5">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={t.thumbnailUrl} alt="" className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <div className="shrink-0 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/20">
-                        <svg className="w-6 h-6 text-red-400" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM8.5 13h1.25v3.75H8.5V13zm2.5 0h1.25v3.75H11V13zm2.5 0h1.25v1.5c0 .414.336.75.75.75h.75v1.5h-.75A2.252 2.252 0 0 1 13.5 14.5V13z"/>
-                        </svg>
-                      </div>
-                    )}
+                    {/* PDF 썸네일 (자동 생성) */}
+                    <TextbookAutoThumbnail
+                      textbookId={t.id}
+                      existingThumbnailUrl={t.thumbnailUrl}
+                      sizeBytes={t.sizeBytes}
+                    />
 
                     {/* 제목 및 메타 정보 */}
                     <div className="flex-1 min-w-0">
@@ -159,7 +149,7 @@ export default async function AdminTextbooksPage() {
             ))}
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-white/10 bg-[#212123] p-8 text-center">
+          <div className="rounded-xl border border-dashed border-white/10 bg-[#1a1a1c] p-8 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/5">
               <svg className="w-6 h-6 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

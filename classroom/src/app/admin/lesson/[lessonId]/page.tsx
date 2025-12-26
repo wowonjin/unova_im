@@ -129,7 +129,7 @@ export default async function AdminLessonPage({ params }: { params: Promise<{ le
           </Card>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-auto lg:pr-1">
           <Card>
             <CardHeader title="강좌" description="현재 차시가 속한 강좌입니다." />
             <CardBody className="space-y-2">

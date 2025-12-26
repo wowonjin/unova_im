@@ -44,8 +44,26 @@ model User {
   qnaPosts    QnaPost[]
   qnaPinned   QnaPost[] @relation("QnaPinnedBy")
   sessions    Session[]
+  orders      Order[]
+  oauthAccounts OAuthAccount[]
+  reviews     Review[]
+  productLikes ProductLike[]
 
   @@index([imwebMemberCode])
+}
+
+model OAuthAccount {
+  id             String   @id @default(cuid())
+  userId         String
+  provider       String   // "kakao" | "naver" etc
+  providerUserId String
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@index([provider])
 }
 
 model Session {
@@ -99,11 +117,41 @@ model Course {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @default(now()) @updatedAt
 
+  // === 상세 페이지 관련 필드 ===
+  // 판매 가격 (원)
+  price          Int?
+  // 원래 가격 (할인 전, 선택)
+  originalPrice  Int?
+  // 하루당 가격 (계산된 값, 캐시용)
+  dailyPrice     Int?
+  // 평점 (1.0~5.0)
+  rating         Float?
+  // 후기 수
+  reviewCount    Int      @default(0)
+  // 좋아요 수
+  likeCount      Int      @default(0)
+  // 태그 (JSON 배열)
+  tags           Json?
+  // 수강 혜택 (JSON 배열)
+  benefits       Json?
+  // 강좌 특징 (JSON 배열)
+  features       Json?
+  // 강사 소개
+  teacherTitle   String?
+  teacherDescription String?
+  // 맛보기 영상 Vimeo ID
+  previewVimeoId String?
+  // 환불 정책
+  refundPolicy   String?
+
   owner       User?    @relation("CourseOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   lessons     Lesson[]
   enrollments Enrollment[]
   attachments Attachment[]
   imwebProdCodes CourseImwebProdCode[]
+  orders      Order[]
+  reviews     Review[]
+  productLikes ProductLike[]
 
   @@index([ownerId])
   @@index([teacherName])
@@ -277,6 +325,7 @@ model Textbook {
   id           String   @id @default(cuid())
   ownerId      String
   title        String
+  subjectName  String?  // 과목명 (예: 수학, 물리, 국어 등)
   storedPath   String
   originalName String
   mimeType     String
@@ -292,8 +341,31 @@ model Textbook {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // === 상세 페이지 관련 필드 ===
+  // 판매 가격 (원)
+  price          Int?
+  // 원래 가격 (할인 전, 선택)
+  originalPrice  Int?
+  // 평점 (1.0~5.0)
+  rating         Float?
+  // 후기 수
+  reviewCount    Int      @default(0)
+  // 좋아요 수
+  likeCount      Int      @default(0)
+  // 태그 (JSON 배열)
+  tags           Json?
+  // 교재 혜택 (JSON 배열)
+  benefits       Json?
+  // 교재 특징 (JSON 배열)
+  features       Json?
+  // 상세 설명
+  description    String?
+
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   entitlements TextbookEntitlement[]
+  orders      Order[]
+  reviews     Review[]
+  productLikes ProductLike[]
 
   @@index([ownerId, createdAt])
   @@index([imwebProdCode]) // 조회 성능을 위한 인덱스
@@ -334,4 +406,103 @@ model Notice {
   @@index([authorId, createdAt])
   @@index([isPublished, createdAt])
   @@index([category, createdAt])
+}
+
+// 주문 상태
+enum OrderStatus {
+  PENDING     // 결제 대기
+  COMPLETED   // 결제 완료
+  CANCELLED   // 취소됨
+  REFUNDED    // 환불됨
+  PARTIALLY_REFUNDED // 부분 환불됨
+}
+
+// 상품 타입
+enum ProductType {
+  COURSE
+  TEXTBOOK
+}
+
+// 주문 모델
+model Order {
+  id            String      @id @default(cuid())
+  userId        String
+  // 상품 타입 및 ID
+  productType   ProductType
+  courseId      String?
+  textbookId    String?
+  // 주문 정보
+  orderNo       String      @unique  // 주문 번호
+  productName   String                // 상품명 (스냅샷)
+  amount        Int                   // 결제 금액
+  status        OrderStatus @default(PENDING)
+  paymentMethod String?               // 결제 수단
+  refundedAmount Int      @default(0) // 환불된 금액(부분환불 누적)
+  // 결제사 정보 (예: "toss")
+  provider      String?
+  // 결제사 paymentKey (토스페이먼츠 등)
+  providerPaymentKey String?
+  // 결제사 응답 원문(디버깅용, 필요 시)
+  providerPayload Json?
+  // 자동 등록 여부
+  enrolled      Boolean     @default(false)
+  enrolledAt    DateTime?
+  // 시간
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course   Course?   @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  textbook Textbook? @relation(fields: [textbookId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([courseId])
+  @@index([textbookId])
+  @@index([provider])
+  @@index([providerPaymentKey])
+}
+
+// 수강 후기 모델
+model Review {
+  id          String      @id @default(cuid())
+  productType ProductType
+  courseId    String?
+  textbookId  String?
+  userId      String?     // 로그인한 사용자 (선택)
+  authorName  String      // 작성자 이름 (비로그인 허용)
+  rating      Int         // 1~5 평점
+  content     String      // 후기 내용
+  imageUrls   Json?       // 이미지 URL 배열 (JSON)
+  isApproved  Boolean     @default(true) // 관리자 승인 여부
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  course   Course?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  textbook Textbook? @relation(fields: [textbookId], references: [id], onDelete: Cascade)
+
+  @@index([courseId, createdAt])
+  @@index([textbookId, createdAt])
+  @@index([isApproved, createdAt])
+}
+
+// 상품 좋아요 모델
+model ProductLike {
+  id          String      @id @default(cuid())
+  productType ProductType
+  courseId    String?
+  textbookId  String?
+  visitorId   String      // 비로그인 사용자는 브라우저 ID로 구분
+  userId      String?     // 로그인한 사용자 (선택)
+  createdAt   DateTime    @default(now())
+
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  course   Course?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  textbook Textbook? @relation(fields: [textbookId], references: [id], onDelete: Cascade)
+
+  @@unique([productType, courseId, visitorId])
+  @@unique([productType, textbookId, visitorId])
+  @@index([courseId])
+  @@index([textbookId])
 }

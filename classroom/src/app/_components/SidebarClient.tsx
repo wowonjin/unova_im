@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { warmupThumb } from "./pdfThumbWarmup";
+import { useSidebar } from "./SidebarContext";
 
 type Props = {
   email: string;
@@ -45,7 +46,7 @@ function ProgressRing({ percent }: { percent: number }) {
         }}
         aria-hidden="true"
       />
-      <div className="absolute inset-[3px] flex items-center justify-center rounded-full bg-[#1d1d1f]">
+      <div className="absolute inset-[3px] flex items-center justify-center rounded-full bg-[#161616]">
         <span className="text-[11px] font-semibold text-white">{p}%</span>
       </div>
     </div>
@@ -84,19 +85,22 @@ function NavItem({ href, label, icon }: { href: string; label: string; icon?: st
 export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, isLoggedIn, showAllCourses, enrolledCourses }: Props) {
   const pathname = usePathname();
   const isAdminArea = pathname?.startsWith("/admin");
-  const [openRequested, setOpenRequested] = useState(false);
-  const [openedAtPath, setOpenedAtPath] = useState<string>("");
-  const open = openRequested && openedAtPath === pathname;
+  const { isOpen, setIsOpen } = useSidebar();
   const [showLogout, setShowLogout] = useState(false);
 
+  // Close sidebar on route change
   useEffect(() => {
-    if (!open) return;
+    setIsOpen(false);
+  }, [pathname, setIsOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenRequested(false);
+      if (e.key === "Escape") setIsOpen(false);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open]);
+  }, [isOpen, setIsOpen]);
 
   // 앱 첫 진입 시 교재 썸네일을 idle 타이밍에 미리 준비 (warmup)
   useEffect(() => {
@@ -132,32 +136,6 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
   }, []);
 
 
-  const MobileHeader = (
-    <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/10 bg-[#1d1d1f]/95 px-4 py-3 backdrop-blur md:hidden">
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => {
-            setOpenedAtPath(pathname);
-            setOpenRequested(true);
-          }}
-          aria-label="메뉴 열기"
-          className="rounded-lg p-2 hover:bg-white/10"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
-
-        <Link href="/dashboard" className="inline-flex items-center">
-          <Image src="/unova-logo.png" alt="UNOVA" width={160} height={28} priority className="h-6 w-auto" />
-        </Link>
-
-        {/* 빈 공간으로 좌우 균형 맞춤 */}
-        <div className="w-10" />
-      </div>
-    </header>
-  );
 
   const EnrolledCoursesSection = useMemo(() => {
     return (
@@ -197,28 +175,32 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
 
   const Nav = (
     <nav className="space-y-1 text-sm">
-      {/* 관리자 페이지에서는 빠른 생성/관리 버튼을 사이드바 상단에 노출 */}
+      {/* 관리자 페이지에서는 관리 메뉴만 표시 */}
       {isAdminArea ? (
-        <div className="mb-4">
+        <>
+          <NavItem href="/admin" label="관리자 대시보드" icon="dashboard" />
+          <div className="mt-4">
           <p className="px-3 text-xs font-semibold text-white/60">관리</p>
           <div className="mt-2 space-y-1">
-            <NavItem href="/admin/members" label="모든 회원 보기" icon="group" />
-            <NavItem href="/admin/textbooks" label="교재 만들기" icon="note_add" />
-            <NavItem href="/admin/courses" label="강좌 만들기" icon="add_circle" />
-            <NavItem href="/admin/notices" label="공지사항 만들기" icon="edit_note" />
+              <NavItem href="/admin/textbooks" label="교재 관리" icon="menu_book" />
+              <NavItem href="/admin/courses" label="강좌 관리" icon="video_library" />
+              <NavItem href="/admin/notices" label="공지사항 관리" icon="campaign" />
+              <NavItem href="/admin/members" label="회원 관리" icon="group" />
+              <NavItem href="/admin/orders" label="주문 관리" icon="receipt_long" />
+              <NavItem href="/admin/popups" label="팝업 관리" icon="web_asset" />
+              <NavItem href="/admin/events" label="이벤트 로그" icon="analytics" />
+            </div>
           </div>
-        </div>
-      ) : null}
-
-      {/* 순서: 교재 다운로드 -> 수강중인 강좌 -> 선생님 공지사항 -> 유노바 홈페이지 -> 최근 수강 목록 */}
+        </>
+      ) : (
+        <>
+          {/* 일반 사용자 메뉴: 교재 다운로드 -> 수강중인 강좌 -> 선생님 공지사항 -> 유노바 홈페이지 -> 최근 수강 목록 */}
       <NavItem href="/materials" label="교재 다운로드" icon="menu_book" />
       <NavItem href="/dashboard" label="수강중인 강좌" icon="school" />
       <NavItem href="/notices" label="선생님 공지사항" icon="campaign" />
-      {/* 유노바 홈페이지 (새 창 열림) */}
+          {/* 유노바 홈페이지 */}
       <a
-        href="https://unova.co.kr"
-        target="_blank"
-        rel="noopener noreferrer"
+            href="/"
         className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-white/10 text-white/90"
       >
         <span
@@ -235,15 +217,8 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
       </a>
       {/* 최근 수강 목록 */}
       {EnrolledCoursesSection}
-      {/* admin 영역이 아니어도(예: 대시보드) 관리자라면 노출 */}
-      {isAdmin && !isAdminArea ? (
-        <>
-          <NavItem href="/admin/members" label="모든 회원 보기" icon="group" />
-          <NavItem href="/admin/textbooks" label="교재 만들기" icon="note_add" />
-          <NavItem href="/admin/courses" label="강좌 만들기" icon="add_circle" />
-          <NavItem href="/admin/notices" label="공지사항 만들기" icon="edit_note" />
         </>
-      ) : null}
+      )}
     </nav>
   );
 
@@ -308,26 +283,26 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
 
   return (
     <>
-      {MobileHeader}
-
       {/* 모바일 드로어 */}
-      {open ? (
+      {isOpen ? (
         <>
           <div
-            className="fixed inset-0 z-[60] bg-black/60 md:hidden animate-[fadeIn_180ms_ease-out]"
-            onClick={() => setOpenRequested(false)}
+            className="fixed inset-0 z-[60] bg-black/60 lg:hidden animate-[fadeIn_180ms_ease-out]"
+            onClick={() => setIsOpen(false)}
           />
           <div
             role="dialog"
             aria-modal="true"
-            className="fixed inset-y-0 left-0 z-[70] w-72 bg-[#1d1d1f] p-5 md:hidden animate-[drawerIn_180ms_ease-out]"
+            className="fixed inset-y-0 left-0 z-[70] w-72 bg-[#161616] p-5 lg:hidden animate-[drawerIn_180ms_ease-out]"
           >
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold">메뉴</div>
+                <Link href="/" className="inline-flex items-center">
+                  <Image src="/unova-logo.png" alt="UNOVA" width={140} height={24} priority className="h-5 w-auto" />
+                </Link>
                 <button
                   type="button"
-                  onClick={() => setOpenRequested(false)}
+                  onClick={() => setIsOpen(false)}
                   aria-label="메뉴 닫기"
                   className="rounded-lg p-2 hover:bg-white/10"
                 >
@@ -337,7 +312,7 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
                 </button>
               </div>
 
-              {/* 모바일 사이드 메뉴: 로고 제거, 메뉴만 표시 */}
+              {/* 모바일 사이드 메뉴 */}
               <div className="mt-5">{Nav}</div>
 
               {/* 회원 정보: 왼쪽 하단 고정 */}
@@ -348,11 +323,11 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
       ) : null}
 
       {/* 데스크탑 사이드바 */}
-      <aside className="hidden w-64 shrink-0 border-r border-white/10 bg-[#1d1d1f] p-5 md:block">
+      <aside className="hidden w-64 shrink-0 border-r border-white/10 bg-[#161616] p-5 lg:block">
         <div className="flex h-full flex-col">
-          {/* 로고 - 아이콘들과 왼쪽 끝 맞춤 (px-3 = 12px) */}
+          {/* 로고 */}
           <div className="mb-6 px-3">
-            <Link href="/dashboard" className="inline-flex items-center">
+            <Link href="/" className="inline-flex items-center">
               <Image src="/unova-logo.png" alt="UNOVA" width={140} height={24} priority className="h-5 w-auto" />
             </Link>
           </div>

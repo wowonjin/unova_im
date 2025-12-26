@@ -1,9 +1,7 @@
 "use client";
 
 export default function FloatingKakaoButton() {
-  // 실제 카카오톡 질문방 링크를 넣으면 그대로 사용됩니다.
-  // 미설정 시에도 아이콘은 노출되며 카카오 오픈채팅 페이지로 이동합니다.
-  const href = process.env.NEXT_PUBLIC_KAKAO_CHAT_URL || "https://open.kakao.com/";
+  const href = "https://pf.kakao.com/_xinPAn/chat";
 
   return (
     <a

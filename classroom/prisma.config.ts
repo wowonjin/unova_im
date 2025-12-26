@@ -27,5 +27,7 @@ export default defineConfig({
       process.env["POSTGRES_PRISMA_URL"] ||
       process.env["POSTGRES_URL_NON_POOLING"] ||
       process.env["POSTGRES_URL"],
+    // Supabase: 마이그레이션용 직접 연결
+    directUrl: process.env["DIRECT_URL"],
   },
 });

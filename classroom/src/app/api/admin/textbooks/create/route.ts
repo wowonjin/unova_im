@@ -22,6 +22,21 @@ function guessFileNameFromUrl(url: string) {
   }
 }
 
+async function getFileSizeFromUrl(url: string): Promise<number> {
+  try {
+    const response = await fetch(url, { method: "HEAD" });
+    if (response.ok) {
+      const contentLength = response.headers.get("content-length");
+      if (contentLength) {
+        return parseInt(contentLength, 10);
+      }
+    }
+  } catch (e) {
+    console.error("[getFileSizeFromUrl] Failed to get file size:", e);
+  }
+  return 0;
+}
+
 export async function POST(req: Request) {
   const teacher = await getCurrentTeacherUser();
   if (!teacher) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
@@ -30,6 +45,7 @@ export async function POST(req: Request) {
   const file = form.get("file");
   const urlRaw = form.get("url");
   const titleRaw = form.get("title");
+  const subjectNameRaw = form.get("subjectName");
   const isPublishedRaw = form.get("isPublished");
   const entitlementDaysRaw = form.get("entitlementDays");
   const imwebProdCodeRaw = form.get("imwebProdCode");
@@ -37,9 +53,12 @@ export async function POST(req: Request) {
   const isPublished = typeof isPublishedRaw === "string" ? isPublishedRaw === "1" || isPublishedRaw === "true" || isPublishedRaw === "on" : true;
   const entitlementDays = typeof entitlementDaysRaw === "string" && /^\d+$/.test(entitlementDaysRaw.trim())
     ? Math.max(1, Math.min(3650, parseInt(entitlementDaysRaw.trim(), 10)))
-    : 365;
+    : 30;
   const imwebProdCode = typeof imwebProdCodeRaw === "string" && imwebProdCodeRaw.trim().length > 0
     ? imwebProdCodeRaw.trim()
+    : null;
+  const subjectName = typeof subjectNameRaw === "string" && subjectNameRaw.trim().length > 0
+    ? subjectNameRaw.trim()
     : null;
 
   // URL 방식(구글 콘솔/GCS 등)
@@ -59,15 +78,19 @@ export async function POST(req: Request) {
     const originalName = inferredName || title;
     const mimeType = originalName.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/octet-stream";
 
+    // URL에서 파일 크기 가져오기
+    const sizeBytes = await getFileSizeFromUrl(url);
+
     await prisma.textbook.create({
       data: {
         ownerId: teacher.id,
         title,
+        subjectName,
         // storedPath 컬럼을 외부 URL 저장용으로도 재사용(다운로드 라우트에서 http(s)면 redirect 처리)
         storedPath: url,
         originalName,
         mimeType,
-        sizeBytes: 0,
+        sizeBytes,
         isPublished,
         entitlementDays,
         imwebProdCode,
@@ -100,6 +123,7 @@ export async function POST(req: Request) {
     data: {
       ownerId: teacher.id,
       title,
+      subjectName,
       storedPath,
       originalName: file.name || title,
       mimeType: file.type || "application/octet-stream",

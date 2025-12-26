@@ -12,11 +12,11 @@ export type CurrentUser = {
 
 async function getDefaultAdminUser(): Promise<CurrentUser> {
   // 관리자 페이지용 고정 관리자 계정
-  const email = (process.env.DEFAULT_ADMIN_EMAIL || "admin@local").toLowerCase().trim();
+  const email = (process.env.ADMIN_EMAIL || "admin@gmail.com").toLowerCase().trim();
   const user = await prisma.user.upsert({
     where: { email },
     update: { lastLoginAt: new Date() },
-    create: { email, lastLoginAt: new Date() },
+    create: { email, name: "관리자", lastLoginAt: new Date() },
     select: { id: true, email: true, name: true, profileImageUrl: true },
   });
   return {
@@ -30,12 +30,24 @@ async function getDefaultAdminUser(): Promise<CurrentUser> {
 }
 
 function sessionUserToCurrentUser(sessionUser: SessionUser): CurrentUser {
+  // 관리자 이메일 확인 (ADMIN_EMAIL 또는 ADMIN_EMAILS 지원)
+  const adminEmail = (process.env.ADMIN_EMAIL || "admin@gmail.com").toLowerCase().trim();
+  const adminEmails = (process.env.ADMIN_EMAILS || "")
+    .toLowerCase()
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+  
+  // 단일 관리자 이메일 또는 관리자 목록에 포함되어 있으면 관리자
+  const userEmail = sessionUser.email.toLowerCase().trim();
+  const isAdmin = userEmail === adminEmail || adminEmails.includes(userEmail);
+  
   return {
     id: sessionUser.id,
     email: sessionUser.email,
     name: sessionUser.name,
     profileImageUrl: sessionUser.profileImageUrl,
-    isAdmin: false,
+    isAdmin,
     isLoggedIn: true,
   };
 }

@@ -176,7 +176,7 @@ export default async function DashboardPage({
       <DashboardHeader totalCount={cards.length} />
 
       {cards.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-white/10 bg-[#212123] p-8 text-center">
+        <div className="mt-8 rounded-2xl border border-white/10 bg-[#1a1a1c] p-8 text-center">
           <DashboardEmptyState isLoggedIn={user.isLoggedIn} />
         </div>
       ) : (

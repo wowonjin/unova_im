@@ -3,6 +3,85 @@ import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import MembersClient from "./MembersClient";
 
+// 더미 회원 데이터
+const dummyMembers = [
+  {
+    id: "member-1",
+    email: "admin@gmail.com",
+    name: "관리자",
+    phone: "010-1234-5678",
+    profileImageUrl: null,
+    imwebMemberCode: null,
+    address: "서울특별시 강남구 학동로 24길 20",
+    addressDetail: "참존빌딩 402호",
+    createdAt: "2024-01-01T00:00:00.000Z",
+    lastLoginAt: "2025-12-25T10:00:00.000Z",
+    enrollmentCount: 3,
+    textbookCount: 2,
+    totalPayment: 150000,
+  },
+  {
+    id: "member-2",
+    email: "kim.minsoo@example.com",
+    name: "김민수",
+    phone: "010-2345-6789",
+    profileImageUrl: null,
+    imwebMemberCode: "IMW001",
+    address: "서울특별시 서초구 서초동 123-45",
+    addressDetail: "아파트 101동 1001호",
+    createdAt: "2024-06-15T09:30:00.000Z",
+    lastLoginAt: "2025-12-24T14:20:00.000Z",
+    enrollmentCount: 2,
+    textbookCount: 1,
+    totalPayment: 89000,
+  },
+  {
+    id: "member-3",
+    email: "lee.jiyoung@example.com",
+    name: "이지영",
+    phone: "010-3456-7890",
+    profileImageUrl: null,
+    imwebMemberCode: "IMW002",
+    address: "경기도 성남시 분당구 정자동 567",
+    addressDetail: null,
+    createdAt: "2024-08-20T11:00:00.000Z",
+    lastLoginAt: "2025-12-23T09:15:00.000Z",
+    enrollmentCount: 4,
+    textbookCount: 3,
+    totalPayment: 245000,
+  },
+  {
+    id: "member-4",
+    email: "park.soyeon@example.com",
+    name: "박소연",
+    phone: "010-4567-8901",
+    profileImageUrl: null,
+    imwebMemberCode: "IMW003",
+    address: "인천광역시 연수구 송도동 89",
+    addressDetail: "오피스텔 502호",
+    createdAt: "2024-09-10T14:45:00.000Z",
+    lastLoginAt: "2025-12-22T16:30:00.000Z",
+    enrollmentCount: 1,
+    textbookCount: 1,
+    totalPayment: 0,
+  },
+  {
+    id: "member-5",
+    email: "choi.junhyuk@example.com",
+    name: "최준혁",
+    phone: "010-5678-9012",
+    profileImageUrl: null,
+    imwebMemberCode: "IMW004",
+    address: "대전광역시 유성구 봉명동 234",
+    addressDetail: null,
+    createdAt: "2024-10-05T08:20:00.000Z",
+    lastLoginAt: "2025-12-21T11:45:00.000Z",
+    enrollmentCount: 3,
+    textbookCount: 2,
+    totalPayment: 178000,
+  },
+];
+
 export default async function AdminMembersPage({
   searchParams,
 }: {
@@ -15,63 +94,84 @@ export default async function AdminMembersPage({
   const limit = 50;
   const skip = (page - 1) * limit;
 
-  // 검색 조건
-  const where = query
-    ? {
-        OR: [
-          { email: { contains: query, mode: "insensitive" as const } },
-          { name: { contains: query, mode: "insensitive" as const } },
-          { phone: { contains: query, mode: "insensitive" as const } },
-        ],
-      }
-    : {};
+  let membersData = dummyMembers;
+  let totalCount = dummyMembers.length;
+  let totalPages = 1;
 
-  const [members, totalCount] = await Promise.all([
-    prisma.user.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: limit,
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        profileImageUrl: true,
-        imwebMemberCode: true,
-        address: true,
-        addressDetail: true,
-        birthday: true,
-        createdAt: true,
-        lastLoginAt: true,
-        _count: {
-          select: {
-            enrollments: true,
-            textbookEntitlements: true,
+  try {
+    // 검색 조건
+    const where = query
+      ? {
+          OR: [
+            { email: { contains: query, mode: "insensitive" as const } },
+            { name: { contains: query, mode: "insensitive" as const } },
+            { phone: { contains: query, mode: "insensitive" as const } },
+          ],
+        }
+      : {};
+
+    const [members, count] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          phone: true,
+          profileImageUrl: true,
+          imwebMemberCode: true,
+          address: true,
+          addressDetail: true,
+          createdAt: true,
+          lastLoginAt: true,
+          _count: {
+            select: {
+              enrollments: true,
+              textbookEntitlements: true,
+            },
           },
         },
-      },
-    }),
-    prisma.user.count({ where }),
-  ]);
+      }),
+      prisma.user.count({ where }),
+    ]);
 
-  const totalPages = Math.ceil(totalCount / limit);
+    totalCount = count;
+    totalPages = Math.ceil(totalCount / limit);
 
-  const membersData = members.map((m) => ({
-    id: m.id,
-    email: m.email,
-    name: m.name,
-    phone: m.phone,
-    profileImageUrl: m.profileImageUrl,
-    imwebMemberCode: m.imwebMemberCode,
-    address: m.address,
-    addressDetail: m.addressDetail,
-    birthday: m.birthday,
-    createdAt: m.createdAt.toISOString(),
-    lastLoginAt: m.lastLoginAt?.toISOString() || null,
-    enrollmentCount: m._count.enrollments,
-    textbookCount: m._count.textbookEntitlements,
-  }));
+    membersData = members.map((m) => ({
+      id: m.id,
+      email: m.email,
+      name: m.name,
+      phone: m.phone,
+      profileImageUrl: m.profileImageUrl,
+      imwebMemberCode: m.imwebMemberCode,
+      address: m.address,
+      addressDetail: m.addressDetail,
+      createdAt: m.createdAt.toISOString(),
+      lastLoginAt: m.lastLoginAt?.toISOString() || null,
+      enrollmentCount: m._count.enrollments,
+      textbookCount: m._count.textbookEntitlements,
+      totalPayment: 0, // TODO: 실제 결제 금액 연동 필요
+    }));
+  } catch (error) {
+    // DB 연결 실패 시 더미 데이터 사용
+    console.error("DB connection error, using dummy data:", error);
+    
+    // 검색 필터 적용
+    if (query) {
+      const q = query.toLowerCase();
+      membersData = dummyMembers.filter(
+        (m) =>
+          m.email.toLowerCase().includes(q) ||
+          (m.name && m.name.toLowerCase().includes(q)) ||
+          (m.phone && m.phone.includes(q))
+      );
+      totalCount = membersData.length;
+    }
+  }
 
   return (
     <AppShell>

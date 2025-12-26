@@ -5,8 +5,13 @@ import { createSession } from "@/lib/session";
 
 export const runtime = "nodejs";
 
+// 관리자 계정 설정
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@gmail.com";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin";
+
 const Schema = z.object({
   email: z.string().email().transform((s) => s.toLowerCase().trim()),
+  password: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -18,8 +23,39 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "INVALID_EMAIL" }, { status: 400 });
     }
 
-    const { email } = parsed.data;
+    const { email, password } = parsed.data;
 
+    // 관리자 계정 로그인 체크
+    if (email === ADMIN_EMAIL.toLowerCase().trim()) {
+      if (password !== ADMIN_PASSWORD) {
+        return NextResponse.json({ ok: false, error: "INVALID_PASSWORD" }, { status: 401 });
+      }
+
+      // 관리자 계정 upsert (없으면 생성)
+      const adminUser = await prisma.user.upsert({
+        where: { email },
+        update: { lastLoginAt: new Date() },
+        create: { 
+          email, 
+          name: "관리자",
+          lastLoginAt: new Date() 
+        },
+        select: { id: true, name: true, profileImageUrl: true },
+      });
+
+      // 세션 생성
+      await createSession(adminUser.id);
+
+      return NextResponse.json({ 
+        ok: true,
+        user: {
+          name: adminUser.name,
+          profileImg: adminUser.profileImageUrl,
+        }
+      });
+    }
+
+    // 일반 사용자 로그인 (기존 로직)
     // DB에서 사용자 조회 (웹훅으로 동기화된 회원만 존재)
     const user = await prisma.user.findUnique({
       where: { email },

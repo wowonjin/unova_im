@@ -75,7 +75,7 @@ export default async function AdminNoticesPage() {
                   <select
                     name="isPublished"
                     defaultValue="1"
-                    className="h-10 w-full rounded-xl border border-white/10 bg-[#212123] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
+                    className="h-10 w-full rounded-xl border border-white/10 bg-[#1a1a1c] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
                   >
                     <option value="1">공개</option>
                     <option value="0">비공개</option>

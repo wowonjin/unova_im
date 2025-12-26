@@ -3,11 +3,12 @@ import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import { Badge, Button, Card, CardBody, CardHeader, Field, HelpTip, Input, PageHeader, Tabs } from "@/app/_components/ui";
 import ConfirmDeleteCourseForm from "@/app/_components/ConfirmDeleteCourseForm";
-import ImwebProdCodeFormClient from "@/app/_components/ImwebProdCodeFormClient";
 import CourseThumbnailUploadClient from "@/app/_components/CourseThumbnailUploadClient";
 import CourseSettingsAutoSaveClient from "@/app/_components/CourseSettingsAutoSaveClient";
 import PublishToggleClient from "@/app/_components/PublishToggleClient";
 import { ConfirmDeleteIconButton } from "@/app/_components/ConfirmDeleteButton";
+import LessonListClient from "@/app/_components/LessonListClient";
+import CourseDetailPageClient from "@/app/_components/CourseDetailPageClient";
 
 export default async function AdminCoursePage({
   params,
@@ -23,7 +24,8 @@ export default async function AdminCoursePage({
   const tab = (tabRaw === "integrations" ? "settings" : tabRaw === "materials" ? "curriculum" : tabRaw) as
     | "curriculum"
     | "students"
-    | "settings";
+    | "settings"
+    | "detail";
   const imwebMsg = sp.imweb || null;
   const thumbMsg = sp.thumb || null;
   const enrollMsg = sp.enroll || null;
@@ -88,7 +90,8 @@ export default async function AdminCoursePage({
       <Tabs
         activeKey={tab}
         items={[
-          { key: "settings", label: "설정/연동", href: `/admin/course/${course.id}?tab=settings` },
+          { key: "settings", label: "설정", href: `/admin/course/${course.id}?tab=settings` },
+          { key: "detail", label: "상세 페이지", href: `/admin/course/${course.id}?tab=detail` },
           { key: "curriculum", label: "강의목록", href: `/admin/course/${course.id}?tab=curriculum` },
           { key: "students", label: "수강학생", href: `/admin/course/${course.id}?tab=students` },
         ]}
@@ -123,27 +126,32 @@ export default async function AdminCoursePage({
                 <CourseThumbnailUploadClient courseId={course.id} hasThumbnail={Boolean(course.thumbnailStoredPath || course.thumbnailUrl)} />
               </CardBody>
             </Card>
-
-            <Card>
+          </div>
+        ) : tab === "detail" ? (
+          <Card className="lg:col-span-3">
               <CardHeader
-                title="아임웹 연동(상품 코드)"
-                description="아임웹에서 결제 완료가 되면, 여기의 '상품 코드'와 같은 주문을 찾아 수강권을 자동 발급합니다."
+              title="상세 페이지 설정"
+              description="스토어에 표시되는 강좌 상세 페이지의 내용을 설정합니다."
               />
               <CardBody>
-                {imwebMsg === "duplicate" ? (
-                  <p className="mb-3 text-sm text-red-600">이미 다른 강좌에 등록된 상품 코드입니다.</p>
-                ) : imwebMsg === "saved" ? (
-                  <p className="mb-3 text-sm text-white/70">상품 코드가 저장되었습니다.</p>
-                ) : imwebMsg === "cleared" ? (
-                  <p className="mb-3 text-sm text-white/70">아임웹 연동이 해제되었습니다.</p>
-                ) : imwebMsg === "error" ? (
-                  <p className="mb-3 text-sm text-red-600">저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.</p>
-                ) : null}
-                <ImwebProdCodeFormClient courseId={course.id} codes={course.imwebProdCodes.map(c => ({ id: c.id, code: c.code }))} />
+              <CourseDetailPageClient
+                courseId={course.id}
+                initial={{
+                  price: course.price ?? null,
+                  originalPrice: course.originalPrice ?? null,
+                  rating: course.rating ?? null,
+                  reviewCount: course.reviewCount ?? 0,
+                  tags: (course.tags as string[] | null) ?? [],
+                  benefits: (course.benefits as string[] | null) ?? [],
+                  features: (course.features as string[] | null) ?? [],
+                  teacherTitle: course.teacherTitle ?? null,
+                  teacherDescription: course.teacherDescription ?? null,
+                  previewVimeoId: course.previewVimeoId ?? null,
+                  refundPolicy: course.refundPolicy ?? null,
+                }}
+              />
               </CardBody>
             </Card>
-
-          </div>
         ) : tab === "students" ? (
           <Card className="lg:col-span-3">
             <CardHeader
@@ -283,58 +291,18 @@ export default async function AdminCoursePage({
                 </div>
               </form>
 
-              <div className="mt-5 overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="text-left text-white/60">
-                    <tr className="border-b border-white/10">
-                      <th className="py-3 pr-3">순서</th>
-                      <th className="py-3 pr-3">제목</th>
-                      <th className="py-3 pr-3">상태</th>
-                      <th className="py-3 pr-3">자료</th>
-                      <th className="py-3 pr-3 text-right" aria-label="액션" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {course.lessons.map((l) => (
-                      <tr key={l.id} className="border-b border-white/10">
-                        <td className="py-3 pr-3 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <Badge>{l.position}강</Badge>
-                            <form action="/api/admin/lessons/move" method="post">
-                              <input type="hidden" name="lessonId" value={l.id} />
-                              <input type="hidden" name="dir" value="up" />
-                              <Button type="submit" variant="ghost" size="sm">
-                                ↑
-                              </Button>
-                            </form>
-                            <form action="/api/admin/lessons/move" method="post">
-                              <input type="hidden" name="lessonId" value={l.id} />
-                              <input type="hidden" name="dir" value="down" />
-                              <Button type="submit" variant="ghost" size="sm">
-                                ↓
-                              </Button>
-                            </form>
-                          </div>
-                        </td>
-                        <td className="py-3 pr-3 min-w-[280px]">
-                          <div className="font-medium text-white">{l.title}</div>
-                          <div className="mt-1 text-xs text-white/50">Vimeo: {l.vimeoVideoId}</div>
-                        </td>
-                        <td className="py-3 pr-3">
-                          <Badge tone={l.isPublished ? "neutral" : "muted"}>{l.isPublished ? "공개" : "비공개"}</Badge>
-                        </td>
-                        <td className="py-3 pr-3 text-white/60">{l.attachments.length}개</td>
-                        <td className="py-3 pr-3">
-                          <div className="flex justify-end gap-2">
-                            <Button href={`/admin/lesson/${l.id}`} size="sm">
-                              편집
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="mt-5">
+                <LessonListClient
+                  courseId={course.id}
+                  initialLessons={course.lessons.map((l) => ({
+                    id: l.id,
+                    position: l.position,
+                    title: l.title,
+                    vimeoVideoId: l.vimeoVideoId,
+                    isPublished: l.isPublished,
+                    attachmentCount: l.attachments.length,
+                  }))}
+                />
               </div>
             </CardBody>
             </Card>

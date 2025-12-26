@@ -8,7 +8,7 @@ export function Card({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <div className={`rounded-2xl border border-white/10 bg-[#212123] ${className}`}>{children}</div>;
+  return <div className={`rounded-2xl border border-white/10 bg-[#1a1a1c] ${className}`}>{children}</div>;
 }
 
 export function CardHeader({
@@ -156,7 +156,7 @@ export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...rest}
-      className={`h-10 w-full rounded-xl border border-white/10 bg-[#1d1d1f] px-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/20 focus:ring-2 focus:ring-white/10 ${className}`}
+      className={`h-10 w-full rounded-xl border border-white/10 bg-[#131315] px-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/20 focus:ring-2 focus:ring-white/10 ${className}`}
     />
   );
 }

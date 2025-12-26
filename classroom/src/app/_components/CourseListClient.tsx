@@ -92,7 +92,7 @@ export default function CourseListClient({
   };
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#212123]">
+    <div className="rounded-2xl border border-white/10 bg-[#1a1a1c]">
       <div className="border-b border-white/10 px-5 py-4">
         <div className="flex items-center justify-between gap-3">
           <div className="text-sm font-semibold">내 강좌 목록</div>
@@ -112,7 +112,7 @@ export default function CourseListClient({
           <select
             name="published"
             defaultValue={publishedRaw}
-            className="h-9 w-full rounded-xl border border-white/10 bg-[#212123] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10 sm:w-40"
+            className="h-9 w-full rounded-xl border border-white/10 bg-[#1a1a1c] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10 sm:w-40"
             aria-label="공개 상태 필터"
           >
             <option value="all">전체</option>

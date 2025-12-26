@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 const Schema = z.object({
   textbookId: z.string().min(1),
   title: z.string().min(1).optional(),
-  imwebProdCode: z.string().optional().transform((v) => (v === "" ? null : v)),
+  subjectName: z.string().optional().transform((v) => v || null),
   entitlementDays: z
     .string()
     .optional()
@@ -21,25 +21,36 @@ const Schema = z.object({
 
 export async function POST(req: Request) {
   const teacher = await requireAdminUser();
+  const contentType = req.headers.get("content-type") || "";
+  const isFormData = contentType.includes("multipart/form-data") || contentType.includes("application/x-www-form-urlencoded");
   const referer = req.headers.get("referer") || "/admin/textbooks";
 
-  const raw = await req.formData().catch(() => null);
-  if (!raw) {
-    return NextResponse.redirect(new URL(`${referer}?saved=error`, req.url));
+  let raw: FormData | null = null;
+  
+  try {
+    raw = await req.formData();
+  } catch {
+    if (isFormData) {
+      return NextResponse.redirect(new URL(`${referer}?saved=error`, req.url));
+    }
+    return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
   }
 
   const parsed = Schema.safeParse({
     textbookId: raw.get("textbookId"),
     title: raw.get("title"),
-    imwebProdCode: raw.get("imwebProdCode"),
+    subjectName: raw.get("subjectName"),
     entitlementDays: raw.get("entitlementDays"),
   });
 
   if (!parsed.success) {
-    return NextResponse.redirect(new URL(`${referer}?saved=error`, req.url));
+    if (isFormData) {
+      return NextResponse.redirect(new URL(`${referer}?saved=error`, req.url));
+    }
+    return NextResponse.json({ ok: false, error: "VALIDATION_ERROR" }, { status: 400 });
   }
 
-  const { textbookId, title, imwebProdCode, entitlementDays } = parsed.data;
+  const { textbookId, title, subjectName, entitlementDays } = parsed.data;
 
   // 소유권 확인
   const existing = await prisma.textbook.findUnique({
@@ -48,18 +59,22 @@ export async function POST(req: Request) {
   });
 
   if (!existing) {
-    return NextResponse.redirect(new URL(`${referer}?saved=error`, req.url));
+    if (isFormData) {
+      return NextResponse.redirect(new URL(`${referer}?saved=error`, req.url));
+    }
+    return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
   }
 
   await prisma.textbook.update({
     where: { id: textbookId },
     data: {
       ...(title !== undefined && { title }),
-      ...(imwebProdCode !== undefined && { imwebProdCode }),
+      ...(subjectName !== undefined && { subjectName }),
       ...(entitlementDays !== undefined && { entitlementDays }),
     },
   });
 
-  return NextResponse.redirect(new URL(`${referer}?saved=success`, req.url));
+  // JSON 요청이면 JSON 응답, 아니면 redirect
+  return NextResponse.json({ ok: true });
 }
 

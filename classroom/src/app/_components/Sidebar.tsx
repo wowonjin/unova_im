@@ -93,6 +93,15 @@ export default async function Sidebar() {
     };
   });
 
+  // "최근 수강 목록"은 실제 시청 기록(Progress)이 있는 강좌만 노출
+  // (테스트 모드 showAllCourses에서는 "강좌 목록(테스트)"로서 미수강도 보여줌)
+  const recentEnrolledCourses = showAllCourses
+    ? enrolledCourses
+    : enrolledCourses
+        .filter((c) => Boolean(c.lastWatchedAtISO))
+        .sort((a, b) => (b.lastWatchedAtISO ?? "").localeCompare(a.lastWatchedAtISO ?? ""))
+        .slice(0, 8);
+
   return (
     <Suspense
       fallback={
@@ -108,7 +117,7 @@ export default async function Sidebar() {
         isAdmin={user.isAdmin}
         isLoggedIn={isLoggedIn}
         showAllCourses={showAllCourses}
-        enrolledCourses={enrolledCourses}
+        enrolledCourses={recentEnrolledCourses}
       />
     </Suspense>
   );
