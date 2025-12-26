@@ -45,6 +45,7 @@ export async function POST(req: Request) {
   const file = form.get("file");
   const urlRaw = form.get("url");
   const titleRaw = form.get("title");
+  const teacherNameRaw = form.get("teacherName");
   const subjectNameRaw = form.get("subjectName");
   const isPublishedRaw = form.get("isPublished");
   const entitlementDaysRaw = form.get("entitlementDays");
@@ -56,6 +57,9 @@ export async function POST(req: Request) {
     : 30;
   const imwebProdCode = typeof imwebProdCodeRaw === "string" && imwebProdCodeRaw.trim().length > 0
     ? imwebProdCodeRaw.trim()
+    : null;
+  const teacherName = typeof teacherNameRaw === "string" && teacherNameRaw.trim().length > 0
+    ? teacherNameRaw.trim()
     : null;
   const subjectName = typeof subjectNameRaw === "string" && subjectNameRaw.trim().length > 0
     ? subjectNameRaw.trim()
@@ -85,6 +89,7 @@ export async function POST(req: Request) {
       data: {
         ownerId: teacher.id,
         title,
+        teacherName,
         subjectName,
         // storedPath 컬럼을 외부 URL 저장용으로도 재사용(다운로드 라우트에서 http(s)면 redirect 처리)
         storedPath: url,
@@ -123,6 +128,7 @@ export async function POST(req: Request) {
     data: {
       ownerId: teacher.id,
       title,
+      teacherName,
       subjectName,
       storedPath,
       originalName: file.name || title,

@@ -9,6 +9,8 @@ type Props = {
     originalPrice: number | null;
     rating: number | null;
     reviewCount: number;
+    teacherTitle: string | null;
+    teacherDescription: string | null;
     tags: string[];
     benefits: string[];
     features: string[];
@@ -21,6 +23,8 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
   const [originalPrice, setOriginalPrice] = useState(initial.originalPrice?.toString() || "");
   const [rating, setRating] = useState(initial.rating?.toString() || "");
   const [reviewCount, setReviewCount] = useState((initial.reviewCount ?? 0).toString());
+  const [teacherTitle, setTeacherTitle] = useState(initial.teacherTitle || "");
+  const [teacherDescription, setTeacherDescription] = useState(initial.teacherDescription || "");
   const [tags, setTags] = useState((initial.tags ?? []).join(", "));
   const [benefits, setBenefits] = useState((initial.benefits ?? []).join("\n"));
   const [features, setFeatures] = useState((initial.features ?? []).join("\n"));
@@ -40,6 +44,8 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
       formData.append("originalPrice", originalPrice);
       formData.append("rating", rating);
       formData.append("reviewCount", reviewCount);
+      formData.append("teacherTitle", teacherTitle);
+      formData.append("teacherDescription", teacherDescription);
       formData.append("tags", tags);
       formData.append("benefits", benefits);
       formData.append("features", features);
@@ -60,7 +66,7 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
       console.error("Save error:", error);
       setSaveStatus("error");
     }
-  }, [textbookId, price, originalPrice, rating, reviewCount, tags, benefits, features, description]);
+  }, [textbookId, price, originalPrice, rating, reviewCount, teacherTitle, teacherDescription, tags, benefits, features, description]);
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -81,7 +87,7 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [price, originalPrice, rating, reviewCount, tags, benefits, features, description, saveData]);
+  }, [price, originalPrice, rating, reviewCount, teacherTitle, teacherDescription, tags, benefits, features, description, saveData]);
 
   const inputClass = "w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20";
   const labelClass = "block text-sm font-medium text-white/70 mb-1.5";
@@ -164,6 +170,30 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
             className={inputClass}
           />
         </div>
+      </div>
+
+      {/* 선생님 소개 (상세 상단에 노출) */}
+      <div>
+        <label className={labelClass}>선생님 한 줄 소개</label>
+        <input
+          type="text"
+          value={teacherTitle}
+          onChange={(e) => setTeacherTitle(e.target.value)}
+          placeholder="예: 연세대학교 의과대학 졸업"
+          className={inputClass}
+        />
+        <p className="mt-1 text-xs text-white/40">교재 상세 상단의 선생님 이름 아래에 작은 글씨로 표시됩니다.</p>
+      </div>
+
+      <div>
+        <label className={labelClass}>선생님 소개</label>
+        <textarea
+          value={teacherDescription}
+          onChange={(e) => setTeacherDescription(e.target.value)}
+          placeholder="선생님 소개를 입력하세요..."
+          rows={4}
+          className={inputClass}
+        />
       </div>
 
       {/* 태그 */}

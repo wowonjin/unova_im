@@ -48,47 +48,61 @@ export default async function AdminTextbooksPage() {
           <CardHeader title="교재 추가" />
           <CardBody>
             <form
-              className="grid grid-cols-1 gap-4 md:grid-cols-12"
+              className="space-y-4"
               action="/api/admin/textbooks/create"
               method="post"
             >
-              <div className="md:col-span-3">
-                <Field label="교재 제목(선택)">
-                  <Input name="title" placeholder="예: 2027 수학 교재 PDF" className="bg-transparent" />
-                </Field>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+                <div className="md:col-span-4">
+                  <Field label="교재 제목(선택)">
+                    <Input name="title" placeholder="예: 2027 수학 교재 PDF" className="bg-transparent" />
+                  </Field>
+                </div>
+                <div className="md:col-span-4">
+                  <Field label="출판한 선생님 이름(선택)">
+                    <Input name="teacherName" placeholder="예: 홍길동" className="bg-transparent" />
+                  </Field>
+                </div>
+                <div className="md:col-span-2">
+                  <Field label="과목">
+                    <Input name="subjectName" placeholder="예: 수학" className="bg-transparent" />
+                  </Field>
+                </div>
+                <div className="md:col-span-2">
+                  <Field label="이용 기간(일)">
+                    <Input
+                      name="entitlementDays"
+                      type="number"
+                      min={1}
+                      max={3650}
+                      defaultValue={30}
+                      className="bg-transparent"
+                    />
+                  </Field>
+                </div>
+
+                <div className="md:col-span-12">
+                  <Field label="구글 업로드 URL">
+                    <Input
+                      name="url"
+                      required
+                      placeholder="예: https://storage.googleapis.com/버킷/파일.pdf"
+                      className="bg-transparent"
+                    />
+                  </Field>
+                </div>
               </div>
-              <div className="md:col-span-2">
-                <Field label="과목">
-                  <Input name="subjectName" placeholder="예: 수학" className="bg-transparent" />
-                </Field>
-              </div>
-              <div className="md:col-span-4">
-                <Field label="구글 업로드 URL">
-                  <Input
-                    name="url"
-                    required
-                    placeholder="예: https://storage.googleapis.com/버킷/파일.pdf"
-                    className="bg-transparent"
-                  />
-                </Field>
-              </div>
-              <div className="md:col-span-1">
-                <Field label="이용 기간(일)">
-                  <Input
-                    name="entitlementDays"
-                    type="number"
-                    min={1}
-                    max={3650}
-                    defaultValue={30}
-                    className="bg-transparent"
-                  />
-                </Field>
-              </div>
-              <div className="md:col-span-2 flex items-end">
-                <input type="hidden" name="isPublished" value="1" />
-                <Button type="submit" variant="secondary" className="w-full">
-                  추가
-                </Button>
+
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-white/40">
+                  제목/선생님 이름/과목은 스토어 노출용 정보입니다. URL은 필수입니다.
+                </p>
+                <div className="shrink-0">
+                  <input type="hidden" name="isPublished" value="1" />
+                  <Button type="submit" variant="secondary">
+                    추가
+                  </Button>
+                </div>
               </div>
             </form>
           </CardBody>

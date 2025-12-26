@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 type Props = {
   textbookId: string;
   initialTitle: string;
+  initialTeacherName: string;
   initialSubjectName: string;
   initialEntitlementDays: number;
 };
@@ -12,10 +13,12 @@ type Props = {
 export default function TextbookBasicInfoClient({
   textbookId,
   initialTitle,
+  initialTeacherName,
   initialSubjectName,
   initialEntitlementDays,
 }: Props) {
   const [title, setTitle] = useState(initialTitle);
+  const [teacherName, setTeacherName] = useState(initialTeacherName);
   const [subjectName, setSubjectName] = useState(initialSubjectName);
   const [entitlementDays, setEntitlementDays] = useState(initialEntitlementDays);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -30,6 +33,7 @@ export default function TextbookBasicInfoClient({
       const formData = new FormData();
       formData.append("textbookId", textbookId);
       formData.append("title", title);
+      formData.append("teacherName", teacherName);
       formData.append("subjectName", subjectName);
       formData.append("entitlementDays", entitlementDays.toString());
 
@@ -52,7 +56,7 @@ export default function TextbookBasicInfoClient({
       console.error("Save error:", error);
       setSaveStatus("error");
     }
-  }, [textbookId, title, subjectName, entitlementDays]);
+  }, [textbookId, title, teacherName, subjectName, entitlementDays]);
 
   // 입력 변경 시 자동 저장 (디바운스)
   useEffect(() => {
@@ -77,7 +81,7 @@ export default function TextbookBasicInfoClient({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [title, subjectName, entitlementDays, saveData]);
+  }, [title, teacherName, subjectName, entitlementDays, saveData]);
 
   return (
     <div className="space-y-4">
@@ -115,6 +119,19 @@ export default function TextbookBasicInfoClient({
           required
           className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
         />
+      </div>
+
+      {/* 출판한 선생님 이름 */}
+      <div>
+        <label className="block text-sm font-medium text-white/70 mb-1.5">출판한 선생님 이름</label>
+        <input
+          type="text"
+          value={teacherName}
+          onChange={(e) => setTeacherName(e.target.value)}
+          placeholder="예: 홍길동"
+          className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+        />
+        <p className="mt-1 text-xs text-white/40">스토어/상세 페이지에 표시할 선생님 이름입니다. (선택)</p>
       </div>
 
       {/* 과목 */}

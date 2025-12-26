@@ -35,6 +35,7 @@ type ProductData = {
   teacherId: string;
   teacherTitle: string;
   teacherDescription: string;
+  thumbnailUrl?: string | null;
   price: number;
   originalPrice: number | null;
   dailyPrice: number;
@@ -55,11 +56,12 @@ type ProductData = {
   previewVimeoId?: string | null;
 };
 
-const tabs = ["강의소개", "커리큘럼", "강의후기", "환불정책"] as const;
-type TabKey = (typeof tabs)[number];
+const courseTabs = ["강의소개", "커리큘럼", "강의후기", "환불정책"] as const;
+const textbookTabs = ["교재소개", "교재후기", "환불정책"] as const;
+type TabKey = (typeof courseTabs)[number] | (typeof textbookTabs)[number];
 
 export default function ProductDetailClient({ product }: { product: ProductData }) {
-  const [activeTab, setActiveTab] = useState<TabKey>("강의소개");
+  const [activeTab, setActiveTab] = useState<TabKey>(product.type === "textbook" ? "교재소개" : "강의소개");
   const [expandedChapters, setExpandedChapters] = useState<string[]>([]);
   const [expandedReviews, setExpandedReviews] = useState<string[]>([]);
   const [isLiked, setIsLiked] = useState(false);
@@ -405,6 +407,9 @@ export default function ProductDetailClient({ product }: { product: ProductData 
   };
 
   const totalLessons = product.curriculum.reduce((acc, ch) => acc + ch.lessons.length, 0);
+  const tabs = product.type === "textbook" ? textbookTabs : courseTabs;
+  const reviewTabKey: TabKey = product.type === "textbook" ? "교재후기" : "강의후기";
+  const introTabKey: TabKey = product.type === "textbook" ? "교재소개" : "강의소개";
 
   return (
     <>
@@ -420,15 +425,26 @@ export default function ProductDetailClient({ product }: { product: ProductData 
           <span className="text-white/70">{product.subject}</span>
         </nav>
 
-        {/* 맛보기 영상 */}
-        <div className="aspect-video rounded-xl overflow-hidden bg-black mb-8">
-          <iframe
-            src={`https://player.vimeo.com/video/${product.previewVimeoId || "1121398945"}?badge=0&autopause=0&player_id=0&app_id=58479`}
-            className="w-full h-full"
-            frameBorder="0"
-            allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
-            title="맛보기 영상"
-          />
+        {/* 상단 미디어: 강좌는 비메오, 교재는 이미지 */}
+        <div className="aspect-video rounded-xl overflow-hidden bg-black mb-8 border border-white/10">
+          {product.type === "textbook" ? (
+            product.thumbnailUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={product.thumbnailUrl} alt={product.title} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-white/[0.06] to-white/[0.02]">
+                <span className="text-white/40 text-sm">교재 이미지 준비중</span>
+              </div>
+            )
+          ) : (
+            <iframe
+              src={`https://player.vimeo.com/video/${product.previewVimeoId || "1121398945"}?badge=0&autopause=0&player_id=0&app_id=58479`}
+              className="w-full h-full"
+              frameBorder="0"
+              allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+              title="맛보기 영상"
+            />
+          )}
         </div>
 
         {/* 강의 정보 섹션 */}
@@ -465,7 +481,7 @@ export default function ProductDetailClient({ product }: { product: ProductData 
             </div>
             <span className="text-[16px] font-bold">{averageRating.toFixed(1)}</span>
             <button 
-              onClick={() => setActiveTab("강의후기")}
+              onClick={() => setActiveTab(reviewTabKey)}
               className="text-[14px] text-white/50 underline hover:text-white/70"
             >
               {reviewCount.toLocaleString()}개 후기
@@ -497,7 +513,7 @@ export default function ProductDetailClient({ product }: { product: ProductData 
             {tabs.map((tab) => (
               <div key={tab} className="relative">
                 {/* FREE 말풍선 - 커리큘럼 탭 위에 (탭이 sticky 상태가 아닐 때만 표시) */}
-                {tab === "커리큘럼" && !isTabSticky && (
+                {product.type === "course" && tab === "커리큘럼" && !isTabSticky && (
                   <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-10">
                     <div className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[11px] font-bold shadow-lg shadow-blue-500/30 animate-bounce whitespace-nowrap">
                       <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
@@ -517,12 +533,10 @@ export default function ProductDetailClient({ product }: { product: ProductData 
                       : "text-white/40 hover:text-white/70"
                   }`}
                 >
-                  {tab === "강의후기" ? (
-                    <>강의후기 ({reviewCount})</>
+                  {tab === "강의후기" || tab === "교재후기" ? (
+                    <>{tab} ({reviewCount})</>
                   ) : tab === "커리큘럼" ? (
                     <>커리큘럼 ({totalLessons}강)</>
-                  ) : tab === "강의소개" ? (
-                    "강의소개"
                   ) : (
                     tab
                   )}
@@ -537,25 +551,26 @@ export default function ProductDetailClient({ product }: { product: ProductData 
 
         {/* 탭 콘텐츠 영역 */}
         <div className="py-8">
-          {/* 강의소개 */}
-          {activeTab === "강의소개" && (
+          {/* 소개(강좌/교재) */}
+          {activeTab === introTabKey && (
             <section>
               {/* 수강 정보 */}
               <div className="rounded-xl border border-white/10 overflow-hidden mb-8">
                 <table className="w-full text-[14px]">
                   <tbody>
                     <tr className="border-b border-white/10">
-                      <td className="px-5 py-4 bg-white/[0.02] text-white/50 w-28 font-medium">수강 기간</td>
+                      <td className="px-5 py-4 bg-white/[0.02] text-white/50 w-28 font-medium">
+                        {product.type === "textbook" ? "다운로드 기간" : "수강 기간"}
+                      </td>
                       <td className="px-5 py-4 text-white/90">
                         {product.studyPeriod.regular + product.studyPeriod.review}일
-                        <span className="text-white/40 ml-2">
-                          (정규 {product.studyPeriod.regular}일 + 복습 {product.studyPeriod.review}일)
-                        </span>
                       </td>
                     </tr>
                     <tr>
                       <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">구성</td>
-                      <td className="px-5 py-4 text-white/90">총 {totalLessons}개 수업</td>
+                      <td className="px-5 py-4 text-white/90">
+                        {product.type === "textbook" ? "PDF 교재" : `총 ${totalLessons}개 수업`}
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -567,6 +582,16 @@ export default function ProductDetailClient({ product }: { product: ProductData 
                   {product.description}
                 </p>
                 
+                {/* 선생님 소개 (있을 때만) */}
+                {product.teacherDescription && product.teacherDescription.trim().length > 0 && (
+                  <div className="mt-6 pt-6 border-t border-white/10">
+                    <p className="text-[14px] font-semibold text-white/90 mb-3">선생님 소개</p>
+                    <p className="text-[14px] text-white/70 leading-relaxed whitespace-pre-line">
+                      {product.teacherDescription}
+                    </p>
+                  </div>
+                )}
+
                 {/* 강의 특징 */}
                 <div className="mt-6 pt-6 border-t border-white/10">
                   <p className="text-[14px] font-semibold text-white/90 mb-3">이런 분들께 추천합니다</p>
@@ -584,7 +609,7 @@ export default function ProductDetailClient({ product }: { product: ProductData 
           )}
 
           {/* 커리큘럼 */}
-          {activeTab === "커리큘럼" && (
+          {product.type === "course" && activeTab === "커리큘럼" && (
             <section>
               <div className="rounded-xl border border-white/10 overflow-hidden">
                 {/* 테이블 헤더 */}
@@ -654,8 +679,8 @@ export default function ProductDetailClient({ product }: { product: ProductData 
             </section>
           )}
 
-          {/* 강의후기 */}
-          {activeTab === "강의후기" && (
+          {/* 후기(강좌/교재) */}
+          {activeTab === reviewTabKey && (
             <section>
               
               {/* 평점 요약 */}
@@ -737,7 +762,7 @@ export default function ProductDetailClient({ product }: { product: ProductData 
                     <textarea
                       value={reviewFormContent}
                       onChange={(e) => setReviewFormContent(e.target.value)}
-                      placeholder="강의에 대한 솔직한 후기를 작성해주세요. (최소 10자)"
+                      placeholder={`${product.type === "textbook" ? "교재" : "강의"}에 대한 솔직한 후기를 작성해주세요. (최소 10자)`}
                       rows={4}
                       className="w-full px-3 py-3 rounded-lg bg-white/5 border border-white/10 text-[14px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/20 resize-none"
                     />
@@ -951,7 +976,7 @@ export default function ProductDetailClient({ product }: { product: ProductData 
               </div>
               <span className="text-[14px] font-bold">{averageRating.toFixed(1)}</span>
               <button 
-                onClick={() => setActiveTab("강의후기")}
+                onClick={() => setActiveTab(reviewTabKey)}
                 className="text-[13px] text-white/50 underline hover:text-white/70"
               >
                 {reviewCount.toLocaleString()}개 후기
@@ -974,58 +999,60 @@ export default function ProductDetailClient({ product }: { product: ProductData 
             </div>
           </div>
 
-          {/* 수강 옵션 */}
-          <div className="px-5 pb-5">
-            <p className="text-[14px] font-bold mb-3">수강 옵션</p>
-            
-            {/* 옵션 1 - 정규 강의 + 복습 기간 */}
-            <div 
-              onClick={() => setSelectedOption("full")}
-              className={`rounded-lg p-4 mb-3 cursor-pointer transition-all ${
-                selectedOption === "full" 
-                  ? "border-2 border-white/60 bg-white/5" 
-                  : "border border-white/20 hover:border-white/40"
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <p className={`text-[14px] font-medium ${selectedOption === "full" ? "text-white" : "text-white/70"}`}>
-                    정규 강의 + 복습 기간
-                  </p>
-                  <p className={`text-[12px] mt-1 ${selectedOption === "full" ? "text-white/50" : "text-white/40"}`}>
-                    온라인 VOD + {product.studyPeriod.regular + product.studyPeriod.review}일 수강
+          {/* 수강 옵션 (강좌 전용) */}
+          {product.type === "course" && (
+            <div className="px-5 pb-5">
+              <p className="text-[14px] font-bold mb-3">수강 옵션</p>
+              
+              {/* 옵션 1 - 정규 강의 + 복습 기간 */}
+              <div 
+                onClick={() => setSelectedOption("full")}
+                className={`rounded-lg p-4 mb-3 cursor-pointer transition-all ${
+                  selectedOption === "full" 
+                    ? "border-2 border-white/60 bg-white/5" 
+                    : "border border-white/20 hover:border-white/40"
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className={`text-[14px] font-medium ${selectedOption === "full" ? "text-white" : "text-white/70"}`}>
+                      정규 강의 + 복습 기간
+                    </p>
+                    <p className={`text-[12px] mt-1 ${selectedOption === "full" ? "text-white/50" : "text-white/40"}`}>
+                      온라인 VOD + {product.studyPeriod.regular + product.studyPeriod.review}일 수강
+                    </p>
+                  </div>
+                  <p className={`text-[15px] font-bold ${selectedOption === "full" ? "text-white" : "text-white/70"}`}>
+                    {product.formattedPrice}
                   </p>
                 </div>
-                <p className={`text-[15px] font-bold ${selectedOption === "full" ? "text-white" : "text-white/70"}`}>
-                  {product.formattedPrice}
-                </p>
               </div>
-            </div>
 
-            {/* 옵션 2 - 정규 강의만 */}
-            <div 
-              onClick={() => setSelectedOption("regular")}
-              className={`rounded-lg p-4 cursor-pointer transition-all ${
-                selectedOption === "regular" 
-                  ? "border-2 border-white/60 bg-white/5" 
-                  : "border border-white/20 hover:border-white/40"
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <p className={`text-[14px] font-medium ${selectedOption === "regular" ? "text-white" : "text-white/70"}`}>
-                    정규 강의만
-                  </p>
-                  <p className={`text-[12px] mt-1 ${selectedOption === "regular" ? "text-white/50" : "text-white/40"}`}>
-                    온라인 VOD + {product.studyPeriod.regular}일 수강
+              {/* 옵션 2 - 정규 강의만 */}
+              <div 
+                onClick={() => setSelectedOption("regular")}
+                className={`rounded-lg p-4 cursor-pointer transition-all ${
+                  selectedOption === "regular" 
+                    ? "border-2 border-white/60 bg-white/5" 
+                    : "border border-white/20 hover:border-white/40"
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className={`text-[14px] font-medium ${selectedOption === "regular" ? "text-white" : "text-white/70"}`}>
+                      정규 강의만
+                    </p>
+                    <p className={`text-[12px] mt-1 ${selectedOption === "regular" ? "text-white/50" : "text-white/40"}`}>
+                      온라인 VOD + {product.studyPeriod.regular}일 수강
+                    </p>
+                  </div>
+                  <p className={`text-[15px] font-bold ${selectedOption === "regular" ? "text-white" : "text-white/70"}`}>
+                    {(product.price * 0.8).toLocaleString()}원
                   </p>
                 </div>
-                <p className={`text-[15px] font-bold ${selectedOption === "regular" ? "text-white" : "text-white/70"}`}>
-                  {(product.price * 0.8).toLocaleString()}원
-                </p>
               </div>
             </div>
-          </div>
+          )}
 
           {/* 구분선 */}
           <div className="mx-5 border-t border-white/10" />
@@ -1035,9 +1062,9 @@ export default function ProductDetailClient({ product }: { product: ProductData 
             <div className="flex items-center justify-between mb-4">
               <span className="text-[14px] font-medium">상품 금액</span>
               <span className="text-[20px] font-bold">
-                {selectedOption === "full" 
-                  ? product.formattedPrice 
-                  : `${(product.price * 0.8).toLocaleString()}원`}
+                {product.type === "course"
+                  ? (selectedOption === "full" ? product.formattedPrice : `${(product.price * 0.8).toLocaleString()}원`)
+                  : product.formattedPrice}
               </span>
             </div>
 

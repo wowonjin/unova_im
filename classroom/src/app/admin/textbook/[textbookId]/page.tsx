@@ -92,6 +92,7 @@ export default async function AdminTextbookPage({
                 <TextbookBasicInfoClient
                   textbookId={textbook.id}
                   initialTitle={textbook.title}
+                  initialTeacherName={(textbook as { teacherName?: string | null }).teacherName ?? ""}
                   initialSubjectName={textbook.subjectName || ""}
                   initialEntitlementDays={entitlementDays}
                 />
@@ -168,6 +169,8 @@ export default async function AdminTextbookPage({
                   originalPrice: textbook.originalPrice ?? null,
                   rating: textbook.rating ?? null,
                   reviewCount: textbook.reviewCount ?? 0,
+                  teacherTitle: (textbook as { teacherTitle?: string | null }).teacherTitle ?? null,
+                  teacherDescription: (textbook as { teacherDescription?: string | null }).teacherDescription ?? null,
                   tags: (textbook.tags as string[] | null) ?? [],
                   benefits: (textbook.benefits as string[] | null) ?? [],
                   features: (textbook.features as string[] | null) ?? [],

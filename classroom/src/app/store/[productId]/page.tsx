@@ -4,6 +4,7 @@ import Footer from "@/app/_components/Footer";
 import { notFound } from "next/navigation";
 import ProductDetailClient from "./ProductDetailClient";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 // 더미 상품 데이터
 const productsData: Record<
@@ -389,34 +390,51 @@ export default async function ProductDetailPage({
   params: Promise<{ productId: string }>;
 }) {
   const { productId } = await params;
-  
-  // 먼저 DB에서 강좌를 찾기 (slug로 검색)
-  const dbCourse = await prisma.course.findFirst({
-    where: {
-      OR: [
-        { slug: productId },
-        { id: productId },
-      ],
-      isPublished: true,
-    },
+
+  // Render 등 배포 환경에서 DB 쿼리 실패 시에도 상세 페이지가 500으로 죽지 않도록 폴백 처리
+  type DbCourse = Prisma.CourseGetPayload<{
     include: {
       lessons: {
-        where: { isPublished: true },
-        orderBy: { position: "asc" },
-        select: { id: true, title: true, durationSeconds: true, vimeoVideoId: true },
-      },
-    },
-  });
+        select: { id: true; title: true; durationSeconds: true; vimeoVideoId: true };
+      };
+    };
+  }>;
 
-  // DB 교재 검색
-  const dbTextbook = !dbCourse ? await prisma.textbook.findFirst({
-    where: {
-      OR: [
-        { id: productId },
-      ],
-      isPublished: true,
-    },
-  }) : null;
+  type DbTextbook = Prisma.TextbookGetPayload<{}>;
+
+  let dbCourse: DbCourse | null = null;
+  let dbTextbook: DbTextbook | null = null;
+
+  try {
+    // 먼저 DB에서 강좌를 찾기 (slug로 검색)
+    dbCourse = await prisma.course.findFirst({
+      where: {
+        OR: [{ slug: productId }, { id: productId }],
+        isPublished: true,
+      },
+      include: {
+        lessons: {
+          where: { isPublished: true },
+          orderBy: { position: "asc" },
+          select: { id: true, title: true, durationSeconds: true, vimeoVideoId: true },
+        },
+      },
+    });
+
+    // DB 교재 검색
+    dbTextbook = !dbCourse
+      ? await prisma.textbook.findFirst({
+          where: {
+            OR: [{ id: productId }],
+            isPublished: true,
+          },
+        })
+      : null;
+  } catch (e) {
+    console.error("[store/product] failed to load product from DB:", { productId, e });
+    dbCourse = null;
+    dbTextbook = null;
+  }
 
   // DB에서 데이터를 찾은 경우
   if (dbCourse) {
@@ -453,6 +471,7 @@ export default async function ProductDetailPage({
                 teacherId: dbCourse.slug,
                 teacherTitle: dbCourse.teacherTitle || "",
                 teacherDescription: dbCourse.teacherDescription || "",
+                thumbnailUrl: dbCourse.thumbnailUrl,
                 price,
                 originalPrice,
                 dailyPrice,
@@ -486,6 +505,10 @@ export default async function ProductDetailPage({
     const originalPrice = dbTextbook.originalPrice || null;
     const dailyPrice = Math.round(price / 30);
     const discount = originalPrice ? getDiscount(originalPrice, price) : null;
+    const teacherName = (dbTextbook as { teacherName?: string | null }).teacherName || "선생님";
+    const teacherTitle = (dbTextbook as { teacherTitle?: string | null }).teacherTitle || "";
+    const teacherDescription = (dbTextbook as { teacherDescription?: string | null }).teacherDescription || "";
+    const thumbnailUrl = (dbTextbook as { thumbnailUrl?: string | null }).thumbnailUrl || null;
 
     return (
       <div className="min-h-screen bg-[#161616] text-white">
@@ -497,13 +520,14 @@ export default async function ProductDetailPage({
               product={{
                 id: dbTextbook.id,
                 title: dbTextbook.title,
-                subject: "교재",
+                subject: dbTextbook.subjectName || "교재",
                 subjectColor: "text-amber-400",
                 subjectBg: "bg-amber-500/20",
-                teacher: "UNOVA",
+                teacher: teacherName,
                 teacherId: "unova",
-                teacherTitle: "",
-                teacherDescription: "",
+                teacherTitle,
+                teacherDescription,
+                thumbnailUrl,
                 price,
                 originalPrice,
                 dailyPrice,
@@ -512,7 +536,8 @@ export default async function ProductDetailPage({
                 rating: dbTextbook.rating ?? 0,
                 reviewCount: dbTextbook.reviewCount || 0,
                 tags: (dbTextbook.tags as string[] | null) || [],
-                studyPeriod: { regular: 30, review: dbTextbook.entitlementDays - 30 },
+                // 교재는 다운로드/이용 기간만 존재 (복습 개념 없음)
+                studyPeriod: { regular: dbTextbook.entitlementDays ?? 30, review: 0 },
                 benefits: (dbTextbook.benefits as string[] | null) || [],
                 features: (dbTextbook.features as string[] | null) || [],
                 curriculum: [],

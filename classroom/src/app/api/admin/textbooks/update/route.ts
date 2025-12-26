@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 const Schema = z.object({
   textbookId: z.string().min(1),
   title: z.string().min(1).optional(),
+  teacherName: z.string().optional().transform((v) => v || null),
   subjectName: z.string().optional().transform((v) => v || null),
   entitlementDays: z
     .string()
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
   const parsed = Schema.safeParse({
     textbookId: raw.get("textbookId"),
     title: raw.get("title"),
+    teacherName: raw.get("teacherName"),
     subjectName: raw.get("subjectName"),
     entitlementDays: raw.get("entitlementDays"),
   });
@@ -50,7 +52,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "VALIDATION_ERROR" }, { status: 400 });
   }
 
-  const { textbookId, title, subjectName, entitlementDays } = parsed.data;
+  const { textbookId, title, teacherName, subjectName, entitlementDays } = parsed.data;
 
   // 소유권 확인
   const existing = await prisma.textbook.findUnique({
@@ -69,6 +71,7 @@ export async function POST(req: Request) {
     where: { id: textbookId },
     data: {
       ...(title !== undefined && { title }),
+      ...(teacherName !== undefined && { teacherName }),
       ...(subjectName !== undefined && { subjectName }),
       ...(entitlementDays !== undefined && { entitlementDays }),
     },

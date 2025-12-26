@@ -2,6 +2,7 @@ import Link from "next/link";
 import LandingHeader from "@/app/_components/LandingHeader";
 import Footer from "@/app/_components/Footer";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 type Product = {
   id: string;
@@ -37,39 +38,79 @@ export default async function StorePage({
   const selectedType = sp?.type || "교재";
 
   // 실제 DB에서 공개된 강좌/교재 조회
-  const [courses, textbooks] = await Promise.all([
-    prisma.course.findMany({
-      where: { isPublished: true },
-      select: {
-        id: true,
-        title: true,
-        subjectName: true,
-        teacherName: true,
-        price: true,
-        originalPrice: true,
-        tags: true,
-        thumbnailUrl: true,
-        rating: true,
-        reviewCount: true,
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.textbook.findMany({
-      where: { isPublished: true },
-      select: {
-        id: true,
-        title: true,
-        subjectName: true,
-        price: true,
-        originalPrice: true,
-        tags: true,
-        thumbnailUrl: true,
-        rating: true,
-        reviewCount: true,
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+  // Render 등 배포 환경에서 DB 연결/쿼리 이슈가 발생해도 페이지 전체가 500으로 죽지 않도록 안전 폴백 처리
+  type DbCourseRow = Prisma.CourseGetPayload<{
+    select: {
+      id: true;
+      title: true;
+      subjectName: true;
+      teacherName: true;
+      price: true;
+      originalPrice: true;
+      tags: true;
+      thumbnailUrl: true;
+      rating: true;
+      reviewCount: true;
+    };
+  }>;
+
+  type DbTextbookRow = Prisma.TextbookGetPayload<{
+    select: {
+      id: true;
+      title: true;
+      subjectName: true;
+      teacherName: true;
+      price: true;
+      originalPrice: true;
+      tags: true;
+      thumbnailUrl: true;
+      rating: true;
+      reviewCount: true;
+    };
+  }>;
+
+  let courses: DbCourseRow[] = [];
+  let textbooks: DbTextbookRow[] = [];
+  try {
+    [courses, textbooks] = await Promise.all([
+      prisma.course.findMany({
+        where: { isPublished: true },
+        select: {
+          id: true,
+          title: true,
+          subjectName: true,
+          teacherName: true,
+          price: true,
+          originalPrice: true,
+          tags: true,
+          thumbnailUrl: true,
+          rating: true,
+          reviewCount: true,
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.textbook.findMany({
+        where: { isPublished: true },
+        select: {
+          id: true,
+          title: true,
+          subjectName: true,
+          teacherName: true,
+          price: true,
+          originalPrice: true,
+          tags: true,
+          thumbnailUrl: true,
+          rating: true,
+          reviewCount: true,
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+  } catch (e) {
+    console.error("[store] failed to load products from DB:", e);
+    courses = [];
+    textbooks = [];
+  }
 
   // 강좌를 Product 형태로 변환
   const courseProducts: Product[] = courses.map((c) => {
@@ -96,7 +137,7 @@ export default async function StorePage({
       id: t.id,
       title: t.title,
       subject: t.subjectName || "교재",
-      teacher: "",
+      teacher: t.teacherName || "선생님",
       price: t.price || 0,
       originalPrice: t.originalPrice,
       tag: tags[0] || null,
