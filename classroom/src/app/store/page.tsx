@@ -231,8 +231,8 @@ export default async function StorePage({
           </section>
 
         {/* 상품 목록 */}
-        <section className="mx-auto max-w-6xl px-4 pt-12 pb-24">
-          <div className="flex items-center justify-between mb-8">
+        <section className="mx-auto max-w-6xl px-4 pt-6 pb-24">
+          <div className="flex items-center justify-between mb-4">
             <p className="text-[14px] text-white/50">
               총 <span className="text-white font-medium">{filteredProducts.length}</span>개의 상품
             </p>
