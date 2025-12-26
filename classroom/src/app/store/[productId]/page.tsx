@@ -389,7 +389,8 @@ export default async function ProductDetailPage({
 }: {
   params: Promise<{ productId: string }>;
 }) {
-  const { productId } = await params;
+  try {
+    const { productId } = await params;
 
   // Render 등 배포 환경에서 DB 쿼리 실패 시에도 상세 페이지가 500으로 죽지 않도록 폴백 처리
   type DbCourse = Prisma.CourseGetPayload<{
@@ -592,6 +593,30 @@ export default async function ProductDetailPage({
       <Footer />
     </div>
   );
+  } catch (e) {
+    console.error("[store/product] page render failed:", e);
+    return (
+      <div className="min-h-screen bg-[#161616] text-white">
+        <LandingHeader />
+        <main className="pt-[70px]">
+          <div className="mx-auto max-w-3xl px-6 py-16">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <h1 className="text-xl font-semibold text-white">상품 상세</h1>
+              <p className="mt-2 text-sm text-white/70">
+                상품 정보를 불러오는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link href="/store" className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-black">
+                  목록으로
+                </Link>
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 }
 
 function formatDuration(seconds: number): string {

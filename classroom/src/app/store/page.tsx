@@ -33,84 +33,85 @@ export default async function StorePage({
 }: {
   searchParams?: Promise<{ subject?: string; type?: string }>;
 }) {
-  const sp = await searchParams;
-  const selectedSubject = sp?.subject || "전체";
-  const selectedType = sp?.type || "교재";
-
-  // 실제 DB에서 공개된 강좌/교재 조회
-  // Render 등 배포 환경에서 DB 연결/쿼리 이슈가 발생해도 페이지 전체가 500으로 죽지 않도록 안전 폴백 처리
-  type DbCourseRow = Prisma.CourseGetPayload<{
-    select: {
-      id: true;
-      title: true;
-      subjectName: true;
-      teacherName: true;
-      price: true;
-      originalPrice: true;
-      tags: true;
-      thumbnailUrl: true;
-      rating: true;
-      reviewCount: true;
-    };
-  }>;
-
-  type DbTextbookRow = Prisma.TextbookGetPayload<{
-    select: {
-      id: true;
-      title: true;
-      subjectName: true;
-      teacherName: true;
-      price: true;
-      originalPrice: true;
-      tags: true;
-      thumbnailUrl: true;
-      rating: true;
-      reviewCount: true;
-    };
-  }>;
-
-  let courses: DbCourseRow[] = [];
-  let textbooks: DbTextbookRow[] = [];
   try {
-    [courses, textbooks] = await Promise.all([
-      prisma.course.findMany({
-        where: { isPublished: true },
-        select: {
-          id: true,
-          title: true,
-          subjectName: true,
-          teacherName: true,
-          price: true,
-          originalPrice: true,
-          tags: true,
-          thumbnailUrl: true,
-          rating: true,
-          reviewCount: true,
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.textbook.findMany({
-        where: { isPublished: true },
-        select: {
-          id: true,
-          title: true,
-          subjectName: true,
-          teacherName: true,
-          price: true,
-          originalPrice: true,
-          tags: true,
-          thumbnailUrl: true,
-          rating: true,
-          reviewCount: true,
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-    ]);
-  } catch (e) {
-    console.error("[store] failed to load products from DB:", e);
-    courses = [];
-    textbooks = [];
-  }
+    const sp = await searchParams;
+    const selectedSubject = sp?.subject || "전체";
+    const selectedType = sp?.type || "교재";
+
+    // 실제 DB에서 공개된 강좌/교재 조회
+    // Render 등 배포 환경에서 DB 연결/쿼리 이슈가 발생해도 페이지 전체가 500으로 죽지 않도록 안전 폴백 처리
+    type DbCourseRow = Prisma.CourseGetPayload<{
+      select: {
+        id: true;
+        title: true;
+        subjectName: true;
+        teacherName: true;
+        price: true;
+        originalPrice: true;
+        tags: true;
+        thumbnailUrl: true;
+        rating: true;
+        reviewCount: true;
+      };
+    }>;
+
+    type DbTextbookRow = Prisma.TextbookGetPayload<{
+      select: {
+        id: true;
+        title: true;
+        subjectName: true;
+        teacherName: true;
+        price: true;
+        originalPrice: true;
+        tags: true;
+        thumbnailUrl: true;
+        rating: true;
+        reviewCount: true;
+      };
+    }>;
+
+    let courses: DbCourseRow[] = [];
+    let textbooks: DbTextbookRow[] = [];
+    try {
+      [courses, textbooks] = await Promise.all([
+        prisma.course.findMany({
+          where: { isPublished: true },
+          select: {
+            id: true,
+            title: true,
+            subjectName: true,
+            teacherName: true,
+            price: true,
+            originalPrice: true,
+            tags: true,
+            thumbnailUrl: true,
+            rating: true,
+            reviewCount: true,
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.textbook.findMany({
+          where: { isPublished: true },
+          select: {
+            id: true,
+            title: true,
+            subjectName: true,
+            teacherName: true,
+            price: true,
+            originalPrice: true,
+            tags: true,
+            thumbnailUrl: true,
+            rating: true,
+            reviewCount: true,
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+      ]);
+    } catch (e) {
+      console.error("[store] failed to load products from DB:", e);
+      courses = [];
+      textbooks = [];
+    }
 
   // 강좌를 Product 형태로 변환
   const courseProducts: Product[] = courses.map((c) => {
@@ -171,9 +172,9 @@ export default async function StorePage({
     filteredProducts = filteredProducts.filter((p) => p.subject === selectedSubject);
   }
 
-  return (
-    <div className="min-h-screen bg-[#161616] text-white flex flex-col">
-      <LandingHeader />
+    return (
+      <div className="min-h-screen bg-[#161616] text-white flex flex-col">
+        <LandingHeader />
 
       <main className="flex-1 pt-[70px]">
         {/* 필터 섹션 */}
@@ -369,8 +370,44 @@ export default async function StorePage({
 
       </main>
 
-      <Footer />
-    </div>
-  );
+        <Footer />
+      </div>
+    );
+  } catch (e) {
+    console.error("[store] page render failed:", e);
+    return (
+      <div className="min-h-screen bg-[#161616] text-white flex flex-col">
+        <LandingHeader />
+        <main className="flex-1 pt-[70px]">
+          <div className="mx-auto max-w-3xl px-6 py-16">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <h1 className="text-xl font-semibold text-white">교재 및 강의 구매</h1>
+              <p className="mt-2 text-sm text-white/70">
+                상품 목록을 불러오는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link
+                  href="/store"
+                  className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-black"
+                >
+                  다시 시도
+                </Link>
+                <Link
+                  href="/teachers"
+                  className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/10"
+                >
+                  선생님 페이지로
+                </Link>
+              </div>
+              <p className="mt-4 text-xs text-white/40">
+                문제가 계속되면 관리자에게 문의해주세요.
+              </p>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 }
 
