@@ -184,7 +184,22 @@ export default async function StorePage({
       <div className="min-h-screen bg-[#161616] text-white flex flex-col">
         <LandingHeader />
 
-      <main className="flex-1 pt-[70px]">
+        {/* Header 하단 Spline 임베드 */}
+        <section className="pt-[70px]">
+          <div className="mx-auto max-w-6xl px-4">
+            <div className="mt-4 h-[260px] overflow-hidden rounded-3xl border border-white/10 bg-black md:h-[420px]">
+              <iframe
+                src="https://my.spline.design/nexbotrobotcharacterconcept-EhvCds8UCXdVe0mlibNWSP2C/"
+                frameBorder="0"
+                width="100%"
+                height="100%"
+                className="h-full w-full"
+              />
+            </div>
+          </div>
+        </section>
+
+        <main className="flex-1">
         {/* 필터 섹션 */}
         <section className="sticky top-[70px] z-40 bg-[#161616]/80 backdrop-blur-xl">
           <div className="mx-auto max-w-6xl px-4 py-4">
