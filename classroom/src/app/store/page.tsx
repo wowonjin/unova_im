@@ -184,66 +184,70 @@ export default async function StorePage({
       <div className="min-h-screen bg-[#161616] text-white flex flex-col">
         <LandingHeader />
 
-        {/* Header 하단 Spline 임베드 */}
-        <section className="pt-[70px]">
-          <div className="mx-auto max-w-6xl px-4">
-            <div className="mt-4 h-[260px] overflow-hidden rounded-3xl border border-white/10 bg-black md:h-[420px]">
-              <iframe
-                src="https://my.spline.design/nexbotrobotcharacterconcept-EhvCds8UCXdVe0mlibNWSP2C/"
-                frameBorder="0"
-                width="100%"
-                height="100%"
-                className="h-full w-full"
-              />
-            </div>
-          </div>
-        </section>
-
-        <main className="flex-1">
-        {/* 필터 섹션 */}
-        <section className="sticky top-[70px] z-40 bg-[#161616]/80 backdrop-blur-xl">
-          <div className="mx-auto max-w-6xl px-4 py-4">
-            <div className="flex flex-col md:flex-row md:items-center gap-4">
-              {/* 과목 필터 */}
-              <div className="flex items-center gap-2">
-                <div className="flex flex-wrap gap-2">
-                  {subjects.map((subject) => (
-                    <Link
-                      key={subject}
-                      href={`/store?subject=${encodeURIComponent(subject)}&type=${encodeURIComponent(selectedType)}`}
-                      className={`px-4 py-2 rounded-full text-[13px] font-medium transition-all ${
-                        selectedSubject === subject
-                          ? "bg-white text-black"
-                          : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"
-                      }`}
-                    >
-                      {subject}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-              {/* 유형 필터 */}
-              <div className="flex items-center gap-2 md:ml-auto">
-                <div className="flex gap-2">
-                  {types.map((type) => (
-                    <Link
-                      key={type}
-                      href={`/store?subject=${encodeURIComponent(selectedSubject)}&type=${encodeURIComponent(type)}`}
-                      className={`px-4 py-2 rounded-full text-[13px] font-medium transition-all ${
-                        selectedType === type
-                          ? "bg-white text-black"
-                          : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"
-                      }`}
-                    >
-                      {type}
-                    </Link>
-                  ))}
-                </div>
+        {/* 배경 레이어: Spline 로봇 (투명 + 최하단 z-index) */}
+        <div className="relative flex-1">
+          <div className="pointer-events-none absolute inset-x-0 top-[70px] z-0">
+            <div className="mx-auto max-w-6xl px-4">
+              <div className="h-[340px] md:h-[520px]">
+                <iframe
+                  src="https://my.spline.design/nexbotrobotcharacterconcept-EhvCds8UCXdVe0mlibNWSP2C/"
+                  frameBorder="0"
+                  width="100%"
+                  height="100%"
+                  allowTransparency
+                  className="h-full w-full bg-transparent"
+                  style={{ background: "transparent" }}
+                />
               </div>
             </div>
           </div>
-        </section>
+
+          {/* 오버레이: 기존 목차/상품(원래대로) */}
+          <main className="relative z-10 pt-[70px]">
+            {/* 필터 섹션 */}
+            <section className="sticky top-[70px] z-40 bg-[#161616]/80 backdrop-blur-xl">
+              <div className="mx-auto max-w-6xl px-4 py-4">
+                <div className="flex flex-col md:flex-row md:items-center gap-4">
+                  {/* 과목 필터 */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      {subjects.map((subject) => (
+                        <Link
+                          key={subject}
+                          href={`/store?subject=${encodeURIComponent(subject)}&type=${encodeURIComponent(selectedType)}`}
+                          className={`px-4 py-2 rounded-full text-[13px] font-medium transition-all ${
+                            selectedSubject === subject
+                              ? "bg-white text-black"
+                              : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"
+                          }`}
+                        >
+                          {subject}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 유형 필터 */}
+                  <div className="flex items-center gap-2 md:ml-auto">
+                    <div className="flex gap-2">
+                      {types.map((type) => (
+                        <Link
+                          key={type}
+                          href={`/store?subject=${encodeURIComponent(selectedSubject)}&type=${encodeURIComponent(type)}`}
+                          className={`px-4 py-2 rounded-full text-[13px] font-medium transition-all ${
+                            selectedType === type
+                              ? "bg-white text-black"
+                              : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"
+                          }`}
+                        >
+                          {type}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
 
         {/* 상품 목록 */}
         <section className="mx-auto max-w-6xl px-4 pt-12 pb-24">
@@ -392,6 +396,7 @@ export default async function StorePage({
         </section>
 
       </main>
+        </div>
 
         <Footer />
       </div>
