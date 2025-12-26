@@ -84,6 +84,8 @@ export async function POST(req: Request) {
   const isPublishedRaw = form.get("isPublished");
   const entitlementDaysRaw = form.get("entitlementDays");
   const imwebProdCodeRaw = form.get("imwebProdCode");
+  const priceRaw = form.get("price");
+  const originalPriceRaw = form.get("originalPrice");
 
   const isPublished =
     typeof isPublishedRaw === "string" ? isPublishedRaw === "1" || isPublishedRaw === "true" || isPublishedRaw === "on" : true;
@@ -94,6 +96,22 @@ export async function POST(req: Request) {
   const imwebProdCode = typeof imwebProdCodeRaw === "string" && imwebProdCodeRaw.trim().length > 0 ? imwebProdCodeRaw.trim() : null;
   const teacherName = typeof teacherNameRaw === "string" && teacherNameRaw.trim().length > 0 ? teacherNameRaw.trim() : null;
   const subjectName = typeof subjectNameRaw === "string" && subjectNameRaw.trim().length > 0 ? subjectNameRaw.trim() : null;
+
+  const parseMoney = (v: FormDataEntryValue | null): number | null => {
+    if (typeof v !== "string") return null;
+    const s = v.trim();
+    if (!s) return null;
+    // "49,000" 같이 입력된 케이스도 허용
+    const digits = s.replace(/[^\d]/g, "");
+    if (!digits) return null;
+    const n = parseInt(digits, 10);
+    if (!Number.isFinite(n) || n < 0) return null;
+    return n;
+  };
+  const price = parseMoney(priceRaw);
+  const originalPrice = parseMoney(originalPriceRaw);
+  // 원가가 판매가보다 낮게 들어오면 원가를 무시(할인율 UI가 깨지는 것 방지)
+  const safeOriginalPrice = originalPrice != null && price != null && originalPrice < price ? null : originalPrice;
 
   // URL 방식(구글 콘솔/GCS 등)
   if (typeof urlRaw === "string" && urlRaw.trim().length > 0) {
@@ -127,6 +145,8 @@ export async function POST(req: Request) {
       isPublished,
       entitlementDays,
       imwebProdCode,
+      price,
+      originalPrice: safeOriginalPrice,
     });
 
     return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin/textbooks", req.url));
@@ -162,6 +182,8 @@ export async function POST(req: Request) {
     isPublished,
     entitlementDays,
     imwebProdCode,
+    price,
+    originalPrice: safeOriginalPrice,
   });
 
   return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin/textbooks", req.url));

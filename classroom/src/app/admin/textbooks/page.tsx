@@ -120,6 +120,31 @@ export default async function AdminTextbooksPage() {
                   </Field>
                 </div>
 
+                <div className="md:col-span-2">
+                  <Field label="할인 가격(원)">
+                    <Input
+                      name="price"
+                      type="number"
+                      min={0}
+                      step={100}
+                      placeholder="예: 49000"
+                      className="bg-transparent"
+                    />
+                  </Field>
+                </div>
+                <div className="md:col-span-2">
+                  <Field label="원래 가격(원)">
+                    <Input
+                      name="originalPrice"
+                      type="number"
+                      min={0}
+                      step={100}
+                      placeholder="예: 99000"
+                      className="bg-transparent"
+                    />
+                  </Field>
+                </div>
+
                 <div className="md:col-span-12">
                   <Field label="구글 업로드 URL">
                     <Input
