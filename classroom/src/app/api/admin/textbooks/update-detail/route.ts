@@ -20,8 +20,32 @@ const Schema = z.object({
   features: z.string().transform((s) => 
     s.split("\n").map((t) => t.trim()).filter(Boolean)
   ),
+  extraOptions: z.string().optional().transform((s) => (typeof s === "string" ? s : "")),
   description: z.string().transform((s) => s.trim() || null),
 });
+
+function parseExtraOptions(text: string): { name: string; value: string }[] {
+  const lines = (text || "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const out: { name: string; value: string }[] = [];
+  for (const line of lines) {
+    // Allow: "name: value" or "name - value"
+    const idx = line.indexOf(":");
+    const parts =
+      idx >= 0
+        ? [line.slice(0, idx).trim(), line.slice(idx + 1).trim()]
+        : line.split("-").map((x) => x.trim());
+
+    const name = parts[0] || "";
+    const value = parts.slice(1).join(" - ").trim();
+    if (!name) continue;
+    out.push({ name, value });
+  }
+  return out;
+}
 
 export async function POST(req: Request) {
   const teacher = await getCurrentTeacherUser();
@@ -43,7 +67,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "INVALID_REQUEST", details: parsed.error }, { status: 400 });
   }
 
-  const { textbookId, price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, description } = parsed.data;
+  const { textbookId, price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, extraOptions, description } = parsed.data;
+  const extraOptionsJson = parseExtraOptions(extraOptions || "");
 
   // Verify ownership
   const textbook = await prisma.textbook.findUnique({
@@ -55,19 +80,38 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
   }
 
-  await prisma.textbook.update({
-    where: { id: textbookId },
-    data: {
-      price,
-      originalPrice,
-      teacherTitle,
-      teacherDescription,
-      tags,
-      benefits,
-      features,
-      description,
-    },
-  });
+  try {
+    await prisma.textbook.update({
+      where: { id: textbookId },
+      data: {
+        price,
+        originalPrice,
+        teacherTitle,
+        teacherDescription,
+        tags,
+        benefits,
+        features,
+        extraOptions: extraOptionsJson,
+        description,
+      } as never,
+    });
+  } catch (e) {
+    // 배포 환경에서 컬럼이 아직 없을 수 있음(마이그레이션 누락). extraOptions 없이 재시도.
+    console.error("[admin/textbooks/update-detail] textbook.update failed, retrying without extraOptions:", e);
+    await prisma.textbook.update({
+      where: { id: textbookId },
+      data: {
+        price,
+        originalPrice,
+        teacherTitle,
+        teacherDescription,
+        tags,
+        benefits,
+        features,
+        description,
+      } as never,
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }

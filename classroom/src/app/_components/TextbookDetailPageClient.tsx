@@ -12,6 +12,7 @@ type Props = {
     tags: string[];
     benefits: string[];
     features: string[];
+    extraOptions: { name: string; value: string }[];
     description: string | null;
   };
 };
@@ -24,6 +25,9 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
   const [tags, setTags] = useState((initial.tags ?? []).join(", "));
   const [benefits, setBenefits] = useState((initial.benefits ?? []).join("\n"));
   const [features, setFeatures] = useState((initial.features ?? []).join("\n"));
+  const [extraOptions, setExtraOptions] = useState(
+    (initial.extraOptions ?? []).map((o) => `${o.name}: ${o.value}`).join("\n")
+  );
   const [description, setDescription] = useState(initial.description || "");
   
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -43,6 +47,7 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
       formData.append("tags", tags);
       formData.append("benefits", benefits);
       formData.append("features", features);
+      formData.append("extraOptions", extraOptions);
       formData.append("description", description);
 
       const res = await fetch("/api/admin/textbooks/update-detail", {
@@ -60,7 +65,7 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
       console.error("Save error:", error);
       setSaveStatus("error");
     }
-  }, [textbookId, price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, description]);
+  }, [textbookId, price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, extraOptions, description]);
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -81,7 +86,7 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, description, saveData]);
+  }, [price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, extraOptions, description, saveData]);
 
   const inputClass = "w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20";
   const labelClass = "block text-sm font-medium text-white/70 mb-1.5";
@@ -212,6 +217,19 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
           className={inputClass}
         />
         <p className="mt-1 text-xs text-white/40">줄바꿈으로 구분하여 입력하세요.</p>
+      </div>
+
+      {/* 추가 옵션 */}
+      <div>
+        <label className={labelClass}>추가 옵션</label>
+        <textarea
+          value={extraOptions}
+          onChange={(e) => setExtraOptions(e.target.value)}
+          placeholder={"예:\n구성: PDF + 해설\n파일형식: PDF\n페이지: 320p"}
+          rows={4}
+          className={inputClass}
+        />
+        <p className="mt-1 text-xs text-white/40">줄바꿈으로 구분, 각 줄은 “옵션명: 값” 형태로 입력하세요.</p>
       </div>
     </div>
   );

@@ -113,6 +113,7 @@ export default async function AdminTextbookPage({
         tags: true,
         benefits: true,
         features: true,
+        extraOptions: true,
         description: true,
         // optional fields (may be missing if migration not applied yet)
         entitlementDays: true,
@@ -295,6 +296,8 @@ export default async function AdminTextbookPage({
                     tags: (textbook.tags as string[] | null) ?? [],
                     benefits: (textbook.benefits as string[] | null) ?? [],
                     features: (textbook.features as string[] | null) ?? [],
+                    extraOptions:
+                      (textbook as { extraOptions?: { name: string; value: string }[] | null }).extraOptions ?? [],
                     description: textbook.description ?? null,
                   }}
                 />

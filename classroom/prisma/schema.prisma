@@ -364,6 +364,8 @@ model Textbook {
   benefits       Json?
   // 교재 특징 (JSON 배열)
   features       Json?
+  // 상세 페이지의 "추가 옵션" (예: [{"name":"구성","value":"PDF+해설"}])
+  extraOptions   Json?
   // 상세 설명
   description    String?
 

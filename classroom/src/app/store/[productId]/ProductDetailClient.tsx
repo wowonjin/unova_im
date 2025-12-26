@@ -47,6 +47,7 @@ type ProductData = {
   studyPeriod: { regular: number; review: number };
   benefits: string[];
   features: string[];
+  extraOptions?: { name: string; value: string }[];
   curriculum: Chapter[];
   reviews: Review[];
   discount: number | null;
@@ -572,6 +573,13 @@ export default function ProductDetailClient({ product }: { product: ProductData 
                         {product.type === "textbook" ? "PDF 교재" : `총 ${totalLessons}개 수업`}
                       </td>
                     </tr>
+                    {product.type === "textbook" &&
+                      (product.extraOptions ?? []).map((opt, i) => (
+                        <tr key={`${opt.name}-${i}`} className="border-t border-white/10">
+                          <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">{opt.name}</td>
+                          <td className="px-5 py-4 text-white/90 whitespace-pre-line">{opt.value}</td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>

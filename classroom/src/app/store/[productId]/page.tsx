@@ -491,6 +491,7 @@ export default async function ProductDetailPage({
                 studyPeriod: { regular: 30, review: dbCourse.enrollmentDays - 30 },
                 benefits: (dbCourse.benefits as string[] | null) || [],
                 features: (dbCourse.features as string[] | null) || [],
+                extraOptions: [],
                 curriculum,
                 reviews: [],
                 discount,
@@ -548,6 +549,10 @@ export default async function ProductDetailPage({
                 studyPeriod: { regular: dbTextbook.entitlementDays ?? 30, review: 0 },
                 benefits: (dbTextbook.benefits as string[] | null) || [],
                 features: (dbTextbook.features as string[] | null) || [],
+                extraOptions:
+                  ((dbTextbook as { extraOptions?: { name: string; value: string }[] | null }).extraOptions as
+                    | { name: string; value: string }[]
+                    | null) || [],
                 curriculum: [],
                 reviews: [],
                 discount,

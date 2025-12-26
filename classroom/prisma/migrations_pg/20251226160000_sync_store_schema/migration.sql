@@ -46,6 +46,7 @@ ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "tags" JSONB;
 ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "benefits" JSONB;
 ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "features" JSONB;
 ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "description" TEXT;
+ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "extraOptions" JSONB;
 
 -- Indices (safe)
 CREATE INDEX IF NOT EXISTS "Textbook_teacherName_idx" ON "Textbook" ("teacherName");
