@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import AppShell from "@/app/_components/AppShell";
-import { requireCurrentUser } from "@/lib/current-user";
+import { getCurrentUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import VimeoPlayer from "./VimeoPlayer";
 import LessonResourcesTabs from "./LessonResourcesTabs";
@@ -30,8 +31,13 @@ export default async function LessonPage({
   params: Promise<{ lessonId: string }>;
   searchParams?: Promise<{ all?: string }>;
 }) {
-  const user = await requireCurrentUser();
   const { lessonId } = await params;
+  const user = await getCurrentUser();
+  
+  // 로그인하지 않은 사용자는 로그인 페이지로 리다이렉트
+  if (!user) {
+    redirect(`/login?redirect=/lesson/${lessonId}`);
+  }
   const sp = (await searchParams) ?? {};
   const allowAll = isAllCoursesTestModeFromAllParam(typeof sp.all === "string" ? sp.all : null);
   const now = new Date();

@@ -189,17 +189,17 @@ export default async function StorePage({
           </div>
 
           {filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10">
               {filteredProducts.map((product) => (
                 <Link
                   key={product.id}
                   href={`/store/${product.id}`}
                   className="group"
                 >
-                  <div className={`relative aspect-video overflow-hidden transition-all ${
+                  <div className={`relative aspect-video overflow-hidden transition-all rounded-2xl ${
                     product.type === "textbook" 
-                      ? "bg-transparent border-transparent rounded-none group-hover:scale-[1.02]" 
-                      : "rounded-2xl bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
+                      ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02] group-hover:scale-[1.02]" 
+                      : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
                   }`}>
                     {/* 태그 */}
                     {product.tag && (
@@ -221,20 +221,20 @@ export default async function StorePage({
                     {/* 상품 이미지 영역 */}
                     {product.thumbnailUrl ? (
                       product.type === "textbook" ? (
-                        // 교재: 이미지를 왼쪽 정렬, 입체감 있는 그림자
-                        <div className="absolute inset-0 flex items-center justify-start bg-transparent pl-[40px]">
-                          <div className="relative h-[95%] w-auto">
+                        // 교재: 이미지를 가운데 정렬, 입체감 있는 그림자
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="relative h-[85%] w-auto">
                             {/* 뒤쪽 그림자 레이어 */}
                             <div 
-                              className="absolute inset-0 translate-x-2 translate-y-2 bg-black/30 blur-md rounded-sm"
-                              style={{ transform: "translate(8px, 8px) scale(0.98)" }}
+                              className="absolute inset-0 translate-x-2 translate-y-2 bg-black/40 blur-md rounded-sm"
+                              style={{ transform: "translate(6px, 6px) scale(0.98)" }}
                             />
                             <img
                               src={product.thumbnailUrl}
                               alt={product.title}
                               className="relative h-full w-auto object-contain"
                               style={{ 
-                                filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.3)) drop-shadow(0 10px 20px rgba(0,0,0,0.2))",
+                                filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.4)) drop-shadow(0 10px 20px rgba(0,0,0,0.25))",
                               }}
                             />
                           </div>

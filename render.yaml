@@ -74,6 +74,12 @@ services:
       - key: NAVER_CLIENT_SECRET
         sync: false
 
+      # Toss Payments
+      - key: TOSS_CLIENT_KEY
+        sync: false
+      - key: TOSS_SECRET_KEY
+        sync: false
+
     disk:
       name: unova-classroom-storage
       mountPath: /var/data
