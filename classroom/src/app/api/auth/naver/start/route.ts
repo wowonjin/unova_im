@@ -7,8 +7,9 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const redirectTo = url.searchParams.get("redirect");
 
-  const clientId = process.env.NAVER_CLIENT_ID;
-  if (!clientId) {
+  const clientId = process.env.NAVER_CLIENT_ID || process.env.NAVER_CLIENTID;
+  const clientSecret = process.env.NAVER_CLIENT_SECRET || process.env.NAVER_CLIENTSECRET;
+  if (!clientId || !clientSecret) {
     return NextResponse.redirect(new URL("/login?error=oauth_not_configured", req.url));
   }
 

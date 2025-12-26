@@ -7,7 +7,11 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const redirectTo = url.searchParams.get("redirect");
 
-  const clientId = process.env.KAKAO_REST_API_KEY;
+  // Kakao 앱키 변수명이 환경/문서마다 달라서 alias 지원
+  const clientId =
+    process.env.KAKAO_REST_API_KEY ||
+    process.env.KAKAO_CLIENT_ID ||
+    process.env.KAKAO_APP_KEY;
   if (!clientId) {
     return NextResponse.redirect(new URL("/login?error=oauth_not_configured", req.url));
   }

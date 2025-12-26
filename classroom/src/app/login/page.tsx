@@ -16,6 +16,11 @@ export default async function LoginPage({
   const errorMessages: Record<string, string> = {
     session_expired: "세션이 만료되었습니다. 다시 로그인해주세요.",
     unauthorized: "로그인이 필요합니다.",
+    oauth_not_configured: "소셜 로그인 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.",
+    oauth_failed: "소셜 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.",
+    oauth_missing_code: "소셜 로그인 응답이 올바르지 않습니다. 다시 시도해주세요.",
+    oauth_state_mismatch: "보안 검증에 실패했습니다. 다시 시도해주세요.",
+    oauth_server_error: "소셜 로그인 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
   };
 
   return (

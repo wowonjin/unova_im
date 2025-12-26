@@ -144,14 +144,11 @@ export default async function NoticesPage({ searchParams }: { searchParams?: Pro
       
       <main className="flex-1 pt-[70px]">
         {/* 히어로 */}
-        <section className="py-20 md:py-28">
+        <section className="py-10 md:py-12">
           <div className="mx-auto max-w-3xl px-6 text-center">
-            <h1 className="text-[40px] md:text-[56px] font-semibold tracking-[-0.02em] leading-[1.1]">
+            <h1 className="text-[28px] md:text-[36px] font-semibold tracking-[-0.02em] leading-[1.15]">
               공지사항
             </h1>
-            <p className="mt-5 text-[17px] md:text-[19px] text-white/50 leading-relaxed">
-              유노바의 새로운 소식을 확인하세요
-            </p>
           </div>
         </section>
 
