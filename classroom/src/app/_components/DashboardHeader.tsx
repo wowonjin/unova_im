@@ -65,7 +65,7 @@ export default function DashboardHeader({
   return (
     <div className="mb-6">
       {/* 헤더 카드 */}
-      <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-r from-white/[0.04] to-transparent p-5">
+      <div className="rounded-2xl border border-white/[0.06] bg-[#1C1C1C] p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           {/* 좌측: 제목 및 개수 */}
           <div className="flex items-center gap-4">
@@ -101,7 +101,7 @@ export default function DashboardHeader({
 
               {/* 드롭다운 메뉴 */}
               {isOpen && (
-                <div className="absolute right-0 top-full z-50 mt-2 min-w-[200px] overflow-hidden rounded-xl border border-white/[0.08] bg-[#1a1a1c] py-1.5 shadow-2xl">
+                <div className="absolute right-0 top-full z-50 mt-2 min-w-[200px] overflow-hidden rounded-xl border border-white/[0.08] bg-[#1C1C1C] py-1.5 shadow-2xl">
                   <div className="px-3 py-2 text-[11px] font-medium uppercase tracking-wider text-white/30">
                     정렬 기준
                   </div>

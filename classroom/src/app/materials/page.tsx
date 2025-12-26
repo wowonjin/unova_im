@@ -76,7 +76,7 @@ export default async function MaterialsPage() {
   return (
     <AppShell>
       {/* 헤더 카드 */}
-      <div className="mb-6 rounded-2xl border border-white/[0.06] bg-gradient-to-r from-white/[0.04] to-transparent p-5">
+      <div className="mb-6 rounded-2xl border border-white/[0.06] bg-[#1C1C1C] p-5">
         <div className="flex items-center gap-4">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/[0.08]">
             <span className="material-symbols-outlined text-[22px] text-white/70">menu_book</span>
@@ -108,7 +108,7 @@ export default async function MaterialsPage() {
             {textbooks.map((t) => (
               <div
                 key={t.id}
-                className="group relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#1a1a1c] transition-colors hover:border-white/[0.12] hover:bg-[#1e1e20]"
+                className="group relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#1C1C1C] transition-colors hover:border-white/[0.12] hover:bg-[#232323]"
               >
                 <div className="flex gap-4 p-4">
                   {/* PDF 썸네일 - A4 비율 (1:1.414) */}
@@ -177,7 +177,7 @@ export default async function MaterialsPage() {
               return (
                 <div
                   key={a.id}
-                  className="group flex items-center justify-between gap-4 rounded-xl border border-white/[0.08] bg-[#1a1a1c] p-4 transition-colors hover:border-white/[0.12] hover:bg-[#1e1e20]"
+                  className="group flex items-center justify-between gap-4 rounded-xl border border-white/[0.08] bg-[#1C1C1C] p-4 transition-colors hover:border-white/[0.12] hover:bg-[#232323]"
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${isPdf ? "bg-red-500/10" : "bg-white/[0.06]"}`}>
@@ -212,7 +212,7 @@ export default async function MaterialsPage() {
 
       {/* 빈 상태 */}
       {totalMaterials === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02] py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.06] bg-[#1C1C1C] py-16 text-center">
           {!user.isLoggedIn ? (
             <DashboardEmptyState isLoggedIn={false} />
           ) : (
