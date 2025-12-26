@@ -9,8 +9,6 @@ const Schema = z.object({
   textbookId: z.string().min(1),
   price: z.string().transform((s) => (s ? parseInt(s) : null)),
   originalPrice: z.string().transform((s) => (s ? parseInt(s) : null)),
-  rating: z.string().transform((s) => (s ? parseFloat(s) : null)),
-  reviewCount: z.string().transform((s) => parseInt(s) || 0),
   teacherTitle: z.string().transform((s) => s.trim() || null),
   teacherDescription: z.string().transform((s) => s.trim() || null),
   tags: z.string().transform((s) => 
@@ -45,7 +43,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "INVALID_REQUEST", details: parsed.error }, { status: 400 });
   }
 
-  const { textbookId, price, originalPrice, rating, reviewCount, teacherTitle, teacherDescription, tags, benefits, features, description } = parsed.data;
+  const { textbookId, price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, description } = parsed.data;
 
   // Verify ownership
   const textbook = await prisma.textbook.findUnique({
@@ -62,8 +60,6 @@ export async function POST(req: Request) {
     data: {
       price,
       originalPrice,
-      rating,
-      reviewCount,
       teacherTitle,
       teacherDescription,
       tags,

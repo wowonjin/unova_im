@@ -7,8 +7,6 @@ type Props = {
   initial: {
     price: number | null;
     originalPrice: number | null;
-    rating: number | null;
-    reviewCount: number;
     teacherTitle: string | null;
     teacherDescription: string | null;
     tags: string[];
@@ -21,8 +19,6 @@ type Props = {
 export default function TextbookDetailPageClient({ textbookId, initial }: Props) {
   const [price, setPrice] = useState(initial.price?.toString() || "");
   const [originalPrice, setOriginalPrice] = useState(initial.originalPrice?.toString() || "");
-  const [rating, setRating] = useState(initial.rating?.toString() || "");
-  const [reviewCount, setReviewCount] = useState((initial.reviewCount ?? 0).toString());
   const [teacherTitle, setTeacherTitle] = useState(initial.teacherTitle || "");
   const [teacherDescription, setTeacherDescription] = useState(initial.teacherDescription || "");
   const [tags, setTags] = useState((initial.tags ?? []).join(", "));
@@ -42,8 +38,6 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
       formData.append("textbookId", textbookId);
       formData.append("price", price);
       formData.append("originalPrice", originalPrice);
-      formData.append("rating", rating);
-      formData.append("reviewCount", reviewCount);
       formData.append("teacherTitle", teacherTitle);
       formData.append("teacherDescription", teacherDescription);
       formData.append("tags", tags);
@@ -66,7 +60,7 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
       console.error("Save error:", error);
       setSaveStatus("error");
     }
-  }, [textbookId, price, originalPrice, rating, reviewCount, teacherTitle, teacherDescription, tags, benefits, features, description]);
+  }, [textbookId, price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, description]);
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -87,7 +81,7 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [price, originalPrice, rating, reviewCount, teacherTitle, teacherDescription, tags, benefits, features, description, saveData]);
+  }, [price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, description, saveData]);
 
   const inputClass = "w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20";
   const labelClass = "block text-sm font-medium text-white/70 mb-1.5";
@@ -140,33 +134,6 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
             value={originalPrice}
             onChange={(e) => setOriginalPrice(e.target.value)}
             placeholder="예: 55000"
-            className={inputClass}
-          />
-        </div>
-      </div>
-
-      {/* 평점 및 후기 */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelClass}>평점 (1.0~5.0)</label>
-          <input
-            type="number"
-            step="0.1"
-            min="1"
-            max="5"
-            value={rating}
-            onChange={(e) => setRating(e.target.value)}
-            placeholder="예: 4.9"
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label className={labelClass}>후기 수</label>
-          <input
-            type="number"
-            value={reviewCount}
-            onChange={(e) => setReviewCount(e.target.value)}
-            placeholder="예: 50"
             className={inputClass}
           />
         </div>

@@ -286,8 +286,6 @@ export default async function AdminTextbookPage({
                 initial={{
                   price: textbook.price ?? null,
                   originalPrice: textbook.originalPrice ?? null,
-                  rating: textbook.rating ?? null,
-                  reviewCount: textbook.reviewCount ?? 0,
                   teacherTitle: (textbook as { teacherTitle?: string | null }).teacherTitle ?? null,
                   teacherDescription: (textbook as { teacherDescription?: string | null }).teacherDescription ?? null,
                   tags: (textbook.tags as string[] | null) ?? [],
