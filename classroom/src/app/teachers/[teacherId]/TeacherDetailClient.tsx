@@ -37,7 +37,7 @@ type ProfileSection = {
   content: string | string[];
 };
 
-type TeacherData = {
+export type TeacherDetailTeacher = {
   name: string;
   subject: string;
   subjectColor: string;
@@ -74,7 +74,7 @@ type TeacherData = {
 };
 
 type Props = {
-  teacher: TeacherData;
+  teacher: TeacherDetailTeacher;
 };
 
 export default function TeacherDetailClient({ teacher }: Props) {

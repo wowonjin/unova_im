@@ -45,7 +45,7 @@ export default function YoutubeMarquee({ title = "무료 해설 강의.", videos
   const dragStartXRef = useRef(0);
   const posXOnDragStartRef = useRef(0);
   const contentWidthRef = useRef(0);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | null>(null);
   const [titles, setTitles] = useState<Map<string, string>>(new Map());
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
 
@@ -110,7 +110,7 @@ export default function YoutubeMarquee({ title = "무료 해설 강의.", videos
     animationRef.current = requestAnimationFrame(loop);
 
     return () => {
-      if (animationRef.current) {
+      if (animationRef.current != null) {
         cancelAnimationFrame(animationRef.current);
       }
     };

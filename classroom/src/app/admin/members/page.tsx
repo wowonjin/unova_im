@@ -3,8 +3,24 @@ import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import MembersClient from "./MembersClient";
 
+type MemberRow = {
+  id: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  profileImageUrl: string | null;
+  imwebMemberCode: string | null;
+  address: string | null;
+  addressDetail: string | null;
+  createdAt: string;
+  lastLoginAt: string | null;
+  enrollmentCount: number;
+  textbookCount: number;
+  totalPayment: number;
+};
+
 // 더미 회원 데이터
-const dummyMembers = [
+const dummyMembers: MemberRow[] = [
   {
     id: "member-1",
     email: "admin@gmail.com",
@@ -94,7 +110,7 @@ export default async function AdminMembersPage({
   const limit = 50;
   const skip = (page - 1) * limit;
 
-  let membersData = dummyMembers;
+  let membersData: MemberRow[] = dummyMembers;
   let totalCount = dummyMembers.length;
   let totalPages = 1;
 
@@ -144,12 +160,12 @@ export default async function AdminMembersPage({
     membersData = members.map((m) => ({
       id: m.id,
       email: m.email,
-      name: m.name,
-      phone: m.phone,
-      profileImageUrl: m.profileImageUrl,
-      imwebMemberCode: m.imwebMemberCode,
-      address: m.address,
-      addressDetail: m.addressDetail,
+      name: m.name ?? null,
+      phone: m.phone ?? null,
+      profileImageUrl: m.profileImageUrl ?? null,
+      imwebMemberCode: m.imwebMemberCode ?? null,
+      address: m.address ?? null,
+      addressDetail: m.addressDetail ?? null,
       createdAt: m.createdAt.toISOString(),
       lastLoginAt: m.lastLoginAt?.toISOString() || null,
       enrollmentCount: m._count.enrollments,

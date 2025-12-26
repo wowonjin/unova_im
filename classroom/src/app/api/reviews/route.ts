@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
   const parsed = CreateSchema.safeParse(json);
   if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: "VALIDATION_ERROR", details: parsed.error.errors }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "VALIDATION_ERROR", details: parsed.error.issues }, { status: 400 });
   }
 
   const { productType, productId, authorName, rating, content, imageUrls } = parsed.data;

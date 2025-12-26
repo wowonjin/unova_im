@@ -35,7 +35,7 @@ export default function CurriculumCarousel({ slides, title = "커리큘럼 확�
   const stageRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const t0Ref = useRef(performance.now());
-  const rafRef = useRef<number>();
+  const rafRef = useRef<number | null>(null);
 
   // 슬라이드 크기 계산
   const measure = useCallback(() => {
@@ -90,7 +90,7 @@ export default function CurriculumCarousel({ slides, title = "커리큘럼 확�
 
     rafRef.current = requestAnimationFrame(loop);
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
     };
   }, [isPlaying, isVisible, next]);
 

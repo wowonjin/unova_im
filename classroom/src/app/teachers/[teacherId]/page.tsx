@@ -3,6 +3,7 @@ import LandingHeader from "@/app/_components/LandingHeader";
 import Footer from "@/app/_components/Footer";
 import { notFound } from "next/navigation";
 import TeacherDetailClient from "./TeacherDetailClient";
+import type { TeacherDetailTeacher } from "./TeacherDetailClient";
 
 type Banner = {
   topText: string;
@@ -563,12 +564,26 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
   }
 
   // 새로운 디자인이 있는 선생님은 새로운 컴포넌트 사용
-  if (teacher.headerSub && teacher.banners && teacher.banners.length > 0) {
+  const hasNewDesign =
+    typeof teacher.headerSub === "string" &&
+    teacher.headerSub.length > 0 &&
+    typeof teacher.imageUrl === "string" &&
+    teacher.imageUrl.length > 0 &&
+    Array.isArray(teacher.banners) &&
+    teacher.banners.length > 0 &&
+    Array.isArray(teacher.reviews) &&
+    Array.isArray(teacher.notices) &&
+    Array.isArray(teacher.floatingBanners) &&
+    Boolean(teacher.profile) &&
+    Array.isArray(teacher.socialLinks) &&
+    Boolean(teacher.navigationLinks);
+
+  if (hasNewDesign) {
     return (
       <div className="min-h-screen bg-[#5f4253] text-white flex flex-col">
         <LandingHeader />
         <main className="flex-1 pt-[70px]">
-          <TeacherDetailClient teacher={teacher} />
+          <TeacherDetailClient teacher={teacher as TeacherDetailTeacher} />
         </main>
         <Footer />
       </div>
