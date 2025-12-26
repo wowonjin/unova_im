@@ -27,7 +27,9 @@ export default async function AdminTextbookPage({
   const { textbookId } = await params;
   const sp = (await searchParams) ?? {};
   const entitleMsg = sp.entitle || null;
+  // "detail" 탭은 기존 호환을 위해 유지하되, UI에서는 "설정"에 합쳐서 표시합니다.
   const tab = (sp.tab || "settings") as "settings" | "detail" | "users";
+  const activeTab = (tab === "detail" ? "settings" : tab) as "settings" | "users";
 
   // NOTE: 운영에서 마이그레이션 누락 시 Prisma가 모든 컬럼을 조회하다가 크래시가 날 수 있어
   // 먼저 "사용하는 필드만" select 하고, 실패하면 최소 필드로 폴백합니다.
@@ -190,112 +192,115 @@ export default async function AdminTextbookPage({
       />
 
       <Tabs
-        activeKey={tab}
+        activeKey={activeTab}
         items={[
           { key: "settings", label: "설정", href: `/admin/textbook/${textbook.id}?tab=settings` },
-          { key: "detail", label: "상세 페이지", href: `/admin/textbook/${textbook.id}?tab=detail` },
           { key: "users", label: "이용자", href: `/admin/textbook/${textbook.id}?tab=users` },
         ]}
       />
 
       <div className="mt-6">
-        {tab === "settings" ? (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {/* 기본 정보 */}
+        {activeTab === "settings" ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {/* 기본 정보 */}
+              <Card>
+                <CardHeader
+                  title="기본 정보"
+                  right={<TextbookPublishedSelect textbookId={textbook.id} isPublished={textbook.isPublished} />}
+                />
+                <CardBody>
+                  <TextbookBasicInfoClient
+                    textbookId={textbook.id}
+                    initialTitle={textbook.title}
+                    initialTeacherName={(textbook as { teacherName?: string | null }).teacherName ?? ""}
+                    initialSubjectName={textbook.subjectName || ""}
+                    initialEntitlementDays={entitlementDays}
+                  />
+
+                  {/* 파일 정보 */}
+                  <div className="mt-6 pt-4 border-t border-white/10">
+                    <h4 className="text-sm font-medium text-white/60 mb-3">파일 정보</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-white/50">원본 파일명</span>
+                        <span className="text-white/80">{textbook.originalName}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-white/50">파일 크기</span>
+                        <span className="text-white/80">{formatBytes(textbook.sizeBytes)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-white/50">등록일</span>
+                        <span className="text-white/80">{new Date(textbook.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+
+              {/* 썸네일 및 다운로드 */}
+              <Card>
+                <CardHeader title="썸네일 및 다운로드" />
+                <CardBody>
+                  <div className="flex items-start gap-4">
+                    {textbook.thumbnailUrl ? (
+                      <div className="shrink-0 w-24 h-32 rounded-lg overflow-hidden border border-white/10 bg-white/5">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={textbook.thumbnailUrl} alt="썸네일" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="shrink-0 w-24 h-32 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
+                        <span className="text-white/30 text-xs">미등록</span>
+                      </div>
+                    )}
+
+                    <div className="flex-1 space-y-3">
+                      <TextbookThumbnailGenerator textbookId={textbook.id} hasThumbnail={!!textbook.thumbnailUrl} />
+
+                      <a
+                        href={`/api/admin/textbooks/${textbook.id}/download`}
+                        className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/10"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                          />
+                        </svg>
+                        다운로드
+                      </a>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            </div>
+
+            {/* 상세 페이지 설정(기존 detail 탭 내용을 settings에 합침) */}
             <Card>
               <CardHeader
-                title="기본 정보"
-                right={<TextbookPublishedSelect textbookId={textbook.id} isPublished={textbook.isPublished} />}
+                title="상세 페이지 설정"
+                description="스토어에 표시되는 교재 상세 페이지의 내용을 설정합니다."
               />
               <CardBody>
-                <TextbookBasicInfoClient
+                <TextbookDetailPageClient
                   textbookId={textbook.id}
-                  initialTitle={textbook.title}
-                  initialTeacherName={(textbook as { teacherName?: string | null }).teacherName ?? ""}
-                  initialSubjectName={textbook.subjectName || ""}
-                  initialEntitlementDays={entitlementDays}
+                  initial={{
+                    price: textbook.price ?? null,
+                    originalPrice: textbook.originalPrice ?? null,
+                    teacherTitle: (textbook as { teacherTitle?: string | null }).teacherTitle ?? null,
+                    teacherDescription: (textbook as { teacherDescription?: string | null }).teacherDescription ?? null,
+                    tags: (textbook.tags as string[] | null) ?? [],
+                    benefits: (textbook.benefits as string[] | null) ?? [],
+                    features: (textbook.features as string[] | null) ?? [],
+                    description: textbook.description ?? null,
+                  }}
                 />
-
-                {/* 파일 정보 */}
-                <div className="mt-6 pt-4 border-t border-white/10">
-                  <h4 className="text-sm font-medium text-white/60 mb-3">파일 정보</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-white/50">원본 파일명</span>
-                      <span className="text-white/80">{textbook.originalName}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-white/50">파일 크기</span>
-                      <span className="text-white/80">{formatBytes(textbook.sizeBytes)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-white/50">등록일</span>
-                      <span className="text-white/80">{new Date(textbook.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-
-            {/* 썸네일 및 다운로드 */}
-            <Card>
-              <CardHeader title="썸네일 및 다운로드" />
-              <CardBody>
-                <div className="flex items-start gap-4">
-                  {textbook.thumbnailUrl ? (
-                    <div className="shrink-0 w-24 h-32 rounded-lg overflow-hidden border border-white/10 bg-white/5">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={textbook.thumbnailUrl}
-                        alt="썸네일"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="shrink-0 w-24 h-32 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-                      <span className="text-white/30 text-xs">미등록</span>
-                    </div>
-                  )}
-                  
-                  <div className="flex-1 space-y-3">
-                    <TextbookThumbnailGenerator textbookId={textbook.id} hasThumbnail={!!textbook.thumbnailUrl} />
-                    
-                    <a
-                      href={`/api/admin/textbooks/${textbook.id}/download`}
-                      className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/10"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      다운로드
-                    </a>
-                  </div>
-                </div>
               </CardBody>
             </Card>
           </div>
-        ) : tab === "detail" ? (
-          <Card>
-            <CardHeader
-              title="상세 페이지 설정"
-              description="스토어에 표시되는 교재 상세 페이지의 내용을 설정합니다."
-            />
-            <CardBody>
-              <TextbookDetailPageClient
-                textbookId={textbook.id}
-                initial={{
-                  price: textbook.price ?? null,
-                  originalPrice: textbook.originalPrice ?? null,
-                  teacherTitle: (textbook as { teacherTitle?: string | null }).teacherTitle ?? null,
-                  teacherDescription: (textbook as { teacherDescription?: string | null }).teacherDescription ?? null,
-                  tags: (textbook.tags as string[] | null) ?? [],
-                  benefits: (textbook.benefits as string[] | null) ?? [],
-                  features: (textbook.features as string[] | null) ?? [],
-                  description: textbook.description ?? null,
-                }}
-              />
-            </CardBody>
-          </Card>
         ) : (
           <Card>
             <CardHeader
