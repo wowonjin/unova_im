@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Popup = {
   id: string;
@@ -9,41 +9,28 @@ type Popup = {
   imageUrl: string;
   linkUrl: string;
   isActive: boolean;
-  startDate: string;
-  endDate: string;
+  startAt: string | null;
+  endAt: string | null;
   position: "center" | "bottom-right";
   createdAt: string;
 };
 
-// 더미 팝업 데이터
-const initialPopups: Popup[] = [
-  {
-    id: "popup-1",
-    title: "겨울방학 특별 할인 이벤트",
-    imageUrl: "/popups/winter-sale.jpg",
-    linkUrl: "/store",
-    isActive: true,
-    startDate: "2025-12-20",
-    endDate: "2026-01-31",
-    position: "center",
-    createdAt: "2025-12-20",
-  },
-  {
-    id: "popup-2",
-    title: "신규 강좌 오픈 안내",
-    imageUrl: "/popups/new-course.jpg",
-    linkUrl: "/store/math-full",
-    isActive: false,
-    startDate: "2025-12-15",
-    endDate: "2025-12-25",
-    position: "bottom-right",
-    createdAt: "2025-12-15",
-  },
-];
+function toDateOnly(iso: string | null): string {
+  if (!iso) return "";
+  // ISO -> YYYY-MM-DD
+  return iso.slice(0, 10);
+}
+
+function fromDateOnly(date: string): string {
+  return date;
+}
 
 export default function PopupsClient() {
-  const [popups, setPopups] = useState<Popup[]>(initialPopups);
+  const [popups, setPopups] = useState<Popup[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     imageUrl: "",
@@ -53,28 +40,73 @@ export default function PopupsClient() {
     position: "center" as "center" | "bottom-right",
   });
 
-  const toggleActive = (id: string) => {
-    setPopups((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, isActive: !p.isActive } : p))
-    );
-  };
-
-  const deletePopup = (id: string) => {
-    if (confirm("정말 삭제하시겠습니까?")) {
-      setPopups((prev) => prev.filter((p) => p.id !== id));
+  const refresh = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/popups/list", { cache: "no-store" });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) throw new Error("FETCH_FAILED");
+      const list: Popup[] = Array.isArray(json.popups) ? json.popups : [];
+      setPopups(list);
+    } catch {
+      setError("팝업 목록을 불러오지 못했습니다. (DB 마이그레이션이 아직 적용되지 않았을 수 있습니다.)");
+      setPopups([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  const toggleActive = async (id: string, next: boolean) => {
+    const fd = new FormData();
+    fd.append("id", id);
+    fd.append("isActive", next ? "1" : "0");
+    const res = await fetch("/api/admin/popups/update", { method: "POST", body: fd });
+    if (!res.ok) {
+      alert("변경에 실패했습니다.");
+      return;
+    }
+    await refresh();
+  };
+
+  const deletePopup = async (id: string) => {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+    const fd = new FormData();
+    fd.append("id", id);
+    const res = await fetch("/api/admin/popups/delete", { method: "POST", body: fd });
+    if (!res.ok) {
+      alert("삭제에 실패했습니다.");
+      return;
+    }
+    await refresh();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newPopup: Popup = {
-      id: `popup-${Date.now()}`,
-      ...formData,
-      isActive: true,
-      createdAt: new Date().toISOString().split("T")[0],
-    };
-    setPopups((prev) => [newPopup, ...prev]);
+
+    const fd = new FormData();
+    fd.append("title", formData.title);
+    fd.append("imageUrl", formData.imageUrl);
+    fd.append("linkUrl", formData.linkUrl);
+    fd.append("position", formData.position);
+    fd.append("startDate", fromDateOnly(formData.startDate));
+    fd.append("endDate", fromDateOnly(formData.endDate));
+
+    const url = editingId ? "/api/admin/popups/update" : "/api/admin/popups/create";
+    if (editingId) fd.append("id", editingId);
+
+    const res = await fetch(url, { method: "POST", body: fd });
+    if (!res.ok) {
+      alert("저장에 실패했습니다.");
+      return;
+    }
+
     setShowForm(false);
+    setEditingId(null);
     setFormData({
       title: "",
       imageUrl: "",
@@ -83,7 +115,23 @@ export default function PopupsClient() {
       endDate: "",
       position: "center",
     });
+    await refresh();
   };
+
+  const startEdit = (p: Popup) => {
+    setEditingId(p.id);
+    setShowForm(true);
+    setFormData({
+      title: p.title,
+      imageUrl: p.imageUrl,
+      linkUrl: p.linkUrl || "",
+      startDate: toDateOnly(p.startAt),
+      endDate: toDateOnly(p.endAt),
+      position: p.position,
+    });
+  };
+
+  const formTitle = useMemo(() => (editingId ? "팝업 수정" : "새 팝업 등록"), [editingId]);
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -114,10 +162,16 @@ export default function PopupsClient() {
         </button>
       </div>
 
+      {error && (
+        <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-5 text-sm text-amber-200">
+          {error}
+        </div>
+      )}
+
       {/* 팝업 등록 폼 */}
       {showForm && (
         <div className="mb-8 p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
-          <h2 className="text-[18px] font-semibold mb-6">새 팝업 등록</h2>
+          <h2 className="text-[18px] font-semibold mb-6">{formTitle}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -192,7 +246,10 @@ export default function PopupsClient() {
             <div className="flex justify-end gap-3 pt-4">
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingId(null);
+                }}
                 className="px-5 py-2.5 rounded-xl bg-white/[0.06] text-white/70 font-medium hover:bg-white/[0.1] transition-colors"
               >
                 취소
@@ -210,7 +267,9 @@ export default function PopupsClient() {
 
       {/* 팝업 목록 */}
       <div className="space-y-4">
-        {popups.length > 0 ? (
+        {isLoading ? (
+          <div className="py-12 text-center text-white/40">불러오는 중...</div>
+        ) : popups.length > 0 ? (
           popups.map((popup) => (
             <div
               key={popup.id}
@@ -218,9 +277,8 @@ export default function PopupsClient() {
             >
               {/* 썸네일 */}
               <div className="w-32 h-20 rounded-xl bg-white/[0.05] flex items-center justify-center shrink-0 overflow-hidden">
-                <span className="material-symbols-outlined text-white/30" style={{ fontSize: "32px" }}>
-                  image
-                </span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={popup.imageUrl} alt="" className="w-full h-full object-cover" />
               </div>
 
               {/* 정보 */}
@@ -239,9 +297,7 @@ export default function PopupsClient() {
                     {popup.isActive ? "활성화" : "비활성화"}
                   </span>
                 </div>
-                <p className="text-[13px] text-white/50 mb-2">
-                  {popup.startDate} ~ {popup.endDate}
-                </p>
+                <p className="text-[13px] text-white/50 mb-2">{toDateOnly(popup.startAt) || "-"} ~ {toDateOnly(popup.endAt) || "-"}</p>
                 <div className="flex items-center gap-4 text-[13px] text-white/40">
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
@@ -261,7 +317,7 @@ export default function PopupsClient() {
               {/* 액션 버튼 */}
               <div className="flex items-center gap-2 shrink-0">
                 <button
-                  onClick={() => toggleActive(popup.id)}
+                  onClick={() => toggleActive(popup.id, !popup.isActive)}
                   className={`px-4 py-2 rounded-lg text-[13px] font-medium transition-colors ${
                     popup.isActive
                       ? "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"
@@ -269,6 +325,12 @@ export default function PopupsClient() {
                   }`}
                 >
                   {popup.isActive ? "비활성화" : "활성화"}
+                </button>
+                <button
+                  onClick={() => startEdit(popup)}
+                  className="px-4 py-2 rounded-lg text-[13px] font-medium bg-white/[0.06] text-white/70 hover:bg-white/[0.1] transition-colors"
+                >
+                  수정
                 </button>
                 <button
                   onClick={() => deletePopup(popup.id)}

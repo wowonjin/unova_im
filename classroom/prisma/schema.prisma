@@ -513,3 +513,22 @@ model ProductLike {
   @@index([courseId])
   @@index([textbookId])
 }
+
+model Popup {
+  id        String   @id @default(cuid())
+  title     String
+  imageUrl  String
+  linkUrl   String?
+  // 관리자에서 on/off
+  isActive  Boolean  @default(true)
+  // 노출 기간(선택). 둘 다 null이면 항상 허용(활성화 전제)
+  startAt   DateTime?
+  endAt     DateTime?
+  // "center" | "bottom-right"
+  position  String   @default("center")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, startAt, endAt])
+  @@index([createdAt])
+}

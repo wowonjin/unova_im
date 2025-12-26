@@ -41,19 +41,51 @@ export default async function AdminOrdersPage() {
   const teacher = await requireAdminUser();
 
   // Get orders for products owned by this teacher
-  const orders = await prisma.order.findMany({
-    where: {
-      OR: [
-        { course: { ownerId: teacher.id } },
-        { textbook: { ownerId: teacher.id } },
-      ],
-    },
-    include: {
-      user: { select: { email: true, name: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  let orders: Array<{
+    id: string;
+    orderNo: string;
+    productName: string;
+    amount: number;
+    refundedAmount?: number | null;
+    paymentMethod?: string | null;
+    provider?: string | null;
+    providerPaymentKey?: string | null;
+    status: string;
+    createdAt: Date;
+    user: { email: string; name: string | null };
+  }> = [];
+  let dbError = false;
+
+  try {
+    orders = await prisma.order.findMany({
+      where: {
+        OR: [
+          { course: { ownerId: teacher.id } },
+          { textbook: { ownerId: teacher.id } },
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: {
+        id: true,
+        orderNo: true,
+        productName: true,
+        amount: true,
+        refundedAmount: true,
+        paymentMethod: true,
+        provider: true,
+        providerPaymentKey: true,
+        status: true,
+        createdAt: true,
+        user: { select: { email: true, name: true } },
+      },
+    });
+  } catch (e) {
+    dbError = true;
+    console.error("[AdminOrdersPage] order.findMany failed (likely missing migrations):", e);
+    // 폴백: 주문 기능 마이그레이션이 안된 경우에도 페이지는 뜨게
+    orders = [];
+  }
 
   const totalAmount = orders
     .filter((o) => o.status === "COMPLETED")
@@ -79,6 +111,13 @@ export default async function AdminOrdersPage() {
             <p className="text-white/50">결제된 주문 목록을 확인하고 관리합니다.</p>
           </div>
         </div>
+
+        {dbError && (
+          <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-5 text-sm text-amber-200">
+            주문 데이터를 불러오지 못했습니다. (운영 DB 마이그레이션이 아직 적용되지 않았을 수 있습니다.)<br />
+            잠시 후 다시 시도해주세요.
+          </div>
+        )}
 
         {/* 통계 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

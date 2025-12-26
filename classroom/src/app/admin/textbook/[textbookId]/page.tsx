@@ -29,15 +29,120 @@ export default async function AdminTextbookPage({
   const entitleMsg = sp.entitle || null;
   const tab = (sp.tab || "settings") as "settings" | "detail" | "users";
 
-  const textbook = await prisma.textbook.findUnique({
-    where: { id: textbookId, ownerId: teacher.id },
-    include: {
-      entitlements: {
-        orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-        include: { user: { select: { id: true, email: true } } },
+  // NOTE: 운영에서 마이그레이션 누락 시 Prisma가 모든 컬럼을 조회하다가 크래시가 날 수 있어
+  // 먼저 "사용하는 필드만" select 하고, 실패하면 최소 필드로 폴백합니다.
+  let textbook:
+    | ((
+        | {
+            id: string;
+            title: string;
+            subjectName: string | null;
+            originalName: string;
+            sizeBytes: number;
+            createdAt: Date;
+            isPublished: boolean;
+            thumbnailUrl: string | null;
+            price: number | null;
+            originalPrice: number | null;
+            rating: number | null;
+            reviewCount: number;
+            tags: unknown;
+            benefits: unknown;
+            features: unknown;
+            description: string | null;
+            entitlementDays?: number | null;
+            teacherName?: string | null;
+            teacherTitle?: string | null;
+            teacherDescription?: string | null;
+          }
+        | {
+            id: string;
+            title: string;
+            subjectName: string | null;
+            originalName: string;
+            sizeBytes: number;
+            createdAt: Date;
+            isPublished: boolean;
+            thumbnailUrl: string | null;
+          }
+      ) & {
+        entitlements: {
+          id: string;
+          status: string;
+          startAt: Date;
+          endAt: Date;
+          createdAt: Date;
+          user: { id: string; email: string };
+        }[];
+      })
+    | null = null;
+
+  try {
+    textbook = await prisma.textbook.findUnique({
+      where: { id: textbookId, ownerId: teacher.id },
+      select: {
+        id: true,
+        title: true,
+        subjectName: true,
+        originalName: true,
+        sizeBytes: true,
+        createdAt: true,
+        isPublished: true,
+        thumbnailUrl: true,
+        // detail tab fields
+        price: true,
+        originalPrice: true,
+        rating: true,
+        reviewCount: true,
+        tags: true,
+        benefits: true,
+        features: true,
+        description: true,
+        // optional fields (may be missing if migration not applied yet)
+        entitlementDays: true,
+        teacherName: true,
+        teacherTitle: true,
+        teacherDescription: true,
+        entitlements: {
+          orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+          select: {
+            id: true,
+            status: true,
+            startAt: true,
+            endAt: true,
+            createdAt: true,
+            user: { select: { id: true, email: true } },
+          },
+        },
       },
-    },
-  });
+    });
+  } catch (e) {
+    console.error("[AdminTextbookPage] textbook.findUnique failed (likely migration mismatch):", e);
+    textbook = await prisma.textbook.findUnique({
+      where: { id: textbookId, ownerId: teacher.id },
+      select: {
+        id: true,
+        title: true,
+        subjectName: true,
+        originalName: true,
+        sizeBytes: true,
+        createdAt: true,
+        isPublished: true,
+        thumbnailUrl: true,
+        entitlements: {
+          orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+          select: {
+            id: true,
+            status: true,
+            startAt: true,
+            endAt: true,
+            createdAt: true,
+            user: { select: { id: true, email: true } },
+          },
+        },
+      },
+    });
+  }
 
   if (!textbook) {
     return (

@@ -5,6 +5,7 @@ import HeroCarousel from "./_components/HeroCarousel";
 import ShortcutNav from "./_components/ShortcutNav";
 import ScrollProgress from "./_components/ScrollProgress";
 import FloatingKakaoButton from "./_components/FloatingKakaoButton";
+import PopupLayerClient from "./_components/PopupLayerClient";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,9 @@ export default async function HomePage() {
 
       {/* Navigation */}
       <LandingHeader />
+
+      {/* Admin-managed popups */}
+      <PopupLayerClient />
 
       {/* Hero Carousel */}
       <HeroCarousel />

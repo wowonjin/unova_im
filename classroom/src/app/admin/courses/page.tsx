@@ -79,9 +79,6 @@ export default async function AdminCoursesPage({
             <Button href="/admin/textbooks" variant="secondary">
               교재 관리하기
             </Button>
-            <Button href="/admin/events" variant="secondary">
-              웹훅/이벤트 로그
-            </Button>
           </div>
         }
       />

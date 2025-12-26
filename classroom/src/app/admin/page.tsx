@@ -51,14 +51,6 @@ const adminMenus = [
     color: "from-cyan-500/20 to-cyan-600/20",
     iconColor: "text-cyan-400",
   },
-  {
-    title: "이벤트 로그",
-    description: "웹훅, 이벤트 로그 확인",
-    href: "/admin/events",
-    icon: "analytics",
-    color: "from-gray-500/20 to-gray-600/20",
-    iconColor: "text-gray-400",
-  },
 ];
 
 export default async function AdminPage() {

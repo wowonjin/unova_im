@@ -11,10 +11,57 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
   await requireAdminUser();
   const { orderNo } = await params;
 
-  const order = await prisma.order.findUnique({
-    where: { orderNo },
-    include: { user: { select: { email: true, name: true } } },
-  });
+  let order:
+    | ({
+        id: string;
+        orderNo: string;
+        status: string;
+        productName: string;
+        productType: string;
+        amount: number;
+        refundedAmount?: number | null;
+        paymentMethod?: string | null;
+        provider?: string | null;
+        providerPaymentKey?: string | null;
+        providerPayload?: unknown;
+        user: { email: string; name: string | null };
+      })
+    | null = null;
+  let dbError = false;
+
+  try {
+    order = await prisma.order.findUnique({
+      where: { orderNo },
+      select: {
+        id: true,
+        orderNo: true,
+        status: true,
+        productName: true,
+        productType: true,
+        amount: true,
+        refundedAmount: true,
+        paymentMethod: true,
+        provider: true,
+        providerPaymentKey: true,
+        providerPayload: true,
+        user: { select: { email: true, name: true } },
+      },
+    });
+  } catch (e) {
+    dbError = true;
+    console.error("[AdminOrderDetailPage] order.findUnique failed (likely missing migrations):", e);
+    order = null;
+  }
+
+  if (dbError) {
+    return (
+      <AppShell>
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-6 text-amber-200">
+          주문 데이터를 불러오지 못했습니다. (운영 DB 마이그레이션이 아직 적용되지 않았을 수 있습니다.)
+        </div>
+      </AppShell>
+    );
+  }
 
   if (!order) {
     return (

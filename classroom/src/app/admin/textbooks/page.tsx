@@ -16,15 +16,60 @@ function formatBytes(bytes: number) {
 export default async function AdminTextbooksPage() {
   const teacher = await requireAdminUser();
 
-  const textbooksRaw = await prisma.textbook.findMany({
-    where: { ownerId: teacher.id },
-    orderBy: [{ createdAt: "desc" }],
-  });
+  // NOTE: Render 등 운영 환경에서 마이그레이션 미적용(컬럼 누락) 상태면
+  // Prisma가 기본적으로 모든 컬럼을 조회하다가 크래시가 날 수 있어 방어적으로 조회합니다.
+  let textbooks: Array<{
+    id: string;
+    title: string;
+    originalName: string;
+    sizeBytes: number;
+    createdAt: Date;
+    isPublished: boolean;
+    imwebProdCode: string | null;
+    thumbnailUrl: string | null;
+    // Optional (DB에 없을 수도 있음)
+    entitlementDays?: number | null;
+  }> = [];
 
-  // entitlementDays 안전 처리 (마이그레이션 미적용 시 기본값)
-  const textbooks = textbooksRaw.map((t) => ({
+  try {
+    textbooks = await prisma.textbook.findMany({
+      where: { ownerId: teacher.id },
+      orderBy: [{ createdAt: "desc" }],
+      select: {
+        id: true,
+        title: true,
+        originalName: true,
+        sizeBytes: true,
+        createdAt: true,
+        isPublished: true,
+        imwebProdCode: true,
+        thumbnailUrl: true,
+        // 있으면 쓰고, 없으면 아래에서 기본값 처리
+        entitlementDays: true,
+      },
+    });
+  } catch (e) {
+    console.error("[AdminTextbooksPage] textbook.findMany failed (likely migration mismatch):", e);
+    // 최소 컬럼만으로 재시도 (누락 컬럼이 있어도 페이지는 뜨게)
+    textbooks = await prisma.textbook.findMany({
+      where: { ownerId: teacher.id },
+      orderBy: [{ createdAt: "desc" }],
+      select: {
+        id: true,
+        title: true,
+        originalName: true,
+        sizeBytes: true,
+        createdAt: true,
+        isPublished: true,
+        imwebProdCode: true,
+        thumbnailUrl: true,
+      },
+    });
+  }
+
+  const textbooksWithDefaults = textbooks.map((t) => ({
     ...t,
-    entitlementDays: (t as { entitlementDays?: number }).entitlementDays ?? 30,
+    entitlementDays: (t as { entitlementDays?: number | null }).entitlementDays ?? 30,
   }));
 
   return (
@@ -35,9 +80,6 @@ export default async function AdminTextbooksPage() {
           <div className="flex items-center gap-2">
             <Button href="/admin/courses" variant="secondary">
               강좌 관리하기
-            </Button>
-            <Button href="/admin/events" variant="secondary">
-              웹훅/이벤트 로그
             </Button>
           </div>
         }
@@ -108,9 +150,9 @@ export default async function AdminTextbooksPage() {
           </CardBody>
         </Card>
 
-        {textbooks.length ? (
+        {textbooksWithDefaults.length ? (
           <div className="grid grid-cols-1 gap-3">
-            {textbooks.map((t) => (
+            {textbooksWithDefaults.map((t) => (
               <Link
                 key={t.id}
                 href={`/admin/textbook/${t.id}`}

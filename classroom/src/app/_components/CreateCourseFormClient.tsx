@@ -89,15 +89,6 @@ export default function CreateCourseFormClient() {
         />
       </Field>
 
-      <Field label="상품 코드(선택)">
-        <Input
-          name="imwebProdCode"
-          placeholder="예: PROD001"
-          className="bg-transparent"
-          disabled={pending}
-        />
-      </Field>
-
       <Field label="썸네일(선택)">
         <input
           className="block w-full text-sm text-white/80 file:mr-3 file:rounded-lg file:border file:border-white/10 file:bg-transparent file:px-3 file:py-2 file:text-sm file:text-white/80 hover:file:bg-transparent disabled:opacity-50"

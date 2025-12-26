@@ -188,7 +188,6 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
               <NavItem href="/admin/members" label="회원 관리" icon="group" />
               <NavItem href="/admin/orders" label="주문 관리" icon="receipt_long" />
               <NavItem href="/admin/popups" label="팝업 관리" icon="web_asset" />
-              <NavItem href="/admin/events" label="이벤트 로그" icon="analytics" />
             </div>
           </div>
         </>
