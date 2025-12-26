@@ -6,6 +6,10 @@ import ProductDetailClient from "./ProductDetailClient";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 
+function getStoreOwnerEmail(): string {
+  return (process.env.ADMIN_EMAIL || "admin@gmail.com").toLowerCase().trim();
+}
+
 // 더미 상품 데이터
 const productsData: Record<
   string,
@@ -391,6 +395,7 @@ export default async function ProductDetailPage({
 }) {
   try {
     const { productId } = await params;
+    const storeOwnerEmail = getStoreOwnerEmail();
 
   // Render 등 배포 환경에서 DB 쿼리 실패 시에도 상세 페이지가 500으로 죽지 않도록 폴백 처리
   type DbCourse = Prisma.CourseGetPayload<{
@@ -412,6 +417,7 @@ export default async function ProductDetailPage({
       where: {
         OR: [{ slug: productId }, { id: productId }],
         isPublished: true,
+        owner: { email: storeOwnerEmail },
       },
       include: {
         lessons: {
@@ -428,6 +434,7 @@ export default async function ProductDetailPage({
           where: {
             OR: [{ id: productId }],
             isPublished: true,
+            owner: { email: storeOwnerEmail },
           },
         })
       : null;

@@ -4,6 +4,13 @@ import Footer from "@/app/_components/Footer";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 
+function getStoreOwnerEmail(): string {
+  // 이 프로젝트는 기본적으로 "고정 관리자(ADMIN_EMAIL)" 계정이 콘텐츠를 발행합니다.
+  // 배포 환경에서 예전/다른 ownerId로 생성된 공개 강좌/교재가 남아있을 수 있어
+  // 스토어는 기본적으로 관리자 이메일 소유 상품만 노출합니다.
+  return (process.env.ADMIN_EMAIL || "admin@gmail.com").toLowerCase().trim();
+}
+
 type Product = {
   id: string;
   title: string;
@@ -37,6 +44,7 @@ export default async function StorePage({
     const sp = await searchParams;
     const selectedSubject = sp?.subject || "전체";
     const selectedType = sp?.type || "교재";
+    const storeOwnerEmail = getStoreOwnerEmail();
 
     // 실제 DB에서 공개된 강좌/교재 조회
     // Render 등 배포 환경에서 DB 연결/쿼리 이슈가 발생해도 페이지 전체가 500으로 죽지 않도록 안전 폴백 처리
@@ -75,7 +83,7 @@ export default async function StorePage({
     try {
       [courses, textbooks] = await Promise.all([
         prisma.course.findMany({
-          where: { isPublished: true },
+          where: { isPublished: true, owner: { email: storeOwnerEmail } },
           select: {
             id: true,
             title: true,
@@ -91,7 +99,7 @@ export default async function StorePage({
           orderBy: { createdAt: "desc" },
         }),
         prisma.textbook.findMany({
-          where: { isPublished: true },
+          where: { isPublished: true, owner: { email: storeOwnerEmail } },
           select: {
             id: true,
             title: true,
