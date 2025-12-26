@@ -1,6 +1,7 @@
 import Link from "next/link";
 import LandingHeader from "@/app/_components/LandingHeader";
 import Footer from "@/app/_components/Footer";
+import { prisma } from "@/lib/prisma";
 
 function fmtDate(date: Date): string {
   const year = date.getFullYear();
@@ -24,114 +25,37 @@ function getRelativeTime(date: Date): string {
   return fmtDate(date);
 }
 
-// 더미 데이터
-const dummyCategories = [
-  { category: "공지", count: 5 },
-  { category: "업데이트", count: 3 },
-  { category: "이벤트", count: 2 },
-];
-
-const dummyNotices = [
-  {
-    id: "1",
-    slug: "welcome-to-unova",
-    title: "유노바 강의실 오픈 안내",
-    category: "공지",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    isPinned: true,
-  },
-  {
-    id: "2",
-    slug: "new-lecture-update",
-    title: "2025학년도 신규 강좌 업데이트 안내",
-    category: "업데이트",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24),
-    isPinned: true,
-  },
-  {
-    id: "3",
-    slug: "winter-event",
-    title: "겨울방학 특별 할인 이벤트",
-    category: "이벤트",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
-    isPinned: false,
-  },
-  {
-    id: "4",
-    slug: "system-maintenance",
-    title: "12월 28일 시스템 정기 점검 안내",
-    category: "공지",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
-    isPinned: false,
-  },
-  {
-    id: "5",
-    slug: "app-update-v2",
-    title: "모바일 앱 v2.0 업데이트 안내",
-    category: "업데이트",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5),
-    isPinned: false,
-  },
-  {
-    id: "6",
-    slug: "new-teacher-intro",
-    title: "신규 선생님 소개 - 김수학 선생님",
-    category: "공지",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7),
-    isPinned: false,
-  },
-  {
-    id: "7",
-    slug: "payment-guide",
-    title: "결제 수단 추가 안내",
-    category: "공지",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10),
-    isPinned: false,
-  },
-  {
-    id: "8",
-    slug: "lecture-feedback",
-    title: "강의 피드백 기능 추가",
-    category: "업데이트",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 14),
-    isPinned: false,
-  },
-  {
-    id: "9",
-    slug: "new-year-event",
-    title: "새해 맞이 전 강좌 20% 할인",
-    category: "이벤트",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 20),
-    isPinned: false,
-  },
-  {
-    id: "10",
-    slug: "terms-update",
-    title: "이용약관 개정 안내",
-    category: "공지",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30),
-    isPinned: false,
-  },
-];
-
 export default async function NoticesPage({ searchParams }: { searchParams?: Promise<{ cat?: string; page?: string }> }) {
   const sp = await searchParams;
 
-  const categories = dummyCategories;
-  const total = dummyCategories.reduce((sum, c) => sum + c.count, 0);
-  
+  const categoriesRaw = await prisma.notice.groupBy({
+    by: ["category"],
+    where: { isPublished: true },
+    _count: { _all: true },
+  });
+  categoriesRaw.sort((a, b) => (b._count._all ?? 0) - (a._count._all ?? 0));
+  const categories = categoriesRaw.map((r) => ({ category: r.category, count: r._count._all }));
+
   const selected = typeof sp?.cat === "string" ? sp.cat.trim() : "";
   const selectedCategory = selected && categories.some((c) => c.category === selected) ? selected : "";
 
-  const filteredList = selectedCategory 
-    ? dummyNotices.filter(n => n.category === selectedCategory)
-    : dummyNotices;
-  const totalCount = filteredList.length;
-  
+  const where = {
+    isPublished: true,
+    ...(selectedCategory ? { category: selectedCategory } : {}),
+  };
+
   const currentPage = Math.max(1, parseInt(sp?.page || "1", 10) || 1);
   const perPage = 15;
+  const totalCount = await prisma.notice.count({ where });
   const totalPages = Math.max(1, Math.ceil(totalCount / perPage));
   const validPage = Math.min(currentPage, totalPages);
+  const filteredList = await prisma.notice.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }],
+    skip: (validPage - 1) * perPage,
+    take: perPage,
+    select: { id: true, slug: true, title: true, category: true, createdAt: true },
+  });
 
   const isNew = (date: Date) => {
     const diffMs = new Date().getTime() - date.getTime();
@@ -200,11 +124,6 @@ export default async function NoticesPage({ searchParams }: { searchParams?: Pro
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3">
-                          {n.isPinned && (
-                            <span className="text-[12px] font-medium text-amber-400">
-                              고정
-                      </span>
-                    )}
                           <span className="text-[12px] font-medium text-white/40">
                       {n.category}
                     </span>

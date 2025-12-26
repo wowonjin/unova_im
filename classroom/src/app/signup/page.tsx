@@ -2,8 +2,23 @@ import Link from "next/link";
 import SignupFormClient from "./SignupFormClient";
 import LandingHeader from "../_components/LandingHeader";
 import FloatingKakaoButton from "../_components/FloatingKakaoButton";
+import { redirect } from "next/navigation";
 
-export default function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ social?: string; redirect?: string }>;
+}) {
+  const sp = (await searchParams) ?? {};
+  const social = (sp.social || "").toLowerCase();
+  const redirectTo = sp.redirect || "/";
+
+  // 로그인 페이지에서 "카카오/네이버 회원가입"을 눌러 들어온 경우
+  // 회원가입 페이지에서 곧바로 OAuth 시작 라우트로 이동시켜준다.
+  if (social === "kakao" || social === "naver") {
+    redirect(`/api/auth/${social}/start?redirect=${encodeURIComponent(redirectTo)}`);
+  }
+
   return (
     <div className="min-h-screen bg-[#161616] text-white">
       {/* 헤더 */}

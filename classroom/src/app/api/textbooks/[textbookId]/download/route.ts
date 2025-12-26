@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireCurrentUser } from "@/lib/current-user";
+import { getCurrentUser } from "@/lib/current-user";
 import fs from "node:fs";
 import { Readable } from "node:stream";
 import { getStorageRoot, safeJoin } from "@/lib/storage";
@@ -10,8 +10,12 @@ export const runtime = "nodejs";
 
 const ParamsSchema = z.object({ textbookId: z.string().min(1) });
 
-export async function GET(_req: Request, ctx: { params: Promise<{ textbookId: string }> }) {
-  const user = await requireCurrentUser();
+export async function GET(req: Request, ctx: { params: Promise<{ textbookId: string }> }) {
+  const user = await getCurrentUser();
+  if (!user) {
+    const redirect = `/login?error=unauthorized&redirect=${encodeURIComponent("/materials")}`;
+    return NextResponse.redirect(new URL(redirect, req.url));
+  }
   const { textbookId } = ParamsSchema.parse(await ctx.params);
   const now = new Date();
 
