@@ -2,9 +2,7 @@ import AppShell from "@/app/_components/AppShell";
 import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import { Button, Card, CardBody, CardHeader, Field, Input, PageHeader } from "@/app/_components/ui";
-import Link from "next/link";
-import TextbookAutoThumbnail from "@/app/_components/TextbookAutoThumbnail";
-import ConfirmDeleteButton from "@/app/_components/ConfirmDeleteButton";
+import AdminTextbooksBulkClient from "./AdminTextbooksBulkClient";
 
 function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
@@ -30,6 +28,10 @@ export default async function AdminTextbooksPage() {
     thumbnailUrl: string | null;
     // Optional (DB에 없을 수도 있음)
     entitlementDays?: number | null;
+    teacherName?: string | null;
+    subjectName?: string | null;
+    price?: number | null;
+    originalPrice?: number | null;
   }> = [];
 
   try {
@@ -47,6 +49,10 @@ export default async function AdminTextbooksPage() {
         thumbnailUrl: true,
         // 있으면 쓰고, 없으면 아래에서 기본값 처리
         entitlementDays: true,
+        teacherName: true,
+        subjectName: true,
+        price: true,
+        originalPrice: true,
       },
     });
   } catch (e) {
@@ -171,64 +177,7 @@ export default async function AdminTextbooksPage() {
         </Card>
 
         {textbooksWithDefaults.length ? (
-          <div className="grid grid-cols-1 gap-3">
-            {textbooksWithDefaults.map((t) => (
-              <div
-                key={t.id}
-                className="group rounded-xl border border-white/10 bg-[#1a1a1c] p-4 transition-colors hover:bg-white/[0.04] hover:border-white/20"
-              >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  {/* 왼쪽: 교재 정보 (클릭 시 상세로 이동) */}
-                  <Link href={`/admin/textbook/${t.id}`} className="flex items-start gap-4 flex-1 min-w-0">
-                    {/* PDF 썸네일 (자동 생성) */}
-                    <TextbookAutoThumbnail textbookId={t.id} existingThumbnailUrl={t.thumbnailUrl} sizeBytes={t.sizeBytes} />
-
-                    {/* 제목 및 메타 정보 */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-white truncate">{t.title}</h3>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/50">
-                        <span className="truncate max-w-[200px]" title={t.originalName}>
-                          {t.originalName}
-                        </span>
-                        <span>•</span>
-                        <span>{formatBytes(t.sizeBytes)}</span>
-                        <span>•</span>
-                        <span>{new Date(t.createdAt).toLocaleDateString()}</span>
-                      </div>
-
-                      {/* 상품 코드 표시 */}
-                      <div className="mt-2 flex items-center gap-2 text-xs">
-                        {t.imwebProdCode ? (
-                          <span className="rounded-md bg-white/10 px-2 py-0.5 text-white/70">코드: {t.imwebProdCode}</span>
-                        ) : (
-                          <span className="rounded-md bg-white/5 px-2 py-0.5 text-white/40">전체 공개</span>
-                        )}
-                        <span className="text-white/40">{t.entitlementDays}일</span>
-                      </div>
-                    </div>
-                  </Link>
-
-                  {/* 오른쪽: 상태 + 액션 */}
-                  <div className="flex items-center gap-3 lg:shrink-0">
-                    <span
-                      className={`rounded-md px-2.5 py-1 text-xs font-medium ${
-                        t.isPublished ? "bg-emerald-500/20 text-emerald-300" : "bg-white/10 text-white/60"
-                      }`}
-                    >
-                      {t.isPublished ? "공개" : "비공개"}
-                    </span>
-                    <span className="text-white/40 text-sm">→</span>
-                    <ConfirmDeleteButton
-                      action={`/api/admin/textbooks/${t.id}/delete`}
-                      message="정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
-                      label="삭제"
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/20"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <AdminTextbooksBulkClient textbooks={textbooksWithDefaults} />
         ) : (
           <div className="rounded-xl border border-dashed border-white/10 bg-[#1a1a1c] p-8 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/5">
