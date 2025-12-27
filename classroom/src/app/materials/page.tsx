@@ -20,6 +20,20 @@ export default async function MaterialsPage() {
   }[] = [];
 
   if (user.isLoggedIn && user.id) {
+    // 관리자(admin@gmail.com 등)는 모든 교재를 열람/다운로드 가능
+    if (user.isAdmin) {
+      textbooks = await prisma.textbook.findMany({
+        orderBy: [{ createdAt: "desc" }],
+        select: {
+          id: true,
+          title: true,
+          originalName: true,
+          createdAt: true,
+          imwebProdCode: true,
+          thumbnailUrl: true,
+        },
+      });
+    } else {
     // 현재 사용자의 활성 권한이 있는 교재 ID 가져오기
     const entitlements = await prisma.textbookEntitlement.findMany({
       where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
@@ -44,9 +58,10 @@ export default async function MaterialsPage() {
         },
       });
     }
+    }
   }
 
-  const enrollments = user.id
+  const enrollments = user.id && !user.isAdmin
     ? await prisma.enrollment.findMany({
         where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
         select: { courseId: true, course: { select: { id: true, title: true } } },
@@ -54,22 +69,35 @@ export default async function MaterialsPage() {
       })
     : [];
 
-  const courseIds = enrollments.map((e) => e.courseId);
+  const allCoursesForTitle = user.isAdmin
+    ? await prisma.course.findMany({ select: { id: true, title: true } })
+    : null;
 
-  const attachments = courseIds.length > 0
+  const courseIds = user.isAdmin
+    ? (allCoursesForTitle ?? []).map((c) => c.id)
+    : enrollments.map((e) => e.courseId);
+
+  const attachments = user.isAdmin
     ? await prisma.attachment.findMany({
-        where: {
-          OR: [
-            { courseId: { in: courseIds } },
-            { lesson: { courseId: { in: courseIds } } },
-          ],
-        },
         orderBy: { createdAt: "desc" },
         include: { lesson: { select: { id: true, title: true, position: true, courseId: true } } },
       })
-    : [];
+    : courseIds.length > 0
+      ? await prisma.attachment.findMany({
+          where: {
+            OR: [
+              { courseId: { in: courseIds } },
+              { lesson: { courseId: { in: courseIds } } },
+            ],
+          },
+          orderBy: { createdAt: "desc" },
+          include: { lesson: { select: { id: true, title: true, position: true, courseId: true } } },
+        })
+      : [];
 
-  const courseTitleById = new Map(enrollments.map((e) => [e.course.id, e.course.title]));
+  const courseTitleById = user.isAdmin
+    ? new Map((allCoursesForTitle ?? []).map((c) => [c.id, c.title]))
+    : new Map(enrollments.map((e) => [e.course.id, e.course.title]));
 
   const totalMaterials = textbooks.length + attachments.length;
 

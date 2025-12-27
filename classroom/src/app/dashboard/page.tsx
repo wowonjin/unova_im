@@ -16,7 +16,9 @@ export default async function DashboardPage({
   const now = new Date();
   const sp = (await searchParams) ?? {};
   const query = typeof sp.q === "string" ? sp.q : "";
-  const showAll = isAllCoursesTestModeFromAllParam(typeof sp.all === "string" ? sp.all : null);
+  const showAllFromParam = isAllCoursesTestModeFromAllParam(typeof sp.all === "string" ? sp.all : null);
+  // 관리자(admin@gmail.com 등)는 구매/수강권과 무관하게 전체 강의를 "나의 강의실"에서 볼 수 있도록 허용
+  const showAll = showAllFromParam || user.isAdmin;
 
   // 로그인하지 않은 경우 빈 배열
   const enrollments = user.id
