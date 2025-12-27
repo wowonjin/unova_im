@@ -127,11 +127,14 @@ export default function ProductDetailClient({
   // UI 규칙
   // - 교재 상세: "추가 교재"를 고른 경우에만(=묶음 구매) 요약(기본 상품/총 결제 금액) 노출
   // - 강의 상세: 기본 금액이 있으면 요약 노출(교재를 함께 고르면 추가 라인/할인도 함께 노출)
-  const showPriceBreakdown =
-    product.type === "course" ? hasBaseProduct || hasAdditionalSelection : hasAdditionalSelection;
-  const showDividerBeforeSummary = product.type === "course" ? hasAdditionalSelection : showPriceBreakdown;
+  const showPriceBreakdown = hasBaseProduct || hasAdditionalSelection;
+  // "총 결제 금액" 위 구분선은 항상 유지하되,
+  // 섹션 간 divider(요약 섹션 위)는 교재 선택이 있을 때만 보여서 불필요한 빈공간을 줄입니다.
+  const showDividerBeforeSummary = product.type === "course" ? hasAdditionalSelection : hasAdditionalSelection;
+  // '총 결제 금액' 위에 실제로 노출되는 요약 라인(기본 상품/추가 교재/할인)이 있는지
+  const showBaseRow = product.type === "course" ? hasBaseProduct : hasBaseProduct && hasAdditionalSelection;
   const hasSummaryLinesAboveTotal =
-    hasBaseProduct || hasAdditionalSelection || additionalTextbookDiscount > 0 || courseBundleDiscount > 0;
+    showBaseRow || hasAdditionalSelection || additionalTextbookDiscount > 0 || courseBundleDiscount > 0;
   const totalAmount = Math.max(
     0,
     (hasBaseProduct ? baseAmount : 0) +
@@ -1349,7 +1352,7 @@ export default function ProductDetailClient({
 
               <div className={hasSummaryLinesAboveTotal ? "p-5 pb-0" : "px-5 pt-3 pb-0"}>
                 {/* 기본 상품 금액 */}
-                {hasBaseProduct && (
+                {showBaseRow && (
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[14px] font-medium text-white">기본 상품</span>
                     <span className="text-[16px] font-medium">
@@ -1404,8 +1407,8 @@ export default function ProductDetailClient({
                 
                 {/* 총 결제 금액 */}
                 <div
-                  className={`flex items-center justify-between ${
-                    hasSummaryLinesAboveTotal ? "pt-2 border-t border-white/10" : ""
+                  className={`flex items-center justify-between pt-2 border-t border-white/10 ${
+                    hasSummaryLinesAboveTotal ? "" : "mt-0"
                   }`}
                 >
                   <span className="text-[14px] font-bold">총 결제 금액</span>
