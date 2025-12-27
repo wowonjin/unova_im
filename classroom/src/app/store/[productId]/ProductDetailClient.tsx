@@ -100,7 +100,6 @@ export default function ProductDetailClient({
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [visitorId, setVisitorId] = useState("");
-  const [selectedOption, setSelectedOption] = useState<"full" | "regular">("full");
   const [isPaying, setIsPaying] = useState(false);
   const [selectedRelatedIds, setSelectedRelatedIds] = useState<Set<string>>(new Set());
   const [selectedAddonCourseIds, setSelectedAddonCourseIds] = useState<Set<string>>(new Set());
@@ -130,16 +129,8 @@ export default function ProductDetailClient({
   // 강의 할인: "강의 + 교재"를 함께 선택한 경우에만 10,000원 적용
   const courseBundleDiscount = product.type === "course" && selectedRelatedIds.size > 0 ? 10000 : 0;
 
-  // NOTE: 서버 결제 계산(create-order)에서 regular 옵션은 Math.round(price * 0.8)로 처리하므로
-  // UI 표시/총 결제 금액도 동일한 반올림 규칙을 적용해 금액 불일치를 방지합니다.
-  const courseSelectedAmount =
-    product.type === "course"
-      ? selectedOption === "full"
-        ? product.price
-        : Math.round(product.price * 0.8)
-      : 0;
-
-  const baseAmount = product.type === "course" ? courseSelectedAmount : product.price;
+  // 강좌 상세: "수강 옵션"을 제거하고 기본 강의 가격만 사용합니다.
+  const baseAmount = product.type === "course" ? product.price : product.price;
 
   // NOTE: 가격이 미설정(null/undefined)인 경우 page.tsx에서 0으로 내려오는 케이스가 있어
   // UI에서는 "기본 상품"을 숨기고(=미설정처럼 취급) 표시를 깔끔하게 합니다.
@@ -508,7 +499,6 @@ export default function ProductDetailClient({
         {
           productType: product.type === "course" ? "COURSE" : "TEXTBOOK",
           productId: product.id,
-          option: product.type === "course" ? selectedOption : undefined,
         },
         // 선택한 추가 교재 추가
         ...Array.from(selectedRelatedIds).map((id) => ({
@@ -1239,9 +1229,7 @@ export default function ProductDetailClient({
               {hasBaseProduct ? (
                 <div className="flex items-center gap-2">
                   <span className="text-[28px] font-bold">
-                    {product.type === "course"
-                      ? `${courseSelectedAmount.toLocaleString()}원`
-                      : product.formattedPrice}
+                    {product.formattedPrice}
                   </span>
                   {product.formattedOriginalPrice && (
                     <span className="text-[14px] text-white/40 line-through">
@@ -1260,160 +1248,22 @@ export default function ProductDetailClient({
             </div>
           </div>
 
-          {/* 수강 옵션 (강좌 전용) */}
-          {product.type === "course" && (
-            <>
-              {/* 교재 상세처럼: 가격 아래 구분선 + 동일한 섹션 패딩 리듬 */}
-              <div className="mx-5 border-t border-white/10" />
-              <div className="px-5 pt-4 pb-3">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="text-[14px] font-bold">수강 옵션</p>
-                  <span className="text-[12px] font-medium text-white/60">강의 10,000원 할인</span>
-                </div>
-              
-                {/* 옵션 1 - 정규 강의 + 복습 기간 */}
-                <div 
-                  onClick={() => setSelectedOption("full")}
-                  className={`rounded-lg p-4 mb-3 cursor-pointer transition-all ${
-                    selectedOption === "full" 
-                    ? "border border-white/20 bg-white/5 ring-2 ring-white/60" 
-                      : "border border-white/20 hover:border-white/40"
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className={`text-[14px] font-medium ${selectedOption === "full" ? "text-white" : "text-white/70"}`}>
-                        정규 강의 + 복습 기간
-                      </p>
-                      <p className={`text-[12px] mt-1 ${selectedOption === "full" ? "text-white/50" : "text-white/40"}`}>
-                        온라인 VOD + {product.studyPeriod.regular + product.studyPeriod.review}일 수강
-                      </p>
-                    </div>
-                    <p className={`text-[15px] font-bold ${selectedOption === "full" ? "text-white" : "text-white/70"}`}>
-                      {product.formattedPrice}
-                    </p>
-                  </div>
-                </div>
+          {/* "수강 옵션" 제거: 강좌 상세에서는 아래 "추가 강의"가 첫 옵션 섹션이 됩니다. */}
 
-                {/* 옵션 2 - 정규 강의만 */}
-                <div 
-                  onClick={() => setSelectedOption("regular")}
-                  className={`rounded-lg p-4 cursor-pointer transition-all ${
-                    selectedOption === "regular" 
-                    ? "border border-white/20 bg-white/5 ring-2 ring-white/60" 
-                      : "border border-white/20 hover:border-white/40"
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className={`text-[14px] font-medium ${selectedOption === "regular" ? "text-white" : "text-white/70"}`}>
-                        정규 강의만
-                      </p>
-                      <p className={`text-[12px] mt-1 ${selectedOption === "regular" ? "text-white/50" : "text-white/40"}`}>
-                        온라인 VOD + {product.studyPeriod.regular}일 수강
-                      </p>
-                    </div>
-                    <p className={`text-[15px] font-bold ${selectedOption === "regular" ? "text-white" : "text-white/70"}`}>
-                      {Math.round(product.price * 0.8).toLocaleString()}원
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* 추가 교재 구매 (교재 전용) */}
-          {relatedProducts.length > 0 && (
-            <>
-            <div className="mx-5 border-t border-white/10" />
-            <div className={`px-5 ${selectedRelatedIds.size > 0 ? "pb-3 pt-4" : "pb-2 pt-3"}`}>
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-[14px] font-bold">{product.type === "course" ? "교재 함께 구매" : "추가 교재 구매"}</p>
-                <span className="text-[12px] font-medium text-white/60">교재 5,000원 할인</span>
-              </div>
-
-              {relatedProducts.map((related) => {
-                const isSelected = selectedRelatedIds.has(related.id);
-                const discount = related.originalPrice
-                  ? Math.round((1 - related.price / related.originalPrice) * 100)
-                  : null;
-
-                return (
-                  <div
-                    key={related.id}
-                    onClick={() => {
-                      const newSet = new Set(selectedRelatedIds);
-                      if (isSelected) {
-                        newSet.delete(related.id);
-                      } else {
-                        newSet.add(related.id);
-                      }
-                      setSelectedRelatedIds(newSet);
-                    }}
-                    className={`rounded-lg p-3 mb-2 cursor-pointer transition-all ${
-                      isSelected
-                        ? "border border-white/20 bg-white/5 ring-2 ring-white/60"
-                        : "border border-white/20 hover:border-white/40"
-                    }`}
-                  >
-                    <div className="flex items-start">
-                      {/* 정보 */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-3">
-                          <p className={`text-[14px] font-medium truncate ${isSelected ? "text-white" : "text-white/70"}`}>
-                            {related.title}
-                          </p>
-                          <div className="shrink-0 text-right">
-                            <div className={`text-[12px] font-semibold ${isSelected ? "text-white/90" : "text-white/70"}`}>
-                              <span className="text-white/50">★</span> {Number(related.rating || 0).toFixed(1)}
-                            </div>
-                          </div>
-                        </div>
-                        {/* 가격 */}
-                        <div className="mt-0.5 flex items-center gap-2">
-                          <span className={`text-[15px] font-bold ${isSelected ? "text-white" : "text-white/70"}`}>
-                            {related.price.toLocaleString()}원
-                          </span>
-                          {related.originalPrice && (
-                            <span className={`text-[12px] line-through ${isSelected ? "text-white/40" : "text-white/30"}`}>
-                              {related.originalPrice.toLocaleString()}원
-                            </span>
-                          )}
-                          {discount && (
-                            <span
-                              className={`inline-flex items-center justify-center rounded-full px-1 py-[1px] text-[9px] font-bold text-white ${
-                                isSelected ? "bg-rose-400" : "bg-rose-400/70"
-                              }`}
-                            >
-                              {discount}%
-                            </span>
-                          )}
-                          <span className="ml-auto text-[11px] text-white/50">
-                            후기 {Number(related.reviewCount || 0).toLocaleString()}개
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            </>
-          )}
-
-          {/* 추가 상품 (강좌 전용: 관리자에서 선택한 "추가 강의") */}
+          {/* 추가 강의 (강좌 전용: 관리자에서 선택한 "추가 강의") */}
           {product.type === "course" && addonCourses.length > 0 && (
             <>
               <div className="mx-5 border-t border-white/10" />
               <div className={`px-5 ${selectedAddonCourseIds.size > 0 ? "pb-3 pt-4" : "pb-2 pt-3"}`}>
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="text-[14px] font-bold">추가 상품</p>
-                  <span className="text-[12px] font-medium text-white/60">강의 선택</span>
+                  <p className="text-[14px] font-bold">추가 강의</p>
+                  <span className="text-[12px] font-medium text-white/60">강의 10,000원 할인</span>
                 </div>
 
                 {addonCourses.map((c) => {
                   const isSelected = selectedAddonCourseIds.has(c.id);
                   const discount = c.originalPrice ? Math.round((1 - c.price / c.originalPrice) * 100) : null;
+
                   return (
                     <div
                       key={c.id}
@@ -1472,6 +1322,80 @@ export default function ProductDetailClient({
             </>
           )}
 
+          {/* 추가 교재 구매 (강좌/교재 공통) */}
+          {relatedProducts.length > 0 && (
+            <>
+              <div className="mx-5 border-t border-white/10" />
+              <div className={`px-5 ${selectedRelatedIds.size > 0 ? "pb-3 pt-4" : "pb-2 pt-3"}`}>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-[14px] font-bold">{product.type === "course" ? "교재 함께 구매" : "추가 교재 구매"}</p>
+                  <span className="text-[12px] font-medium text-white/60">교재 5,000원 할인</span>
+                </div>
+
+                {relatedProducts.map((related) => {
+                  const isSelected = selectedRelatedIds.has(related.id);
+                  const discount = related.originalPrice
+                    ? Math.round((1 - related.price / related.originalPrice) * 100)
+                    : null;
+
+                  return (
+                    <div
+                      key={related.id}
+                      onClick={() => {
+                        const newSet = new Set(selectedRelatedIds);
+                        if (isSelected) newSet.delete(related.id);
+                        else newSet.add(related.id);
+                        setSelectedRelatedIds(newSet);
+                      }}
+                      className={`rounded-lg p-3 mb-2 cursor-pointer transition-all ${
+                        isSelected
+                          ? "border border-white/20 bg-white/5 ring-2 ring-white/60"
+                          : "border border-white/20 hover:border-white/40"
+                      }`}
+                    >
+                      <div className="flex items-start">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className={`text-[14px] font-medium truncate ${isSelected ? "text-white" : "text-white/70"}`}>
+                              {related.title}
+                            </p>
+                            <div className="shrink-0 text-right">
+                              <div className={`text-[12px] font-semibold ${isSelected ? "text-white/90" : "text-white/70"}`}>
+                                <span className="text-white/50">★</span> {Number(related.rating || 0).toFixed(1)}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-0.5 flex items-center gap-2">
+                            <span className={`text-[15px] font-bold ${isSelected ? "text-white" : "text-white/70"}`}>
+                              {related.price.toLocaleString()}원
+                            </span>
+                            {related.originalPrice && (
+                              <span className={`text-[12px] line-through ${isSelected ? "text-white/40" : "text-white/30"}`}>
+                                {related.originalPrice.toLocaleString()}원
+                              </span>
+                            )}
+                            {discount && (
+                              <span
+                                className={`inline-flex items-center justify-center rounded-full px-1 py-[1px] text-[9px] font-bold text-white ${
+                                  isSelected ? "bg-rose-400" : "bg-rose-400/70"
+                                }`}
+                              >
+                                {discount}%
+                              </span>
+                            )}
+                            <span className="ml-auto text-[11px] text-white/50">
+                              후기 {Number(related.reviewCount || 0).toLocaleString()}개
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
           {/* 구분선 및 상품 금액 (강좌이거나, 교재인데 추가 선택한 경우에만 표시) */}
           {showPriceBreakdown && (
             <>
@@ -1485,11 +1409,7 @@ export default function ProductDetailClient({
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[14px] font-medium text-white">기본 상품</span>
                     <span className="text-[16px] font-medium">
-                      {product.type === "course"
-                        ? selectedOption === "full"
-                          ? product.formattedPrice
-                          : `${Math.round(product.price * 0.8).toLocaleString()}원`
-                        : product.formattedPrice}
+                      {product.formattedPrice}
                     </span>
                   </div>
                 )}
