@@ -107,12 +107,16 @@ export default function ProductDetailClient({
       ? Math.min(selectedRelatedIds.size * ADDITIONAL_TEXTBOOK_DISCOUNT_PER, ADDITIONAL_TEXTBOOK_DISCOUNT_MAX)
       : 0;
 
-  const baseAmount =
+  // NOTE: 서버 결제 계산(create-order)에서 regular 옵션은 Math.round(price * 0.8)로 처리하므로
+  // UI 표시/총 결제 금액도 동일한 반올림 규칙을 적용해 금액 불일치를 방지합니다.
+  const courseSelectedAmount =
     product.type === "course"
       ? selectedOption === "full"
         ? product.price
-        : product.price * 0.8
-      : product.price;
+        : Math.round(product.price * 0.8)
+      : 0;
+
+  const baseAmount = product.type === "course" ? courseSelectedAmount : product.price;
 
   // NOTE: 가격이 미설정(null/undefined)인 경우 page.tsx에서 0으로 내려오는 케이스가 있어
   // UI에서는 "기본 상품"을 숨기고(=미설정처럼 취급) 표시를 깔끔하게 합니다.
@@ -1156,7 +1160,11 @@ export default function ProductDetailClient({
             <div>
               {hasBaseProduct ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-[28px] font-bold">{product.formattedPrice}</span>
+                  <span className="text-[28px] font-bold">
+                    {product.type === "course"
+                      ? `${courseSelectedAmount.toLocaleString()}원`
+                      : product.formattedPrice}
+                  </span>
                   {product.formattedOriginalPrice && (
                     <span className="text-[14px] text-white/40 line-through">
                       {product.formattedOriginalPrice}
@@ -1225,7 +1233,7 @@ export default function ProductDetailClient({
                     </p>
                   </div>
                   <p className={`text-[15px] font-bold ${selectedOption === "regular" ? "text-white" : "text-white/70"}`}>
-                    {(product.price * 0.8).toLocaleString()}원
+                    {Math.round(product.price * 0.8).toLocaleString()}원
                   </p>
                 </div>
               </div>
@@ -1326,7 +1334,7 @@ export default function ProductDetailClient({
                       {product.type === "course"
                         ? selectedOption === "full"
                           ? product.formattedPrice
-                          : `${(product.price * 0.8).toLocaleString()}원`
+                          : `${Math.round(product.price * 0.8).toLocaleString()}원`
                         : product.formattedPrice}
                     </span>
                   </div>
