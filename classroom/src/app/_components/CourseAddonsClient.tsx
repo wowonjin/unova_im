@@ -120,35 +120,39 @@ export default function CourseAddonsClient({ courseId, initial, textbooks, cours
         {saveStatus === "error" && <span className="text-sm text-red-400">저장 중 오류가 발생했습니다</span>}
       </div>
 
-      <Section
-        title="교재 선택 (교재 함께 구매)"
-        description="강의 상세 우측의 “교재 함께 구매” 섹션에 표시할 교재를 선택합니다."
-        items={textbooks}
-        selected={selectedTextbookIds}
-        onToggle={(id) =>
-          setSelectedTextbookIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-          })
-        }
-      />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* 왼쪽: 교재 선택 */}
+        <Section
+          title="교재 선택 (교재 함께 구매)"
+          description="강의 상세 우측의 “교재 함께 구매” 섹션에 표시할 교재를 선택합니다."
+          items={textbooks}
+          selected={selectedTextbookIds}
+          onToggle={(id) =>
+            setSelectedTextbookIds((prev) => {
+              const next = new Set(prev);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              return next;
+            })
+          }
+        />
 
-      <Section
-        title="강의 선택 (추가 상품)"
-        description="강의 상세 우측의 “추가 상품” 섹션에 표시할 강좌를 선택합니다."
-        items={courses}
-        selected={selectedCourseIds}
-        onToggle={(id) =>
-          setSelectedCourseIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-          })
-        }
-      />
+        {/* 오른쪽: 강의 선택 */}
+        <Section
+          title="강의 선택 (추가 상품)"
+          description="강의 상세 우측의 “추가 상품” 섹션에 표시할 강좌를 선택합니다."
+          items={courses}
+          selected={selectedCourseIds}
+          onToggle={(id) =>
+            setSelectedCourseIds((prev) => {
+              const next = new Set(prev);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              return next;
+            })
+          }
+        />
+      </div>
     </div>
   );
 }
