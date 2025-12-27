@@ -7,6 +7,9 @@ import { getBaseUrl } from "@/lib/oauth";
 
 export const runtime = "nodejs";
 
+const ADDITIONAL_TEXTBOOK_DISCOUNT_PER = 5000;
+const ADDITIONAL_TEXTBOOK_DISCOUNT_MAX = 10000;
+
 // 새로운 cartItems 방식 스키마
 const CartItemSchema = z.object({
   productType: z.enum(["COURSE", "TEXTBOOK"]),
@@ -84,6 +87,19 @@ export async function POST(req: Request) {
     });
   }
 
+  // "추가 교재 구매" 할인: 교재를 한 권 고를 때마다 5,000원, 최대 10,000원
+  // (교재 상세의 메인 교재 + 선택한 추가 교재들 시나리오를 기준으로, 추가 교재 개수만큼 할인)
+  const firstItem = cartItems[0];
+  const additionalTextbookCount =
+    firstItem?.productType === "TEXTBOOK"
+      ? Math.max(0, cartItems.filter((i) => i.productType === "TEXTBOOK").length - 1)
+      : 0;
+  const additionalDiscount = Math.min(
+    additionalTextbookCount * ADDITIONAL_TEXTBOOK_DISCOUNT_PER,
+    ADDITIONAL_TEXTBOOK_DISCOUNT_MAX
+  );
+  totalAmount = Math.max(0, totalAmount - additionalDiscount);
+
   if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
     return NextResponse.json({ ok: false, error: "INVALID_AMOUNT" }, { status: 400 });
   }
@@ -96,7 +112,6 @@ export async function POST(req: Request) {
   const orderId = generateTossOrderId();
 
   // 첫 번째 상품 기준으로 Order 생성
-  const firstItem = cartItems[0];
   await prisma.order.create({
     data: {
       userId: user.id,
@@ -111,7 +126,7 @@ export async function POST(req: Request) {
       enrolled: false,
       // 다중 상품 정보를 providerPayload에 저장해둠(컬럼 추가 없이 사용)
       // confirm 단계에서 toss 응답과 병합 저장합니다.
-      providerPayload: { lineItems: { items: orderItems } },
+      providerPayload: { lineItems: { items: orderItems }, discounts: { additionalTextbookDiscount: additionalDiscount } },
     },
   });
 

@@ -445,8 +445,6 @@ model Order {
   productType   ProductType
   courseId      String?
   textbookId    String?
-  // 다중 상품 결제 시 라인아이템 스냅샷(예: [{productType, productId, amount}])
-  lineItems     Json?
   // 주문 정보
   orderNo       String      @unique  // 주문 번호
   productName   String                // 상품명 (스냅샷)
