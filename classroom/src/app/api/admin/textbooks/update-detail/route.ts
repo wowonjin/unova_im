@@ -22,6 +22,15 @@ const Schema = z.object({
   ),
   extraOptions: z.string().optional().transform((s) => (typeof s === "string" ? s : "")),
   description: z.string().transform((s) => s.trim() || null),
+  relatedTextbookIds: z.string().optional().transform((s) => {
+    if (!s) return [];
+    try {
+      const parsed = JSON.parse(s);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }),
 });
 
 function parseExtraOptions(text: string): { name: string; value: string }[] {
@@ -67,7 +76,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "INVALID_REQUEST", details: parsed.error }, { status: 400 });
   }
 
-  const { textbookId, price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, extraOptions, description } = parsed.data;
+  const { textbookId, price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, extraOptions, description, relatedTextbookIds } = parsed.data;
   const extraOptionsJson = parseExtraOptions(extraOptions || "");
 
   // Verify ownership
@@ -93,10 +102,11 @@ export async function POST(req: Request) {
         features,
         extraOptions: extraOptionsJson,
         description,
+        relatedTextbookIds,
       } as never,
     });
   } catch (e) {
-    // 배포 환경에서 컬럼이 아직 없을 수 있음(마이그레이션 누락). extraOptions 없이 재시도.
+    // 배포 환경에서 컬럼이 아직 없을 수 있음(마이그레이션 누락). extraOptions, relatedTextbookIds 없이 재시도.
     console.error("[admin/textbooks/update-detail] textbook.update failed, retrying without extraOptions:", e);
     await prisma.textbook.update({
       where: { id: textbookId },

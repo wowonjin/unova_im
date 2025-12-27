@@ -444,6 +444,45 @@ export default async function ProductDetailPage({
     dbTextbook = null;
   }
 
+  // 관련 교재 목록 가져오기 (relatedTextbookIds에 지정된 교재만)
+  let relatedTextbooks: Array<{
+    id: string;
+    title: string;
+    price: number;
+    originalPrice: number | null;
+    thumbnailUrl: string | null;
+    teacherName: string | null;
+    subjectName: string | null;
+  }> = [];
+  
+  // 교재의 relatedTextbookIds 가져오기
+  const relatedTextbookIds = dbTextbook 
+    ? ((dbTextbook as { relatedTextbookIds?: string[] | null }).relatedTextbookIds ?? [])
+    : [];
+  
+  if (relatedTextbookIds.length > 0) {
+    try {
+      relatedTextbooks = await prisma.textbook.findMany({
+        where: {
+          isPublished: true,
+          id: { in: relatedTextbookIds },
+        },
+        select: {
+          id: true,
+          title: true,
+          price: true,
+          originalPrice: true,
+          thumbnailUrl: true,
+          teacherName: true,
+          subjectName: true,
+        },
+      });
+    } catch (e) {
+      console.error("[store/product] failed to load related textbooks:", e);
+      relatedTextbooks = [];
+    }
+  }
+
   // DB에서 데이터를 찾은 경우
   if (dbCourse) {
     const price = dbCourse.price || 0;
@@ -560,6 +599,15 @@ export default async function ProductDetailPage({
                 formattedOriginalPrice: originalPrice ? formatPrice(originalPrice) : null,
                 formattedDailyPrice: formatPrice(dailyPrice),
               }}
+              relatedProducts={relatedTextbooks.map((t) => ({
+                id: t.id,
+                title: t.title,
+                price: t.price || 0,
+                originalPrice: t.originalPrice,
+                thumbnailUrl: t.thumbnailUrl,
+                teacher: t.teacherName || "선생님",
+                subject: t.subjectName || "교재",
+              }))}
             />
           </div>
         </main>

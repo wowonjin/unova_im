@@ -2,6 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 
+type OtherTextbook = {
+  id: string;
+  title: string;
+  subjectName: string | null;
+  thumbnailUrl: string | null;
+};
+
 type Props = {
   textbookId: string;
   initial: {
@@ -14,10 +21,12 @@ type Props = {
     features: string[];
     extraOptions: { name: string; value: string }[];
     description: string | null;
+    relatedTextbookIds: string[];
   };
+  otherTextbooks: OtherTextbook[];
 };
 
-export default function TextbookDetailPageClient({ textbookId, initial }: Props) {
+export default function TextbookDetailPageClient({ textbookId, initial, otherTextbooks }: Props) {
   const [price, setPrice] = useState(initial.price?.toString() || "");
   const [originalPrice, setOriginalPrice] = useState(initial.originalPrice?.toString() || "");
   const [teacherTitle, setTeacherTitle] = useState(initial.teacherTitle || "");
@@ -29,6 +38,7 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
     (initial.extraOptions ?? []).map((o) => `${o.name}: ${o.value}`).join("\n")
   );
   const [description, setDescription] = useState(initial.description || "");
+  const [relatedTextbookIds, setRelatedTextbookIds] = useState<string[]>(initial.relatedTextbookIds ?? []);
   
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -49,6 +59,7 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
       formData.append("features", features);
       formData.append("extraOptions", extraOptions);
       formData.append("description", description);
+      formData.append("relatedTextbookIds", JSON.stringify(relatedTextbookIds));
 
       const res = await fetch("/api/admin/textbooks/update-detail", {
         method: "POST",
@@ -65,7 +76,7 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
       console.error("Save error:", error);
       setSaveStatus("error");
     }
-  }, [textbookId, price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, extraOptions, description]);
+  }, [textbookId, price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, extraOptions, description, relatedTextbookIds]);
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -86,7 +97,7 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, extraOptions, description, saveData]);
+  }, [price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, extraOptions, description, relatedTextbookIds, saveData]);
 
   const inputClass = "w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20";
   const labelClass = "block text-sm font-medium text-white/70 mb-1.5";
@@ -229,8 +240,76 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
           rows={4}
           className={inputClass}
         />
-        <p className="mt-1 text-xs text-white/40">줄바꿈으로 구분, 각 줄은 “옵션명: 값” 형태로 입력하세요.</p>
+        <p className="mt-1 text-xs text-white/40">줄바꿈으로 구분, 각 줄은 "옵션명: 값" 형태로 입력하세요.</p>
       </div>
+
+      {/* 추가 교재 구매 설정 */}
+      {otherTextbooks.length > 0 && (
+        <div className="pt-6 border-t border-white/10">
+          <label className={labelClass}>
+            추가 교재 구매
+            <span className="ml-2 text-white/40 font-normal">(상세 페이지에 표시할 교재 선택)</span>
+          </label>
+          <p className="text-xs text-white/40 mb-3">
+            선택한 교재들이 이 교재의 상세 페이지 &ldquo;추가 교재 구매&rdquo; 섹션에 표시됩니다.
+          </p>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {otherTextbooks.map((tb) => {
+              const isSelected = relatedTextbookIds.includes(tb.id);
+              return (
+                <label
+                  key={tb.id}
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    isSelected 
+                      ? "border-amber-400/50 bg-amber-500/10" 
+                      : "border-white/10 hover:border-white/20 bg-white/5"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setRelatedTextbookIds([...relatedTextbookIds, tb.id]);
+                      } else {
+                        setRelatedTextbookIds(relatedTextbookIds.filter((id) => id !== tb.id));
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-white/30 bg-transparent text-amber-500 focus:ring-amber-500 focus:ring-offset-0"
+                  />
+                  
+                  {/* 썸네일 */}
+                  <div className="w-8 h-10 rounded overflow-hidden bg-white/10 flex-shrink-0">
+                    {tb.thumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={tb.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white/20 text-[10px]">
+                        📖
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* 정보 */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{tb.title}</p>
+                    {tb.subjectName && (
+                      <p className="text-xs text-white/50">{tb.subjectName}</p>
+                    )}
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+          
+          {relatedTextbookIds.length > 0 && (
+            <p className="mt-2 text-xs text-amber-400">
+              {relatedTextbookIds.length}개 교재가 추가 교재 구매에 표시됩니다.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

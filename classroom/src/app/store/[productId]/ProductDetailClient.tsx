@@ -57,11 +57,27 @@ type ProductData = {
   previewVimeoId?: string | null;
 };
 
+type RelatedProduct = {
+  id: string;
+  title: string;
+  price: number;
+  originalPrice: number | null;
+  thumbnailUrl: string | null;
+  teacher: string;
+  subject: string;
+};
+
 const courseTabs = ["강의소개", "커리큘럼", "강의후기", "환불정책"] as const;
 const textbookTabs = ["교재소개", "교재후기", "환불정책"] as const;
 type TabKey = (typeof courseTabs)[number] | (typeof textbookTabs)[number];
 
-export default function ProductDetailClient({ product }: { product: ProductData }) {
+export default function ProductDetailClient({ 
+  product,
+  relatedProducts = [],
+}: { 
+  product: ProductData;
+  relatedProducts?: RelatedProduct[];
+}) {
   const [activeTab, setActiveTab] = useState<TabKey>(product.type === "textbook" ? "교재소개" : "강의소개");
   const [expandedChapters, setExpandedChapters] = useState<string[]>([]);
   const [expandedReviews, setExpandedReviews] = useState<string[]>([]);
@@ -70,6 +86,7 @@ export default function ProductDetailClient({ product }: { product: ProductData 
   const [visitorId, setVisitorId] = useState("");
   const [selectedOption, setSelectedOption] = useState<"full" | "regular">("full");
   const [isPaying, setIsPaying] = useState(false);
+  const [selectedRelatedIds, setSelectedRelatedIds] = useState<Set<string>>(new Set());
   
   // 좋아요 상태 불러오기
   useEffect(() => {
@@ -355,14 +372,24 @@ export default function ProductDetailClient({ product }: { product: ProductData 
     setIsPaying(true);
 
     try {
-      const res = await fetch("/api/payments/toss/create-order", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
+      // 장바구니 아이템 구성 (메인 상품 + 선택한 추가 교재)
+      const cartItems = [
+        {
           productType: product.type === "course" ? "COURSE" : "TEXTBOOK",
           productId: product.id,
           option: product.type === "course" ? selectedOption : undefined,
-        }),
+        },
+        // 선택한 추가 교재 추가
+        ...Array.from(selectedRelatedIds).map((id) => ({
+          productType: "TEXTBOOK" as const,
+          productId: id,
+        })),
+      ];
+
+      const res = await fetch("/api/payments/toss/create-order", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ cartItems }),
       });
 
       if (res.status === 401) {
@@ -427,17 +454,23 @@ export default function ProductDetailClient({ product }: { product: ProductData 
         </nav>
 
         {/* 상단 미디어: 강좌는 비메오, 교재는 이미지 */}
-        <div className="aspect-video rounded-xl overflow-hidden bg-black mb-8 border border-white/10">
-          {product.type === "textbook" ? (
-            product.thumbnailUrl ? (
+        {product.type === "textbook" ? (
+          <div className="flex justify-center items-center rounded-xl overflow-hidden bg-[#1a1a1c] mb-8 py-8">
+            {product.thumbnailUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={product.thumbnailUrl} alt={product.title} className="w-full h-full object-cover" />
+              <img 
+                src={product.thumbnailUrl} 
+                alt={product.title} 
+                className="max-h-[400px] w-auto object-contain rounded-lg shadow-2xl"
+              />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-white/[0.06] to-white/[0.02]">
+              <div className="h-[400px] w-[280px] flex items-center justify-center bg-gradient-to-br from-white/[0.06] to-white/[0.02] rounded-lg">
                 <span className="text-white/40 text-sm">교재 이미지 준비중</span>
               </div>
-            )
-          ) : (
+            )}
+          </div>
+        ) : (
+          <div className="aspect-video rounded-xl overflow-hidden bg-black mb-8 border border-white/10">
             <iframe
               src={`https://player.vimeo.com/video/${product.previewVimeoId || "1121398945"}?badge=0&autopause=0&player_id=0&app_id=58479`}
               className="w-full h-full"
@@ -445,8 +478,8 @@ export default function ProductDetailClient({ product }: { product: ProductData 
               allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
               title="맛보기 영상"
             />
-          )}
-        </div>
+          </div>
+        )}
 
         {/* 강의 정보 섹션 */}
         <section className="mb-8">
@@ -1062,17 +1095,123 @@ export default function ProductDetailClient({ product }: { product: ProductData 
             </div>
           )}
 
+          {/* 추가 교재 구매 (교재 전용) */}
+          {product.type === "textbook" && relatedProducts.length > 0 && (
+            <div className="px-5 pb-5">
+              <p className="text-[14px] font-bold mb-3">추가 교재 구매</p>
+              
+              {relatedProducts.map((related) => {
+                const isSelected = selectedRelatedIds.has(related.id);
+                const discount = related.originalPrice 
+                  ? Math.round((1 - related.price / related.originalPrice) * 100) 
+                  : null;
+
+                return (
+                  <div 
+                    key={related.id}
+                    onClick={() => {
+                      const newSet = new Set(selectedRelatedIds);
+                      if (isSelected) {
+                        newSet.delete(related.id);
+                      } else {
+                        newSet.add(related.id);
+                      }
+                      setSelectedRelatedIds(newSet);
+                    }}
+                    className={`rounded-lg p-4 mb-3 cursor-pointer transition-all ${
+                      isSelected 
+                        ? "border-2 border-amber-400/60 bg-amber-500/10" 
+                        : "border border-white/20 hover:border-white/40"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* 체크박스 */}
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                        isSelected 
+                          ? "border-amber-400 bg-amber-400" 
+                          : "border-white/30"
+                      }`}>
+                        {isSelected && (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3">
+                            <path d="M20 6L9 17l-5-5"/>
+                          </svg>
+                        )}
+                      </div>
+
+                      {/* 정보 */}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-[14px] font-medium truncate ${isSelected ? "text-white" : "text-white/70"}`}>
+                          {related.title}
+                        </p>
+                        <p className={`text-[12px] mt-1 ${isSelected ? "text-white/50" : "text-white/40"}`}>
+                          {related.subject} · {related.teacher}
+                        </p>
+                      </div>
+
+                      {/* 가격 */}
+                      <div className="text-right flex-shrink-0">
+                        {discount && (
+                          <span className={`text-[12px] font-bold mr-2 ${isSelected ? "text-rose-400" : "text-rose-400/70"}`}>
+                            {discount}%
+                          </span>
+                        )}
+                        <span className={`text-[15px] font-bold ${isSelected ? "text-white" : "text-white/70"}`}>
+                          {related.price.toLocaleString()}원
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {/* 구분선 */}
           <div className="mx-5 border-t border-white/10" />
 
           {/* 상품 금액 */}
           <div className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[14px] font-medium">상품 금액</span>
-              <span className="text-[20px] font-bold">
+            {/* 기본 상품 금액 */}
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[14px] font-medium text-white/70">기본 상품</span>
+              <span className="text-[16px] font-medium">
                 {product.type === "course"
                   ? (selectedOption === "full" ? product.formattedPrice : `${(product.price * 0.8).toLocaleString()}원`)
                   : product.formattedPrice}
+              </span>
+            </div>
+            
+            {/* 추가 교재 금액 (선택한 경우에만) */}
+            {product.type === "textbook" && selectedRelatedIds.size > 0 && (
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[14px] font-medium text-amber-400">추가 교재 {selectedRelatedIds.size}개</span>
+                <span className="text-[16px] font-medium text-amber-400">
+                  +{Array.from(selectedRelatedIds).reduce((sum, id) => {
+                    const p = relatedProducts.find((r) => r.id === id);
+                    return sum + (p?.price || 0);
+                  }, 0).toLocaleString()}원
+                </span>
+              </div>
+            )}
+            
+            {/* 총 결제 금액 */}
+            <div className="flex items-center justify-between mb-4 pt-2 border-t border-white/10">
+              <span className="text-[14px] font-bold">총 결제 금액</span>
+              <span className="text-[20px] font-bold">
+                {(() => {
+                  let basePrice = product.type === "course"
+                    ? (selectedOption === "full" ? product.price : product.price * 0.8)
+                    : product.price;
+                  
+                  const additionalPrice = product.type === "textbook"
+                    ? Array.from(selectedRelatedIds).reduce((sum, id) => {
+                        const p = relatedProducts.find((r) => r.id === id);
+                        return sum + (p?.price || 0);
+                      }, 0)
+                    : 0;
+                  
+                  return (basePrice + additionalPrice).toLocaleString() + "원";
+                })()}
               </span>
             </div>
 

@@ -57,6 +57,7 @@ export default async function AdminTextbookPage({
             teacherName?: string | null;
             teacherTitle?: string | null;
             teacherDescription?: string | null;
+            relatedTextbookIds?: unknown;
           }
         | {
             id: string;
@@ -80,6 +81,7 @@ export default async function AdminTextbookPage({
             teacherName?: string | null;
             teacherTitle?: string | null;
             teacherDescription?: string | null;
+            relatedTextbookIds?: unknown;
           }
       ) & {
         entitlements: {
@@ -120,6 +122,7 @@ export default async function AdminTextbookPage({
         teacherName: true,
         teacherTitle: true,
         teacherDescription: true,
+        relatedTextbookIds: true,
         entitlements: {
           orderBy: [{ status: "asc" }, { createdAt: "desc" }],
           select: {
@@ -168,6 +171,21 @@ export default async function AdminTextbookPage({
       </AppShell>
     );
   }
+
+  // 다른 교재 목록 (추가 교재 선택용)
+  const otherTextbooks = await prisma.textbook.findMany({
+    where: {
+      ownerId: teacher.id,
+      id: { not: textbookId },
+    },
+    select: {
+      id: true,
+      title: true,
+      subjectName: true,
+      thumbnailUrl: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
 
   // entitlementDays 필드 안전 처리 (마이그레이션 미적용 시 기본값)
   const entitlementDays = (textbook as { entitlementDays?: number }).entitlementDays ?? 30;
@@ -299,7 +317,9 @@ export default async function AdminTextbookPage({
                     extraOptions:
                       (textbook as { extraOptions?: { name: string; value: string }[] | null }).extraOptions ?? [],
                     description: textbook.description ?? null,
+                    relatedTextbookIds: ((textbook as { relatedTextbookIds?: unknown }).relatedTextbookIds as string[] | null) ?? [],
                   }}
+                  otherTextbooks={otherTextbooks}
                 />
               </CardBody>
             </Card>
