@@ -783,7 +783,7 @@ export default function ProductDetailClient({
                         key={`${product.id}-benefit-img-${idx}`}
                         src={url}
                         alt=""
-                        className="w-full rounded-xl border border-white/10 bg-white/[0.02]"
+                        className="w-full rounded-xl bg-white/[0.02]"
                       />
                     ))}
                 </div>
