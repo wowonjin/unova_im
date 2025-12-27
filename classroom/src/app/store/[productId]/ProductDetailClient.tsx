@@ -1188,7 +1188,10 @@ export default function ProductDetailClient({
           {/* 수강 옵션 (강좌 전용) */}
           {product.type === "course" && (
             <div className="px-5 pb-5">
-              <p className="text-[14px] font-bold mb-3">수강 옵션</p>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-[14px] font-bold">수강 옵션</p>
+                <span className="text-[12px] font-medium text-white/60">강의 10,000원 할인</span>
+              </div>
               
               {/* 옵션 1 - 정규 강의 + 복습 기간 */}
               <div 
@@ -1247,7 +1250,7 @@ export default function ProductDetailClient({
             <div className={`px-5 ${selectedRelatedIds.size > 0 ? "pb-3 pt-4" : "pb-2 pt-3"}`}>
               <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="text-[14px] font-bold">추가 교재 구매</p>
-                <span className="text-[12px] font-medium text-white/60">추가 5,000원 할인</span>
+                <span className="text-[12px] font-medium text-white/60">교재 5,000원 할인</span>
               </div>
 
               {relatedProducts.map((related) => {
