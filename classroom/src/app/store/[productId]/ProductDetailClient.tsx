@@ -715,34 +715,49 @@ export default function ProductDetailClient({
           {/* 소개(강좌/교재) */}
           {activeTab === introTabKey && (
             <section>
-              {/* 수강 정보 */}
-              <div className="rounded-xl border border-white/10 overflow-hidden mb-8">
-                <table className="w-full text-[14px]">
-                  <tbody>
-                    <tr className="border-b border-white/10">
-                      <td className="px-5 py-4 bg-white/[0.02] text-white/50 w-32 font-medium whitespace-nowrap">
-                        {product.type === "textbook" ? "다운로드 기간" : "수강 기간"}
-                      </td>
-                      <td className="px-5 py-4 text-white/90">
-                        {product.studyPeriod.regular + product.studyPeriod.review}일
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">구성</td>
-                      <td className="px-5 py-4 text-white/90">
-                        {product.type === "textbook" ? "PDF 교재" : `총 ${totalLessons}개 수업`}
-                      </td>
-                    </tr>
-                    {product.type === "textbook" &&
-                      (product.extraOptions ?? []).map((opt, i) => (
+              {/* 교재는 기간/구성 테이블 유지, 강좌는 제거하고 "수강 혜택" 이미지로 대체 */}
+              {product.type === "textbook" ? (
+                <div className="rounded-xl border border-white/10 overflow-hidden mb-8">
+                  <table className="w-full text-[14px]">
+                    <tbody>
+                      <tr className="border-b border-white/10">
+                        <td className="px-5 py-4 bg-white/[0.02] text-white/50 w-32 font-medium whitespace-nowrap">
+                          다운로드 기간
+                        </td>
+                        <td className="px-5 py-4 text-white/90">
+                          {product.studyPeriod.regular + product.studyPeriod.review}일
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">구성</td>
+                        <td className="px-5 py-4 text-white/90">PDF 교재</td>
+                      </tr>
+                      {(product.extraOptions ?? []).map((opt, i) => (
                         <tr key={`${opt.name}-${i}`} className="border-t border-white/10">
                           <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">{opt.name}</td>
                           <td className="px-5 py-4 text-white/90 whitespace-pre-line">{opt.value}</td>
                         </tr>
                       ))}
-                  </tbody>
-                </table>
-              </div>
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+
+              {product.type === "course" ? (
+                <div className="mb-8 space-y-3">
+                  {(product.benefits ?? [])
+                    .filter((x) => typeof x === "string" && /^https?:\/\//i.test(x.trim()))
+                    .map((url, idx) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={`${product.id}-benefit-img-${idx}`}
+                        src={url}
+                        alt=""
+                        className="w-full rounded-xl border border-white/10 bg-white/[0.02]"
+                      />
+                    ))}
+                </div>
+              ) : null}
 
               {/* 강의 설명 */}
               <div className="rounded-xl border border-white/10 p-6">
@@ -764,7 +779,9 @@ export default function ProductDetailClient({
                 <div className="mt-6 pt-6 border-t border-white/10">
                   <p className="text-[14px] font-semibold text-white/90 mb-3">이런 분들께 추천합니다</p>
                   <ul className="space-y-2">
-                    {product.benefits.map((benefit, idx) => (
+                    {product.benefits
+                      .filter((b) => !/^https?:\/\//i.test((b ?? "").trim()))
+                      .map((benefit, idx) => (
                       <li key={idx} className="flex items-start gap-2 text-[14px] text-white/70">
                         <span className="text-blue-400 mt-0.5">✓</span>
                         {benefit}

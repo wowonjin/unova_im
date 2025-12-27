@@ -9,21 +9,12 @@ const Schema = z.object({
   courseId: z.string().min(1),
   price: z.string().transform((s) => (s ? parseInt(s) : null)),
   originalPrice: z.string().transform((s) => (s ? parseInt(s) : null)),
-  rating: z.string().transform((s) => (s ? parseFloat(s) : null)),
-  reviewCount: z.string().transform((s) => parseInt(s) || 0),
   tags: z.string().transform((s) => 
     s.split(",").map((t) => t.trim()).filter(Boolean)
   ),
   benefits: z.string().transform((s) => 
     s.split("\n").map((t) => t.trim()).filter(Boolean)
   ),
-  features: z.string().transform((s) => 
-    s.split("\n").map((t) => t.trim()).filter(Boolean)
-  ),
-  teacherTitle: z.string().transform((s) => s.trim() || null),
-  teacherDescription: z.string().transform((s) => s.trim() || null),
-  previewVimeoId: z.string().transform((s) => s.trim() || null),
-  refundPolicy: z.string().transform((s) => s.trim() || null),
 });
 
 export async function POST(req: Request) {
@@ -46,7 +37,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "INVALID_REQUEST", details: parsed.error }, { status: 400 });
   }
 
-  const { courseId, price, originalPrice, rating, reviewCount, tags, benefits, features, teacherTitle, teacherDescription, previewVimeoId, refundPolicy } = parsed.data;
+  const { courseId, price, originalPrice, tags, benefits } = parsed.data;
 
   // Verify ownership
   const course = await prisma.course.findUnique({
@@ -67,15 +58,8 @@ export async function POST(req: Request) {
       price,
       originalPrice,
       dailyPrice,
-      rating,
-      reviewCount,
       tags,
       benefits,
-      features,
-      teacherTitle,
-      teacherDescription,
-      previewVimeoId,
-      refundPolicy,
     },
   });
 

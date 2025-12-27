@@ -19,6 +19,7 @@ type Product = {
   price: number;
   originalPrice: number | null;
   tag: string | null;
+  tags: string[];
   type: "course" | "textbook";
   thumbnailUrl: string | null;
   rating: number | null;
@@ -132,6 +133,7 @@ export default async function StorePage({
       price: c.price || 0,
       originalPrice: c.originalPrice,
       tag: tags[0] || null, // 첫 번째 태그를 배지로 표시
+      tags,
       type: "course" as const,
       thumbnailUrl: c.thumbnailUrl,
       rating: c.rating,
@@ -150,6 +152,7 @@ export default async function StorePage({
       price: t.price || 0,
       originalPrice: t.originalPrice,
       tag: tags[0] || null,
+      tags,
       type: "textbook" as const,
       thumbnailUrl: t.thumbnailUrl,
       rating: t.rating,
@@ -354,6 +357,19 @@ export default async function StorePage({
                       <span className="text-white/30">·</span>
                       <span>{product.subject}</span>
                     </div>
+                    {/* 강좌 태그 (관리자 상세 탭에서 입력한 쉼표 구분 태그들) */}
+                    {product.type === "course" && product.tags.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {product.tags.slice(0, 6).map((t) => (
+                          <span
+                            key={`${product.id}-tag-${t}`}
+                            className="rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium text-white/70"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </Link>
               ))}

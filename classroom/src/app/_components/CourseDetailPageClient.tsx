@@ -7,30 +7,16 @@ type Props = {
   initial: {
     price: number | null;
     originalPrice: number | null;
-    rating: number | null;
-    reviewCount: number;
     tags: string[];
     benefits: string[];
-    features: string[];
-    teacherTitle: string | null;
-    teacherDescription: string | null;
-    previewVimeoId: string | null;
-    refundPolicy: string | null;
   };
 };
 
 export default function CourseDetailPageClient({ courseId, initial }: Props) {
   const [price, setPrice] = useState(initial.price?.toString() || "");
   const [originalPrice, setOriginalPrice] = useState(initial.originalPrice?.toString() || "");
-  const [rating, setRating] = useState(initial.rating?.toString() || "");
-  const [reviewCount, setReviewCount] = useState((initial.reviewCount ?? 0).toString());
   const [tags, setTags] = useState((initial.tags ?? []).join(", "));
   const [benefits, setBenefits] = useState((initial.benefits ?? []).join("\n"));
-  const [features, setFeatures] = useState((initial.features ?? []).join("\n"));
-  const [teacherTitle, setTeacherTitle] = useState(initial.teacherTitle || "");
-  const [teacherDescription, setTeacherDescription] = useState(initial.teacherDescription || "");
-  const [previewVimeoId, setPreviewVimeoId] = useState(initial.previewVimeoId || "");
-  const [refundPolicy, setRefundPolicy] = useState(initial.refundPolicy || "");
   
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -44,15 +30,8 @@ export default function CourseDetailPageClient({ courseId, initial }: Props) {
       formData.append("courseId", courseId);
       formData.append("price", price);
       formData.append("originalPrice", originalPrice);
-      formData.append("rating", rating);
-      formData.append("reviewCount", reviewCount);
       formData.append("tags", tags);
       formData.append("benefits", benefits);
-      formData.append("features", features);
-      formData.append("teacherTitle", teacherTitle);
-      formData.append("teacherDescription", teacherDescription);
-      formData.append("previewVimeoId", previewVimeoId);
-      formData.append("refundPolicy", refundPolicy);
 
       const res = await fetch("/api/admin/courses/update-detail", {
         method: "POST",
@@ -69,7 +48,7 @@ export default function CourseDetailPageClient({ courseId, initial }: Props) {
       console.error("Save error:", error);
       setSaveStatus("error");
     }
-  }, [courseId, price, originalPrice, rating, reviewCount, tags, benefits, features, teacherTitle, teacherDescription, previewVimeoId, refundPolicy]);
+  }, [courseId, price, originalPrice, tags, benefits]);
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -90,7 +69,7 @@ export default function CourseDetailPageClient({ courseId, initial }: Props) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [price, originalPrice, rating, reviewCount, tags, benefits, features, teacherTitle, teacherDescription, previewVimeoId, refundPolicy, saveData]);
+  }, [price, originalPrice, tags, benefits, saveData]);
 
   const inputClass = "w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20";
   const labelClass = "block text-sm font-medium text-white/70 mb-1.5";
@@ -148,48 +127,6 @@ export default function CourseDetailPageClient({ courseId, initial }: Props) {
         </div>
       </div>
 
-      {/* 평점 및 후기 */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelClass}>평점 (1.0~5.0)</label>
-          <input
-            type="number"
-            step="0.1"
-            min="1"
-            max="5"
-            value={rating}
-            onChange={(e) => setRating(e.target.value)}
-            placeholder="예: 4.9"
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label className={labelClass}>후기 수</label>
-          <input
-            type="number"
-            value={reviewCount}
-            onChange={(e) => setReviewCount(e.target.value)}
-            placeholder="예: 328"
-            className={inputClass}
-          />
-        </div>
-      </div>
-
-      {/* 맛보기 영상 */}
-      <div>
-        <label className={labelClass}>맛보기 영상 Vimeo ID</label>
-        <input
-          type="text"
-          value={previewVimeoId}
-          onChange={(e) => setPreviewVimeoId(e.target.value)}
-          placeholder="예: 1121398945"
-          className={inputClass}
-        />
-        <p className="mt-1 text-xs text-white/40">
-          Vimeo URL에서 숫자 ID만 입력하세요. (예: https://vimeo.com/1121398945 → 1121398945)
-        </p>
-      </div>
-
       {/* 태그 */}
       <div>
         <label className={labelClass}>태그</label>
@@ -203,66 +140,17 @@ export default function CourseDetailPageClient({ courseId, initial }: Props) {
         <p className="mt-1 text-xs text-white/40">쉼표(,)로 구분하여 입력하세요.</p>
       </div>
 
-      {/* 강사 소개 */}
-      <div className="space-y-4">
-        <div>
-          <label className={labelClass}>강사 타이틀</label>
-          <input
-            type="text"
-            value={teacherTitle}
-            onChange={(e) => setTeacherTitle(e.target.value)}
-            placeholder="예: 연세대학교 의과대학 졸업"
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label className={labelClass}>강사 소개</label>
-          <textarea
-            value={teacherDescription}
-            onChange={(e) => setTeacherDescription(e.target.value)}
-            placeholder="강사 소개를 입력하세요..."
-            rows={4}
-            className={inputClass}
-          />
-        </div>
-      </div>
-
       {/* 수강 혜택 */}
       <div>
-        <label className={labelClass}>수강 혜택</label>
+        <label className={labelClass}>수강 혜택 (상세페이지 이미지 URL)</label>
         <textarea
           value={benefits}
           onChange={(e) => setBenefits(e.target.value)}
-          placeholder="PDF 강의자료 무료 제공&#10;초보부터 고수까지 ALL PASS&#10;수강생 전용 질문 게시판 이용"
+          placeholder="https://.../detail-1.png&#10;https://.../detail-2.jpg"
           rows={4}
           className={inputClass}
         />
-        <p className="mt-1 text-xs text-white/40">줄바꿈으로 구분하여 입력하세요.</p>
-      </div>
-
-      {/* 강좌 특징 */}
-      <div>
-        <label className={labelClass}>강좌 특징</label>
-        <textarea
-          value={features}
-          onChange={(e) => setFeatures(e.target.value)}
-          placeholder="수강 완료 시 수료증 발급&#10;모바일 수강 지원&#10;백하욱 선생님의 모든 노하우가 담긴 올인원 강의"
-          rows={4}
-          className={inputClass}
-        />
-        <p className="mt-1 text-xs text-white/40">줄바꿈으로 구분하여 입력하세요.</p>
-      </div>
-
-      {/* 환불 정책 */}
-      <div>
-        <label className={labelClass}>환불 정책</label>
-        <textarea
-          value={refundPolicy}
-          onChange={(e) => setRefundPolicy(e.target.value)}
-          placeholder="환불 정책을 입력하세요..."
-          rows={6}
-          className={inputClass}
-        />
+        <p className="mt-1 text-xs text-white/40">이미지 URL을 줄바꿈으로 구분하여 입력하세요.</p>
       </div>
     </div>
   );

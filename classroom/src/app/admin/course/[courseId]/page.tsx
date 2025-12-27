@@ -139,15 +139,8 @@ export default async function AdminCoursePage({
                 initial={{
                   price: course.price ?? null,
                   originalPrice: course.originalPrice ?? null,
-                  rating: course.rating ?? null,
-                  reviewCount: course.reviewCount ?? 0,
                   tags: (course.tags as string[] | null) ?? [],
                   benefits: (course.benefits as string[] | null) ?? [],
-                  features: (course.features as string[] | null) ?? [],
-                  teacherTitle: course.teacherTitle ?? null,
-                  teacherDescription: course.teacherDescription ?? null,
-                  previewVimeoId: course.previewVimeoId ?? null,
-                  refundPolicy: course.refundPolicy ?? null,
                 }}
               />
               </CardBody>
