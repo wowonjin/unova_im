@@ -87,6 +87,26 @@ export default function ProductDetailClient({
   const [selectedOption, setSelectedOption] = useState<"full" | "regular">("full");
   const [isPaying, setIsPaying] = useState(false);
   const [selectedRelatedIds, setSelectedRelatedIds] = useState<Set<string>>(new Set());
+
+  const additionalAmount =
+    product.type === "textbook"
+      ? Array.from(selectedRelatedIds).reduce((sum, id) => {
+          const p = relatedProducts.find((r) => r.id === id);
+          return sum + (p?.price || 0);
+        }, 0)
+      : 0;
+
+  const baseAmount =
+    product.type === "course"
+      ? selectedOption === "full"
+        ? product.price
+        : product.price * 0.8
+      : product.price;
+
+  // NOTE: 가격이 미설정(null/undefined)인 경우 page.tsx에서 0으로 내려오는 케이스가 있어
+  // UI에서는 "기본 상품"을 숨기고(=미설정처럼 취급) 표시를 깔끔하게 합니다.
+  const hasBaseProduct = Number.isFinite(baseAmount) && baseAmount > 0;
+  const totalAmount = (hasBaseProduct ? baseAmount : 0) + additionalAmount;
   
   // 좋아요 상태 불러오기
   useEffect(() => {
@@ -1036,7 +1056,11 @@ export default function ProductDetailClient({
                   )}
                 </div>
               )}
-              <p className="text-[28px] font-bold">{product.formattedPrice}</p>
+              {hasBaseProduct ? (
+                <p className="text-[28px] font-bold">{product.formattedPrice}</p>
+              ) : (
+                <p className="text-[16px] font-medium text-white/50">가격 정보 준비중</p>
+              )}
             </div>
           </div>
 
@@ -1172,48 +1196,40 @@ export default function ProductDetailClient({
           {/* 상품 금액 */}
           <div className="p-5">
             {/* 기본 상품 금액 */}
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[14px] font-medium text-white/70">기본 상품</span>
-              <span className="text-[16px] font-medium">
-                {product.type === "course"
-                  ? (selectedOption === "full" ? product.formattedPrice : `${(product.price * 0.8).toLocaleString()}원`)
-                  : product.formattedPrice}
-              </span>
-            </div>
+            {hasBaseProduct && (
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[14px] font-medium text-white/70">기본 상품</span>
+                <span className="text-[16px] font-medium">
+                  {product.type === "course"
+                    ? selectedOption === "full"
+                      ? product.formattedPrice
+                      : `${(product.price * 0.8).toLocaleString()}원`
+                    : product.formattedPrice}
+                </span>
+              </div>
+            )}
             
             {/* 추가 교재 금액 (선택한 경우에만) */}
             {product.type === "textbook" && selectedRelatedIds.size > 0 && (
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[14px] font-medium text-amber-400">추가 교재 {selectedRelatedIds.size}개</span>
                 <span className="text-[16px] font-medium text-amber-400">
-                  +{Array.from(selectedRelatedIds).reduce((sum, id) => {
-                    const p = relatedProducts.find((r) => r.id === id);
-                    return sum + (p?.price || 0);
-                  }, 0).toLocaleString()}원
+                  +{additionalAmount.toLocaleString()}원
                 </span>
               </div>
             )}
             
             {/* 총 결제 금액 */}
-            <div className="flex items-center justify-between mb-4 pt-2 border-t border-white/10">
-              <span className="text-[14px] font-bold">총 결제 금액</span>
-              <span className="text-[20px] font-bold">
-                {(() => {
-                  let basePrice = product.type === "course"
-                    ? (selectedOption === "full" ? product.price : product.price * 0.8)
-                    : product.price;
-                  
-                  const additionalPrice = product.type === "textbook"
-                    ? Array.from(selectedRelatedIds).reduce((sum, id) => {
-                        const p = relatedProducts.find((r) => r.id === id);
-                        return sum + (p?.price || 0);
-                      }, 0)
-                    : 0;
-                  
-                  return (basePrice + additionalPrice).toLocaleString() + "원";
-                })()}
-              </span>
-            </div>
+            {totalAmount > 0 ? (
+              <div className="flex items-center justify-between mb-4 pt-2 border-t border-white/10">
+                <span className="text-[14px] font-bold">총 결제 금액</span>
+                <span className="text-[20px] font-bold">{totalAmount.toLocaleString()}원</span>
+              </div>
+            ) : (
+              <div className="mb-4 pt-2 border-t border-white/10 text-[13px] text-white/50">
+                가격 정보 준비중
+              </div>
+            )}
 
             {/* 버튼 영역 */}
             <div className="flex gap-3">
@@ -1274,12 +1290,16 @@ export default function ProductDetailClient({
             <span className="text-[10px] text-white/50 mt-0.5">{likeCount >= 10000 ? `${(likeCount / 10000).toFixed(1)}만` : likeCount.toLocaleString()}</span>
           </button>
           <div className="flex-1">
-            <div className="flex items-center gap-2">
-              {product.discount && (
-                <span className="text-[12px] text-rose-400 font-bold">{product.discount}%</span>
-              )}
-              <span className="text-[18px] font-bold">{product.formattedPrice}</span>
-            </div>
+            {hasBaseProduct ? (
+              <div className="flex items-center gap-2">
+                {product.discount && (
+                  <span className="text-[12px] text-rose-400 font-bold">{product.discount}%</span>
+                )}
+                <span className="text-[18px] font-bold">{product.formattedPrice}</span>
+              </div>
+            ) : (
+              <div className="text-[13px] text-white/50">가격 정보 준비중</div>
+            )}
           </div>
           <a
           onClick={(e) => {
