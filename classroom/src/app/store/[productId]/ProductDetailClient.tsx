@@ -693,7 +693,11 @@ export default function ProductDetailClient({
         </section>
 
         {/* 탭 네비게이션 */}
-        <div ref={tabRef} className={`sticky top-[70px] z-30 -mx-4 px-4 border-b border-white/10 overflow-visible transition-all ${isTabSticky ? "pt-4" : "pt-10"}`} style={{ background: "linear-gradient(to bottom, transparent 0%, transparent 40%, #161616 40%)" }}>
+        <div
+          ref={tabRef}
+          className={`sticky top-[70px] z-30 border-b border-white/10 overflow-visible transition-all ${isTabSticky ? "pt-4" : "pt-10"}`}
+          style={{ background: "linear-gradient(to bottom, transparent 0%, transparent 40%, #161616 40%)" }}
+        >
           <div className="flex justify-between">
             {tabs.map((tab) => (
               <div key={tab} className="relative">
