@@ -1208,7 +1208,7 @@ export default function ProductDetailClient({
                   onClick={() => setSelectedOption("full")}
                   className={`rounded-lg p-4 mb-3 cursor-pointer transition-all ${
                     selectedOption === "full" 
-                      ? "border-2 border-white/60 bg-white/5" 
+                    ? "border border-white/20 bg-white/5 ring-2 ring-white/60" 
                       : "border border-white/20 hover:border-white/40"
                   }`}
                 >
@@ -1232,7 +1232,7 @@ export default function ProductDetailClient({
                   onClick={() => setSelectedOption("regular")}
                   className={`rounded-lg p-4 cursor-pointer transition-all ${
                     selectedOption === "regular" 
-                      ? "border-2 border-white/60 bg-white/5" 
+                    ? "border border-white/20 bg-white/5 ring-2 ring-white/60" 
                       : "border border-white/20 hover:border-white/40"
                   }`}
                 >
