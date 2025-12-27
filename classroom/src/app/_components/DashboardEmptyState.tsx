@@ -49,8 +49,9 @@ export default function DashboardEmptyState({ isLoggedIn }: Props) {
   return (
     <div className="flex flex-col items-center justify-center py-6">
       <span className="material-symbols-outlined text-[32px] text-white/30">folder_off</span>
-      <p className="mt-4 text-sm font-medium text-white/60">다운로드 가능한 자료가 없습니다</p>
-      <p className="mt-1 text-xs text-white/40">구매하신 교재가 등록되면 여기에 표시됩니다</p>
+      <p className="mt-4 text-sm font-medium text-white/60">
+        수강 가능한 강의가 없습니다. 강의를 결제하시면 여기에 표시됩니다.
+      </p>
     </div>
   );
 }
