@@ -1257,8 +1257,8 @@ export default function ProductDetailClient({
 
           {/* 상품 금액 */}
           <div className="p-5">
-            {/* 기본 상품 금액 */}
-            {hasBaseProduct && (
+            {/* 기본 상품 금액 (교재: 추가 교재 선택 시에만 표시) */}
+            {hasBaseProduct && (product.type === "course" || selectedRelatedIds.size > 0) && (
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[14px] font-medium text-white">기본 상품</span>
                 <span className="text-[16px] font-medium">
