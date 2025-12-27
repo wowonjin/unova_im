@@ -124,11 +124,12 @@ export default function ProductDetailClient({
   // UI에서는 "기본 상품"을 숨기고(=미설정처럼 취급) 표시를 깔끔하게 합니다.
   const hasBaseProduct = Number.isFinite(baseAmount) && baseAmount > 0;
   const hasAdditionalSelection = selectedRelatedIds.size > 0;
-  // 강좌는 기본 금액이 있을 때만(또는 교재를 선택했을 때만) 총 결제 영역을 보여서
-  // "교재 미선택 시 총 결제 위에 divider/빈공간" 같은 어색한 공백을 방지합니다.
-  const showPriceBreakdown = hasBaseProduct || hasAdditionalSelection;
-  const showDividerBeforeSummary =
-    product.type === "course" ? hasAdditionalSelection : showPriceBreakdown;
+  // UI 규칙
+  // - 교재 상세: "추가 교재"를 고른 경우에만(=묶음 구매) 요약(기본 상품/총 결제 금액) 노출
+  // - 강의 상세: 기본 금액이 있으면 요약 노출(교재를 함께 고르면 추가 라인/할인도 함께 노출)
+  const showPriceBreakdown =
+    product.type === "course" ? hasBaseProduct || hasAdditionalSelection : hasAdditionalSelection;
+  const showDividerBeforeSummary = product.type === "course" ? hasAdditionalSelection : showPriceBreakdown;
   const hasSummaryLinesAboveTotal =
     hasBaseProduct || hasAdditionalSelection || additionalTextbookDiscount > 0 || courseBundleDiscount > 0;
   const totalAmount = Math.max(
