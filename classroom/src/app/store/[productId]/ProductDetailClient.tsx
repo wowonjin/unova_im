@@ -581,10 +581,19 @@ export default function ProductDetailClient({
             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${product.subjectBg}`}>
               <span className={`text-sm font-bold ${product.subjectColor}`}>
                 {product.teacher.charAt(0)}
-                    </span>
+              </span>
             </div>
             <div>
-              <p className="text-[15px] font-medium">{product.teacher} 선생님</p>
+              <p className="text-[15px] font-medium flex items-center gap-1.5">
+                {product.teacher} 선생님
+                <Link 
+                  href={`/teachers/${product.teacherId}`}
+                  className="inline-flex items-center justify-center text-white/50 hover:text-white transition-colors"
+                  title={`${product.teacher} 선생님 페이지로 이동`}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>home</span>
+                </Link>
+              </p>
               <p className="text-[13px] text-white/50">{product.teacherTitle}</p>
             </div>
           </div>
