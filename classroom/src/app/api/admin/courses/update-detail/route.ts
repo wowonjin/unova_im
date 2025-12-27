@@ -15,6 +15,13 @@ const Schema = z.object({
   benefits: z.string().transform((s) => 
     s.split("\n").map((t) => t.trim()).filter(Boolean)
   ),
+  relatedTextbookIds: z.string().optional().transform((s) => {
+    try {
+      return s ? JSON.parse(s) : [];
+    } catch {
+      return [];
+    }
+  }),
 });
 
 export async function POST(req: Request) {
@@ -37,7 +44,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "INVALID_REQUEST", details: parsed.error }, { status: 400 });
   }
 
-  const { courseId, price, originalPrice, tags, benefits } = parsed.data;
+  const { courseId, price, originalPrice, tags, benefits, relatedTextbookIds } = parsed.data;
 
   // Verify ownership
   const course = await prisma.course.findUnique({
@@ -60,7 +67,8 @@ export async function POST(req: Request) {
       dailyPrice,
       tags,
       benefits,
-    },
+      relatedTextbookIds,
+    } as never,
   });
 
   return NextResponse.json({ ok: true });

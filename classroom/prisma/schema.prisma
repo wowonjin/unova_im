@@ -143,6 +143,8 @@ model Course {
   previewVimeoId String?
   // 환불 정책
   refundPolicy   String?
+  // 강의 상세 "교재 함께 구매"에 노출할 교재 ID 목록 (JSON 배열)
+  relatedTextbookIds Json?
 
   owner       User?    @relation("CourseOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   lessons     Lesson[]

@@ -520,7 +520,9 @@ export default async function ProductDetailPage({
     const dailyPrice = dbCourse.dailyPrice || Math.round(price / 30);
     const discount = originalPrice ? getDiscount(originalPrice, price) : null;
 
-    // 강의 상세에서 "교재 함께 구매" 옵션으로 보여줄 추천 교재 (최근 교재 6개)
+    // 강의 상세에서 "교재 함께 구매" 옵션으로 보여줄 교재
+    // - 강좌 관리에서 선택한 relatedTextbookIds가 있으면 그것만 노출
+    // - 없으면 최근 교재 6개로 폴백
     let bundleTextbooks: Array<{
       id: string;
       title: string;
@@ -533,22 +535,43 @@ export default async function ProductDetailPage({
       reviewCount: number | null;
     }> = [];
     try {
-      bundleTextbooks = await prisma.textbook.findMany({
-        where: { isPublished: true, owner: { email: storeOwnerEmail } },
-        orderBy: { createdAt: "desc" },
-        take: 6,
-        select: {
-          id: true,
-          title: true,
-          price: true,
-          originalPrice: true,
-          thumbnailUrl: true,
-          teacherName: true,
-          subjectName: true,
-          rating: true,
-          reviewCount: true,
-        },
-      });
+      const selectedIds = Array.isArray((dbCourse as any)?.relatedTextbookIds)
+        ? ((dbCourse as any).relatedTextbookIds as string[])
+        : [];
+
+      bundleTextbooks =
+        selectedIds.length > 0
+          ? await prisma.textbook.findMany({
+              where: { isPublished: true, owner: { email: storeOwnerEmail }, id: { in: selectedIds } },
+              orderBy: { createdAt: "desc" },
+              select: {
+                id: true,
+                title: true,
+                price: true,
+                originalPrice: true,
+                thumbnailUrl: true,
+                teacherName: true,
+                subjectName: true,
+                rating: true,
+                reviewCount: true,
+              },
+            })
+          : await prisma.textbook.findMany({
+              where: { isPublished: true, owner: { email: storeOwnerEmail } },
+              orderBy: { createdAt: "desc" },
+              take: 6,
+              select: {
+                id: true,
+                title: true,
+                price: true,
+                originalPrice: true,
+                thumbnailUrl: true,
+                teacherName: true,
+                subjectName: true,
+                rating: true,
+                reviewCount: true,
+              },
+            });
     } catch (e) {
       console.error("[store/product] failed to load bundle textbooks:", e);
       bundleTextbooks = [];

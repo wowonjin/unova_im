@@ -9,14 +9,26 @@ type Props = {
     originalPrice: number | null;
     tags: string[];
     benefits: string[];
+    relatedTextbookIds: string[];
   };
+  otherTextbooks: {
+    id: string;
+    title: string;
+    subject: string;
+    teacher: string;
+    price: number;
+    originalPrice: number | null;
+  }[];
 };
 
-export default function CourseDetailPageClient({ courseId, initial }: Props) {
+export default function CourseDetailPageClient({ courseId, initial, otherTextbooks }: Props) {
   const [price, setPrice] = useState(initial.price?.toString() || "");
   const [originalPrice, setOriginalPrice] = useState(initial.originalPrice?.toString() || "");
   const [tags, setTags] = useState((initial.tags ?? []).join(", "));
   const [benefits, setBenefits] = useState((initial.benefits ?? []).join("\n"));
+  const [selectedRelatedTextbookIds, setSelectedRelatedTextbookIds] = useState<Set<string>>(
+    new Set(initial.relatedTextbookIds ?? [])
+  );
   
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -32,6 +44,7 @@ export default function CourseDetailPageClient({ courseId, initial }: Props) {
       formData.append("originalPrice", originalPrice);
       formData.append("tags", tags);
       formData.append("benefits", benefits);
+      formData.append("relatedTextbookIds", JSON.stringify(Array.from(selectedRelatedTextbookIds)));
 
       const res = await fetch("/api/admin/courses/update-detail", {
         method: "POST",
@@ -48,7 +61,7 @@ export default function CourseDetailPageClient({ courseId, initial }: Props) {
       console.error("Save error:", error);
       setSaveStatus("error");
     }
-  }, [courseId, price, originalPrice, tags, benefits]);
+  }, [courseId, price, originalPrice, tags, benefits, selectedRelatedTextbookIds]);
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -69,7 +82,7 @@ export default function CourseDetailPageClient({ courseId, initial }: Props) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [price, originalPrice, tags, benefits, saveData]);
+  }, [price, originalPrice, tags, benefits, selectedRelatedTextbookIds, saveData]);
 
   const inputClass = "w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20";
   const labelClass = "block text-sm font-medium text-white/70 mb-1.5";
@@ -151,6 +164,69 @@ export default function CourseDetailPageClient({ courseId, initial }: Props) {
           className={inputClass}
         />
         <p className="mt-1 text-xs text-white/40">이미지 URL을 줄바꿈으로 구분하여 입력하세요.</p>
+      </div>
+
+      {/* 교재 함께 구매 (강의 상세 우측에 노출할 교재 선택) */}
+      <div>
+        <label className={labelClass}>
+          교재 함께 구매 <span className="ml-1 text-white/40 font-normal">(강의 상세 우측 옵션에 표시)</span>
+        </label>
+        <p className="mt-1 text-xs text-white/40 mb-3">
+          선택한 교재들이 강의 상세 페이지의 “교재 함께 구매” 섹션에 표시됩니다.
+        </p>
+        <div className="space-y-2">
+          {otherTextbooks.map((t) => {
+            const isSelected = selectedRelatedTextbookIds.has(t.id);
+            const discount = t.originalPrice ? Math.round((1 - t.price / t.originalPrice) * 100) : null;
+            return (
+              <label
+                key={t.id}
+                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                  isSelected
+                    ? "border-amber-400 bg-amber-500/10"
+                    : "border-white/20 hover:border-white/40"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => {
+                    setSelectedRelatedTextbookIds((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(t.id)) next.delete(t.id);
+                      else next.add(t.id);
+                      return next;
+                    });
+                  }}
+                  className="w-4 h-4 rounded border-white/30 bg-transparent text-amber-500 focus:ring-amber-500 focus:ring-offset-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className={`text-[14px] font-medium truncate ${isSelected ? "text-white" : "text-white/70"}`}>
+                    {t.title}
+                  </p>
+                  <p className={`text-[12px] mt-1 ${isSelected ? "text-white/50" : "text-white/40"}`}>
+                    {t.subject} · {t.teacher}
+                  </p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  {discount && (
+                    <span className={`text-[12px] font-bold mr-2 ${isSelected ? "text-rose-400" : "text-rose-400/70"}`}>
+                      {discount}%
+                    </span>
+                  )}
+                  <span className={`text-[15px] font-bold ${isSelected ? "text-white" : "text-white/70"}`}>
+                    {t.price.toLocaleString()}원
+                  </span>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+        {selectedRelatedTextbookIds.size > 0 && (
+          <p className="mt-3 text-sm text-white/60">
+            {selectedRelatedTextbookIds.size}개 교재가 “교재 함께 구매”에 표시됩니다.
+          </p>
+        )}
       </div>
     </div>
   );

@@ -53,6 +53,20 @@ export default async function AdminCoursePage({
     );
   }
 
+  // "교재 함께 구매"에 표시할 교재 선택을 위해, 동일 소유자의 공개 교재 목록을 불러옵니다.
+  const otherTextbooks = await prisma.textbook.findMany({
+    where: { ownerId: teacher.id, isPublished: true },
+    select: {
+      id: true,
+      title: true,
+      subjectName: true,
+      teacherName: true,
+      price: true,
+      originalPrice: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
   const enrollments = await prisma.enrollment.findMany({
     where: { courseId: course.id },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
@@ -146,7 +160,18 @@ export default async function AdminCoursePage({
                     originalPrice: course.originalPrice ?? null,
                     tags: (course.tags as string[] | null) ?? [],
                     benefits: (course.benefits as string[] | null) ?? [],
+                    relatedTextbookIds: (course as { relatedTextbookIds?: unknown }).relatedTextbookIds
+                      ? ((course as { relatedTextbookIds?: unknown }).relatedTextbookIds as string[])
+                      : [],
                   }}
+                  otherTextbooks={otherTextbooks.map((t) => ({
+                    id: t.id,
+                    title: t.title,
+                    subject: t.subjectName || "교재",
+                    teacher: t.teacherName || "선생님",
+                    price: t.price ?? 0,
+                    originalPrice: t.originalPrice,
+                  }))}
                 />
               </CardBody>
             </Card>
