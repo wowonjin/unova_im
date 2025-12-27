@@ -1332,18 +1332,9 @@ export default function ProductDetailClient({
                   handleCheckout();
                 }}
                 href="#"
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-white text-black text-[15px] font-bold transition-all hover:bg-white/90 ${isPaying ? "opacity-60 pointer-events-none" : ""}`}
+                className={`flex-1 flex items-center justify-center py-2.5 rounded-lg bg-white text-black text-[15px] font-bold transition-all hover:bg-white/90 ${isPaying ? "opacity-60 pointer-events-none" : ""}`}
               >
-                {isPaying ? (
-                  "결제 준비중..."
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
-                      {product.type === "course" ? "play_circle" : "shopping_bag"}
-                    </span>
-                    {checkoutCtaText}
-                  </>
-                )}
+                {isPaying ? "결제 준비중..." : checkoutCtaText}
               </a>
             </div>
           </div>
@@ -1394,18 +1385,9 @@ export default function ProductDetailClient({
             handleCheckout();
           }}
           href="#"
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-lg bg-white text-black text-[15px] font-bold transition-all hover:bg-white/90 ${isPaying ? "opacity-60 pointer-events-none" : ""}`}
+          className={`px-6 py-2.5 rounded-lg bg-white text-black text-[15px] font-bold transition-all hover:bg-white/90 ${isPaying ? "opacity-60 pointer-events-none" : ""}`}
           >
-          {isPaying ? (
-            "결제 준비중..."
-          ) : (
-            <>
-              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                {product.type === "course" ? "play_circle" : "shopping_bag"}
-              </span>
-              {checkoutCtaText}
-            </>
-          )}
+          {isPaying ? "결제 준비중..." : checkoutCtaText}
           </a>
       </div>
     </div>
