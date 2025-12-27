@@ -696,7 +696,7 @@ export default function ProductDetailClient({
                 <table className="w-full text-[14px]">
                   <tbody>
                     <tr className="border-b border-white/10">
-                      <td className="px-5 py-4 bg-white/[0.02] text-white/50 w-28 font-medium">
+                      <td className="px-5 py-4 bg-white/[0.02] text-white/50 w-32 font-medium whitespace-nowrap">
                         {product.type === "textbook" ? "다운로드 기간" : "수강 기간"}
                       </td>
                       <td className="px-5 py-4 text-white/90">
