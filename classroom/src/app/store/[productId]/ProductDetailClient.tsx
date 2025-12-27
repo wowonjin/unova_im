@@ -1206,7 +1206,7 @@ export default function ProductDetailClient({
               <div className="px-5 pt-4 pb-3">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <p className="text-[14px] font-bold">수강 옵션</p>
-                  <span className="text-[12px] font-medium text-white/60">강의 10,000원 할인 (교재 선택 시)</span>
+                  <span className="text-[12px] font-medium text-white/60">강의 10,000원 할인</span>
                 </div>
               
                 {/* 옵션 1 - 정규 강의 + 복습 기간 */}
