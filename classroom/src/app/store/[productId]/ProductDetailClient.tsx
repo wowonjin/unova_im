@@ -1192,65 +1192,66 @@ export default function ProductDetailClient({
             </div>
           </div>
 
-          {/* 강의 상세: 가격 아래 구분선 (교재 상세와 동일한 느낌) */}
-          {product.type === "course" && <div className="mx-5 border-t border-white/10" />}
-
           {/* 수강 옵션 (강좌 전용) */}
           {product.type === "course" && (
-            <div className="px-5 pb-5">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-[14px] font-bold">수강 옵션</p>
-                <span className="text-[12px] font-medium text-white/60">강의 10,000원 할인 (교재 선택 시)</span>
-              </div>
+            <>
+              {/* 교재 상세처럼: 가격 아래 구분선 + 동일한 섹션 패딩 리듬 */}
+              <div className="mx-5 border-t border-white/10" />
+              <div className="px-5 pt-4 pb-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-[14px] font-bold">수강 옵션</p>
+                  <span className="text-[12px] font-medium text-white/60">강의 10,000원 할인 (교재 선택 시)</span>
+                </div>
               
-              {/* 옵션 1 - 정규 강의 + 복습 기간 */}
-              <div 
-                onClick={() => setSelectedOption("full")}
-                className={`rounded-lg p-4 mb-3 cursor-pointer transition-all ${
-                  selectedOption === "full" 
-                    ? "border-2 border-white/60 bg-white/5" 
-                    : "border border-white/20 hover:border-white/40"
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className={`text-[14px] font-medium ${selectedOption === "full" ? "text-white" : "text-white/70"}`}>
-                      정규 강의 + 복습 기간
-                    </p>
-                    <p className={`text-[12px] mt-1 ${selectedOption === "full" ? "text-white/50" : "text-white/40"}`}>
-                      온라인 VOD + {product.studyPeriod.regular + product.studyPeriod.review}일 수강
+                {/* 옵션 1 - 정규 강의 + 복습 기간 */}
+                <div 
+                  onClick={() => setSelectedOption("full")}
+                  className={`rounded-lg p-4 mb-3 cursor-pointer transition-all ${
+                    selectedOption === "full" 
+                      ? "border-2 border-white/60 bg-white/5" 
+                      : "border border-white/20 hover:border-white/40"
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className={`text-[14px] font-medium ${selectedOption === "full" ? "text-white" : "text-white/70"}`}>
+                        정규 강의 + 복습 기간
+                      </p>
+                      <p className={`text-[12px] mt-1 ${selectedOption === "full" ? "text-white/50" : "text-white/40"}`}>
+                        온라인 VOD + {product.studyPeriod.regular + product.studyPeriod.review}일 수강
+                      </p>
+                    </div>
+                    <p className={`text-[15px] font-bold ${selectedOption === "full" ? "text-white" : "text-white/70"}`}>
+                      {product.formattedPrice}
                     </p>
                   </div>
-                  <p className={`text-[15px] font-bold ${selectedOption === "full" ? "text-white" : "text-white/70"}`}>
-                    {product.formattedPrice}
-                  </p>
                 </div>
-              </div>
 
-              {/* 옵션 2 - 정규 강의만 */}
-              <div 
-                onClick={() => setSelectedOption("regular")}
-                className={`rounded-lg p-4 cursor-pointer transition-all ${
-                  selectedOption === "regular" 
-                    ? "border-2 border-white/60 bg-white/5" 
-                    : "border border-white/20 hover:border-white/40"
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className={`text-[14px] font-medium ${selectedOption === "regular" ? "text-white" : "text-white/70"}`}>
-                      정규 강의만
-                    </p>
-                    <p className={`text-[12px] mt-1 ${selectedOption === "regular" ? "text-white/50" : "text-white/40"}`}>
-                      온라인 VOD + {product.studyPeriod.regular}일 수강
+                {/* 옵션 2 - 정규 강의만 */}
+                <div 
+                  onClick={() => setSelectedOption("regular")}
+                  className={`rounded-lg p-4 cursor-pointer transition-all ${
+                    selectedOption === "regular" 
+                      ? "border-2 border-white/60 bg-white/5" 
+                      : "border border-white/20 hover:border-white/40"
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className={`text-[14px] font-medium ${selectedOption === "regular" ? "text-white" : "text-white/70"}`}>
+                        정규 강의만
+                      </p>
+                      <p className={`text-[12px] mt-1 ${selectedOption === "regular" ? "text-white/50" : "text-white/40"}`}>
+                        온라인 VOD + {product.studyPeriod.regular}일 수강
+                      </p>
+                    </div>
+                    <p className={`text-[15px] font-bold ${selectedOption === "regular" ? "text-white" : "text-white/70"}`}>
+                      {Math.round(product.price * 0.8).toLocaleString()}원
                     </p>
                   </div>
-                  <p className={`text-[15px] font-bold ${selectedOption === "regular" ? "text-white" : "text-white/70"}`}>
-                    {Math.round(product.price * 0.8).toLocaleString()}원
-                  </p>
                 </div>
               </div>
-            </div>
+            </>
           )}
 
           {/* 추가 교재 구매 (교재 전용) */}
@@ -1335,8 +1336,11 @@ export default function ProductDetailClient({
           {/* 구분선 및 상품 금액 (강좌이거나, 교재인데 추가 선택한 경우에만 표시) */}
           {showPriceBreakdown && (
             <>
-              {/* 강좌: 수강 옵션과 총 결제 금액 사이 구분선 제거 */}
-              {product.type !== "course" && <div className="mx-5 border-t border-white/10" />}
+              {/* 강좌: 옵션 바로 아래(=수강 옵션 ↔ 총 결제 금액) 구분선은 제거하되,
+                  교재 섹션이 존재할 때는 교재 섹션 ↔ 총 결제 금액 사이를 동일한 divider로 분리 */}
+              {(product.type !== "course" || relatedProducts.length > 0) && (
+                <div className="mx-5 border-t border-white/10" />
+              )}
 
               <div className="p-5 pb-0">
                 {/* 기본 상품 금액 */}
