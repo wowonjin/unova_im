@@ -9,6 +9,7 @@ import PublishToggleClient from "@/app/_components/PublishToggleClient";
 import { ConfirmDeleteIconButton } from "@/app/_components/ConfirmDeleteButton";
 import LessonListClient from "@/app/_components/LessonListClient";
 import CourseDetailPageClient from "@/app/_components/CourseDetailPageClient";
+import CourseAddonsClient from "@/app/_components/CourseAddonsClient";
 
 export default async function AdminCoursePage({
   params,
@@ -32,7 +33,8 @@ export default async function AdminCoursePage({
   ) as
     | "curriculum"
     | "students"
-    | "settings";
+    | "settings"
+    | "addons";
   const imwebMsg = sp.imweb || null;
   const thumbMsg = sp.thumb || null;
   const enrollMsg = sp.enroll || null;
@@ -64,6 +66,13 @@ export default async function AdminCoursePage({
       price: true,
       originalPrice: true,
     },
+    orderBy: { createdAt: "desc" },
+  });
+
+  // "추가 상품(강의)" 선택을 위해, 동일 소유자의 공개 강좌 목록을 불러옵니다(현재 강좌 제외).
+  const otherCourses = await prisma.course.findMany({
+    where: { ownerId: teacher.id, isPublished: true, id: { not: course.id } },
+    select: { id: true, title: true, subjectName: true, teacherName: true, price: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -112,6 +121,7 @@ export default async function AdminCoursePage({
         activeKey={tab}
         items={[
           { key: "settings", label: "설정", href: `/admin/course/${course.id}?tab=settings` },
+          { key: "addons", label: "추가 상품", href: `/admin/course/${course.id}?tab=addons` },
           { key: "curriculum", label: "강의목록", href: `/admin/course/${course.id}?tab=curriculum` },
           { key: "students", label: "수강학생", href: `/admin/course/${course.id}?tab=students` },
         ]}
@@ -160,22 +170,43 @@ export default async function AdminCoursePage({
                     originalPrice: course.originalPrice ?? null,
                     tags: (course.tags as string[] | null) ?? [],
                     benefits: (course.benefits as string[] | null) ?? [],
-                    relatedTextbookIds: (course as { relatedTextbookIds?: unknown }).relatedTextbookIds
-                      ? ((course as { relatedTextbookIds?: unknown }).relatedTextbookIds as string[])
-                      : [],
                   }}
-                  otherTextbooks={otherTextbooks.map((t) => ({
-                    id: t.id,
-                    title: t.title,
-                    subject: t.subjectName || "교재",
-                    teacher: t.teacherName || "선생님",
-                    price: t.price ?? 0,
-                    originalPrice: t.originalPrice,
-                  }))}
                 />
               </CardBody>
             </Card>
           </div>
+        ) : tab === "addons" ? (
+          <Card className="lg:col-span-3">
+            <CardHeader
+              title="추가 상품"
+              description="강의 상세 우측 메뉴에 표시될 추가 상품(강의/교재)을 선택합니다."
+            />
+            <CardBody>
+              <CourseAddonsClient
+                courseId={course.id}
+                initial={{
+                  relatedTextbookIds: Array.isArray((course as any)?.relatedTextbookIds)
+                    ? ((course as any).relatedTextbookIds as string[])
+                    : [],
+                  relatedCourseIds: Array.isArray((course as any)?.relatedCourseIds)
+                    ? ((course as any).relatedCourseIds as string[])
+                    : [],
+                }}
+                textbooks={otherTextbooks.map((t) => ({
+                  id: t.id,
+                  title: t.title,
+                  meta: `${t.subjectName || "교재"} · ${t.teacherName || "선생님"}`,
+                  price: t.price ?? 0,
+                }))}
+                courses={otherCourses.map((c) => ({
+                  id: c.id,
+                  title: c.title,
+                  meta: `${c.subjectName || "강좌"} · ${c.teacherName || "선생님"}`,
+                  price: c.price ?? 0,
+                }))}
+              />
+            </CardBody>
+          </Card>
         ) : tab === "students" ? (
           <Card className="lg:col-span-3">
             <CardHeader

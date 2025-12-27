@@ -145,6 +145,8 @@ model Course {
   refundPolicy   String?
   // 강의 상세 "교재 함께 구매"에 노출할 교재 ID 목록 (JSON 배열)
   relatedTextbookIds Json?
+  // 강의 상세 "추가 상품"에 노출할 강좌 ID 목록 (JSON 배열)
+  relatedCourseIds   Json?
 
   owner       User?    @relation("CourseOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   lessons     Lesson[]
