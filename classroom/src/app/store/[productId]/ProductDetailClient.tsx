@@ -1307,7 +1307,7 @@ export default function ProductDetailClient({
                 )}
                 
                 {/* 총 결제 금액 */}
-                <div className="flex items-center justify-between mb-4 pt-2 border-t border-white/10">
+                <div className="flex items-center justify-between pt-2 border-t border-white/10">
                   <span className="text-[14px] font-bold">총 결제 금액</span>
                   <span className="text-[20px] font-bold">{totalAmount.toLocaleString()}원</span>
                 </div>
@@ -1316,7 +1316,7 @@ export default function ProductDetailClient({
           )}
 
           {/* 버튼 영역 */}
-          <div className="p-5">
+          <div className="px-5 pt-3 pb-5">
             <div className="flex gap-3">
               <button 
                 onClick={handleToggleLike}
