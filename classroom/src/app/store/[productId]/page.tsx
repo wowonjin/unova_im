@@ -535,9 +535,18 @@ export default async function ProductDetailPage({
       reviewCount: number | null;
     }> = [];
     try {
-      const selectedIds = Array.isArray((dbCourse as any)?.relatedTextbookIds)
-        ? ((dbCourse as any).relatedTextbookIds as string[])
-        : [];
+      let selectedIds: string[] = [];
+      try {
+        const rows = (await prisma.$queryRawUnsafe(
+          'SELECT "relatedTextbookIds" FROM "Course" WHERE "id" = $1',
+          dbCourse.id
+        )) as any[];
+        const raw = rows?.[0]?.relatedTextbookIds;
+        selectedIds = Array.isArray(raw) ? raw : [];
+      } catch (e) {
+        console.error("[store/product] failed to read course relatedTextbookIds via raw:", e);
+        selectedIds = [];
+      }
 
       bundleTextbooks =
         selectedIds.length > 0

@@ -55,6 +55,28 @@ export default async function AdminCoursePage({
     );
   }
 
+  // NOTE: Prisma Client가 아직 relatedTextbookIds/relatedCourseIds를 모르는 상태에서도
+  // 관리자 UI에 저장된 선택값을 다시 보여주기 위해 raw로 읽어옵니다.
+  let savedAddons: { relatedTextbookIds: string[]; relatedCourseIds: string[] } = {
+    relatedTextbookIds: [],
+    relatedCourseIds: [],
+  };
+  try {
+    const rows = (await prisma.$queryRawUnsafe(
+      'SELECT "relatedTextbookIds", "relatedCourseIds" FROM "Course" WHERE "id" = $1',
+      course.id
+    )) as any[];
+    const r = rows?.[0] ?? {};
+    const tb = r.relatedTextbookIds;
+    const cs = r.relatedCourseIds;
+    savedAddons = {
+      relatedTextbookIds: Array.isArray(tb) ? tb : [],
+      relatedCourseIds: Array.isArray(cs) ? cs : [],
+    };
+  } catch (e) {
+    console.error("[AdminCoursePage] failed to load saved addons columns:", e);
+  }
+
   // "교재 함께 구매"에 표시할 교재 선택을 위해, 동일 소유자의 공개 교재 목록을 불러옵니다.
   const otherTextbooks = await prisma.textbook.findMany({
     where: { ownerId: teacher.id, isPublished: true },
@@ -185,12 +207,8 @@ export default async function AdminCoursePage({
               <CourseAddonsClient
                 courseId={course.id}
                 initial={{
-                  relatedTextbookIds: Array.isArray((course as any)?.relatedTextbookIds)
-                    ? ((course as any).relatedTextbookIds as string[])
-                    : [],
-                  relatedCourseIds: Array.isArray((course as any)?.relatedCourseIds)
-                    ? ((course as any).relatedCourseIds as string[])
-                    : [],
+                  relatedTextbookIds: savedAddons.relatedTextbookIds,
+                  relatedCourseIds: savedAddons.relatedCourseIds,
                 }}
                 textbooks={otherTextbooks.map((t) => ({
                   id: t.id,

@@ -44,10 +44,20 @@ export async function POST(req: Request) {
   }
 
   try {
-    await prisma.course.update({
-      where: { id: courseId },
-      data: { relatedTextbookIds, relatedCourseIds } as never,
-    });
+    // Prisma client may be behind the DB/schema while dev server is running.
+    // Use raw SQL so "Unknown argument relatedTextbookIds" doesn't block saving.
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "relatedTextbookIds" JSONB;'
+    );
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "relatedCourseIds" JSONB;'
+    );
+    await prisma.$executeRawUnsafe(
+      'UPDATE "Course" SET "relatedTextbookIds" = $1::jsonb, "relatedCourseIds" = $2::jsonb WHERE "id" = $3',
+      JSON.stringify(Array.isArray(relatedTextbookIds) ? relatedTextbookIds : []),
+      JSON.stringify(Array.isArray(relatedCourseIds) ? relatedCourseIds : []),
+      courseId
+    );
   } catch (e: any) {
     // Help debug "저장 중 오류" from client
     console.error("[api/admin/courses/update-addons] update failed:", {
