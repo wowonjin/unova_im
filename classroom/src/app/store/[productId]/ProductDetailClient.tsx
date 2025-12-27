@@ -124,7 +124,13 @@ export default function ProductDetailClient({
   // UI에서는 "기본 상품"을 숨기고(=미설정처럼 취급) 표시를 깔끔하게 합니다.
   const hasBaseProduct = Number.isFinite(baseAmount) && baseAmount > 0;
   const hasAdditionalSelection = selectedRelatedIds.size > 0;
-  const showPriceBreakdown = product.type === "course" || hasAdditionalSelection;
+  // 강좌는 기본 금액이 있을 때만(또는 교재를 선택했을 때만) 총 결제 영역을 보여서
+  // "교재 미선택 시 총 결제 위에 divider/빈공간" 같은 어색한 공백을 방지합니다.
+  const showPriceBreakdown = hasBaseProduct || hasAdditionalSelection;
+  const showDividerBeforeSummary =
+    product.type === "course" ? hasAdditionalSelection : showPriceBreakdown;
+  const hasSummaryLinesAboveTotal =
+    hasBaseProduct || hasAdditionalSelection || additionalTextbookDiscount > 0 || courseBundleDiscount > 0;
   const totalAmount = Math.max(
     0,
     (hasBaseProduct ? baseAmount : 0) +
@@ -1338,11 +1344,9 @@ export default function ProductDetailClient({
             <>
               {/* 강좌: 옵션 바로 아래(=수강 옵션 ↔ 총 결제 금액) 구분선은 제거하되,
                   교재 섹션이 존재할 때는 교재 섹션 ↔ 총 결제 금액 사이를 동일한 divider로 분리 */}
-              {(product.type !== "course" || relatedProducts.length > 0) && (
-                <div className="mx-5 border-t border-white/10" />
-              )}
+              {showDividerBeforeSummary && <div className="mx-5 border-t border-white/10" />}
 
-              <div className="p-5 pb-0">
+              <div className={hasSummaryLinesAboveTotal ? "p-5 pb-0" : "px-5 pt-3 pb-0"}>
                 {/* 기본 상품 금액 */}
                 {hasBaseProduct && (
                   <div className="flex items-center justify-between mb-2">
@@ -1398,7 +1402,11 @@ export default function ProductDetailClient({
                 )}
                 
                 {/* 총 결제 금액 */}
-                <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                <div
+                  className={`flex items-center justify-between ${
+                    hasSummaryLinesAboveTotal ? "pt-2 border-t border-white/10" : ""
+                  }`}
+                >
                   <span className="text-[14px] font-bold">총 결제 금액</span>
                   <span className="text-[20px] font-bold">{totalAmount.toLocaleString()}원</span>
                 </div>
