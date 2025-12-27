@@ -715,33 +715,34 @@ export default function ProductDetailClient({
           {/* 소개(강좌/교재) */}
           {activeTab === introTabKey && (
             <section>
-              {/* 교재는 기간/구성 테이블 유지, 강좌는 제거하고 "수강 혜택" 이미지로 대체 */}
-              {product.type === "textbook" ? (
-                <div className="rounded-xl border border-white/10 overflow-hidden mb-8">
-                  <table className="w-full text-[14px]">
-                    <tbody>
-                      <tr className="border-b border-white/10">
-                        <td className="px-5 py-4 bg-white/[0.02] text-white/50 w-32 font-medium whitespace-nowrap">
-                          다운로드 기간
-                        </td>
-                        <td className="px-5 py-4 text-white/90">
-                          {product.studyPeriod.regular + product.studyPeriod.review}일
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">구성</td>
-                        <td className="px-5 py-4 text-white/90">PDF 교재</td>
-                      </tr>
-                      {(product.extraOptions ?? []).map((opt, i) => (
+              {/* 수강기간/구성 컨테이너는 강좌/교재 모두 유지 */}
+              <div className="rounded-xl border border-white/10 overflow-hidden mb-8">
+                <table className="w-full text-[14px]">
+                  <tbody>
+                    <tr className="border-b border-white/10">
+                      <td className="px-5 py-4 bg-white/[0.02] text-white/50 w-32 font-medium whitespace-nowrap">
+                        {product.type === "textbook" ? "다운로드 기간" : "수강 기간"}
+                      </td>
+                      <td className="px-5 py-4 text-white/90">
+                        {product.studyPeriod.regular + product.studyPeriod.review}일
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">구성</td>
+                      <td className="px-5 py-4 text-white/90">
+                        {product.type === "textbook" ? "PDF 교재" : `총 ${totalLessons}개 수업`}
+                      </td>
+                    </tr>
+                    {product.type === "textbook" &&
+                      (product.extraOptions ?? []).map((opt, i) => (
                         <tr key={`${opt.name}-${i}`} className="border-t border-white/10">
                           <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">{opt.name}</td>
                           <td className="px-5 py-4 text-white/90 whitespace-pre-line">{opt.value}</td>
                         </tr>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : null}
+                  </tbody>
+                </table>
+              </div>
 
               {product.type === "course" ? (
                 <div className="mb-8 space-y-3">
@@ -760,6 +761,7 @@ export default function ProductDetailClient({
               ) : null}
 
               {/* 강의 설명 */}
+              {product.type !== "course" && (
               <div className="rounded-xl border border-white/10 p-6">
                 <p className="text-[15px] text-white/80 leading-relaxed whitespace-pre-line">
                   {product.description}
@@ -790,6 +792,7 @@ export default function ProductDetailClient({
                   </ul>
                 </div>
               </div>
+              )}
             </section>
           )}
 
