@@ -520,6 +520,40 @@ export default async function ProductDetailPage({
     const dailyPrice = dbCourse.dailyPrice || Math.round(price / 30);
     const discount = originalPrice ? getDiscount(originalPrice, price) : null;
 
+    // 강의 상세에서 "교재 함께 구매" 옵션으로 보여줄 추천 교재 (최근 교재 6개)
+    let bundleTextbooks: Array<{
+      id: string;
+      title: string;
+      price: number | null;
+      originalPrice: number | null;
+      thumbnailUrl: string | null;
+      teacherName: string | null;
+      subjectName: string | null;
+      rating: number | null;
+      reviewCount: number | null;
+    }> = [];
+    try {
+      bundleTextbooks = await prisma.textbook.findMany({
+        where: { isPublished: true, owner: { email: storeOwnerEmail } },
+        orderBy: { createdAt: "desc" },
+        take: 6,
+        select: {
+          id: true,
+          title: true,
+          price: true,
+          originalPrice: true,
+          thumbnailUrl: true,
+          teacherName: true,
+          subjectName: true,
+          rating: true,
+          reviewCount: true,
+        },
+      });
+    } catch (e) {
+      console.error("[store/product] failed to load bundle textbooks:", e);
+      bundleTextbooks = [];
+    }
+
     // lessons를 curriculum 형태로 변환
     const curriculum = [{
       chapter: "전체 강의",
@@ -569,6 +603,17 @@ export default async function ProductDetailPage({
                 formattedDailyPrice: formatPrice(dailyPrice),
                 previewVimeoId: dbCourse.previewVimeoId,
               }}
+              relatedProducts={bundleTextbooks.map((t) => ({
+                id: t.id,
+                title: t.title,
+                price: t.price || 0,
+                originalPrice: t.originalPrice,
+                thumbnailUrl: t.thumbnailUrl,
+                teacher: t.teacherName || "선생님",
+                subject: t.subjectName || "교재",
+                rating: t.rating ?? 0,
+                reviewCount: t.reviewCount ?? 0,
+              }))}
             />
           </div>
         </main>

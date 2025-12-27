@@ -87,18 +87,31 @@ export async function POST(req: Request) {
     });
   }
 
-  // "추가 교재 구매" 할인: 교재를 한 권 고를 때마다 5,000원, 최대 10,000원
-  // (교재 상세의 메인 교재 + 선택한 추가 교재들 시나리오를 기준으로, 추가 교재 개수만큼 할인)
   const firstItem = cartItems[0];
-  const additionalTextbookCount =
-    firstItem?.productType === "TEXTBOOK"
-      ? Math.max(0, cartItems.filter((i) => i.productType === "TEXTBOOK").length - 1)
+
+  // 할인 정책
+  // - 교재 할인: 선택 교재 1권당 5,000원, 최대 10,000원
+  //   - 강의+교재 묶음: 선택한 교재 개수만큼 할인
+  //   - 교재 상세(교재+추가교재): "추가 교재" 개수만큼 할인 (= 전체 교재 개수 - 1)
+  // - 강의 할인: 강의+교재를 함께 구매할 경우 10,000원
+  const hasCourse = cartItems.some((i) => i.productType === "COURSE");
+  const textbookCount = cartItems.filter((i) => i.productType === "TEXTBOOK").length;
+
+  const additionalTextbookCount = hasCourse
+    ? textbookCount
+    : firstItem?.productType === "TEXTBOOK"
+      ? Math.max(0, textbookCount - 1)
       : 0;
-  const additionalDiscount = Math.min(
+
+  const additionalTextbookDiscount = Math.min(
     additionalTextbookCount * ADDITIONAL_TEXTBOOK_DISCOUNT_PER,
     ADDITIONAL_TEXTBOOK_DISCOUNT_MAX
   );
-  totalAmount = Math.max(0, totalAmount - additionalDiscount);
+
+  const courseBundleDiscount = hasCourse && textbookCount > 0 ? 10000 : 0;
+
+  const totalDiscount = additionalTextbookDiscount + courseBundleDiscount;
+  totalAmount = Math.max(0, totalAmount - totalDiscount);
 
   if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
     return NextResponse.json({ ok: false, error: "INVALID_AMOUNT" }, { status: 400 });
@@ -126,7 +139,14 @@ export async function POST(req: Request) {
       enrolled: false,
       // 다중 상품 정보를 providerPayload에 저장해둠(컬럼 추가 없이 사용)
       // confirm 단계에서 toss 응답과 병합 저장합니다.
-      providerPayload: { lineItems: { items: orderItems }, discounts: { additionalTextbookDiscount: additionalDiscount } },
+      providerPayload: {
+        lineItems: { items: orderItems },
+        discounts: {
+          additionalTextbookDiscount,
+          courseBundleDiscount,
+          totalDiscount,
+        },
+      },
     },
   });
 
