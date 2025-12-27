@@ -1174,6 +1174,9 @@ export default function ProductDetailClient({
             </div>
           </div>
 
+          {/* 강의 상세: 가격 아래 구분선 (교재 상세와 동일한 느낌) */}
+          {product.type === "course" && <div className="mx-5 border-t border-white/10" />}
+
           {/* 수강 옵션 (강좌 전용) */}
           {product.type === "course" && (
             <div className="px-5 pb-5">
@@ -1311,7 +1314,8 @@ export default function ProductDetailClient({
           {/* 구분선 및 상품 금액 (강좌이거나, 교재인데 추가 선택한 경우에만 표시) */}
           {showPriceBreakdown && (
             <>
-              <div className="mx-5 border-t border-white/10" />
+              {/* 강좌: 수강 옵션과 총 결제 금액 사이 구분선 제거 */}
+              {product.type !== "course" && <div className="mx-5 border-t border-white/10" />}
 
               <div className="p-5 pb-0">
                 {/* 기본 상품 금액 */}
