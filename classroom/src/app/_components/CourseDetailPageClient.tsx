@@ -2,6 +2,15 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 
+function normalizeGcsUrl(s: string): string {
+  const t = (s ?? "").trim();
+  if (!t) return "";
+  if (t.toLowerCase().startsWith("gs://")) {
+    return `https://storage.googleapis.com/${t.slice(5)}`;
+  }
+  return t;
+}
+
 type Props = {
   courseId: string;
   initial: {
@@ -73,6 +82,10 @@ export default function CourseDetailPageClient({ courseId, initial }: Props) {
 
   const inputClass = "w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20";
   const labelClass = "block text-sm font-medium text-white/70 mb-1.5";
+  const benefitImageUrls = benefits
+    .split("\n")
+    .map((x) => normalizeGcsUrl(x))
+    .filter((x) => /^https?:\/\//i.test(x));
 
   return (
     <div className="space-y-6">
@@ -150,7 +163,24 @@ export default function CourseDetailPageClient({ courseId, initial }: Props) {
           rows={4}
           className={inputClass}
         />
-        <p className="mt-1 text-xs text-white/40">이미지 URL을 줄바꿈으로 구분하여 입력하세요.</p>
+        <p className="mt-1 text-xs text-white/40">
+          구글 스토리지 URL을 줄바꿈으로 구분하여 입력하세요. (예: <span className="text-white/50">https://storage.googleapis.com/...</span> 또는{" "}
+          <span className="text-white/50">gs://bucket/path</span>)
+        </p>
+
+        {benefitImageUrls.length > 0 && (
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {benefitImageUrls.slice(0, 6).map((url, idx) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={`${courseId}-benefit-preview-${idx}`}
+                src={url}
+                alt="수강 혜택 이미지 미리보기"
+                className="w-full rounded-xl border border-white/10 bg-white/[0.02] object-cover"
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

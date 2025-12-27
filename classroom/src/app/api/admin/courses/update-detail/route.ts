@@ -12,9 +12,18 @@ const Schema = z.object({
   tags: z.string().transform((s) => 
     s.split(",").map((t) => t.trim()).filter(Boolean)
   ),
-  benefits: z.string().transform((s) => 
-    s.split("\n").map((t) => t.trim()).filter(Boolean)
-  ),
+  benefits: z.string().transform((s) => {
+    const lines = s
+      .split("\n")
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .map((t) => {
+        // Allow Google Cloud Storage gs:// URLs by normalizing to public https://storage.googleapis.com/...
+        if (t.toLowerCase().startsWith("gs://")) return `https://storage.googleapis.com/${t.slice(5)}`;
+        return t;
+      });
+    return lines;
+  }),
 });
 
 export async function POST(req: Request) {

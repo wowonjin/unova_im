@@ -747,6 +747,11 @@ export default function ProductDetailClient({
               {product.type === "course" ? (
                 <div className="mb-8 space-y-3">
                   {(product.benefits ?? [])
+                    .map((x) => {
+                      const t = (typeof x === "string" ? x : "").trim();
+                      if (t.toLowerCase().startsWith("gs://")) return `https://storage.googleapis.com/${t.slice(5)}`;
+                      return t;
+                    })
                     .filter((x) => typeof x === "string" && /^https?:\/\//i.test(x.trim()))
                     .map((url, idx) => (
                       // eslint-disable-next-line @next/next/no-img-element
