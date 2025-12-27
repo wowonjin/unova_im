@@ -62,6 +62,18 @@ export default async function AdminCoursePage({
     relatedCourseIds: [],
   };
   try {
+    // Ensure columns exist on DB (safe on existing DBs). Prevents 42703 "column does not exist".
+    try {
+      await prisma.$executeRawUnsafe(
+        'ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "relatedTextbookIds" JSONB;'
+      );
+      await prisma.$executeRawUnsafe(
+        'ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "relatedCourseIds" JSONB;'
+      );
+    } catch (e) {
+      console.error("[AdminCoursePage] failed to ensure addons columns:", e);
+    }
+
     const rows = (await prisma.$queryRawUnsafe(
       'SELECT "relatedTextbookIds", "relatedCourseIds" FROM "Course" WHERE "id" = $1',
       course.id
