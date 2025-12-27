@@ -1252,61 +1252,59 @@ export default function ProductDetailClient({
             </>
           )}
 
-          {/* 구분선 */}
-          <div className="mx-5 border-t border-white/10" />
+          {/* 구분선 및 상품 금액 (강좌이거나, 교재인데 추가 선택한 경우에만 표시) */}
+          {(product.type === "course" || selectedRelatedIds.size > 0) && (
+            <>
+              <div className="mx-5 border-t border-white/10" />
 
-          {/* 상품 금액 */}
-          <div className="p-5">
-            {/* 기본 상품 금액 (교재: 추가 교재 선택 시에만 표시) */}
-            {hasBaseProduct && (product.type === "course" || selectedRelatedIds.size > 0) && (
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[14px] font-medium text-white">기본 상품</span>
-                <span className="text-[16px] font-medium">
-                  {product.type === "course"
-                    ? selectedOption === "full"
-                      ? product.formattedPrice
-                      : `${(product.price * 0.8).toLocaleString()}원`
-                    : product.formattedPrice}
-                </span>
-              </div>
-            )}
-            
-            {/* 추가 교재 금액 (선택한 경우에만) */}
-            {product.type === "textbook" && selectedRelatedIds.size > 0 && (
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[14px] font-medium text-white">추가 교재 {selectedRelatedIds.size}개</span>
-                <span className="text-[16px] font-medium text-white">
-                  +{additionalAmount.toLocaleString()}원
-                </span>
-              </div>
-            )}
+              <div className="p-5">
+                {/* 기본 상품 금액 */}
+                {hasBaseProduct && (
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[14px] font-medium text-white">기본 상품</span>
+                    <span className="text-[16px] font-medium">
+                      {product.type === "course"
+                        ? selectedOption === "full"
+                          ? product.formattedPrice
+                          : `${(product.price * 0.8).toLocaleString()}원`
+                        : product.formattedPrice}
+                    </span>
+                  </div>
+                )}
+                
+                {/* 추가 교재 금액 (선택한 경우에만) */}
+                {product.type === "textbook" && selectedRelatedIds.size > 0 && (
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[14px] font-medium text-white">추가 교재 {selectedRelatedIds.size}개</span>
+                    <span className="text-[16px] font-medium text-white">
+                      +{additionalAmount.toLocaleString()}원
+                    </span>
+                  </div>
+                )}
 
-            {/* 추가 할인 (교재 전용, 선택한 경우에만) */}
-            {product.type === "textbook" && selectedRelatedIds.size > 0 && additionalDiscount > 0 && (
-              <div className="flex items-center justify-between mb-2">
-                <span className="flex items-center gap-2 text-[14px] font-medium text-white">
-                  추가 교재 할인
-                  <span className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-1.5 py-0.5 text-[9px] font-bold leading-none text-white">
-                    SALE
-                  </span>
-                </span>
-                <span className="text-[16px] font-medium text-white">
-                  -{additionalDiscount.toLocaleString()}원
-                </span>
+                {/* 추가 할인 (교재 전용, 선택한 경우에만) */}
+                {product.type === "textbook" && selectedRelatedIds.size > 0 && additionalDiscount > 0 && (
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="flex items-center gap-2 text-[14px] font-medium text-white">
+                      추가 교재 할인
+                      <span className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-1.5 py-0.5 text-[9px] font-bold leading-none text-white">
+                        SALE
+                      </span>
+                    </span>
+                    <span className="text-[16px] font-medium text-white">
+                      -{additionalDiscount.toLocaleString()}원
+                    </span>
+                  </div>
+                )}
+                
+                {/* 총 결제 금액 */}
+                <div className="flex items-center justify-between mb-4 pt-2 border-t border-white/10">
+                  <span className="text-[14px] font-bold">총 결제 금액</span>
+                  <span className="text-[20px] font-bold">{totalAmount.toLocaleString()}원</span>
+                </div>
               </div>
-            )}
-            
-            {/* 총 결제 금액 */}
-            {totalAmount > 0 ? (
-              <div className="flex items-center justify-between mb-4 pt-2 border-t border-white/10">
-                <span className="text-[14px] font-bold">총 결제 금액</span>
-                <span className="text-[20px] font-bold">{totalAmount.toLocaleString()}원</span>
-              </div>
-            ) : (
-              <div className="mb-4 pt-2 border-t border-white/10 text-[13px] text-white/50">
-                가격 정보 준비중
-              </div>
-            )}
+            </>
+          )}
 
             {/* 버튼 영역 */}
             <div className="flex gap-3">
