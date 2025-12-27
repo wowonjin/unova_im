@@ -46,6 +46,7 @@ export default async function Sidebar() {
 
   const allCourses = showAllCourses
     ? await prisma.course.findMany({
+        where: { isPublished: true },
         orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
         select: {
           id: true,
