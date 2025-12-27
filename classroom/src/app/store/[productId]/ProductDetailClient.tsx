@@ -839,9 +839,7 @@ export default function ProductDetailClient({
                         key={star}
                         className={`text-[16px] ${
                           star <= Math.round(averageRating)
-                            ? product.type === "textbook"
-                              ? "text-white"
-                              : "text-yellow-200"
+                            ? "text-yellow-200"
                             : "text-white/20"
                         }`}
                       >
@@ -896,9 +894,7 @@ export default function ProductDetailClient({
                             onClick={() => setReviewFormRating(star)}
                             className={`text-[22px] transition-all transform hover:scale-110 ${
                               star <= reviewFormRating
-                                ? product.type === "textbook"
-                                  ? "text-white"
-                                  : "text-yellow-300"
+                                ? "text-yellow-300"
                                 : "text-white/20"
                             }`}
                           >
@@ -1006,9 +1002,7 @@ export default function ProductDetailClient({
                                   key={star}
                                     className={`text-[12px] ${
                                       star <= Math.round(review.rating)
-                                        ? product.type === "textbook"
-                                          ? "text-white"
-                                          : "text-yellow-200"
+                                        ? "text-yellow-200"
                                         : "text-white/20"
                                   }`}
                                 >
