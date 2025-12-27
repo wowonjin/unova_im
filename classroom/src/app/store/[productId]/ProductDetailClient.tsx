@@ -844,7 +844,7 @@ export default function ProductDetailClient({
               {/* 평점 요약 */}
               <div className="flex items-center gap-4 mb-6 p-5 rounded-xl bg-white/[0.02] border border-white/10">
                 <div className="text-center">
-                  <p className={`text-[36px] font-bold ${product.type === "textbook" ? "text-white" : "text-yellow-200"}`}>
+                  <p className="text-[36px] font-bold text-white">
                     {averageRating.toFixed(1)}
                   </p>
                   <div className="flex justify-center mt-1">
