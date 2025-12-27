@@ -625,17 +625,18 @@ export default function ProductDetailClient({
         {/* 강의 정보 섹션 */}
         <section className="mb-8">
           {/* 태그 */}
-          <div className="flex items-center gap-2 mb-4">
-            <span className="px-2.5 py-1 rounded text-[12px] font-bold bg-[#333] text-white/90">
-              ORIGINAL
-            </span>
-            <span className="px-2.5 py-1 rounded text-[12px] font-bold bg-[#333] text-white/90">
-              Lv1
-            </span>
-            <span className="px-2.5 py-1 rounded text-[12px] font-bold bg-[#333] text-white/90">
-              BEST
-            </span>
-          </div>
+          {Array.isArray(product.tags) && product.tags.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              {product.tags.slice(0, 6).map((tag, idx) => (
+                <span
+                  key={`${product.id}-tag-top-${idx}`}
+                  className="px-2.5 py-1 rounded text-[12px] font-bold bg-[#333] text-white/90"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* 제목 */}
           <h1 className="text-[28px] font-bold leading-tight mb-4">{product.title}</h1>
@@ -1176,15 +1177,18 @@ export default function ProductDetailClient({
           <div className="px-5 pt-5 pb-2">
             {/* 태그 */}
             <div className="flex items-center gap-2 mb-3">
-              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#333] text-white/90">
-                ORIGINAL
-              </span>
-              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#333] text-white/90">
-                Lv1
-              </span>
-              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#333] text-white/90">
-                BEST
-              </span>
+              {Array.isArray(product.tags) &&
+                product.tags
+                  .filter((t) => typeof t === "string" && t.trim().length > 0)
+                  .slice(0, 3)
+                  .map((tag, idx) => (
+                    <span
+                      key={`${product.id}-tag-side-${idx}`}
+                      className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#333] text-white/90"
+                    >
+                      {tag}
+                    </span>
+                  ))}
               <button 
                 onClick={() => setShowShareModal(true)}
                 className="ml-auto p-2 rounded-lg border border-white/10 hover:bg-white/5 transition-colors"
