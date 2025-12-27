@@ -95,7 +95,7 @@ export async function POST(req: Request) {
 
   const orderId = generateTossOrderId();
 
-  // 첫 번째 상품 기준으로 Order 생성 (다중 상품은 메타데이터로 저장)
+  // 첫 번째 상품 기준으로 Order 생성
   const firstItem = cartItems[0];
   await prisma.order.create({
     data: {
@@ -109,8 +109,9 @@ export async function POST(req: Request) {
       status: "PENDING",
       provider: "toss",
       enrolled: false,
-      // 다중 상품 정보를 JSON으로 저장
-      metadata: cartItems.length > 1 ? JSON.stringify({ items: orderItems }) : null,
+      // 다중 상품 정보를 providerPayload에 저장해둠(컬럼 추가 없이 사용)
+      // confirm 단계에서 toss 응답과 병합 저장합니다.
+      providerPayload: { lineItems: { items: orderItems } },
     },
   });
 

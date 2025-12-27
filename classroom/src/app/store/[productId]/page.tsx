@@ -448,7 +448,7 @@ export default async function ProductDetailPage({
   let relatedTextbooks: Array<{
     id: string;
     title: string;
-    price: number;
+    price: number | null;
     originalPrice: number | null;
     thumbnailUrl: string | null;
     teacherName: string | null;

@@ -12,38 +12,70 @@ const Schema = z.object({
   amount: z.coerce.number().int().min(1),
 });
 
-async function fulfillOrder(order: { orderNo: string; userId: string; productType: "COURSE" | "TEXTBOOK"; courseId: string | null; textbookId: string | null; amount: number }) {
+type LineItem = { productType: "COURSE" | "TEXTBOOK"; productId: string; amount?: number };
+
+async function fulfillOne(orderNo: string, userId: string, item: LineItem) {
   const startAt = new Date();
 
-  if (order.productType === "COURSE" && order.courseId) {
+  if (item.productType === "COURSE") {
     const course = await prisma.course.findUnique({
-      where: { id: order.courseId },
+      where: { id: item.productId },
       select: { enrollmentDays: true },
     });
     const days = course?.enrollmentDays ?? 365;
     const endAt = new Date(startAt.getTime() + days * 24 * 60 * 60 * 1000);
 
     await prisma.enrollment.upsert({
-      where: { userId_courseId: { userId: order.userId, courseId: order.courseId } },
+      where: { userId_courseId: { userId, courseId: item.productId } },
       update: { status: "ACTIVE", startAt, endAt },
-      create: { userId: order.userId, courseId: order.courseId, status: "ACTIVE", startAt, endAt },
+      create: { userId, courseId: item.productId, status: "ACTIVE", startAt, endAt },
     });
     return;
   }
 
-  if (order.productType === "TEXTBOOK" && order.textbookId) {
+  if (item.productType === "TEXTBOOK") {
     const textbook = await prisma.textbook.findUnique({
-      where: { id: order.textbookId },
+      where: { id: item.productId },
       select: { entitlementDays: true },
     });
     const days = textbook?.entitlementDays ?? 365;
     const endAt = new Date(startAt.getTime() + days * 24 * 60 * 60 * 1000);
 
     await prisma.textbookEntitlement.upsert({
-      where: { userId_textbookId: { userId: order.userId, textbookId: order.textbookId } },
-      update: { status: "ACTIVE", startAt, endAt, orderNo: order.orderNo },
-      create: { userId: order.userId, textbookId: order.textbookId, status: "ACTIVE", startAt, endAt, orderNo: order.orderNo },
+      where: { userId_textbookId: { userId, textbookId: item.productId } },
+      update: { status: "ACTIVE", startAt, endAt, orderNo },
+      create: { userId, textbookId: item.productId, status: "ACTIVE", startAt, endAt, orderNo },
     });
+  }
+}
+
+async function fulfillOrder(order: {
+  orderNo: string;
+  userId: string;
+  productType: "COURSE" | "TEXTBOOK";
+  courseId: string | null;
+  textbookId: string | null;
+  amount: number;
+  providerPayload: unknown | null;
+}) {
+  // providerPayload.lineItems.items가 있으면 다중 상품 처리
+  const raw = order.providerPayload as any;
+  const items: LineItem[] | null = Array.isArray(raw?.lineItems?.items) ? raw.lineItems.items : null;
+  if (items?.length) {
+    for (const it of items) {
+      if (!it?.productType || !it?.productId) continue;
+      await fulfillOne(order.orderNo, order.userId, { productType: it.productType, productId: it.productId, amount: it.amount });
+    }
+    return;
+  }
+
+  // 하위 호환: 기존 단일 상품
+  if (order.productType === "COURSE" && order.courseId) {
+    await fulfillOne(order.orderNo, order.userId, { productType: "COURSE", productId: order.courseId });
+    return;
+  }
+  if (order.productType === "TEXTBOOK" && order.textbookId) {
+    await fulfillOne(order.orderNo, order.userId, { productType: "TEXTBOOK", productId: order.textbookId });
   }
 }
 
@@ -69,6 +101,7 @@ export async function POST(req: Request) {
       amount: true,
       status: true,
       enrolled: true,
+      providerPayload: true,
     },
   });
 
@@ -96,18 +129,21 @@ export async function POST(req: Request) {
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     console.error("[toss confirm] failed", res.status, json);
+    const prev = (order as any).providerPayload ?? null;
     await prisma.order.update({
       where: { id: order.id },
       data: {
         status: "CANCELLED",
         provider: "toss",
         providerPaymentKey: paymentKey,
-        providerPayload: json,
+        // lineItems 등 기존 payload가 있다면 유지하면서 toss 응답을 병합
+        providerPayload: prev && typeof prev === "object" ? { ...(prev as any), toss: json } : { toss: json },
       },
     });
     return NextResponse.json({ ok: false, error: "TOSS_CONFIRM_FAILED", details: json }, { status: 400 });
   }
 
+  const prev = (order as any).providerPayload ?? null;
   await prisma.order.update({
     where: { id: order.id },
     data: {
@@ -115,7 +151,8 @@ export async function POST(req: Request) {
       paymentMethod: (json as any)?.method ?? "toss",
       provider: "toss",
       providerPaymentKey: paymentKey,
-      providerPayload: json,
+      // lineItems 등 기존 payload가 있다면 유지하면서 toss 응답을 병합
+      providerPayload: prev && typeof prev === "object" ? { ...(prev as any), toss: json } : { toss: json },
       enrolled: true,
       enrolledAt: new Date(),
     },
@@ -129,6 +166,7 @@ export async function POST(req: Request) {
       courseId: order.courseId,
       textbookId: order.textbookId,
       amount: order.amount,
+      providerPayload: (order as any).providerPayload ?? null,
     });
   }
 
