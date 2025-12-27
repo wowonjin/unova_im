@@ -51,6 +51,14 @@ const adminMenus = [
     color: "from-cyan-500/20 to-cyan-600/20",
     iconColor: "text-cyan-400",
   },
+  {
+    title: "후기 관리",
+    description: "전체 후기 목록 확인 및 삭제",
+    href: "/admin/reviews",
+    icon: "rate_review",
+    color: "from-indigo-500/20 to-indigo-600/20",
+    iconColor: "text-indigo-300",
+  },
 ];
 
 export default async function AdminPage() {

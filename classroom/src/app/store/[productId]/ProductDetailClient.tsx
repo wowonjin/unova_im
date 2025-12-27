@@ -191,6 +191,7 @@ export default function ProductDetailClient({
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewSuccess, setReviewSuccess] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   
   // 공유 모달 상태
   const [showShareModal, setShowShareModal] = useState(false);
@@ -255,6 +256,43 @@ export default function ProductDetailClient({
     };
     fetchReviews();
   }, [product.id, product.type]);
+
+  // 관리자 여부 확인 (관리자면 후기 삭제 버튼 노출)
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const res = await fetch("/api/me", { cache: "no-store" });
+        const data = await res.json().catch(() => null);
+        if (res.ok && data?.ok) setIsAdmin(Boolean(data.user?.isAdmin));
+      } catch {
+        // ignore
+      }
+    };
+    fetchMe();
+  }, []);
+
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!isAdmin) return;
+    if (!confirm("이 후기를 삭제할까요? 삭제하면 복구할 수 없습니다.")) return;
+    try {
+      const res = await fetch(`/api/admin/reviews/${reviewId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "DELETE_FAILED");
+
+      // UI 즉시 반영 후, 다시 불러와 평점/개수도 최신화
+      setReviews((prev) => prev.filter((r) => r.id !== reviewId));
+      const type = product.type === "course" ? "COURSE" : "TEXTBOOK";
+      const refreshRes = await fetch(`/api/reviews/${product.id}?type=${type}`, { cache: "no-store" });
+      const refreshData = await refreshRes.json().catch(() => null);
+      if (refreshRes.ok && refreshData?.ok && Array.isArray(refreshData.reviews)) {
+        setReviews(refreshData.reviews);
+        setReviewCount(refreshData.reviews.length);
+        setAverageRating(calculateAverageRating(refreshData.reviews));
+      }
+    } catch (e) {
+      alert("후기 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    }
+  };
 
   // 이미지 선택 핸들러
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -981,6 +1019,19 @@ export default function ProductDetailClient({
                           </div>
                           <p className="text-[12px] text-white/40 mt-0.5">{review.date}</p>
                         </div>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReview(review.id)}
+                            className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-rose-500/15 px-2.5 py-1.5 text-[12px] font-semibold text-rose-200 hover:bg-rose-500/20"
+                            title="후기 삭제"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                              delete
+                            </span>
+                            삭제
+                          </button>
+                        )}
                       </div>
                       <p className={`text-[14px] text-white/70 leading-relaxed ${!isExpanded && isLong ? "line-clamp-3" : ""}`}>
                         {review.content}
