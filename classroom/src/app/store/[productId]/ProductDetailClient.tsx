@@ -117,6 +117,8 @@ export default function ProductDetailClient({
   // NOTE: 가격이 미설정(null/undefined)인 경우 page.tsx에서 0으로 내려오는 케이스가 있어
   // UI에서는 "기본 상품"을 숨기고(=미설정처럼 취급) 표시를 깔끔하게 합니다.
   const hasBaseProduct = Number.isFinite(baseAmount) && baseAmount > 0;
+  const hasAdditionalSelection = product.type === "textbook" && selectedRelatedIds.size > 0;
+  const showPriceBreakdown = product.type === "course" || hasAdditionalSelection;
   const totalAmount = Math.max(0, (hasBaseProduct ? baseAmount : 0) + additionalAmount - additionalDiscount);
   
   // 좋아요 상태 불러오기
@@ -1186,7 +1188,7 @@ export default function ProductDetailClient({
           {product.type === "textbook" && relatedProducts.length > 0 && (
             <>
             <div className="mx-5 border-t border-white/10" />
-            <div className="px-5 pb-3 pt-4">
+            <div className={`px-5 ${selectedRelatedIds.size > 0 ? "pb-3 pt-4" : "pb-2 pt-3"}`}>
               <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="text-[14px] font-bold">추가 교재 구매</p>
                 <span className="text-[12px] font-medium text-white/60">추가 5,000원 할인</span>
@@ -1262,7 +1264,7 @@ export default function ProductDetailClient({
           )}
 
           {/* 구분선 및 상품 금액 (강좌이거나, 교재인데 추가 선택한 경우에만 표시) */}
-          {(product.type === "course" || selectedRelatedIds.size > 0) && (
+          {showPriceBreakdown && (
             <>
               <div className="mx-5 border-t border-white/10" />
 
@@ -1316,7 +1318,7 @@ export default function ProductDetailClient({
           )}
 
           {/* 버튼 영역 */}
-          <div className="px-5 pt-3 pb-5">
+          <div className={`px-5 ${showPriceBreakdown ? "pt-3 pb-5" : "pt-2 pb-4"}`}>
             <div className="flex gap-3">
               <button 
                 onClick={handleToggleLike}
