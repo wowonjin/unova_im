@@ -21,6 +21,7 @@ type Props = {
 
 export default function CourseAddonsClient({ courseId, initial, textbooks, courses }: Props) {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isFirstRender = useRef(true);
 
@@ -33,6 +34,7 @@ export default function CourseAddonsClient({ courseId, initial, textbooks, cours
 
   const saveData = useCallback(async () => {
     setSaveStatus("saving");
+    setSaveErrorMessage(null);
     try {
       const formData = new FormData();
       formData.append("courseId", courseId);
@@ -40,11 +42,20 @@ export default function CourseAddonsClient({ courseId, initial, textbooks, cours
       formData.append("relatedCourseIds", JSON.stringify(Array.from(selectedCourseIds)));
 
       const res = await fetch("/api/admin/courses/update-addons", { method: "POST", body: formData });
-      if (!res.ok) throw new Error("SAVE_FAILED");
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        const msg =
+          payload?.message ||
+          payload?.error ||
+          `HTTP_${res.status}`;
+        throw new Error(msg);
+      }
 
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2500);
     } catch (e) {
+      const msg = e instanceof Error ? e.message : "UNKNOWN_ERROR";
+      setSaveErrorMessage(msg);
       setSaveStatus("error");
     }
   }, [courseId, selectedTextbookIds, selectedCourseIds]);
@@ -117,7 +128,11 @@ export default function CourseAddonsClient({ courseId, initial, textbooks, cours
       <div className="h-5">
         {saveStatus === "saving" && <span className="text-sm text-white/50">저장 중...</span>}
         {saveStatus === "saved" && <span className="text-sm text-emerald-400">저장되었습니다</span>}
-        {saveStatus === "error" && <span className="text-sm text-red-400">저장 중 오류가 발생했습니다</span>}
+        {saveStatus === "error" && (
+          <span className="text-sm text-red-400">
+            저장 중 오류가 발생했습니다{saveErrorMessage ? ` (${saveErrorMessage})` : ""}
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
