@@ -623,7 +623,7 @@ export default function ProductDetailClient({
         )}
 
         {/* 강의 정보 섹션 */}
-        <section className="mb-8">
+        <section className="mb-4">
           {/* 태그 */}
           {Array.isArray(product.tags) && product.tags.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -665,7 +665,7 @@ export default function ProductDetailClient({
           </div>
 
           {/* 강사 정보 */}
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-3">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${product.subjectBg}`}>
               <span className={`text-sm font-bold ${product.subjectColor}`}>
                 {product.teacher.charAt(0)}
@@ -695,7 +695,7 @@ export default function ProductDetailClient({
         {/* 탭 네비게이션 */}
         <div
           ref={tabRef}
-          className={`sticky top-[70px] z-30 border-b border-white/10 overflow-visible transition-all ${isTabSticky ? "pt-4" : "pt-10"}`}
+          className={`sticky top-[70px] z-30 border-b border-white/10 overflow-visible transition-all ${isTabSticky ? "pt-2" : "pt-3"}`}
           style={{ background: "linear-gradient(to bottom, transparent 0%, transparent 40%, #161616 40%)" }}
         >
           <div className="flex justify-between">
