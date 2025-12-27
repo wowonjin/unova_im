@@ -534,24 +534,40 @@ export default async function ProductDetailPage({
       rating: number | null;
       reviewCount: number | null;
     }> = [];
+    // 강의 상세에서 "추가 상품"으로 보여줄 강좌(관리자 선택)
+    let addonCourses: Array<{
+      id: string;
+      title: string;
+      price: number | null;
+      originalPrice: number | null;
+      thumbnailUrl: string | null;
+      teacherName: string | null;
+      subjectName: string | null;
+      rating: number | null;
+      reviewCount: number | null;
+    }> = [];
     try {
-      let selectedIds: string[] = [];
+      let selectedTextbookIds: string[] | null = null;
+      let selectedCourseIds: string[] | null = null;
       try {
         const rows = (await prisma.$queryRawUnsafe(
-          'SELECT "relatedTextbookIds" FROM "Course" WHERE "id" = $1',
+          'SELECT "relatedTextbookIds", "relatedCourseIds" FROM "Course" WHERE "id" = $1',
           dbCourse.id
         )) as any[];
-        const raw = rows?.[0]?.relatedTextbookIds;
-        selectedIds = Array.isArray(raw) ? raw : [];
+        const rawTb = rows?.[0]?.relatedTextbookIds;
+        const rawCs = rows?.[0]?.relatedCourseIds;
+        selectedTextbookIds = Array.isArray(rawTb) ? rawTb : null;
+        selectedCourseIds = Array.isArray(rawCs) ? rawCs : null;
       } catch (e) {
-        console.error("[store/product] failed to read course relatedTextbookIds via raw:", e);
-        selectedIds = [];
+        console.error("[store/product] failed to read course addons via raw:", e);
+        selectedTextbookIds = null;
+        selectedCourseIds = null;
       }
 
       bundleTextbooks =
-        selectedIds.length > 0
+        selectedTextbookIds !== null
           ? await prisma.textbook.findMany({
-              where: { isPublished: true, owner: { email: storeOwnerEmail }, id: { in: selectedIds } },
+              where: { isPublished: true, owner: { email: storeOwnerEmail }, id: { in: selectedTextbookIds } },
               orderBy: { createdAt: "desc" },
               select: {
                 id: true,
@@ -581,9 +597,33 @@ export default async function ProductDetailPage({
                 reviewCount: true,
               },
             });
+
+      // 추가 상품(강의): 관리자가 선택한 경우에만 노출 (선택이 없으면 빈 배열)
+      if (selectedCourseIds !== null) {
+        addonCourses = selectedCourseIds.length
+          ? await prisma.course.findMany({
+              where: { isPublished: true, owner: { email: storeOwnerEmail }, id: { in: selectedCourseIds } },
+              orderBy: { createdAt: "desc" },
+              select: {
+                id: true,
+                title: true,
+                price: true,
+                originalPrice: true,
+                thumbnailUrl: true,
+                teacherName: true,
+                subjectName: true,
+                rating: true,
+                reviewCount: true,
+              },
+            })
+          : [];
+      } else {
+        addonCourses = [];
+      }
     } catch (e) {
       console.error("[store/product] failed to load bundle textbooks:", e);
       bundleTextbooks = [];
+      addonCourses = [];
     }
 
     // lessons를 curriculum 형태로 변환
@@ -645,6 +685,17 @@ export default async function ProductDetailPage({
                 subject: t.subjectName || "교재",
                 rating: t.rating ?? 0,
                 reviewCount: t.reviewCount ?? 0,
+              }))}
+              addonCourses={addonCourses.map((c) => ({
+                id: c.id,
+                title: c.title,
+                price: c.price || 0,
+                originalPrice: c.originalPrice,
+                thumbnailUrl: c.thumbnailUrl,
+                teacher: c.teacherName || "선생님",
+                subject: c.subjectName || "강좌",
+                rating: c.rating ?? 0,
+                reviewCount: c.reviewCount ?? 0,
               }))}
             />
           </div>

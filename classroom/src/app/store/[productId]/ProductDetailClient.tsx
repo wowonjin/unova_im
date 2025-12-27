@@ -69,6 +69,18 @@ type RelatedProduct = {
   reviewCount: number;
 };
 
+type AddonCourse = {
+  id: string;
+  title: string;
+  price: number;
+  originalPrice: number | null;
+  thumbnailUrl: string | null;
+  teacher: string;
+  subject: string;
+  rating: number;
+  reviewCount: number;
+};
+
 const courseTabs = ["강의소개", "커리큘럼", "강의후기", "환불정책"] as const;
 const textbookTabs = ["교재소개", "교재후기", "환불정책"] as const;
 type TabKey = (typeof courseTabs)[number] | (typeof textbookTabs)[number];
@@ -76,9 +88,11 @@ type TabKey = (typeof courseTabs)[number] | (typeof textbookTabs)[number];
 export default function ProductDetailClient({ 
   product,
   relatedProducts = [],
+  addonCourses = [],
 }: { 
   product: ProductData;
   relatedProducts?: RelatedProduct[];
+  addonCourses?: AddonCourse[];
 }) {
   const [activeTab, setActiveTab] = useState<TabKey>(product.type === "textbook" ? "교재소개" : "강의소개");
   const [expandedChapters, setExpandedChapters] = useState<string[]>([]);
@@ -89,6 +103,7 @@ export default function ProductDetailClient({
   const [selectedOption, setSelectedOption] = useState<"full" | "regular">("full");
   const [isPaying, setIsPaying] = useState(false);
   const [selectedRelatedIds, setSelectedRelatedIds] = useState<Set<string>>(new Set());
+  const [selectedAddonCourseIds, setSelectedAddonCourseIds] = useState<Set<string>>(new Set());
   const [isSidebarRaised, setIsSidebarRaised] = useState(false);
 
   const ADDITIONAL_TEXTBOOK_DISCOUNT_PER = 5000;
@@ -97,6 +112,12 @@ export default function ProductDetailClient({
   // 선택한 추가 교재 금액 (강좌/교재 상세 모두에서 사용)
   const additionalAmount = Array.from(selectedRelatedIds).reduce((sum, id) => {
     const p = relatedProducts.find((r) => r.id === id);
+    return sum + (p?.price || 0);
+  }, 0);
+
+  // 선택한 추가 강의 금액 (강좌 상세에서 사용)
+  const additionalCourseAmount = Array.from(selectedAddonCourseIds).reduce((sum, id) => {
+    const p = addonCourses.find((c) => c.id === id);
     return sum + (p?.price || 0);
   }, 0);
 
@@ -124,21 +145,28 @@ export default function ProductDetailClient({
   // UI에서는 "기본 상품"을 숨기고(=미설정처럼 취급) 표시를 깔끔하게 합니다.
   const hasBaseProduct = Number.isFinite(baseAmount) && baseAmount > 0;
   const hasAdditionalSelection = selectedRelatedIds.size > 0;
+  const hasAddonCourseSelection = selectedAddonCourseIds.size > 0;
+  const hasAnyAddonSelection = hasAdditionalSelection || hasAddonCourseSelection;
   // UI 규칙
   // - 교재 상세: "추가 교재"를 고른 경우에만(=묶음 구매) 요약(기본 상품/총 결제 금액) 노출
   // - 강의 상세: 기본 금액이 있으면 요약 노출(교재를 함께 고르면 추가 라인/할인도 함께 노출)
-  const showPriceBreakdown = hasBaseProduct || hasAdditionalSelection;
+  const showPriceBreakdown = hasBaseProduct || hasAdditionalSelection || hasAddonCourseSelection;
   // "총 결제 금액" 위 구분선은 항상 유지하되,
   // 섹션 간 divider(요약 섹션 위)는 교재 선택이 있을 때만 보여서 불필요한 빈공간을 줄입니다.
-  const showDividerBeforeSummary = product.type === "course" ? hasAdditionalSelection : hasAdditionalSelection;
+  const showDividerBeforeSummary = product.type === "course" ? hasAnyAddonSelection : hasAdditionalSelection;
   // '총 결제 금액' 위에 실제로 노출되는 요약 라인(기본 상품/추가 교재/할인)이 있는지
   const showBaseRow = product.type === "course" ? hasBaseProduct : hasBaseProduct && hasAdditionalSelection;
   const hasSummaryLinesAboveTotal =
-    showBaseRow || hasAdditionalSelection || additionalTextbookDiscount > 0 || courseBundleDiscount > 0;
+    showBaseRow ||
+    hasAdditionalSelection ||
+    hasAddonCourseSelection ||
+    additionalTextbookDiscount > 0 ||
+    courseBundleDiscount > 0;
   const totalAmount = Math.max(
     0,
     (hasBaseProduct ? baseAmount : 0) +
-      additionalAmount -
+      additionalAmount +
+      additionalCourseAmount -
       additionalTextbookDiscount -
       courseBundleDiscount
   );
@@ -487,6 +515,11 @@ export default function ProductDetailClient({
           productType: "TEXTBOOK" as const,
           productId: id,
         })),
+        // 선택한 추가 강의 추가
+        ...Array.from(selectedAddonCourseIds).map((id) => ({
+          productType: "COURSE" as const,
+          productId: id,
+        })),
       ];
 
       const res = await fetch("/api/payments/toss/create-order", {
@@ -539,8 +572,8 @@ export default function ProductDetailClient({
 
   const checkoutCtaText =
     product.type === "course"
-      ? selectedRelatedIds.size > 0
-        ? "강의+교재 구매하기"
+      ? selectedRelatedIds.size > 0 || selectedAddonCourseIds.size > 0
+        ? "강의+추가상품 구매하기"
         : "수강 신청하기"
       : selectedRelatedIds.size > 0
         ? "교재 묶음 구매하기"
@@ -1368,6 +1401,77 @@ export default function ProductDetailClient({
             </>
           )}
 
+          {/* 추가 상품 (강좌 전용: 관리자에서 선택한 "추가 강의") */}
+          {product.type === "course" && addonCourses.length > 0 && (
+            <>
+              <div className="mx-5 border-t border-white/10" />
+              <div className={`px-5 ${selectedAddonCourseIds.size > 0 ? "pb-3 pt-4" : "pb-2 pt-3"}`}>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-[14px] font-bold">추가 상품</p>
+                  <span className="text-[12px] font-medium text-white/60">강의 선택</span>
+                </div>
+
+                {addonCourses.map((c) => {
+                  const isSelected = selectedAddonCourseIds.has(c.id);
+                  const discount = c.originalPrice ? Math.round((1 - c.price / c.originalPrice) * 100) : null;
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => {
+                        const next = new Set(selectedAddonCourseIds);
+                        if (isSelected) next.delete(c.id);
+                        else next.add(c.id);
+                        setSelectedAddonCourseIds(next);
+                      }}
+                      className={`rounded-lg p-3 mb-2 cursor-pointer transition-all ${
+                        isSelected
+                          ? "border border-white/20 bg-white/5 ring-2 ring-white/60"
+                          : "border border-white/20 hover:border-white/40"
+                      }`}
+                    >
+                      <div className="flex items-start">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className={`text-[14px] font-medium truncate ${isSelected ? "text-white" : "text-white/70"}`}>
+                              {c.title}
+                            </p>
+                            <div className="shrink-0 text-right">
+                              <div className={`text-[12px] font-semibold ${isSelected ? "text-white/90" : "text-white/70"}`}>
+                                <span className="text-white/50">★</span> {Number(c.rating || 0).toFixed(1)}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-0.5 flex items-center gap-2">
+                            <span className={`text-[15px] font-bold ${isSelected ? "text-white" : "text-white/70"}`}>
+                              {c.price.toLocaleString()}원
+                            </span>
+                            {c.originalPrice && (
+                              <span className={`text-[12px] line-through ${isSelected ? "text-white/40" : "text-white/30"}`}>
+                                {c.originalPrice.toLocaleString()}원
+                              </span>
+                            )}
+                            {discount && (
+                              <span
+                                className={`inline-flex items-center justify-center rounded-full px-1 py-[1px] text-[9px] font-bold text-white ${
+                                  isSelected ? "bg-rose-400" : "bg-rose-400/70"
+                                }`}
+                              >
+                                {discount}%
+                              </span>
+                            )}
+                            <span className="ml-auto text-[11px] text-white/50">
+                              후기 {Number(c.reviewCount || 0).toLocaleString()}개
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
           {/* 구분선 및 상품 금액 (강좌이거나, 교재인데 추가 선택한 경우에만 표시) */}
           {showPriceBreakdown && (
             <>
@@ -1396,6 +1500,16 @@ export default function ProductDetailClient({
                     <span className="text-[14px] font-medium text-white">추가 교재 {selectedRelatedIds.size}개</span>
                     <span className="text-[16px] font-medium text-white">
                       +{additionalAmount.toLocaleString()}원
+                    </span>
+                  </div>
+                )}
+
+                {/* 추가 강의 금액 (선택한 경우에만) */}
+                {selectedAddonCourseIds.size > 0 && (
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[14px] font-medium text-white">추가 강의 {selectedAddonCourseIds.size}개</span>
+                    <span className="text-[16px] font-medium text-white">
+                      +{additionalCourseAmount.toLocaleString()}원
                     </span>
                   </div>
                 )}
