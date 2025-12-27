@@ -21,11 +21,18 @@ export default async function AdminCoursePage({
   const { courseId } = await params;
   const sp = (await searchParams) ?? {};
   const tabRaw = sp.tab || "curriculum";
-  const tab = (tabRaw === "integrations" ? "settings" : tabRaw === "materials" ? "curriculum" : tabRaw) as
+  const tab = (
+    tabRaw === "integrations"
+      ? "settings"
+      : tabRaw === "materials"
+        ? "curriculum"
+        : tabRaw === "detail"
+          ? "settings"
+          : tabRaw
+  ) as
     | "curriculum"
     | "students"
-    | "settings"
-    | "detail";
+    | "settings";
   const imwebMsg = sp.imweb || null;
   const thumbMsg = sp.thumb || null;
   const enrollMsg = sp.enroll || null;
@@ -91,7 +98,6 @@ export default async function AdminCoursePage({
         activeKey={tab}
         items={[
           { key: "settings", label: "설정", href: `/admin/course/${course.id}?tab=settings` },
-          { key: "detail", label: "상세 페이지", href: `/admin/course/${course.id}?tab=detail` },
           { key: "curriculum", label: "강의목록", href: `/admin/course/${course.id}?tab=curriculum` },
           { key: "students", label: "수강학생", href: `/admin/course/${course.id}?tab=students` },
         ]}
@@ -126,25 +132,25 @@ export default async function AdminCoursePage({
                 <CourseThumbnailUploadClient courseId={course.id} hasThumbnail={Boolean(course.thumbnailStoredPath || course.thumbnailUrl)} />
               </CardBody>
             </Card>
-          </div>
-        ) : tab === "detail" ? (
-          <Card className="lg:col-span-3">
+
+            <Card>
               <CardHeader
-              title="상세 페이지 설정"
-              description="스토어에 표시되는 강좌 상세 페이지의 내용을 설정합니다."
+                title="상세 페이지 설정"
+                description="스토어에 표시되는 강좌 상세 페이지의 내용을 설정합니다."
               />
               <CardBody>
-              <CourseDetailPageClient
-                courseId={course.id}
-                initial={{
-                  price: course.price ?? null,
-                  originalPrice: course.originalPrice ?? null,
-                  tags: (course.tags as string[] | null) ?? [],
-                  benefits: (course.benefits as string[] | null) ?? [],
-                }}
-              />
+                <CourseDetailPageClient
+                  courseId={course.id}
+                  initial={{
+                    price: course.price ?? null,
+                    originalPrice: course.originalPrice ?? null,
+                    tags: (course.tags as string[] | null) ?? [],
+                    benefits: (course.benefits as string[] | null) ?? [],
+                  }}
+                />
               </CardBody>
             </Card>
+          </div>
         ) : tab === "students" ? (
           <Card className="lg:col-span-3">
             <CardHeader
