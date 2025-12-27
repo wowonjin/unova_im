@@ -65,6 +65,8 @@ type RelatedProduct = {
   thumbnailUrl: string | null;
   teacher: string;
   subject: string;
+  rating: number;
+  reviewCount: number;
 };
 
 const courseTabs = ["강의소개", "커리큘럼", "강의후기", "환불정책"] as const;
@@ -87,6 +89,10 @@ export default function ProductDetailClient({
   const [selectedOption, setSelectedOption] = useState<"full" | "regular">("full");
   const [isPaying, setIsPaying] = useState(false);
   const [selectedRelatedIds, setSelectedRelatedIds] = useState<Set<string>>(new Set());
+  const [isSidebarRaised, setIsSidebarRaised] = useState(false);
+
+  const ADDITIONAL_TEXTBOOK_DISCOUNT_PER = 5000;
+  const ADDITIONAL_TEXTBOOK_DISCOUNT_MAX = 10000;
 
   const additionalAmount =
     product.type === "textbook"
@@ -94,6 +100,11 @@ export default function ProductDetailClient({
           const p = relatedProducts.find((r) => r.id === id);
           return sum + (p?.price || 0);
         }, 0)
+      : 0;
+
+  const additionalDiscount =
+    product.type === "textbook"
+      ? Math.min(selectedRelatedIds.size * ADDITIONAL_TEXTBOOK_DISCOUNT_PER, ADDITIONAL_TEXTBOOK_DISCOUNT_MAX)
       : 0;
 
   const baseAmount =
@@ -106,7 +117,7 @@ export default function ProductDetailClient({
   // NOTE: 가격이 미설정(null/undefined)인 경우 page.tsx에서 0으로 내려오는 케이스가 있어
   // UI에서는 "기본 상품"을 숨기고(=미설정처럼 취급) 표시를 깔끔하게 합니다.
   const hasBaseProduct = Number.isFinite(baseAmount) && baseAmount > 0;
-  const totalAmount = (hasBaseProduct ? baseAmount : 0) + additionalAmount;
+  const totalAmount = Math.max(0, (hasBaseProduct ? baseAmount : 0) + additionalAmount - additionalDiscount);
   
   // 좋아요 상태 불러오기
   useEffect(() => {
@@ -133,6 +144,16 @@ export default function ProductDetailClient({
     };
     fetchLikeStatus();
   }, [product.id, product.type]);
+
+  // 오른쪽 사이드바: 처음 위치는 유지하되, 스크롤 시 더 위로 붙도록(top 값 감소)
+  useEffect(() => {
+    const onScroll = () => {
+      setIsSidebarRaised(window.scrollY > 80);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // 좋아요 토글
   const handleToggleLike = async () => {
@@ -448,6 +469,19 @@ export default function ProductDetailClient({
     );
   };
 
+  const maskAuthorName = (name: string) => {
+    const chars = Array.from((name ?? "").trim());
+    if (chars.length <= 1) return chars.join("");
+    return `${chars[0]}${"*".repeat(chars.length - 1)}`;
+  };
+
+  const checkoutCtaText =
+    product.type === "course"
+      ? "수강 신청하기"
+      : selectedRelatedIds.size > 0
+        ? "교재 묶음 구매하기"
+        : "교재 구매하기";
+
   const toggleReview = (id: string) => {
     setExpandedReviews((prev) =>
       prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
@@ -747,13 +781,19 @@ export default function ProductDetailClient({
               {/* 평점 요약 */}
               <div className="flex items-center gap-4 mb-6 p-5 rounded-xl bg-white/[0.02] border border-white/10">
                 <div className="text-center">
-                  <p className="text-[36px] font-bold text-yellow-200">{averageRating.toFixed(1)}</p>
+                  <p className={`text-[36px] font-bold ${product.type === "textbook" ? "text-white" : "text-yellow-200"}`}>
+                    {averageRating.toFixed(1)}
+                  </p>
                   <div className="flex justify-center mt-1">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <span
                         key={star}
                         className={`text-[16px] ${
-                          star <= Math.round(averageRating) ? "text-yellow-200" : "text-white/20"
+                          star <= Math.round(averageRating)
+                            ? product.type === "textbook"
+                              ? "text-white"
+                              : "text-yellow-200"
+                            : "text-white/20"
                         }`}
                       >
                         ★
@@ -806,7 +846,11 @@ export default function ProductDetailClient({
                             type="button"
                             onClick={() => setReviewFormRating(star)}
                             className={`text-[22px] transition-all transform hover:scale-110 ${
-                              star <= reviewFormRating ? "text-yellow-300" : "text-white/20"
+                              star <= reviewFormRating
+                                ? product.type === "textbook"
+                                  ? "text-white"
+                                  : "text-yellow-300"
+                                : "text-white/20"
                             }`}
                           >
                             ★
@@ -906,13 +950,17 @@ export default function ProductDetailClient({
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-[14px] font-medium">{review.name}</span>
+                            <span className="text-[14px] font-medium">{maskAuthorName(review.name)}</span>
                             <div className="flex">
                               {[1, 2, 3, 4, 5].map((star) => (
                                 <span
                                   key={star}
                                     className={`text-[12px] ${
-                                      star <= Math.round(review.rating) ? "text-yellow-200" : "text-white/20"
+                                      star <= Math.round(review.rating)
+                                        ? product.type === "textbook"
+                                          ? "text-white"
+                                          : "text-yellow-200"
+                                        : "text-white/20"
                                   }`}
                                 >
                                     ★
@@ -991,9 +1039,13 @@ export default function ProductDetailClient({
 
       {/* 오른쪽 사이드바 (lg 이상에서만 표시) - 스크롤 시 상단 고정 */}
       <aside className="hidden lg:block w-[340px] shrink-0 mt-[20px]">
-        <div className="sticky top-[101px] rounded-xl overflow-hidden">
+        <div
+          className={`sticky rounded-xl overflow-hidden transition-[top] duration-200 ${
+            isSidebarRaised ? "top-[70px]" : "top-[101px]"
+          }`}
+        >
           {/* 태그 및 제목 */}
-          <div className="p-5">
+          <div className="px-5 pt-5 pb-2">
             {/* 태그 */}
             <div className="flex items-center gap-2 mb-3">
               <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#333] text-white/90">
@@ -1045,19 +1097,21 @@ export default function ProductDetailClient({
             </div>
 
             {/* 할인 및 가격 */}
-            <div className="mb-2">
-              {product.discount && (
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[16px] font-bold text-rose-400">{product.discount}%</span>
+            <div>
+              {hasBaseProduct ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-[28px] font-bold">{product.formattedPrice}</span>
                   {product.formattedOriginalPrice && (
                     <span className="text-[14px] text-white/40 line-through">
                       {product.formattedOriginalPrice}
                     </span>
                   )}
+                  {product.discount && (
+                    <span className="inline-flex items-center justify-center rounded-full bg-rose-400 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {product.discount}%
+                    </span>
+                  )}
                 </div>
-              )}
-              {hasBaseProduct ? (
-                <p className="text-[28px] font-bold">{product.formattedPrice}</p>
               ) : (
                 <p className="text-[16px] font-medium text-white/50">가격 정보 준비중</p>
               )}
@@ -1121,17 +1175,22 @@ export default function ProductDetailClient({
 
           {/* 추가 교재 구매 (교재 전용) */}
           {product.type === "textbook" && relatedProducts.length > 0 && (
-            <div className="px-5 pb-5">
-              <p className="text-[14px] font-bold mb-3">추가 교재 구매</p>
-              
+            <>
+            <div className="mx-5 border-t border-white/10" />
+            <div className="px-5 pb-3 pt-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-[14px] font-bold">추가 교재 구매</p>
+                <span className="text-[12px] font-medium text-white/60">추가 5,000원 할인</span>
+              </div>
+
               {relatedProducts.map((related) => {
                 const isSelected = selectedRelatedIds.has(related.id);
-                const discount = related.originalPrice 
-                  ? Math.round((1 - related.price / related.originalPrice) * 100) 
+                const discount = related.originalPrice
+                  ? Math.round((1 - related.price / related.originalPrice) * 100)
                   : null;
 
                 return (
-                  <div 
+                  <div
                     key={related.id}
                     onClick={() => {
                       const newSet = new Set(selectedRelatedIds);
@@ -1142,52 +1201,55 @@ export default function ProductDetailClient({
                       }
                       setSelectedRelatedIds(newSet);
                     }}
-                    className={`rounded-lg p-4 mb-3 cursor-pointer transition-all ${
-                      isSelected 
-                        ? "border-2 border-amber-400/60 bg-amber-500/10" 
+                    className={`rounded-lg p-3 mb-2 cursor-pointer transition-all ${
+                      isSelected
+                        ? "border border-white/20 bg-white/5 ring-2 ring-white/60"
                         : "border border-white/20 hover:border-white/40"
                     }`}
                   >
-                    <div className="flex items-start gap-3">
-                      {/* 체크박스 */}
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                        isSelected 
-                          ? "border-amber-400 bg-amber-400" 
-                          : "border-white/30"
-                      }`}>
-                        {isSelected && (
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3">
-                            <path d="M20 6L9 17l-5-5"/>
-                          </svg>
-                        )}
-                      </div>
-
+                    <div className="flex items-start">
                       {/* 정보 */}
                       <div className="flex-1 min-w-0">
-                        <p className={`text-[14px] font-medium truncate ${isSelected ? "text-white" : "text-white/70"}`}>
-                          {related.title}
-                        </p>
-                        <p className={`text-[12px] mt-1 ${isSelected ? "text-white/50" : "text-white/40"}`}>
-                          {related.subject} · {related.teacher}
-                        </p>
-                      </div>
-
-                      {/* 가격 */}
-                      <div className="text-right flex-shrink-0">
-                        {discount && (
-                          <span className={`text-[12px] font-bold mr-2 ${isSelected ? "text-rose-400" : "text-rose-400/70"}`}>
-                            {discount}%
+                        <div className="flex items-start justify-between gap-3">
+                          <p className={`text-[14px] font-medium truncate ${isSelected ? "text-white" : "text-white/70"}`}>
+                            {related.title}
+                          </p>
+                          <div className="shrink-0 text-right">
+                            <div className={`text-[12px] font-semibold ${isSelected ? "text-white/90" : "text-white/70"}`}>
+                              <span className="text-white/50">★</span> {Number(related.rating || 0).toFixed(1)}
+                            </div>
+                          </div>
+                        </div>
+                        {/* 가격 */}
+                        <div className="mt-0.5 flex items-center gap-2">
+                          <span className={`text-[15px] font-bold ${isSelected ? "text-white" : "text-white/70"}`}>
+                            {related.price.toLocaleString()}원
                           </span>
-                        )}
-                        <span className={`text-[15px] font-bold ${isSelected ? "text-white" : "text-white/70"}`}>
-                          {related.price.toLocaleString()}원
-                        </span>
+                          {related.originalPrice && (
+                            <span className={`text-[12px] line-through ${isSelected ? "text-white/40" : "text-white/30"}`}>
+                              {related.originalPrice.toLocaleString()}원
+                            </span>
+                          )}
+                          {discount && (
+                            <span
+                              className={`inline-flex items-center justify-center rounded-full px-1 py-[1px] text-[9px] font-bold text-white ${
+                                isSelected ? "bg-rose-400" : "bg-rose-400/70"
+                              }`}
+                            >
+                              {discount}%
+                            </span>
+                          )}
+                          <span className="ml-auto text-[11px] text-white/50">
+                            후기 {Number(related.reviewCount || 0).toLocaleString()}개
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 );
               })}
             </div>
+            </>
           )}
 
           {/* 구분선 */}
@@ -1198,7 +1260,7 @@ export default function ProductDetailClient({
             {/* 기본 상품 금액 */}
             {hasBaseProduct && (
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[14px] font-medium text-white/70">기본 상품</span>
+                <span className="text-[14px] font-medium text-white">기본 상품</span>
                 <span className="text-[16px] font-medium">
                   {product.type === "course"
                     ? selectedOption === "full"
@@ -1212,9 +1274,24 @@ export default function ProductDetailClient({
             {/* 추가 교재 금액 (선택한 경우에만) */}
             {product.type === "textbook" && selectedRelatedIds.size > 0 && (
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[14px] font-medium text-amber-400">추가 교재 {selectedRelatedIds.size}개</span>
-                <span className="text-[16px] font-medium text-amber-400">
+                <span className="text-[14px] font-medium text-white">추가 교재 {selectedRelatedIds.size}개</span>
+                <span className="text-[16px] font-medium text-white">
                   +{additionalAmount.toLocaleString()}원
+                </span>
+              </div>
+            )}
+
+            {/* 추가 할인 (교재 전용, 선택한 경우에만) */}
+            {product.type === "textbook" && selectedRelatedIds.size > 0 && additionalDiscount > 0 && (
+              <div className="flex items-center justify-between mb-2">
+                <span className="flex items-center gap-2 text-[14px] font-medium text-white">
+                  추가 교재 할인
+                  <span className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-1.5 py-0.5 text-[9px] font-bold leading-none text-white">
+                    SALE
+                  </span>
+                </span>
+                <span className="text-[16px] font-medium text-white">
+                  -{additionalDiscount.toLocaleString()}원
                 </span>
               </div>
             )}
@@ -1258,7 +1335,7 @@ export default function ProductDetailClient({
                 href="#"
                 className={`flex-1 flex items-center justify-center py-2.5 rounded-lg bg-white text-black text-[15px] font-bold transition-all hover:bg-white/90 ${isPaying ? "opacity-60 pointer-events-none" : ""}`}
               >
-                {isPaying ? "결제 준비중..." : "결제하기"}
+                {isPaying ? "결제 준비중..." : checkoutCtaText}
               </a>
             </div>
           </div>
@@ -1292,10 +1369,12 @@ export default function ProductDetailClient({
           <div className="flex-1">
             {hasBaseProduct ? (
               <div className="flex items-center gap-2">
-                {product.discount && (
-                  <span className="text-[12px] text-rose-400 font-bold">{product.discount}%</span>
-                )}
                 <span className="text-[18px] font-bold">{product.formattedPrice}</span>
+                {product.discount && (
+                  <span className="inline-flex items-center justify-center rounded-full bg-rose-400 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    {product.discount}%
+                  </span>
+                )}
               </div>
             ) : (
               <div className="text-[13px] text-white/50">가격 정보 준비중</div>
@@ -1309,7 +1388,7 @@ export default function ProductDetailClient({
           href="#"
           className={`px-6 py-2.5 rounded-lg bg-white text-black text-[15px] font-bold transition-all hover:bg-white/90 ${isPaying ? "opacity-60 pointer-events-none" : ""}`}
           >
-          {isPaying ? "결제 준비중..." : "결제하기"}
+          {isPaying ? "결제 준비중..." : checkoutCtaText}
           </a>
       </div>
     </div>

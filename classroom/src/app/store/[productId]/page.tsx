@@ -453,6 +453,8 @@ export default async function ProductDetailPage({
     thumbnailUrl: string | null;
     teacherName: string | null;
     subjectName: string | null;
+    rating: number | null;
+    reviewCount: number | null;
   }> = [];
   
   // 교재의 relatedTextbookIds 가져오기
@@ -462,21 +464,49 @@ export default async function ProductDetailPage({
   
   if (relatedTextbookIds.length > 0) {
     try {
-      relatedTextbooks = await prisma.textbook.findMany({
-        where: {
-          isPublished: true,
-          id: { in: relatedTextbookIds },
-        },
-        select: {
-          id: true,
-          title: true,
-          price: true,
-          originalPrice: true,
-          thumbnailUrl: true,
-          teacherName: true,
-          subjectName: true,
-        },
-      });
+      // NOTE: "교재 관리하기" 페이지의 교재 목록 정렬과 동일하게 맞춤
+      // - 1차: position desc -> createdAt desc
+      // - 폴백: (운영 환경에서 position 컬럼 누락 등) createdAt desc
+      try {
+        relatedTextbooks = await prisma.textbook.findMany({
+          where: {
+            isPublished: true,
+            id: { in: relatedTextbookIds },
+          },
+          orderBy: [{ position: "desc" }, { createdAt: "desc" }],
+          select: {
+            id: true,
+            title: true,
+            price: true,
+            originalPrice: true,
+            thumbnailUrl: true,
+            teacherName: true,
+            subjectName: true,
+            rating: true,
+            reviewCount: true,
+          },
+        });
+      } catch (e) {
+        console.error("[store/product] related textbooks query failed with position order, fallback to createdAt:", e);
+        relatedTextbooks = await prisma.textbook.findMany({
+          where: {
+            isPublished: true,
+            id: { in: relatedTextbookIds },
+          },
+          orderBy: [{ createdAt: "desc" }],
+          select: {
+            id: true,
+            title: true,
+            price: true,
+            originalPrice: true,
+            thumbnailUrl: true,
+            teacherName: true,
+            subjectName: true,
+            rating: true,
+            reviewCount: true,
+          },
+        });
+      }
     } catch (e) {
       console.error("[store/product] failed to load related textbooks:", e);
       relatedTextbooks = [];
@@ -607,6 +637,8 @@ export default async function ProductDetailPage({
                 thumbnailUrl: t.thumbnailUrl,
                 teacher: t.teacherName || "선생님",
                 subject: t.subjectName || "교재",
+                rating: t.rating ?? 0,
+                reviewCount: t.reviewCount ?? 0,
               }))}
             />
           </div>
