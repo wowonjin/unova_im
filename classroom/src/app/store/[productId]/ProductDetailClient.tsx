@@ -1257,7 +1257,7 @@ export default function ProductDetailClient({
             <>
               <div className="mx-5 border-t border-white/10" />
 
-              <div className="p-5">
+              <div className="p-5 pb-0">
                 {/* 기본 상품 금액 */}
                 {hasBaseProduct && (
                   <div className="flex items-center justify-between mb-2">
@@ -1306,7 +1306,8 @@ export default function ProductDetailClient({
             </>
           )}
 
-            {/* 버튼 영역 */}
+          {/* 버튼 영역 */}
+          <div className="p-5">
             <div className="flex gap-3">
               <button 
                 onClick={handleToggleLike}
