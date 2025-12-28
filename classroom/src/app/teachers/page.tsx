@@ -101,7 +101,7 @@ export default function TeachersPage() {
       
       <main className="flex-1 pt-[70px]">
         {/* 헤더 섹션 */}
-        <section className="py-16 md:py-20">
+        <section className="py-10 md:py-12">
           <div className="mx-auto max-w-6xl px-4">
             <h1 className="text-[32px] md:text-[40px] font-bold tracking-[-0.02em]">
               유노바 선생님

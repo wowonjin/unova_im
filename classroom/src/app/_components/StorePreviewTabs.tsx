@@ -40,7 +40,7 @@ export default function StorePreviewTabs({
   const [selectedType, setSelectedType] = useState<TypeLabel>(defaultType);
   const [selectedSubject, setSelectedSubject] = useState<string>("전체");
 
-  const currentType: "course" | "textbook" = selectedType === "강좌" ? "course" : "textbook";
+  const currentType: "course" | "textbook" = selectedType === "강의" ? "course" : "textbook";
   const productsOfCurrentType = currentType === "course" ? courses : textbooks;
 
   const subjects = useMemo(() => {
@@ -88,7 +88,7 @@ export default function StorePreviewTabs({
           <div className="flex-1" />
         )}
 
-        {/* 타입(교재/강좌) 탭 */}
+        {/* 타입(교재/강의) 탭 */}
         <div className="flex shrink-0 flex-wrap justify-end gap-2">
           {types.map((t) => (
             <button
