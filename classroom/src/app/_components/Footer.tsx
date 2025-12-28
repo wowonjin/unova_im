@@ -5,8 +5,104 @@ export default function Footer() {
   return (
     <footer className="bg-[#131313] pt-16 pb-12">
       <div className="mx-auto max-w-6xl px-4">
-        {/* 상단 4열 구조 - PC에서는 4열, 모바일에서는 1열 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 md:gap-8">
+        {/* 모바일 푸터 (PC는 기존 그대로 유지) */}
+        <div className="md:hidden">
+          {/* 로고 및 설명 */}
+          <div>
+            <Image src="/unova-logo.png" alt="UNOVA" width={120} height={24} className="h-5 w-auto" />
+            <p className="mt-5 text-[13px] text-white/50 leading-relaxed">
+              당신이 노바가 될 수 있도록,<br />
+              가장 실전적인 지식을 제공합니다
+            </p>
+          </div>
+
+          {/* 3열 메뉴 */}
+          <div className="mt-8 grid grid-cols-3 gap-8">
+            <div>
+              <p className="font-bold text-white mb-3 text-[14px]">서비스</p>
+              <ul className="space-y-2 text-[13px] text-white/50">
+                <li>
+                  <Link href="/store" className="hover:text-white transition-colors">
+                    구매하기
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/notices?cat=이벤트" className="hover:text-white transition-colors">
+                    이벤트
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/dashboard" className="hover:text-white transition-colors">
+                    나의 컨텐츠
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-bold text-white mb-3 text-[14px]">고객지원</p>
+              <ul className="space-y-2 text-[13px] text-white/50">
+                <li>
+                  <Link href="/notices" className="hover:text-white transition-colors">
+                    강의 / 결제 공지사항
+                  </Link>
+                </li>
+                <li>
+                  <a
+                    href="https://unova.co.kr"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-white transition-colors"
+                  >
+                    이용약관
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://unova.co.kr"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-white transition-colors"
+                  >
+                    개인정보처리방침
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-bold text-white mb-3 text-[14px]">SNS</p>
+              <ul className="space-y-2 text-[13px] text-white/50">
+                <li>
+                  <a
+                    href="https://www.instagram.com/unova_edu"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-white transition-colors"
+                  >
+                    인스타그램
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://www.youtube.com/@unova_edu"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-white transition-colors"
+                  >
+                    유튜브
+                  </a>
+                </li>
+                <li>
+                  <Link href="/teachers" className="hover:text-white transition-colors">
+                    유노바 소개
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* 상단 4열 구조 - PC(현재 상태 유지) */}
+        <div className="hidden md:grid md:grid-cols-4 gap-10 md:gap-8">
           {/* 로고 및 설명 */}
           <div className="md:col-span-1">
             <Image

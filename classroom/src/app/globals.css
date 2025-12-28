@@ -119,14 +119,20 @@ html, body {
   --u-modal-h: #5f4253;
 
   width: 100%;
-  max-width: 100%;
+  /* LandingHeader: mx-auto max-w-6xl px-4 와 정렬 맞춤 */
+  max-width: 72rem; /* = Tailwind max-w-6xl */
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem; /* = px-4 */
+  padding-right: 1rem; /* = px-4 */
   background-color: transparent;
   font-family: 'Noto Sans KR', sans-serif;
   color: var(--u-text);
   position: relative;
   overflow-x: hidden;
   overflow-y: visible;
-  padding: 0;
+  padding-top: 0;
+  padding-bottom: 0;
   box-sizing: border-box;
 }
 
@@ -630,7 +636,8 @@ a.unova-menu-item:active {
   .unova-container {
     flex-direction: column;
     width: 100%;
-    padding: 0 20px;
+    /* wrapper가 이미 px-4를 제공하므로 중복 패딩 제거 */
+    padding: 0;
   }
   .unova-content {
     margin-left: 0;

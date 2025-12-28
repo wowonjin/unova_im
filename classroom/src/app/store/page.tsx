@@ -26,7 +26,8 @@ type Product = {
   reviewCount: number | null;
 };
 
-const types = ["교재", "강좌"];
+// 화면 표시용 라벨
+const types = ["교재", "강의"];
 
 function formatPrice(price: number): string {
   return price.toLocaleString("ko-KR") + "원";
@@ -188,7 +189,12 @@ export default async function StorePage({
   const products: Product[] = [...courseProducts, ...textbookProducts];
 
   // 유형 맵
-  const typeMap: Record<string, "course" | "textbook"> = { "강좌": "course", "교재": "textbook" };
+  // URL 파라미터/레거시 표기를 모두 수용: 강의/강좌 -> course
+  const typeMap: Record<string, "course" | "textbook"> = {
+    "강의": "course",
+    "강좌": "course",
+    "교재": "textbook",
+  };
   const currentType = typeMap[selectedType];
 
   // 현재 선택된 유형에 해당하는 상품들만 필터
@@ -223,7 +229,7 @@ export default async function StorePage({
                     {subjects.map((subject) => (
                       <Link
                         key={subject}
-                        href={`/store?subject=${encodeURIComponent(subject)}&type=${encodeURIComponent(selectedType)}`}
+                        href={`${selectedType === "교재" ? "/books" : "/lectures"}?subject=${encodeURIComponent(subject)}`}
                         className={`px-4 py-2 rounded-full text-[13px] font-medium transition-all ${
                           selectedSubject === subject
                             ? "bg-white text-black"
@@ -242,7 +248,7 @@ export default async function StorePage({
                     {types.map((type) => (
                       <Link
                         key={type}
-                        href={`/store?subject=${encodeURIComponent(selectedSubject)}&type=${encodeURIComponent(type)}`}
+                        href={`${type === "교재" ? "/books" : "/lectures"}?subject=${encodeURIComponent(selectedSubject)}`}
                         className={`px-4 py-2 rounded-full text-[13px] font-medium transition-all ${
                           selectedType === type
                             ? "bg-white text-black"

@@ -4,6 +4,14 @@ import Link from "next/link";
 
 const adminMenus = [
   {
+    title: "메인페이지 설정",
+    description: "메인 슬라이드/바로가기 아이콘 관리",
+    href: "/admin/home",
+    icon: "tune",
+    color: "from-fuchsia-500/20 to-fuchsia-600/20",
+    iconColor: "text-fuchsia-300",
+  },
+  {
     title: "교재 관리",
     description: "교재 업로드, 공개 설정, 다운로드 관리",
     href: "/admin/textbooks",

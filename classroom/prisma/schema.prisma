@@ -545,3 +545,41 @@ model Popup {
   @@index([isActive, startAt, endAt])
   @@index([createdAt])
 }
+
+// 홈 메인 슬라이드(캐러셀) 설정
+model HomeSlide {
+  id        String   @id @default(cuid())
+  // 정렬(내림차순). 0은 레거시/미설정
+  position  Int      @default(0)
+  isActive  Boolean  @default(true)
+
+  imageUrl  String
+  linkUrl   String?
+  tag       String?  // 예: "27학년도 수능대비"
+  titleHtml String   // 예: "한 권으로 끝내는<br>..."
+  subtitle  String?  // 예: "CONNECT PHYSICS I, II"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, position, createdAt])
+  @@index([createdAt])
+}
+
+// 홈 바로가기 아이콘 설정
+model HomeShortcut {
+  id        String   @id @default(cuid())
+  position  Int      @default(0)
+  isActive  Boolean  @default(true)
+
+  label     String   // 아이콘 이름
+  imageUrl  String
+  linkUrl   String
+  bgColor   String?  // 예: "#FFFFFF" / "#7c4ff5"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, position, createdAt])
+  @@index([createdAt])
+}

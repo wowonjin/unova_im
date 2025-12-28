@@ -44,12 +44,12 @@ const menuItems: MenuItem[] = [
     ],
   },
   {
-    label: "교재 및 강의 구매",
-    href: "/store",
-    subItems: [
-      { label: "강좌 구매하기", href: "/store?type=강좌", icon: "video_library" },
-      { label: "교재 구매하기", href: "/store?type=교재", icon: "auto_stories" },
-    ],
+    label: "책 구매",
+    href: "/books",
+  },
+  {
+    label: "강의 구매",
+    href: "/lectures",
   },
   {
     label: "유노바 선생님",
@@ -92,6 +92,16 @@ export default function LandingHeader({ showMobileMenu = false, fullWidth = fals
   const searchParams = useSearchParams();
 
   const isActiveHref = (href: string) => {
+    // 책/강의는 현재 구현상 /books, /lectures가 /store?type=... 로 리다이렉트되므로
+    // /store 페이지에서도 책/강의 메뉴가 활성화되도록 별도 처리
+    if (href === "/books") {
+      return pathname === "/books" || (pathname === "/store" && (searchParams.get("type") || "") === "교재");
+    }
+    if (href === "/lectures") {
+      const t = searchParams.get("type") || "";
+      return pathname === "/lectures" || (pathname === "/store" && (t === "강의" || t === "강좌"));
+    }
+
     const [path, qs] = href.split("?");
     if (!path) return false;
 
@@ -240,6 +250,7 @@ export default function LandingHeader({ showMobileMenu = false, fullWidth = fals
                   label={item.label}
                   icon={item.icon}
                   external={item.external}
+                  active={isActiveHref(item.href)}
                 />
                 
                 {/* 서브메뉴 드롭다운 */}
@@ -248,18 +259,18 @@ export default function LandingHeader({ showMobileMenu = false, fullWidth = fals
                     className="absolute top-full left-0 pt-2 z-[1300]"
                     style={{ minWidth: "168px" }}
                   >
-                    {/* 컨테이너(배경/테두리/그림자) 없이 메뉴만 노출 */}
-                    <div className="animate-[fadeIn_150ms_ease-out]">
+                    {/* 서브 메뉴 컨테이너: 원래처럼 흰 배경 */}
+                    <div className="animate-[fadeIn_150ms_ease-out] rounded-xl border border-black/10 bg-white p-2 shadow-lg">
                       {item.subItems.map((subItem, idx) => (
                         <Link
                           key={subItem.label}
                           href={subItem.href}
                           target={subItem.external ? "_blank" : undefined}
                           rel={subItem.external ? "noopener noreferrer" : undefined}
-                          className={`flex items-center px-3 py-2 text-[14px] transition-colors ${
+                          className={`flex items-center rounded-lg px-3 py-2 text-[14px] transition-colors ${
                             isActiveHref(subItem.href)
-                              ? "text-white font-semibold"
-                              : "text-white/80 hover:text-white"
+                              ? "bg-[rgba(94,91,92,0.2)] text-black font-semibold"
+                              : "text-black/80 hover:bg-[rgba(94,91,92,0.2)]"
                           }`}
                         >
                           <span>{subItem.label}</span>
@@ -423,7 +434,9 @@ export default function LandingHeader({ showMobileMenu = false, fullWidth = fals
                         target={item.external ? "_blank" : undefined}
                         rel={item.external ? "noopener noreferrer" : undefined}
                         onClick={closeMenu}
-                        className="flex-1 font-medium"
+                        className={`flex-1 font-medium ${
+                          isActiveHref(item.href) ? "underline underline-offset-4 decoration-white/60" : ""
+                        }`}
                       >
                         {item.label}
                       </Link>
@@ -583,14 +596,28 @@ export default function LandingHeader({ showMobileMenu = false, fullWidth = fals
   );
 }
 
-function NavLink({ href, label, icon, external }: { href: string; label: string; icon?: string; external?: boolean }) {
+function NavLink({
+  href,
+  label,
+  icon,
+  external,
+  active,
+}: {
+  href: string;
+  label: string;
+  icon?: string;
+  external?: boolean;
+  active?: boolean;
+}) {
   const isExternal = external || href.startsWith("http");
   return (
     <Link
       href={href}
       target={isExternal ? "_blank" : undefined}
       rel={isExternal ? "noopener noreferrer" : undefined}
-      className="flex items-center gap-1.5 px-[8px] py-2 text-[16px] text-white hover:text-white/80 transition-all whitespace-nowrap tracking-[0]"
+      className={`flex items-center gap-1.5 px-[8px] py-2 text-[16px] text-white hover:text-white/80 transition-all whitespace-nowrap tracking-[0] ${
+        active ? "underline underline-offset-[10px] decoration-2 decoration-white/70" : ""
+      }`}
     >
       {icon && (
         <span 

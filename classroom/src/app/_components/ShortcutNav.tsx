@@ -4,10 +4,11 @@ interface ShortcutItem {
   href: string;
   image: string;
   label: string;
-  iconClass: string;
+  iconClass?: string;
+  bgColor?: string | null;
 }
 
-const shortcuts: ShortcutItem[] = [
+const defaultShortcuts: ShortcutItem[] = [
   {
     href: "https://unova.co.kr/home",
     image: "https://cdn.imweb.me/upload/S2024081197744ee41db01/4b4d2779d5a5e.png",
@@ -58,7 +59,10 @@ const shortcuts: ShortcutItem[] = [
   },
 ];
 
-export default function ShortcutNav() {
+export type ShortcutNavItem = ShortcutItem;
+
+export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
+  const shortcuts = items && items.length > 0 ? items : defaultShortcuts;
   return (
     <>
       <section
@@ -66,16 +70,19 @@ export default function ShortcutNav() {
         aria-label="바로가기 메뉴"
         className="mx-auto max-w-[1080px] px-6 pb-7 pt-3"
       >
-        <div className="flex flex-wrap justify-center">
+        {/* Mobile: 한 줄에 4개 고정 (overflow 방지) */}
+        <div className="grid grid-cols-4 justify-items-center gap-x-2 gap-y-6 sm:flex sm:flex-wrap sm:justify-center sm:gap-y-0">
           {shortcuts.map((item, idx) => {
-            const bg =
-              item.iconClass === "shortcut-icon--basic"
-                ? "bg-[#7c4ff5]"
-                : item.iconClass === "shortcut-icon--special"
-                  ? "bg-[#e5f0ff]"
-                  : item.iconClass === "shortcut-icon--office"
-                    ? "bg-[#e5f9f1]"
-                    : "bg-white";
+            const bgClass =
+              item.bgColor && String(item.bgColor).trim().length > 0
+                ? "" // inline style로 적용
+                : item.iconClass === "shortcut-icon--basic"
+                  ? "bg-[#7c4ff5]"
+                  : item.iconClass === "shortcut-icon--special"
+                    ? "bg-[#e5f0ff]"
+                    : item.iconClass === "shortcut-icon--office"
+                      ? "bg-[#e5f9f1]"
+                      : "bg-white";
 
             const isOriginal = item.iconClass === "shortcut-icon--original";
 
@@ -85,7 +92,7 @@ export default function ShortcutNav() {
                 href={item.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-center px-2 sm:px-3"
+                className="text-center w-full px-0 sm:w-auto sm:px-3"
               >
                 <div
                   className={[
@@ -93,8 +100,13 @@ export default function ShortcutNav() {
                     "h-[56px] w-[56px] rounded-[16px] sm:h-[92px] sm:w-[92px] sm:rounded-[22px]",
                     "shadow-[0_12px_26px_rgba(15,23,42,0.10)] border border-white/10",
                     "transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-[0_18px_34px_rgba(15,23,42,0.16)]",
-                    bg,
+                    bgClass,
                   ].join(" ")}
+                  style={
+                    item.bgColor && String(item.bgColor).trim().length > 0
+                      ? { backgroundColor: String(item.bgColor).trim() }
+                      : undefined
+                  }
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img

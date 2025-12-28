@@ -10,7 +10,7 @@ interface Slide {
   subtitle: string;
 }
 
-const slides: Slide[] = [
+const defaultSlides: Slide[] = [
   {
     href: "https://unova.co.kr/physics1pdf",
     image: "https://storage.googleapis.com/physics2/%EC%8A%AC%EB%9D%BC%EC%9D%B4%EB%93%9C%20%EC%9D%B4%EB%AF%B8%EC%A7%80/%EB%AC%BC%EB%A6%AC.png",
@@ -34,7 +34,10 @@ const slides: Slide[] = [
   },
 ];
 
-export default function HeroCarousel() {
+export type HeroCarouselSlide = Slide;
+
+export default function HeroCarousel({ slides }: { slides?: Slide[] }) {
+  const resolvedSlides = slides && slides.length > 0 ? slides : defaultSlides;
   const [currentIndex, setCurrentIndex] = useState(1); // 클론 포함, 1이 첫 번째 실제 슬라이드
   const [isPlaying, setIsPlaying] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -43,12 +46,12 @@ export default function HeroCarousel() {
   const trackRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const totalSlides = slides.length;
+  const totalSlides = resolvedSlides.length;
   const gap = 16;
   const slideRatio = 0.9; // 슬라이드 크기 (PC 기준)
 
   // 클론 포함 전체 슬라이드 배열 (무한 루프용)
-  const allSlides = [slides[slides.length - 1], ...slides, slides[0]];
+  const allSlides = [resolvedSlides[resolvedSlides.length - 1], ...resolvedSlides, resolvedSlides[0]];
 
   // 슬라이드 너비 계산
   const updateSizes = useCallback(() => {
