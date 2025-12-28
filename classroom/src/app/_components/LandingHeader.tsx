@@ -16,6 +16,8 @@ type User = {
 type LandingHeaderProps = {
   showMobileMenu?: boolean;
   fullWidth?: boolean;
+  backgroundColor?: string;
+  scrolledOpacity?: number; // 0~1
 };
 
 type SubMenuItem = {
@@ -58,6 +60,7 @@ const menuItems: MenuItem[] = [
       { label: "이상엽 선생님", href: "/teachers/lee-sangyeob", icon: "badge" },
       { label: "백하욱 선생님", href: "/teachers/baek-hawook", icon: "badge" },
       { label: "유예린 선생님", href: "/teachers/yoo-yerin", icon: "badge" },
+      { label: "김동현 선생님", href: "/teachers/kim-donghyeon", icon: "badge" },
       { label: "장진우 선생님", href: "/teachers/jang-jinwoo", icon: "badge" },
       { label: "Study Crack", href: "/teachers/study-crack", icon: "badge" },
     ],
@@ -79,7 +82,12 @@ function useSidebarOptional() {
   }
 }
 
-export default function LandingHeader({ showMobileMenu = false, fullWidth = false }: LandingHeaderProps) {
+export default function LandingHeader({
+  showMobileMenu = false,
+  fullWidth = false,
+  backgroundColor = "#161616",
+  scrolledOpacity = 0.72,
+}: LandingHeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -127,6 +135,33 @@ export default function LandingHeader({ showMobileMenu = false, fullWidth = fals
 
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  const toRgba = (color: string, alpha: number) => {
+    // 이미 rgba/hsla면 그대로 사용(중복 변환 방지)
+    if (color.startsWith("rgba(") || color.startsWith("hsla(")) return color;
+    const a = Math.max(0, Math.min(1, alpha));
+    // #RGB / #RRGGBB 만 지원 (그 외는 그대로 반환)
+    const hex = color.trim();
+    const short = /^#([0-9a-fA-F]{3})$/;
+    const full = /^#([0-9a-fA-F]{6})$/;
+    const m3 = hex.match(short);
+    const m6 = hex.match(full);
+    if (m3) {
+      const h = m3[1];
+      const r = parseInt(h[0] + h[0], 16);
+      const g = parseInt(h[1] + h[1], 16);
+      const b = parseInt(h[2] + h[2], 16);
+      return `rgba(${r}, ${g}, ${b}, ${a})`;
+    }
+    if (m6) {
+      const h = m6[1];
+      const r = parseInt(h.slice(0, 2), 16);
+      const g = parseInt(h.slice(2, 4), 16);
+      const b = parseInt(h.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${a})`;
+    }
+    return color;
+  };
 
   // 모바일 드로어: 라우트 변경 시 닫기
   useEffect(() => {
@@ -189,9 +224,9 @@ export default function LandingHeader({ showMobileMenu = false, fullWidth = fals
     <nav
       className="fixed top-0 left-0 right-0 z-[1000] transition-colors duration-300"
       style={{
-        // 스크롤 시 투명(반투명)으로 변하는 효과 제거: 항상 불투명 배경 유지
-        backgroundColor: "#161616",
-        backdropFilter: "none",
+        // 스크롤 시에는 살짝 반투명 + blur
+        backgroundColor: scrolled ? toRgba(backgroundColor, scrolledOpacity) : backgroundColor,
+        backdropFilter: scrolled ? "blur(12px)" : "none",
       }}
     >
       <div className={fullWidth ? "px-4" : "mx-auto max-w-6xl px-4"}>
@@ -402,7 +437,8 @@ export default function LandingHeader({ showMobileMenu = false, fullWidth = fals
           <div
             role="dialog"
             aria-modal="true"
-            className="fixed inset-y-0 left-0 z-[1200] w-72 bg-[#161616] p-5 lg:hidden animate-[drawerIn_180ms_ease-out]"
+            className="fixed inset-y-0 left-0 z-[1200] w-72 p-5 lg:hidden animate-[drawerIn_180ms_ease-out]"
+            style={{ backgroundColor }}
           >
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between">

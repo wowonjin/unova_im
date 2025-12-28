@@ -1,7 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 export default function FloatingKakaoButton() {
   const href = "https://pf.kakao.com/_xinPAn/chat";
+
+  // hydration mismatch 방지: 클라이언트 마운트 이후에만 렌더
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  if (!mounted) return null;
 
   return (
     <a

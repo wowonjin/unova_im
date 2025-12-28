@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
+import { consumePendingOAuthAccount } from "@/lib/oauth";
 
 export const runtime = "nodejs";
 
@@ -30,6 +31,14 @@ export async function POST(req: Request) {
     let user;
 
     try {
+      // 소셜 로그인 -> 회원가입으로 넘어온 케이스면 pending 정보를 먼저 읽는다(프로필 이미지 포함)
+      const pending = await consumePendingOAuthAccount();
+
+      // 제공자가 이메일을 내려준 경우: 다른 이메일로 가입하며 연동되는 것을 방지
+      if (pending?.email && pending.email.toLowerCase().trim() !== email.toLowerCase().trim()) {
+        return NextResponse.json({ ok: false, error: "SOCIAL_EMAIL_MISMATCH" }, { status: 400 });
+      }
+
       // 이미 가입된 이메일 확인
       const existingUser = await prisma.user.findUnique({
         where: { email },
@@ -50,10 +59,20 @@ export async function POST(req: Request) {
           phone: phone || null,
           address: fullAddress,
           addressDetail: addressDetail || null,
+          profileImageUrl: pending?.profileImageUrl || null,
           lastLoginAt: new Date(),
         },
         select: { id: true, name: true, profileImageUrl: true },
       });
+
+      // 소셜 로그인 -> 회원가입으로 넘어온 케이스면, 가입과 동시에 OAuth 연동까지 생성
+      if (pending) {
+        await prisma.oAuthAccount.upsert({
+          where: { provider_providerUserId: { provider: pending.provider, providerUserId: pending.providerUserId } },
+          update: { userId: user.id },
+          create: { provider: pending.provider, providerUserId: pending.providerUserId, userId: user.id },
+        });
+      }
 
       // 세션 생성
       await createSession(user.id);

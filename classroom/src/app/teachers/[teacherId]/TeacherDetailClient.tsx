@@ -5,8 +5,8 @@ import Image from 'next/image';
 import CurriculumCarousel, { CurriculumSlide } from './CurriculumCarousel';
 import BookCoverFlow, { BookSet } from './BookCoverFlow';
 import LectureRail, { LectureSet } from './LectureRail';
-import YoutubeMarquee, { YoutubeVideo } from './YoutubeMarquee';
-import FAQSection, { FAQItem } from './FAQSection';
+import type { YoutubeVideo } from './YoutubeMarquee';
+import type { FAQItem } from './FAQSection';
 
 type Banner = {
   topText: string;
@@ -79,9 +79,6 @@ type Props = {
 
 export default function TeacherDetailClient({ teacher }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [closedBanners, setClosedBanners] = useState<Set<number>>(new Set());
-  const floatingBannersRef = useRef<HTMLDivElement>(null);
-  const noticeBoxRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // 모달 열릴 때 body 스크롤 방지
@@ -95,45 +92,6 @@ export default function TeacherDetailClient({ teacher }: Props) {
       document.body.classList.remove('unova-no-scroll');
     };
   }, [isModalOpen]);
-
-  // 플로팅 배너 위치 조정
-  useEffect(() => {
-    const placeFloatingBanners = () => {
-      if (!floatingBannersRef.current || !noticeBoxRef.current || !containerRef.current) return;
-
-      if (window.matchMedia('(max-width: 1000px)').matches) {
-        floatingBannersRef.current.style.visibility = 'visible';
-        return;
-      }
-
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const noticeRect = noticeBoxRef.current.getBoundingClientRect();
-
-      const top = noticeRect.top - containerRect.top;
-      const left = noticeRect.right - containerRect.left + 16;
-
-      if (floatingBannersRef.current) {
-        floatingBannersRef.current.style.top = `${top}px`;
-        floatingBannersRef.current.style.left = `${left}px`;
-        floatingBannersRef.current.style.visibility = 'visible';
-      }
-    };
-
-    placeFloatingBanners();
-    requestAnimationFrame(placeFloatingBanners);
-    setTimeout(placeFloatingBanners, 0);
-    window.addEventListener('load', placeFloatingBanners);
-    window.addEventListener('resize', placeFloatingBanners);
-
-    return () => {
-      window.removeEventListener('load', placeFloatingBanners);
-      window.removeEventListener('resize', placeFloatingBanners);
-    };
-  }, []);
-
-  const handleCloseBanner = (index: number) => {
-    setClosedBanners((prev) => new Set(prev).add(index));
-  };
 
   const handleNavClick = (hash?: string, url?: string) => {
     if (url) {
@@ -308,7 +266,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
               </div>
 
               {/* 새소식 리스트 */}
-              <div className="unova-notice-box" ref={noticeBoxRef}>
+              <div className="unova-notice-box">
                 <div className="unova-notice-header">
                   <span className="unova-notice-title">선생님 새소식</span>
                   <span style={{ fontSize: '16px', cursor: 'pointer' }}>+</span>
@@ -338,43 +296,6 @@ export default function TeacherDetailClient({ teacher }: Props) {
               priority
             />
           </div>
-
-          {/* 플로팅 배너 */}
-          <div className="unova-floating-banners" ref={floatingBannersRef}>
-            {teacher.floatingBanners.map((banner, idx) => {
-              if (closedBanners.has(idx)) return null;
-              return (
-                <div key={idx} className={`unova-float-box ${banner.gradient}`}>
-                  <span
-                    className="unova-close-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCloseBanner(idx);
-                    }}
-                  >
-                    ×
-                  </span>
-                  <div className="unova-float-sub">{banner.sub}</div>
-                  <div className="unova-float-title">
-                    {banner.title.split('\n').map((line, i) => (
-                      <span key={i}>
-                        {line}
-                        {i < banner.title.split('\n').length - 1 && <br />}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="unova-float-desc">
-                    {banner.desc.split('\n').map((line, i) => (
-                      <span key={i}>
-                        {line}
-                        {i < banner.desc.split('\n').length - 1 && <br />}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </div>
 
@@ -399,22 +320,6 @@ export default function TeacherDetailClient({ teacher }: Props) {
           lectureSets={teacher.lectureSets}
           defaultTab={teacher.lectureSets[0].id}
           curriculumLink={teacher.curriculumLink}
-        />
-      )}
-
-      {/* 무료 해설 강의 섹션 */}
-      {teacher.youtubeVideos && teacher.youtubeVideos.length > 0 && (
-        <YoutubeMarquee
-          title="무료 해설 강의."
-          videos={teacher.youtubeVideos}
-        />
-      )}
-
-      {/* 문의사항 섹션 */}
-      {teacher.faqItems && teacher.faqItems.length > 0 && (
-        <FAQSection
-          title="문의사항."
-          items={teacher.faqItems}
         />
       )}
 

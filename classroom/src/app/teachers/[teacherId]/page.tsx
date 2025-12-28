@@ -153,6 +153,24 @@ const teachersData: Record<string, TeacherData> = {
       { title: "CONNECT 수학1 강의", price: "80,000원", href: "https://unova.co.kr" },
     ],
   },
+  "kim-donghyeon": {
+    name: "김동현",
+    subject: "영어",
+    subjectColor: "text-emerald-400",
+    bgColor: "bg-emerald-500/10",
+    description: "문장 구조부터 실전 독해까지 한 번에 정리",
+    longDescription:
+      "영어를 '감'이 아니라 구조로 정리해 실전에 바로 적용할 수 있게 만드는 강의입니다. 독해/문법 포인트를 빠르게 체계화해 성적 상승으로 연결시키는 것을 목표로 합니다.",
+    achievements: [
+      "영어 영역 성적 상승 사례 다수",
+      "실전 독해 루틴/문장 구조 정리",
+      "맞춤형 학습 플랜 제공",
+    ],
+    courses: [
+      { title: "CONNECT 영어 독해", price: "95,000원", href: "https://unova.co.kr" },
+      { title: "CONNECT 영어 문법", price: "95,000원", href: "https://unova.co.kr" },
+    ],
+  },
   "yoo-yerin": {
     name: "유예린",
     subject: "영어",
@@ -555,6 +573,55 @@ const teachersData: Record<string, TeacherData> = {
   },
 };
 
+// 유예린 선생님 신규 디자인(메인페이지 구성)을 다른 선생님들에게도 동일 적용
+const yooYerinNewDesign = (() => {
+  const src = teachersData["yoo-yerin"];
+  if (!src) return {};
+  const {
+    imageUrl,
+    banners,
+    reviews,
+    notices,
+    floatingBanners,
+    profile,
+    socialLinks,
+    navigationLinks,
+    curriculum,
+    bookSets,
+    lectureSets,
+    curriculumLink,
+    youtubeVideos,
+    faqItems,
+  } = src;
+
+  return {
+    imageUrl,
+    banners,
+    reviews,
+    notices,
+    floatingBanners,
+    profile,
+    socialLinks,
+    navigationLinks,
+    curriculum,
+    bookSets,
+    lectureSets,
+    curriculumLink,
+    youtubeVideos,
+    faqItems,
+  } satisfies Partial<TeacherData>;
+})();
+
+for (const id of Object.keys(teachersData)) {
+  if (id === "yoo-yerin") continue;
+  teachersData[id] = {
+    ...teachersData[id],
+    ...yooYerinNewDesign,
+    // 상단 서브 문구는 각 선생님 소개 문장으로 유지
+    headerSub: teachersData[id].description,
+  };
+}
+
 export default async function TeacherDetailPage({ params }: { params: Promise<{ teacherId: string }> }) {
   const { teacherId } = await params;
   const teacher = teachersData[teacherId];
@@ -581,8 +648,8 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
   if (hasNewDesign) {
     return (
       <div className="min-h-screen bg-[#5f4253] text-white flex flex-col">
-        <LandingHeader />
-        <main className="flex-1 pt-[70px]">
+        <LandingHeader backgroundColor="#1D1D1F" />
+        <main className="flex-1 pt-[104px] md:pt-[116px]">
           <TeacherDetailClient teacher={teacher as TeacherDetailTeacher} />
         </main>
         <Footer />
@@ -593,7 +660,7 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
   // 기존 디자인 (다른 선생님들)
   return (
     <div className="min-h-screen bg-[#161616] text-white flex flex-col">
-      <LandingHeader />
+      <LandingHeader backgroundColor="#1D1D1F" />
       
       <main className="flex-1 pt-[70px]">
         {/* 프로필 섹션 */}

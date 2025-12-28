@@ -24,17 +24,23 @@ export default function SignupFormClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/";
-  const [step, setStep] = useState<"select" | "form">("select");
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
+
+  // 소셜 로그인 콜백에서 넘어오는 프리필 값(없으면 빈 값)
+  const prefillName = searchParams.get("name") || "";
+  const prefillEmail = searchParams.get("email") || "";
+  const fromProvider = (searchParams.get("from") || "").toLowerCase(); // kakao | naver
+
+  const [step, setStep] = useState<"select" | "form">(() => (fromProvider ? "form" : "select"));
+  const [formData, setFormData] = useState(() => ({
+    name: prefillName,
+    email: prefillEmail,
     phone: "",
     password: "",
     passwordConfirm: "",
     zonecode: "",
     address: "",
     addressDetail: "",
-  });
+  }));
   const [agreements, setAgreements] = useState({
     all: false,
     terms: false,
@@ -171,8 +177,8 @@ export default function SignupFormClient() {
         return;
       }
 
-      // 회원가입 성공 - 메인 페이지로 이동
-      router.push("/");
+      // 회원가입 성공 - 원래 목적지로 이동
+      router.push(redirectTo);
       router.refresh();
     } catch {
       setError("네트워크 오류가 발생했습니다.");
@@ -345,7 +351,7 @@ export default function SignupFormClient() {
 
         {/* 주소 */}
         <div>
-          <label className="block text-[13px] text-white/60 mb-1.5">주소 <span className="text-red-400">*</span></label>
+          <label className="block text-[13px] text-white/60 mb-1.5">교재 배송 주소 <span className="text-red-400">*</span></label>
           <input
             type="text"
             name="address"

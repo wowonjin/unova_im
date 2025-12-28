@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
-import { consumeOAuthState, getBaseUrl } from "@/lib/oauth";
+import { consumeOAuthState, getBaseUrl, setPendingOAuthAccount } from "@/lib/oauth";
 
 export const runtime = "nodejs";
 
@@ -101,6 +101,28 @@ export async function GET(req: Request) {
       select: { userId: true },
     });
 
+    const existingUserByEmail = emailFromProvider
+      ? await prisma.user.findUnique({ where: { email: emailFromProvider } })
+      : null;
+
+    // 계정이 없다면 회원가입 페이지로 이동(프리필 제공)
+    if (!existingAccount && !existingUserByEmail) {
+      await setPendingOAuthAccount({
+        provider: "kakao",
+        providerUserId,
+        redirectTo: redirectTo || "/",
+        email: emailFromProvider,
+        name: nickname,
+        profileImageUrl,
+      });
+      const sp = new URLSearchParams();
+      sp.set("from", "kakao");
+      sp.set("redirect", redirectTo || "/");
+      if (emailFromProvider) sp.set("email", emailFromProvider);
+      if (nickname) sp.set("name", nickname);
+      return NextResponse.redirect(new URL(`/signup?${sp.toString()}`, req.url));
+    }
+
     const user = existingAccount
       ? await prisma.user.update({
           where: { id: existingAccount.userId },
@@ -110,15 +132,9 @@ export async function GET(req: Request) {
             lastLoginAt: new Date(),
           },
         })
-      : await prisma.user.upsert({
-          where: { email },
-          update: {
-            ...(nickname ? { name: nickname } : {}),
-            ...(profileImageUrl ? { profileImageUrl } : {}),
-            lastLoginAt: new Date(),
-          },
-          create: {
-            email,
+      : await prisma.user.update({
+          where: { id: existingUserByEmail!.id },
+          data: {
             ...(nickname ? { name: nickname } : {}),
             ...(profileImageUrl ? { profileImageUrl } : {}),
             lastLoginAt: new Date(),

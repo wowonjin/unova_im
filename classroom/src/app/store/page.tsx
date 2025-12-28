@@ -45,7 +45,9 @@ export default async function StorePage({
   try {
     const sp = await searchParams;
     const selectedSubject = sp?.subject || "전체";
-    const selectedType = sp?.type || "교재";
+    const rawType = sp?.type || "교재";
+    // 표기 통일: 레거시 "강좌" -> "강의"
+    const selectedType = rawType === "강좌" ? "강의" : rawType;
     const storeOwnerEmail = getStoreOwnerEmail();
 
     // 실제 DB에서 공개된 강좌/교재 조회
@@ -214,11 +216,32 @@ export default async function StorePage({
     filteredProducts = filteredProducts.filter((p) => p.subject === selectedSubject);
   }
 
+    const pageCopy =
+      selectedType === "강의"
+        ? {
+            title: "강의 구매하기",
+            subtitle: "강의와 함께 수능을 정복해보세요.",
+          }
+        : {
+            title: "교재 구매하기",
+            subtitle: "검증된 선생님들의 최고의 실전 교재를 만나보세요.",
+          };
+
     return (
       <div className="min-h-screen bg-[#161616] text-white flex flex-col">
         <LandingHeader />
 
         <main className="flex-1 pt-[70px]">
+          {/* 페이지 타이틀(필터 버튼 위) */}
+          <section className="mx-auto max-w-6xl px-4 pt-10 pb-6">
+            <h1 className="text-[32px] md:text-[40px] font-bold tracking-[-0.02em]">
+              {pageCopy.title}
+            </h1>
+            <p className="mt-3 text-[15px] md:text-[16px] text-white/50">
+              {pageCopy.subtitle}
+            </p>
+          </section>
+
           {/* 필터 섹션 */}
           <section className="sticky top-[70px] z-40 bg-[#161616]/80 backdrop-blur-xl">
             <div className="mx-auto max-w-6xl px-4 py-4">

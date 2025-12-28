@@ -50,7 +50,8 @@ export default function LectureRail({
     const btnRect = activeBtn.getBoundingClientRect();
     const left = btnRect.left - pillRect.left;
     indicatorRef.current.style.width = `${btnRect.width}px`;
-    indicatorRef.current.style.transform = `translateX(${left}px)`;
+    // 세로는 중앙 고정(-50%), 가로만 이동
+    indicatorRef.current.style.transform = `translate3d(${left}px, -50%, 0)`;
   }, []);
 
   // 스크롤 버튼 상태 업데이트

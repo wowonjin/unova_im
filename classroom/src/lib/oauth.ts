@@ -5,6 +5,7 @@ type Provider = "kakao" | "naver";
 
 const COOKIE_STATE_PREFIX = "oauth_state_";
 const COOKIE_REDIRECT_PREFIX = "oauth_redirect_";
+const COOKIE_PENDING_PREFIX = "oauth_pending_";
 
 function randomState(): string {
   return crypto.randomBytes(24).toString("hex");
@@ -55,6 +56,92 @@ export async function consumeOAuthState(provider: Provider): Promise<{ state: st
   cookieStore.delete(`${COOKIE_REDIRECT_PREFIX}${provider}`);
 
   return { state, redirectTo };
+}
+
+export async function setPendingOAuthAccount(input: {
+  provider: Provider;
+  providerUserId: string;
+  redirectTo: string;
+  email?: string | null;
+  name?: string | null;
+  profileImageUrl?: string | null;
+}) {
+  const cookieStore = await cookies();
+  cookieStore.set(`${COOKIE_PENDING_PREFIX}provider`, input.provider, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 10 * 60,
+    path: "/",
+  });
+  cookieStore.set(`${COOKIE_PENDING_PREFIX}providerUserId`, input.providerUserId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 10 * 60,
+    path: "/",
+  });
+  cookieStore.set(`${COOKIE_PENDING_PREFIX}redirect`, input.redirectTo || "/", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 10 * 60,
+    path: "/",
+  });
+  if (input.email) {
+    cookieStore.set(`${COOKIE_PENDING_PREFIX}email`, input.email, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 10 * 60,
+      path: "/",
+    });
+  }
+  if (input.name) {
+    cookieStore.set(`${COOKIE_PENDING_PREFIX}name`, input.name, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 10 * 60,
+      path: "/",
+    });
+  }
+  if (input.profileImageUrl) {
+    cookieStore.set(`${COOKIE_PENDING_PREFIX}profileImageUrl`, input.profileImageUrl, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 10 * 60,
+      path: "/",
+    });
+  }
+}
+
+export async function consumePendingOAuthAccount(): Promise<{
+  provider: Provider;
+  providerUserId: string;
+  redirectTo: string;
+  email?: string | null;
+  name?: string | null;
+  profileImageUrl?: string | null;
+} | null> {
+  const cookieStore = await cookies();
+  const provider = (cookieStore.get(`${COOKIE_PENDING_PREFIX}provider`)?.value || "") as Provider | "";
+  const providerUserId = cookieStore.get(`${COOKIE_PENDING_PREFIX}providerUserId`)?.value || "";
+  const redirectTo = cookieStore.get(`${COOKIE_PENDING_PREFIX}redirect`)?.value || "/";
+  const email = cookieStore.get(`${COOKIE_PENDING_PREFIX}email`)?.value || null;
+  const name = cookieStore.get(`${COOKIE_PENDING_PREFIX}name`)?.value || null;
+  const profileImageUrl = cookieStore.get(`${COOKIE_PENDING_PREFIX}profileImageUrl`)?.value || null;
+
+  cookieStore.delete(`${COOKIE_PENDING_PREFIX}provider`);
+  cookieStore.delete(`${COOKIE_PENDING_PREFIX}providerUserId`);
+  cookieStore.delete(`${COOKIE_PENDING_PREFIX}redirect`);
+  cookieStore.delete(`${COOKIE_PENDING_PREFIX}email`);
+  cookieStore.delete(`${COOKIE_PENDING_PREFIX}name`);
+  cookieStore.delete(`${COOKIE_PENDING_PREFIX}profileImageUrl`);
+
+  if ((provider !== "kakao" && provider !== "naver") || !providerUserId) return null;
+  return { provider, providerUserId, redirectTo, email, name, profileImageUrl };
 }
 
 

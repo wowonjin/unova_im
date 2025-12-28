@@ -61,6 +61,18 @@ const teachers: Teacher[] = [
     tags: ["독해", "듣기", "문법"],
   },
   {
+    id: "kim-donghyeon",
+    name: "김동현",
+    subject: "영어",
+    subjectColor: "text-emerald-500",
+    bgColor: "bg-emerald-500",
+    tagline: "영어 실력을 끌어올리는 실전 중심 강의",
+    description: "문장 구조부터 실전 독해까지 한 번에 정리",
+    image: null,
+    stats: { students: "신규", courses: 0, rating: 5.0 },
+    tags: ["독해", "문법"],
+  },
+  {
     id: "jang-jinwoo",
     name: "장진우",
     subject: "물리",
@@ -97,7 +109,7 @@ export default function TeachersPage() {
 
   return (
     <div className="min-h-screen bg-[#161616] text-white flex flex-col">
-      <LandingHeader />
+      <LandingHeader backgroundColor="#1D1D1F" />
       
       <main className="flex-1 pt-[70px]">
         {/* 헤더 섹션 */}
@@ -107,7 +119,7 @@ export default function TeachersPage() {
               유노바 선생님
             </h1>
             <p className="mt-3 text-[15px] md:text-[16px] text-white/50">
-              최고의 강사진이 여러분의 성장을 함께합니다
+              최고의 선생님들이 여러분의 성적을 올려드립니다
             </p>
           </div>
         </section>

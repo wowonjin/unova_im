@@ -13,6 +13,7 @@ type Member = {
   imwebMemberCode: string | null;
   address: string | null;
   addressDetail: string | null;
+  loginType: "kakao" | "naver" | "email" | "unknown";
   createdAt: string;
   lastLoginAt: string | null;
   enrollmentCount: number;
@@ -125,6 +126,19 @@ function initials(nameOrEmail: string) {
   const first = parts[0]?.[0] ?? s[0];
   const second = parts[1]?.[0] ?? "";
   return (first + second).toUpperCase();
+}
+
+function formatLoginType(t: Member["loginType"]) {
+  switch (t) {
+    case "kakao":
+      return { label: "카카오", className: "bg-[#FEE500]/20 text-[#FEE500]" };
+    case "naver":
+      return { label: "네이버", className: "bg-emerald-500/20 text-emerald-400" };
+    case "email":
+      return { label: "일반", className: "bg-white/10 text-white/70" };
+    default:
+      return { label: "기타", className: "bg-white/5 text-white/50" };
+  }
 }
 
 export default function MembersClient({
@@ -331,6 +345,9 @@ export default function MembersClient({
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/50">
                     회원
                   </th>
+                  <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-white/50">
+                    로그인
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/50">
                     연락처
                   </th>
@@ -385,6 +402,16 @@ export default function MembersClient({
                           </p>
                         </div>
                       </div>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      {(() => {
+                        const v = formatLoginType(member.loginType);
+                        return (
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${v.className}`}>
+                            {v.label}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-4">
                       <EditableField

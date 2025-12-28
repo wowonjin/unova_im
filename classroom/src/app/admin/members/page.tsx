@@ -12,6 +12,7 @@ type MemberRow = {
   imwebMemberCode: string | null;
   address: string | null;
   addressDetail: string | null;
+  loginType: "kakao" | "naver" | "email" | "unknown";
   createdAt: string;
   lastLoginAt: string | null;
   enrollmentCount: number;
@@ -30,6 +31,7 @@ const dummyMembers: MemberRow[] = [
     imwebMemberCode: null,
     address: "서울특별시 강남구 학동로 24길 20",
     addressDetail: "참존빌딩 402호",
+    loginType: "email",
     createdAt: "2024-01-01T00:00:00.000Z",
     lastLoginAt: "2025-12-25T10:00:00.000Z",
     enrollmentCount: 3,
@@ -45,6 +47,7 @@ const dummyMembers: MemberRow[] = [
     imwebMemberCode: "IMW001",
     address: "서울특별시 서초구 서초동 123-45",
     addressDetail: "아파트 101동 1001호",
+    loginType: "kakao",
     createdAt: "2024-06-15T09:30:00.000Z",
     lastLoginAt: "2025-12-24T14:20:00.000Z",
     enrollmentCount: 2,
@@ -60,6 +63,7 @@ const dummyMembers: MemberRow[] = [
     imwebMemberCode: "IMW002",
     address: "경기도 성남시 분당구 정자동 567",
     addressDetail: null,
+    loginType: "naver",
     createdAt: "2024-08-20T11:00:00.000Z",
     lastLoginAt: "2025-12-23T09:15:00.000Z",
     enrollmentCount: 4,
@@ -75,6 +79,7 @@ const dummyMembers: MemberRow[] = [
     imwebMemberCode: "IMW003",
     address: "인천광역시 연수구 송도동 89",
     addressDetail: "오피스텔 502호",
+    loginType: "email",
     createdAt: "2024-09-10T14:45:00.000Z",
     lastLoginAt: "2025-12-22T16:30:00.000Z",
     enrollmentCount: 1,
@@ -90,6 +95,7 @@ const dummyMembers: MemberRow[] = [
     imwebMemberCode: "IMW004",
     address: "대전광역시 유성구 봉명동 234",
     addressDetail: null,
+    loginType: "email",
     createdAt: "2024-10-05T08:20:00.000Z",
     lastLoginAt: "2025-12-21T11:45:00.000Z",
     enrollmentCount: 3,
@@ -143,6 +149,7 @@ export default async function AdminMembersPage({
           addressDetail: true,
           createdAt: true,
           lastLoginAt: true,
+          oauthAccounts: { select: { provider: true } },
           _count: {
             select: {
               enrollments: true,
@@ -157,7 +164,15 @@ export default async function AdminMembersPage({
     totalCount = count;
     totalPages = Math.ceil(totalCount / limit);
 
-    membersData = members.map((m) => ({
+    membersData = members.map((m) => {
+      const providers = (m.oauthAccounts || []).map((a) => (a.provider || "").toLowerCase());
+      const loginType: MemberRow["loginType"] =
+        providers.includes("kakao") ? "kakao" :
+        providers.includes("naver") ? "naver" :
+        providers.length > 0 ? "unknown" :
+        "email";
+
+      return {
       id: m.id,
       email: m.email,
       name: m.name ?? null,
@@ -166,12 +181,14 @@ export default async function AdminMembersPage({
       imwebMemberCode: m.imwebMemberCode ?? null,
       address: m.address ?? null,
       addressDetail: m.addressDetail ?? null,
+      loginType,
       createdAt: m.createdAt.toISOString(),
       lastLoginAt: m.lastLoginAt?.toISOString() || null,
       enrollmentCount: m._count.enrollments,
       textbookCount: m._count.textbookEntitlements,
       totalPayment: 0, // TODO: 실제 결제 금액 연동 필요
-    }));
+      };
+    });
   } catch (error) {
     // DB 연결 실패 시 더미 데이터 사용
     console.error("DB connection error, using dummy data:", error);
