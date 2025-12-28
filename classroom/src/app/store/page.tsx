@@ -166,6 +166,7 @@ export default async function StorePage({
       originalPrice: c.originalPrice,
       tag: tags[0] || null, // 첫 번째 태그를 배지로 표시
       tags,
+      textbookType: null,
       type: "course" as const,
       thumbnailUrl: c.thumbnailUrl,
       rating: c.rating,
