@@ -1145,28 +1145,164 @@ export default function ProductDetailClient({
           {activeTab === "환불정책" && (
             <section>
               <div className="rounded-xl border border-white/10 p-6">
-                <ul className="space-y-3 text-[14px] text-white/70">
-                  <li className="flex items-start gap-3">
-                    <span className="text-white/30">•</span>
-                    <span>수강 시작 전: 전액 환불 가능</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="text-white/30">•</span>
-                    <span>수강 시작 후 7일 이내, 수강 진도율 10% 이하: 전액 환불</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="text-white/30">•</span>
-                    <span>수강 기간의 1/3 경과 전: 결제 금액의 2/3 환불</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="text-white/30">•</span>
-                    <span>수강 기간의 1/2 경과 전: 결제 금액의 1/2 환불</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="text-white/30">•</span>
-                    <span>수강 기간의 1/2 경과 후: 환불 불가</span>
-                  </li>
-                </ul>
+                {product.type === "course" ? (
+                  <div className="space-y-6 text-[14px] text-white/70">
+                    <div>
+                      <p className="text-[15px] font-semibold text-white/90 mb-2">환불/취소 안내 (VOD 강의)</p>
+                      <ul className="space-y-2">
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>
+                            본 상품은 <span className="text-white/80 font-medium">디지털 콘텐츠(온라인 강의)</span>로, 관계 법령 및 당사 정책에 따라 환불이 제한될 수 있습니다.
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>환불 금액은 결제 수단/프로모션/번들 할인 적용 여부에 따라 일부 조정될 수 있습니다.</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <p className="text-[15px] font-semibold text-white/90 mb-2">전액 환불(청약철회) 가능</p>
+                      <ul className="space-y-2">
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>
+                            <span className="text-white/80 font-medium">수강 시작 전</span>에는 전액 환불이 가능합니다.
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>
+                            <span className="text-white/80 font-medium">결제 후 7일 이내</span>이며{" "}
+                            <span className="text-white/80 font-medium">진도율 10% 이하</span>인 경우 전액 환불이 가능합니다.
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <p className="text-[15px] font-semibold text-white/90 mb-2">부분 환불(수강 진행 후)</p>
+                      <ul className="space-y-2">
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>수강 기간의 <span className="text-white/80 font-medium">1/3 경과 전</span>: 결제 금액의 <span className="text-white/80 font-medium">2/3</span> 환불</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>수강 기간의 <span className="text-white/80 font-medium">1/2 경과 전</span>: 결제 금액의 <span className="text-white/80 font-medium">1/2</span> 환불</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>수강 기간의 <span className="text-white/80 font-medium">1/2 경과 후</span>: 환불 불가</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span className="text-white/60">
+                            (참고) 위 기준은 서비스 제공 특성상 일반적인 기준이며, 실제 환불액 산정은 구매 시점/수강 기록/프로모션 적용 여부에 따라 달라질 수 있습니다.
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <p className="text-[15px] font-semibold text-white/90 mb-2">환불 불가(예외)</p>
+                      <ul className="space-y-2">
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>환불 기준을 초과하여 수강이 진행된 경우</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>부정 이용(계정 공유/무단 배포/다운로드 링크 공유 등)이 확인된 경우</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <p className="text-[15px] font-semibold text-white/90 mb-2">교재/추가 강의와 함께 구매한 경우</p>
+                      <ul className="space-y-2">
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>번들 할인(교재 할인/강의 할인)이 적용된 주문은, 일부 항목 환불 시 할인 조건이 충족되지 않으면 환불 금액이 재산정될 수 있습니다.</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>부분 환불 시 이미 제공된 혜택(할인/사은품/추가 구성 등)은 회수되거나 환불액에서 차감될 수 있습니다.</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <p className="text-[15px] font-semibold text-white/90 mb-2">환불 신청 및 처리</p>
+                      <ul className="space-y-2">
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>환불은 고객센터/문의 채널을 통해 접수 후 처리됩니다.</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>접수 후 영업일 기준 3~7일 내 처리될 수 있으며, 카드사/결제수단 정책에 따라 실제 환불 반영 시점은 달라질 수 있습니다.</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6 text-[14px] text-white/70">
+                    <div>
+                      <p className="text-[15px] font-semibold text-white/90 mb-2">환불/취소 안내 (PDF 교재)</p>
+                      <ul className="space-y-2">
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>본 상품은 <span className="text-white/80 font-medium">디지털 파일(PDF)</span>로, 다운로드/열람이 시작된 경우 환불이 제한될 수 있습니다.</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>다운로드 이력, 이용 기록 등을 기준으로 환불 가능 여부가 판단됩니다.</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <p className="text-[15px] font-semibold text-white/90 mb-2">환불 가능</p>
+                      <ul className="space-y-2">
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>다운로드/열람 전: 전액 환불 가능</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <p className="text-[15px] font-semibold text-white/90 mb-2">환불 불가</p>
+                      <ul className="space-y-2">
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>다운로드 또는 열람이 확인된 경우</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>부정 이용(무단 배포/공유 등)이 확인된 경우</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <p className="text-[15px] font-semibold text-white/90 mb-2">환불 신청 및 처리</p>
+                      <ul className="space-y-2">
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>환불은 고객센터/문의 채널을 통해 접수 후 처리됩니다.</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <span className="text-white/30">•</span>
+                          <span>접수 후 영업일 기준 3~7일 내 처리될 수 있으며, 결제수단 정책에 따라 반영 시점은 달라질 수 있습니다.</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
           )}
