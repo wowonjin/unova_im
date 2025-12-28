@@ -20,6 +20,7 @@ type Product = {
   originalPrice: number | null;
   tag: string | null;
   tags: string[];
+  textbookType: string | null;
   type: "course" | "textbook";
   thumbnailUrl: string | null;
   rating: number | null;
@@ -76,6 +77,7 @@ export default async function StorePage({
         price: true;
         originalPrice: true;
         tags: true;
+        textbookType: true;
         thumbnailUrl: true;
         rating: true;
         reviewCount: true;
@@ -117,6 +119,7 @@ export default async function StorePage({
                 price: true,
                 originalPrice: true,
                 tags: true,
+                textbookType: true,
                 thumbnailUrl: true,
                 rating: true,
                 reviewCount: true,
@@ -135,6 +138,7 @@ export default async function StorePage({
                 price: true,
                 originalPrice: true,
                 tags: true,
+                textbookType: true,
                 thumbnailUrl: true,
                 rating: true,
                 reviewCount: true,
@@ -181,6 +185,7 @@ export default async function StorePage({
       originalPrice: t.originalPrice,
       tag: tags[0] || null,
       tags,
+      textbookType: (t as { textbookType?: string | null }).textbookType ?? null,
       type: "textbook" as const,
       thumbnailUrl: t.thumbnailUrl,
       rating: t.rating,
@@ -308,6 +313,15 @@ export default async function StorePage({
                       ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02] group-hover:scale-[1.02]" 
                       : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
                   }`}>
+                    {/* 교재 종류 배지 (교재만) */}
+                    {product.type === "textbook" && product.textbookType ? (
+                      <div className="absolute left-3 top-3 z-10">
+                        <span className="rounded-lg bg-black/70 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">
+                          {product.textbookType}
+                        </span>
+                      </div>
+                    ) : null}
+
                     {/* 상품 이미지 영역 */}
                     {product.thumbnailUrl ? (
                       product.type === "textbook" ? (

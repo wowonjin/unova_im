@@ -88,7 +88,7 @@ export default async function HomePage() {
     };
   }>;
 
-  type DbTextbookRow = Prisma.TextbookGetPayload<{
+    type DbTextbookRow = Prisma.TextbookGetPayload<{
     select: {
       id: true;
       title: true;
@@ -97,6 +97,7 @@ export default async function HomePage() {
       price: true;
       originalPrice: true;
       tags: true;
+        textbookType: true;
       thumbnailUrl: true;
       rating: true;
       reviewCount: true;
@@ -135,6 +136,7 @@ export default async function HomePage() {
               price: true,
               originalPrice: true,
               tags: true,
+                textbookType: true,
               thumbnailUrl: true,
               rating: true,
               reviewCount: true,
@@ -153,6 +155,7 @@ export default async function HomePage() {
               price: true,
               originalPrice: true,
               tags: true,
+                textbookType: true,
               thumbnailUrl: true,
               rating: true,
               reviewCount: true,
@@ -178,6 +181,7 @@ export default async function HomePage() {
       price: c.price || 0,
       originalPrice: c.originalPrice,
       tags,
+      textbookType: null,
       type: "course" as const,
       thumbnailUrl: c.thumbnailUrl,
       rating: c.rating,
@@ -195,6 +199,7 @@ export default async function HomePage() {
       price: t.price || 0,
       originalPrice: t.originalPrice,
       tags,
+      textbookType: (t as { textbookType?: string | null }).textbookType ?? null,
       type: "textbook" as const,
       thumbnailUrl: t.thumbnailUrl,
       rating: t.rating,

@@ -109,6 +109,7 @@ export default async function AdminTextbookPage({
         isPublished: true,
         thumbnailUrl: true,
         composition: true,
+        textbookType: true,
         // detail tab fields
         price: true,
         originalPrice: true,
@@ -317,6 +318,7 @@ export default async function AdminTextbookPage({
                     teacherTitle: (textbook as { teacherTitle?: string | null }).teacherTitle ?? null,
                     teacherDescription: (textbook as { teacherDescription?: string | null }).teacherDescription ?? null,
                     tags: (textbook.tags as string[] | null) ?? [],
+                    textbookType: (textbook as { textbookType?: string | null }).textbookType ?? null,
                     benefits: (textbook.benefits as string[] | null) ?? [],
                     features: (textbook.features as string[] | null) ?? [],
                     extraOptions:

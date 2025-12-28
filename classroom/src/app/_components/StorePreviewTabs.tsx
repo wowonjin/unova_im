@@ -11,6 +11,7 @@ export type StorePreviewProduct = {
   price: number;
   originalPrice: number | null;
   tags: string[];
+  textbookType: string | null;
   type: "course" | "textbook";
   thumbnailUrl: string | null;
   rating: number | null;
@@ -121,6 +122,15 @@ export default function StorePreviewTabs({
                       : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
                   }`}
                 >
+                  {/* 교재 종류 배지 (교재만) */}
+                  {product.type === "textbook" && product.textbookType ? (
+                    <div className="absolute left-3 top-3 z-10">
+                      <span className="rounded-lg bg-black/70 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">
+                        {product.textbookType}
+                      </span>
+                    </div>
+                  ) : null}
+
                   {product.thumbnailUrl ? (
                     product.type === "textbook" ? (
                       <div className="absolute inset-0 flex items-center justify-center">

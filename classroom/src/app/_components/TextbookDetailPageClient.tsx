@@ -19,6 +19,7 @@ type Props = {
     teacherTitle: string | null;
     teacherDescription: string | null;
     tags: string[];
+    textbookType: string | null;
     benefits: string[];
     features: string[];
     extraOptions: { name: string; value: string }[];
@@ -33,6 +34,7 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
   const [teacherTitle, setTeacherTitle] = useState(initial.teacherTitle || "");
   const [teacherDescription, setTeacherDescription] = useState(initial.teacherDescription || "");
   const [tags, setTags] = useState((initial.tags ?? []).join(", "));
+  const [textbookType, setTextbookType] = useState(initial.textbookType || "");
   const [benefits, setBenefits] = useState((initial.benefits ?? []).join("\n"));
   const [features, setFeatures] = useState((initial.features ?? []).join("\n"));
   const [extraOptions, setExtraOptions] = useState(
@@ -56,6 +58,7 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
       formData.append("teacherTitle", teacherTitle);
       formData.append("teacherDescription", teacherDescription);
       formData.append("tags", tags);
+      formData.append("textbookType", textbookType);
       formData.append("benefits", benefits);
       formData.append("features", features);
       formData.append("extraOptions", extraOptions);
@@ -77,7 +80,7 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
       console.error("Save error:", error);
       setSaveStatus("error");
     }
-  }, [textbookId, price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, extraOptions, description, relatedTextbookIds]);
+  }, [textbookId, price, originalPrice, teacherTitle, teacherDescription, tags, textbookType, benefits, features, extraOptions, description, relatedTextbookIds]);
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -98,7 +101,7 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [price, originalPrice, teacherTitle, teacherDescription, tags, benefits, features, extraOptions, description, relatedTextbookIds, saveData]);
+  }, [price, originalPrice, teacherTitle, teacherDescription, tags, textbookType, benefits, features, extraOptions, description, relatedTextbookIds, saveData]);
 
   const inputClass = "w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20";
   const labelClass = "block text-sm font-medium text-white/70 mb-1.5";
@@ -171,6 +174,19 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
           className={inputClass}
         />
         <p className="mt-1 text-xs text-white/40">쉼표(,)로 구분하여 입력하세요.</p>
+      </div>
+
+      {/* 교재 종류 */}
+      <div>
+        <label className={labelClass}>교재 종류</label>
+        <input
+          type="text"
+          value={textbookType}
+          onChange={(e) => setTextbookType(e.target.value)}
+          placeholder="예: 실전서, 기출, N제"
+          className={inputClass}
+        />
+        <p className="mt-1 text-xs text-white/40">교재 구매하기 리스트에서 교재 이미지 좌측 상단 배지로 표시됩니다.</p>
       </div>
 
       {/* 수강 혜택 */}
