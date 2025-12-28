@@ -406,7 +406,9 @@ export default async function ProductDetailPage({
     };
   }>;
 
-  type DbTextbook = Prisma.TextbookGetPayload<{
+  // Textbook은 운영/배포 환경에서 마이그레이션 누락(컬럼 없음) 시 쿼리가 실패할 수 있어
+  // "full select"와 "minimal select"를 모두 허용하는 유니온 타입으로 다룹니다.
+  type DbTextbookFull = Prisma.TextbookGetPayload<{
     select: {
       id: true;
       title: true;
@@ -429,6 +431,29 @@ export default async function ProductDetailPage({
       composition: true;
     };
   }>;
+
+  type DbTextbookMinimal = Prisma.TextbookGetPayload<{
+    select: {
+      id: true;
+      title: true;
+      subjectName: true;
+      teacherName: true;
+      teacherTitle: true;
+      teacherDescription: true;
+      thumbnailUrl: true;
+      price: true;
+      originalPrice: true;
+      rating: true;
+      reviewCount: true;
+      tags: true;
+      benefits: true;
+      features: true;
+      description: true;
+      entitlementDays: true;
+    };
+  }>;
+
+  type DbTextbook = DbTextbookFull | DbTextbookMinimal;
 
   let dbCourse: DbCourse | null = null;
   let dbTextbook: DbTextbook | null = null;
