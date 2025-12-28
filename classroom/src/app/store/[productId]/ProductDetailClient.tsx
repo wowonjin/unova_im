@@ -1298,7 +1298,7 @@ export default function ProductDetailClient({
                             </p>
                             <div className="shrink-0 text-right">
                               <div className={`text-[12px] font-semibold ${isSelected ? "text-white/90" : "text-white/70"}`}>
-                                <span className="text-white/50">★</span> {Number(c.rating || 0).toFixed(1)}
+                                <span className="text-yellow-200">★</span> {Number(c.rating || 0).toFixed(1)}
                               </div>
                             </div>
                           </div>
@@ -1320,8 +1320,8 @@ export default function ProductDetailClient({
                                 {discount}%
                               </span>
                             )}
-                            <span className="ml-auto text-[11px] text-white/50">
-                              후기 {Number(c.reviewCount || 0).toLocaleString()}개
+                            <span className="ml-auto text-[11px] text-white/50 underline underline-offset-2">
+                              {Number(c.reviewCount || 0).toLocaleString()}개 후기
                             </span>
                           </div>
                         </div>
@@ -1372,7 +1372,7 @@ export default function ProductDetailClient({
                             </p>
                             <div className="shrink-0 text-right">
                               <div className={`text-[12px] font-semibold ${isSelected ? "text-white/90" : "text-white/70"}`}>
-                                <span className="text-white/50">★</span> {Number(related.rating || 0).toFixed(1)}
+                                <span className="text-yellow-200">★</span> {Number(related.rating || 0).toFixed(1)}
                               </div>
                             </div>
                           </div>
@@ -1394,8 +1394,8 @@ export default function ProductDetailClient({
                                 {discount}%
                               </span>
                             )}
-                            <span className="ml-auto text-[11px] text-white/50">
-                              후기 {Number(related.reviewCount || 0).toLocaleString()}개
+                            <span className="ml-auto text-[11px] text-white/50 underline underline-offset-2">
+                              {Number(related.reviewCount || 0).toLocaleString()}개 후기
                             </span>
                           </div>
                         </div>
