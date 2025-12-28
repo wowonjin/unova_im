@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 
-type OtherTextbook = {
-  id: string;
-  title: string;
-  subjectName: string | null;
-  thumbnailUrl: string | null;
-};
+function normalizeGcsUrl(s: string): string {
+  const t = (s ?? "").trim();
+  if (!t) return "";
+  if (t.toLowerCase().startsWith("gs://")) {
+    return `https://storage.googleapis.com/${t.slice(5)}`;
+  }
+  return t;
+}
 
 type Props = {
   textbookId: string;
@@ -23,10 +25,9 @@ type Props = {
     description: string | null;
     relatedTextbookIds: string[];
   };
-  otherTextbooks: OtherTextbook[];
 };
 
-export default function TextbookDetailPageClient({ textbookId, initial, otherTextbooks }: Props) {
+export default function TextbookDetailPageClient({ textbookId, initial }: Props) {
   const [price, setPrice] = useState(initial.price?.toString() || "");
   const [originalPrice, setOriginalPrice] = useState(initial.originalPrice?.toString() || "");
   const [teacherTitle, setTeacherTitle] = useState(initial.teacherTitle || "");
@@ -101,6 +102,10 @@ export default function TextbookDetailPageClient({ textbookId, initial, otherTex
 
   const inputClass = "w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20";
   const labelClass = "block text-sm font-medium text-white/70 mb-1.5";
+  const benefitImageUrls = benefits
+    .split("\n")
+    .map((x) => normalizeGcsUrl(x))
+    .filter((x) => /^https?:\/\//i.test(x));
 
   return (
     <div className="space-y-6">
@@ -155,30 +160,6 @@ export default function TextbookDetailPageClient({ textbookId, initial, otherTex
         </div>
       </div>
 
-      {/* 선생님 소개 (상세 상단에 노출) */}
-      <div>
-        <label className={labelClass}>선생님 한 줄 소개</label>
-        <input
-          type="text"
-          value={teacherTitle}
-          onChange={(e) => setTeacherTitle(e.target.value)}
-          placeholder="예: 연세대학교 의과대학 졸업"
-          className={inputClass}
-        />
-        <p className="mt-1 text-xs text-white/40">교재 상세 상단의 선생님 이름 아래에 작은 글씨로 표시됩니다.</p>
-      </div>
-
-      <div>
-        <label className={labelClass}>선생님 소개</label>
-        <textarea
-          value={teacherDescription}
-          onChange={(e) => setTeacherDescription(e.target.value)}
-          placeholder="선생님 소개를 입력하세요..."
-          rows={4}
-          className={inputClass}
-        />
-      </div>
-
       {/* 태그 */}
       <div>
         <label className={labelClass}>태그</label>
@@ -192,124 +173,35 @@ export default function TextbookDetailPageClient({ textbookId, initial, otherTex
         <p className="mt-1 text-xs text-white/40">쉼표(,)로 구분하여 입력하세요.</p>
       </div>
 
-      {/* 상세 설명 */}
+      {/* 수강 혜택 */}
       <div>
-        <label className={labelClass}>상세 설명</label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="교재에 대한 상세 설명을 입력하세요..."
-          rows={4}
-          className={inputClass}
-        />
-      </div>
-
-      {/* 혜택 */}
-      <div>
-        <label className={labelClass}>혜택</label>
+        <label className={labelClass}>수강 혜택 (상세페이지 이미지 URL)</label>
         <textarea
           value={benefits}
           onChange={(e) => setBenefits(e.target.value)}
-          placeholder="PDF 다운로드 가능&#10;인쇄 무제한"
+          placeholder="https://.../detail-1.png&#10;https://.../detail-2.jpg"
           rows={4}
           className={inputClass}
         />
-        <p className="mt-1 text-xs text-white/40">줄바꿈으로 구분하여 입력하세요.</p>
-      </div>
+        <p className="mt-1 text-xs text-white/40">
+          구글 스토리지 URL을 줄바꿈으로 구분하여 입력하세요. (예: <span className="text-white/50">https://storage.googleapis.com/...</span> 또는{" "}
+          <span className="text-white/50">gs://bucket/path</span>)
+        </p>
 
-      {/* 특징 */}
-      <div>
-        <label className={labelClass}>특징</label>
-        <textarea
-          value={features}
-          onChange={(e) => setFeatures(e.target.value)}
-          placeholder="고화질 PDF&#10;풀이 포함"
-          rows={4}
-          className={inputClass}
-        />
-        <p className="mt-1 text-xs text-white/40">줄바꿈으로 구분하여 입력하세요.</p>
-      </div>
-
-      {/* 추가 옵션 */}
-      <div>
-        <label className={labelClass}>추가 옵션</label>
-        <textarea
-          value={extraOptions}
-          onChange={(e) => setExtraOptions(e.target.value)}
-          placeholder={"예:\n구성: PDF + 해설\n파일형식: PDF\n페이지: 320p"}
-          rows={4}
-          className={inputClass}
-        />
-        <p className="mt-1 text-xs text-white/40">줄바꿈으로 구분, 각 줄은 "옵션명: 값" 형태로 입력하세요.</p>
-      </div>
-
-      {/* 추가 교재 구매 설정 */}
-      {otherTextbooks.length > 0 && (
-        <div className="pt-6 border-t border-white/10">
-          <label className={labelClass}>
-            추가 교재 구매
-            <span className="ml-2 text-white/40 font-normal">(상세 페이지에 표시할 교재 선택)</span>
-          </label>
-          <p className="text-xs text-white/40 mb-3">
-            선택한 교재들이 이 교재의 상세 페이지 &ldquo;추가 교재 구매&rdquo; 섹션에 표시됩니다.
-          </p>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {otherTextbooks.map((tb) => {
-              const isSelected = relatedTextbookIds.includes(tb.id);
-              return (
-                <label
-                  key={tb.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    isSelected 
-                      ? "border-amber-400/50 bg-amber-500/10" 
-                      : "border-white/10 hover:border-white/20 bg-white/5"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setRelatedTextbookIds([...relatedTextbookIds, tb.id]);
-                      } else {
-                        setRelatedTextbookIds(relatedTextbookIds.filter((id) => id !== tb.id));
-                      }
-                    }}
-                    className="w-4 h-4 rounded border-white/30 bg-transparent text-amber-500 focus:ring-amber-500 focus:ring-offset-0"
-                  />
-                  
-                  {/* 썸네일 */}
-                  <div className="w-8 h-10 rounded overflow-hidden bg-white/10 flex-shrink-0">
-                    {tb.thumbnailUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={tb.thumbnailUrl} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-white/20 text-[10px]">
-                        📖
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* 정보 */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{tb.title}</p>
-                    {tb.subjectName && (
-                      <p className="text-xs text-white/50">{tb.subjectName}</p>
-                    )}
-                  </div>
-                </label>
-              );
-            })}
+        {benefitImageUrls.length > 0 && (
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {benefitImageUrls.slice(0, 6).map((url, idx) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={`${textbookId}-benefit-preview-${idx}`}
+                src={url}
+                alt="수강 혜택 이미지 미리보기"
+                className="w-full rounded-xl border border-white/10 bg-white/[0.02] object-cover"
+              />
+            ))}
           </div>
-          
-          {relatedTextbookIds.length > 0 && (
-            <p className="mt-2 text-xs text-amber-400">
-              {relatedTextbookIds.length}개 교재가 추가 교재 구매에 표시됩니다.
-            </p>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

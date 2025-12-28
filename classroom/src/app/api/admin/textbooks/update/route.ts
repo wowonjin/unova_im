@@ -18,6 +18,7 @@ const Schema = z.object({
       const n = parseInt(v, 10);
       return Number.isFinite(n) && n > 0 ? n : undefined;
     }),
+  composition: z.string().optional().transform((v) => (typeof v === "string" ? v.trim() : "") || null),
 });
 
 export async function POST(req: Request) {
@@ -43,6 +44,7 @@ export async function POST(req: Request) {
     teacherName: raw.get("teacherName"),
     subjectName: raw.get("subjectName"),
     entitlementDays: raw.get("entitlementDays"),
+    composition: raw.get("composition"),
   });
 
   if (!parsed.success) {
@@ -52,7 +54,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "VALIDATION_ERROR" }, { status: 400 });
   }
 
-  const { textbookId, title, teacherName, subjectName, entitlementDays } = parsed.data;
+  const { textbookId, title, teacherName, subjectName, entitlementDays, composition } = parsed.data;
 
   // 소유권 확인
   const existing = await prisma.textbook.findUnique({
@@ -67,15 +69,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
   }
 
-  await prisma.textbook.update({
-    where: { id: textbookId },
-    data: {
-      ...(title !== undefined && { title }),
-      ...(teacherName !== undefined && { teacherName }),
-      ...(subjectName !== undefined && { subjectName }),
-      ...(entitlementDays !== undefined && { entitlementDays }),
-    },
-  });
+  try {
+    await prisma.textbook.update({
+      where: { id: textbookId },
+      data: {
+        ...(title !== undefined && { title }),
+        ...(teacherName !== undefined && { teacherName }),
+        ...(subjectName !== undefined && { subjectName }),
+        ...(entitlementDays !== undefined && { entitlementDays }),
+        ...(composition !== undefined && { composition }),
+      } as never,
+    });
+  } catch (e) {
+    // 배포 환경에서 컬럼이 아직 없을 수 있음(마이그레이션 누락). composition 없이 재시도.
+    console.error("[admin/textbooks/update] textbook.update failed, retrying without composition:", e);
+    await prisma.textbook.update({
+      where: { id: textbookId },
+      data: {
+        ...(title !== undefined && { title }),
+        ...(teacherName !== undefined && { teacherName }),
+        ...(subjectName !== undefined && { subjectName }),
+        ...(entitlementDays !== undefined && { entitlementDays }),
+      } as never,
+    });
+  }
 
   // JSON 요청이면 JSON 응답, 아니면 redirect
   return NextResponse.json({ ok: true });

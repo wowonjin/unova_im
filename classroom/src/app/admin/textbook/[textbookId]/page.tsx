@@ -6,6 +6,7 @@ import TextbookPublishedSelect from "@/app/_components/TextbookPublishedSelect";
 import TextbookThumbnailGenerator from "@/app/_components/TextbookThumbnailGenerator";
 import TextbookBasicInfoClient from "@/app/_components/TextbookBasicInfoClient";
 import TextbookDetailPageClient from "@/app/_components/TextbookDetailPageClient";
+import TextbookAddonsClient from "@/app/_components/TextbookAddonsClient";
 import ConfirmDeleteButton, { ConfirmDeleteIconButton } from "@/app/_components/ConfirmDeleteButton";
 
 function formatBytes(bytes: number) {
@@ -28,8 +29,8 @@ export default async function AdminTextbookPage({
   const sp = (await searchParams) ?? {};
   const entitleMsg = sp.entitle || null;
   // "detail" 탭은 기존 호환을 위해 유지하되, UI에서는 "설정"에 합쳐서 표시합니다.
-  const tab = (sp.tab || "settings") as "settings" | "detail" | "users";
-  const activeTab = (tab === "detail" ? "settings" : tab) as "settings" | "users";
+  const tab = (sp.tab || "settings") as "settings" | "detail" | "addons" | "users";
+  const activeTab = (tab === "detail" ? "settings" : tab) as "settings" | "addons" | "users";
 
   // NOTE: 운영에서 마이그레이션 누락 시 Prisma가 모든 컬럼을 조회하다가 크래시가 날 수 있어
   // 먼저 "사용하는 필드만" select 하고, 실패하면 최소 필드로 폴백합니다.
@@ -107,6 +108,7 @@ export default async function AdminTextbookPage({
         createdAt: true,
         isPublished: true,
         thumbnailUrl: true,
+        composition: true,
         // detail tab fields
         price: true,
         originalPrice: true,
@@ -137,7 +139,9 @@ export default async function AdminTextbookPage({
       },
     });
   } catch (e) {
-    console.error("[AdminTextbookPage] textbook.findUnique failed (likely migration mismatch):", e);
+    // NOTE: Next dev(Turbopack)에서 server console.error가 소스맵 오버레이 이슈를 유발하는 경우가 있어
+    // 여기서는 에러 객체를 그대로 찍지 않고 warn으로 낮춰 노이즈/오버레이를 줄입니다.
+    console.warn("[AdminTextbookPage] textbook.findUnique failed (likely migration mismatch). Falling back to minimal select.");
     textbook = await prisma.textbook.findUnique({
       where: { id: textbookId, ownerId: teacher.id },
       select: {
@@ -172,20 +176,23 @@ export default async function AdminTextbookPage({
     );
   }
 
-  // 다른 교재 목록 (추가 교재 선택용)
-  const otherTextbooks = await prisma.textbook.findMany({
-    where: {
-      ownerId: teacher.id,
-      id: { not: textbookId },
-    },
-    select: {
-      id: true,
-      title: true,
-      subjectName: true,
-      thumbnailUrl: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  // 다른 교재 목록 (추가 교재 선택용) - "추가 상품" 탭에서만 사용
+  const otherTextbooks =
+    activeTab === "addons"
+      ? await prisma.textbook.findMany({
+          where: {
+            ownerId: teacher.id,
+            id: { not: textbookId },
+          },
+          select: {
+            id: true,
+            title: true,
+            subjectName: true,
+            thumbnailUrl: true,
+          },
+          orderBy: { createdAt: "desc" },
+        })
+      : [];
 
   // entitlementDays 필드 안전 처리 (마이그레이션 미적용 시 기본값)
   const entitlementDays = (textbook as { entitlementDays?: number }).entitlementDays ?? 30;
@@ -214,54 +221,52 @@ export default async function AdminTextbookPage({
         activeKey={activeTab}
         items={[
           { key: "settings", label: "설정", href: `/admin/textbook/${textbook.id}?tab=settings` },
+          { key: "addons", label: "추가 상품", href: `/admin/textbook/${textbook.id}?tab=addons` },
           { key: "users", label: "이용자", href: `/admin/textbook/${textbook.id}?tab=users` },
         ]}
       />
 
       <div className="mt-6">
         {activeTab === "settings" ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {/* 기본 정보 */}
-              <Card>
-                <CardHeader
-                  title="기본 정보"
-                  right={<TextbookPublishedSelect textbookId={textbook.id} isPublished={textbook.isPublished} />}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
+            {/* 왼쪽: 기본 정보 */}
+            <Card>
+              <CardHeader
+                title="기본 정보"
+                right={<TextbookPublishedSelect textbookId={textbook.id} isPublished={textbook.isPublished} />}
+              />
+              <CardBody>
+                <TextbookBasicInfoClient
+                  textbookId={textbook.id}
+                  initialTitle={textbook.title}
+                  initialTeacherName={(textbook as { teacherName?: string | null }).teacherName ?? ""}
+                  initialSubjectName={textbook.subjectName || ""}
+                  initialEntitlementDays={entitlementDays}
+                  initialComposition={(textbook as { composition?: string | null }).composition ?? ""}
                 />
-                <CardBody>
-                  <TextbookBasicInfoClient
-                    textbookId={textbook.id}
-                    initialTitle={textbook.title}
-                    initialTeacherName={(textbook as { teacherName?: string | null }).teacherName ?? ""}
-                    initialSubjectName={textbook.subjectName || ""}
-                    initialEntitlementDays={entitlementDays}
-                  />
 
-                  {/* 파일 정보 */}
-                  <div className="mt-6 pt-4 border-t border-white/10">
-                    <h4 className="text-sm font-medium text-white/60 mb-3">파일 정보</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-white/50">원본 파일명</span>
-                        <span className="text-white/80">{textbook.originalName}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-white/50">파일 크기</span>
-                        <span className="text-white/80">{formatBytes(textbook.sizeBytes)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-white/50">등록일</span>
-                        <span className="text-white/80">{new Date(textbook.createdAt).toLocaleDateString()}</span>
-                      </div>
+                {/* 파일 정보 */}
+                <div className="mt-6 pt-4 border-t border-white/10">
+                  <h4 className="text-sm font-medium text-white/60 mb-3">파일 정보</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-white/50">원본 파일명</span>
+                      <span className="text-white/80">{textbook.originalName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-white/50">파일 크기</span>
+                      <span className="text-white/80">{formatBytes(textbook.sizeBytes)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-white/50">등록일</span>
+                      <span className="text-white/80">{new Date(textbook.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
-                </CardBody>
-              </Card>
+                </div>
 
-              {/* 썸네일 및 다운로드 */}
-              <Card>
-                <CardHeader title="썸네일 및 다운로드" />
-                <CardBody>
+                {/* 썸네일 및 다운로드 */}
+                <div className="mt-6 pt-4 border-t border-white/10">
+                  <h4 className="text-sm font-medium text-white/60 mb-3">썸네일 및 다운로드</h4>
                   <div className="flex items-start gap-4">
                     {textbook.thumbnailUrl ? (
                       <div className="shrink-0 w-24 h-32 rounded-lg overflow-hidden border border-white/10 bg-white/5">
@@ -293,11 +298,11 @@ export default async function AdminTextbookPage({
                       </a>
                     </div>
                   </div>
-                </CardBody>
-              </Card>
-            </div>
+                </div>
+              </CardBody>
+            </Card>
 
-            {/* 상세 페이지 설정(기존 detail 탭 내용을 settings에 합침) */}
+            {/* 오른쪽: 상세 페이지 설정 */}
             <Card>
               <CardHeader
                 title="상세 페이지 설정"
@@ -317,13 +322,26 @@ export default async function AdminTextbookPage({
                     extraOptions:
                       (textbook as { extraOptions?: { name: string; value: string }[] | null }).extraOptions ?? [],
                     description: textbook.description ?? null,
-                    relatedTextbookIds: ((textbook as { relatedTextbookIds?: unknown }).relatedTextbookIds as string[] | null) ?? [],
+                    relatedTextbookIds:
+                      ((textbook as { relatedTextbookIds?: unknown }).relatedTextbookIds as string[] | null) ?? [],
                   }}
-                  otherTextbooks={otherTextbooks}
                 />
               </CardBody>
             </Card>
           </div>
+        ) : activeTab === "addons" ? (
+          <Card>
+            <CardHeader title="추가 상품" description="이 교재 상세 페이지에 함께 노출할 추가 교재를 선택합니다." />
+            <CardBody>
+              <TextbookAddonsClient
+                textbookId={textbook.id}
+                otherTextbooks={otherTextbooks}
+                initialRelatedTextbookIds={
+                  ((textbook as { relatedTextbookIds?: unknown }).relatedTextbookIds as string[] | null) ?? []
+                }
+              />
+            </CardBody>
+          </Card>
         ) : (
           <Card>
             <CardHeader

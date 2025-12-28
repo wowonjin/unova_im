@@ -406,7 +406,29 @@ export default async function ProductDetailPage({
     };
   }>;
 
-  type DbTextbook = Prisma.TextbookGetPayload<{}>;
+  type DbTextbook = Prisma.TextbookGetPayload<{
+    select: {
+      id: true;
+      title: true;
+      subjectName: true;
+      teacherName: true;
+      teacherTitle: true;
+      teacherDescription: true;
+      thumbnailUrl: true;
+      price: true;
+      originalPrice: true;
+      rating: true;
+      reviewCount: true;
+      tags: true;
+      benefits: true;
+      features: true;
+      description: true;
+      extraOptions: true;
+      entitlementDays: true;
+      relatedTextbookIds: true;
+      composition: true;
+    };
+  }>;
 
   let dbCourse: DbCourse | null = null;
   let dbTextbook: DbTextbook | null = null;
@@ -429,15 +451,70 @@ export default async function ProductDetailPage({
     });
 
     // DB 교재 검색
-    dbTextbook = !dbCourse
-      ? await prisma.textbook.findFirst({
+    if (!dbCourse) {
+      try {
+        dbTextbook = await prisma.textbook.findFirst({
           where: {
             OR: [{ id: productId }],
             isPublished: true,
             owner: { email: storeOwnerEmail },
           },
-        })
-      : null;
+          select: {
+            id: true,
+            title: true,
+            subjectName: true,
+            teacherName: true,
+            teacherTitle: true,
+            teacherDescription: true,
+            thumbnailUrl: true,
+            price: true,
+            originalPrice: true,
+            rating: true,
+            reviewCount: true,
+            tags: true,
+            benefits: true,
+            features: true,
+            description: true,
+            extraOptions: true,
+            entitlementDays: true,
+            relatedTextbookIds: true,
+            composition: true,
+          },
+        });
+      } catch (e) {
+        // 운영/로컬 환경에서 마이그레이션 누락 등으로 일부 컬럼이 없을 수 있음 → 최소 select로 폴백
+        // NOTE: Next dev(Turbopack)에서 server console.error가 소스맵 오버레이 이슈를 유발하는 경우가 있어
+        // 여기서는 에러 객체를 그대로 찍지 않고 warn으로 낮춰 노이즈/오버레이를 줄입니다.
+        console.warn("[store/product] textbook query failed with full select. Falling back to minimal select.");
+        dbTextbook = await prisma.textbook.findFirst({
+          where: {
+            OR: [{ id: productId }],
+            isPublished: true,
+            owner: { email: storeOwnerEmail },
+          },
+          select: {
+            id: true,
+            title: true,
+            subjectName: true,
+            teacherName: true,
+            teacherTitle: true,
+            teacherDescription: true,
+            thumbnailUrl: true,
+            price: true,
+            originalPrice: true,
+            rating: true,
+            reviewCount: true,
+            tags: true,
+            benefits: true,
+            features: true,
+            description: true,
+            entitlementDays: true,
+          },
+        });
+      }
+    } else {
+      dbTextbook = null;
+    }
   } catch (e) {
     console.error("[store/product] failed to load product from DB:", { productId, e });
     dbCourse = null;
@@ -715,6 +792,7 @@ export default async function ProductDetailPage({
     const teacherTitle = (dbTextbook as { teacherTitle?: string | null }).teacherTitle || "";
     const teacherDescription = (dbTextbook as { teacherDescription?: string | null }).teacherDescription || "";
     const thumbnailUrl = (dbTextbook as { thumbnailUrl?: string | null }).thumbnailUrl || null;
+    const composition = (dbTextbook as { composition?: string | null }).composition ?? null;
 
     return (
       <div className="min-h-screen bg-[#161616] text-white">
@@ -739,6 +817,7 @@ export default async function ProductDetailPage({
                 dailyPrice,
                 type: "textbook",
                 description: dbTextbook.description || "",
+                composition,
                 rating: dbTextbook.rating ?? 0,
                 reviewCount: dbTextbook.reviewCount || 0,
                 tags: (dbTextbook.tags as string[] | null) || [],

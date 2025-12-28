@@ -63,9 +63,9 @@ export default function DashboardHeader({
   const currentOption = SORT_OPTIONS.find((o) => o.key === sort) ?? SORT_OPTIONS[0];
 
   return (
-    <div className="mb-6">
+    <div className="mb-4 lg:mb-6">
       {/* 헤더 카드 */}
-      <div className="rounded-2xl border border-white/[0.06] bg-[#1C1C1C] p-5">
+      <div className="rounded-2xl border border-white/[0.06] bg-[#1C1C1C] p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           {/* 좌측: 제목 및 개수 */}
           <div className="flex items-center gap-4">

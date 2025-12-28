@@ -84,6 +84,9 @@ export default function LandingHeader({ showMobileMenu = false, fullWidth = fals
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [mobileExpanded, setMobileExpanded] = useState<Record<string, boolean>>({});
+  const [mobileProfileExpanded, setMobileProfileExpanded] = useState(false);
   const sidebar = showMobileMenu ? useSidebarOptional() : null;
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -115,6 +118,29 @@ export default function LandingHeader({ showMobileMenu = false, fullWidth = fals
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // 모바일 드로어: 라우트 변경 시 닫기
+  useEffect(() => {
+    setMobileDrawerOpen(false);
+  }, [pathname]);
+
+  // 모바일 드로어: ESC로 닫기
+  useEffect(() => {
+    if (!mobileDrawerOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileDrawerOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileDrawerOpen]);
+
+  // 모바일 드로어: 닫힐 때 서브메뉴 상태 초기화
+  useEffect(() => {
+    if (!mobileDrawerOpen) {
+      setMobileExpanded({});
+      setMobileProfileExpanded(false);
+    }
+  }, [mobileDrawerOpen]);
+
   // 로그인 상태 확인
   useEffect(() => {
     const checkAuth = async () => {
@@ -135,33 +161,61 @@ export default function LandingHeader({ showMobileMenu = false, fullWidth = fals
     checkAuth();
   }, []);
 
+  const openMenu = () => {
+    // AppShell 컨텍스트가 있으면(대시보드 등) 기존 사이드바를 열고,
+    // 그 외 페이지에서는 LandingHeader 자체 모바일 드로어를 사용합니다.
+    if (sidebar) sidebar.setIsOpen(true);
+    else setMobileDrawerOpen(true);
+  };
+
+  const closeMenu = () => setMobileDrawerOpen(false);
+
+  const toggleMobileSubmenu = (label: string) => {
+    setMobileExpanded((prev) => ({ ...prev, [label]: !prev[label] }));
+  };
+
 
   return (
     <nav
-      className="fixed top-0 left-0 right-0 z-50 transition-colors duration-300"
+      className="fixed top-0 left-0 right-0 z-[1000] transition-colors duration-300"
       style={{
-        backgroundColor: scrolled ? "rgba(23, 23, 23, 0.8)" : "#161616",
-        backdropFilter: scrolled ? "blur(12px)" : "none",
+        // 스크롤 시 투명(반투명)으로 변하는 효과 제거: 항상 불투명 배경 유지
+        backgroundColor: "#161616",
+        backdropFilter: "none",
       }}
     >
       <div className={fullWidth ? "px-4" : "mx-auto max-w-6xl px-4"}>
-        <div className="flex items-center h-[70px]">
-          {/* Mobile Menu Button - Only show in AppShell context */}
-          {showMobileMenu && sidebar && (
-            <button
-              type="button"
-              onClick={() => sidebar.setIsOpen(true)}
-              aria-label="메뉴 열기"
-              className="mr-3 rounded-lg p-2 hover:bg-white/10 lg:hidden"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
-          )}
+        <div className="relative flex items-center h-[70px]">
+          {/* Mobile Menu Button */}
+          <button
+            type="button"
+            onClick={openMenu}
+            aria-label="메뉴 열기"
+            className="mr-3 rounded-lg p-2 hover:bg-white/10 lg:hidden"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
 
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0">
+          {/* Logo (Desktop) */}
+          <Link href="/" className="hidden lg:flex items-center gap-2 shrink-0">
+            <Image
+              src="/unova-logo.png"
+              alt="UNOVA"
+              width={120}
+              height={24}
+              priority
+              className="h-5 w-auto"
+            />
+          </Link>
+
+          {/* Logo (Mobile - Center) */}
+          <Link
+            href="/"
+            className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 lg:hidden"
+            aria-label="홈으로"
+          >
             <Image
               src="/unova-logo.png"
               alt="UNOVA"
@@ -191,22 +245,23 @@ export default function LandingHeader({ showMobileMenu = false, fullWidth = fals
                 {/* 서브메뉴 드롭다운 */}
                 {item.subItems && activeMenu === item.label && (
                   <div 
-                    className="absolute top-full left-0 pt-2"
+                    className="absolute top-full left-0 pt-2 z-[1300]"
                     style={{ minWidth: "168px" }}
                   >
-                    <div className="bg-[#FFF] border border-black/10 rounded-xl shadow-2xl overflow-hidden animate-[fadeIn_150ms_ease-out]">
+                    {/* 컨테이너(배경/테두리/그림자) 없이 메뉴만 노출 */}
+                    <div className="animate-[fadeIn_150ms_ease-out]">
                       {item.subItems.map((subItem, idx) => (
                         <Link
                           key={subItem.label}
                           href={subItem.href}
                           target={subItem.external ? "_blank" : undefined}
                           rel={subItem.external ? "noopener noreferrer" : undefined}
-                          className={`flex items-center px-4 py-2.5 text-[14px] transition-colors ${
+                          className={`flex items-center px-3 py-2 text-[14px] transition-colors ${
                             isActiveHref(subItem.href)
-                              ? "bg-[rgba(94,91,92,0.2)] text-black"
-                              : "text-black/80 hover:bg-[rgba(94,91,92,0.2)] hover:text-black"
-                          } ${idx !== item.subItems!.length - 1 ? "border-b border-black/5" : ""}`}
-                            >
+                              ? "text-white font-semibold"
+                              : "text-white/80 hover:text-white"
+                          }`}
+                        >
                           <span>{subItem.label}</span>
                         </Link>
                       ))}
@@ -273,7 +328,7 @@ export default function LandingHeader({ showMobileMenu = false, fullWidth = fals
                     </span>
                   </button>
                   {/* 드롭다운 메뉴 */}
-                  <div className="absolute right-0 top-full mt-2 w-44 bg-[#FFF] rounded-xl shadow-lg border border-black/[0.08] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 py-1.5">
+                  <div className="absolute right-0 top-full mt-2 w-44 bg-[#FFF] rounded-xl shadow-lg border border-black/[0.08] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[1300] py-1.5">
                     <Link
                       href="/orders"
                       className="flex items-center px-4 py-2.5 text-[14px] text-black/80 hover:bg-[rgba(94,91,92,0.2)] transition-colors"
@@ -325,6 +380,205 @@ export default function LandingHeader({ showMobileMenu = false, fullWidth = fals
           </div>
         </div>
       </div>
+
+      {/* Mobile Drawer (Landing pages) */}
+      {!sidebar && mobileDrawerOpen ? (
+        <>
+          <div
+            className="fixed inset-0 z-[1100] bg-black/60 lg:hidden animate-[fadeIn_180ms_ease-out]"
+            onClick={closeMenu}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-y-0 left-0 z-[1200] w-72 bg-[#161616] p-5 lg:hidden animate-[drawerIn_180ms_ease-out]"
+          >
+            <div className="flex h-full flex-col">
+              <div className="flex items-center justify-between">
+                <Link href="/" className="inline-flex items-center" onClick={closeMenu}>
+                  <Image src="/unova-logo.png" alt="UNOVA" width={140} height={24} priority className="h-5 w-auto" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={closeMenu}
+                  aria-label="메뉴 닫기"
+                  className="rounded-lg p-2 hover:bg-white/10"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+
+              <nav className="mt-6 space-y-1 text-sm">
+                {menuItems.map((item) => (
+                  <div key={`mobile-${item.label}`} className="rounded-lg">
+                    <div
+                      className={`flex items-center justify-between rounded-lg px-3 py-2 transition-colors ${
+                        isActiveHref(item.href) ? "text-white font-semibold" : "text-white/90"
+                      }`}
+                    >
+                      <Link
+                        href={item.href}
+                        target={item.external ? "_blank" : undefined}
+                        rel={item.external ? "noopener noreferrer" : undefined}
+                        onClick={closeMenu}
+                        className="flex-1 font-medium"
+                      >
+                        {item.label}
+                      </Link>
+                      {item.subItems ? (
+                        <button
+                          type="button"
+                          aria-label={`${item.label} 서브메뉴 토글`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleMobileSubmenu(item.label);
+                          }}
+                          className="ml-2 rounded-md p-1.5"
+                        >
+                          <span
+                            className="material-symbols-outlined text-white/70 transition-transform duration-200"
+                            style={{
+                              fontSize: "18px",
+                              transform: mobileExpanded[item.label] ? "rotate(180deg)" : "rotate(0deg)",
+                            }}
+                            aria-hidden="true"
+                          >
+                            expand_more
+                          </span>
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {item.subItems ? (
+                      <div
+                        className={`overflow-hidden pl-2 transition-[max-height,opacity] duration-200 ease-out ${
+                          mobileExpanded[item.label] ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                        }`}
+                      >
+                        <div className="mt-2 rounded-xl border border-white/10 bg-[#1a1a1c] p-2">
+                          <div className="space-y-1">
+                          {item.subItems.map((sub) => (
+                            <Link
+                              key={`mobile-sub-${sub.label}`}
+                              href={sub.href}
+                              target={sub.external ? "_blank" : undefined}
+                              rel={sub.external ? "noopener noreferrer" : undefined}
+                              onClick={closeMenu}
+                              className={`block rounded-lg px-3 py-2 text-[13px] transition-colors ${
+                                isActiveHref(sub.href)
+                                  ? "bg-white/10 text-white"
+                                  : "text-white/70"
+                              }`}
+                            >
+                              {sub.label}
+                            </Link>
+                          ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+
+                {/* 관리자 */}
+                {user?.isAdmin ? (
+                  <Link
+                    href="/admin"
+                    onClick={closeMenu}
+                    className={`mt-2 flex items-center rounded-lg px-3 py-2 text-[14px] transition-colors ${
+                      isActiveHref("/admin") ? "text-amber-300 font-semibold" : "text-amber-400"
+                    }`}
+                  >
+                    관리자
+                  </Link>
+                ) : null}
+              </nav>
+
+              <div className="mt-auto pt-6 border-t border-white/10">
+                {loading ? (
+                  <div className="h-10" />
+                ) : user ? (
+                  <div className="space-y-2">
+                    {/* 프로필 클릭 -> 위에 메뉴(구매내역/마이페이지/로그아웃) 토글 */}
+                    <div
+                      className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${
+                        mobileProfileExpanded ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+                      }`}
+                    >
+                      <div className="mb-2 rounded-xl border border-black/10 bg-white p-2 shadow-lg">
+                        <div className="grid grid-cols-2 gap-2">
+                          <Link
+                            href="/orders"
+                            onClick={closeMenu}
+                            className="rounded-lg px-3 py-2 text-center text-sm text-black/80 hover:bg-[rgba(94,91,92,0.2)]"
+                          >
+                            구매내역
+                          </Link>
+                          <Link
+                            href="/mypage"
+                            onClick={closeMenu}
+                            className="rounded-lg px-3 py-2 text-center text-sm text-black/80 hover:bg-[rgba(94,91,92,0.2)]"
+                          >
+                            마이페이지
+                          </Link>
+                          <a
+                            href="/api/auth/logout"
+                            className="col-span-2 rounded-lg px-3 py-2 text-center text-sm text-rose-600 hover:bg-[rgba(94,91,92,0.2)]"
+                          >
+                            로그아웃
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setMobileProfileExpanded((v) => !v)}
+                      className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left"
+                      aria-label="프로필 메뉴 토글"
+                    >
+                      {user.profileImageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={user.profileImageUrl} alt="프로필" className="h-9 w-9 rounded-full object-cover" />
+                      ) : (
+                        <div className="h-9 w-9 rounded-full bg-white/10 flex items-center justify-center text-sm font-semibold">
+                          {(user.name || user.email).charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-white truncate">{user.name || "회원"}</p>
+                        <p className="text-xs text-white/50 truncate">{user.email}</p>
+                      </div>
+                      <span
+                        className="material-symbols-outlined text-white/50 transition-transform duration-200"
+                        style={{
+                          fontSize: "20px",
+                          transform: mobileProfileExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                        }}
+                        aria-hidden="true"
+                      >
+                        expand_more
+                      </span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Link href="/signup" onClick={closeMenu} className="rounded-lg px-3 py-2 text-center text-sm text-white/80 border border-white/10">
+                      회원가입
+                    </Link>
+                    <Link href="/login" onClick={closeMenu} className="rounded-lg px-3 py-2 text-center text-sm font-semibold text-white border border-white/10">
+                      로그인
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
     </nav>
   );
 }

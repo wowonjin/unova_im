@@ -7,6 +7,11 @@ import { prisma } from "@/lib/prisma";
 import { isAllCoursesTestModeFromAllParam } from "@/lib/test-mode";
 import Link from "next/link";
 
+function getStoreOwnerEmail(): string {
+  // 스토어(/store)와 동일한 노출 기준(관리자 소유 상품만 노출)을 사용합니다.
+  return (process.env.ADMIN_EMAIL || "admin@gmail.com").toLowerCase().trim();
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -19,6 +24,7 @@ export default async function DashboardPage({
   const showAllFromParam = isAllCoursesTestModeFromAllParam(typeof sp.all === "string" ? sp.all : null);
   // 관리자(admin@gmail.com 등)는 구매/수강권과 무관하게 전체 강의를 "나의 강의실"에서 볼 수 있도록 허용
   const showAll = showAllFromParam || user.isAdmin;
+  const storeOwnerEmail = getStoreOwnerEmail();
 
   // 로그인하지 않은 경우 빈 배열
   const enrollments = user.id
@@ -27,6 +33,7 @@ export default async function DashboardPage({
           userId: user.id,
           status: "ACTIVE",
           endAt: { gt: now },
+          course: { isPublished: true, owner: { email: storeOwnerEmail } },
         },
     select: {
       id: true,
@@ -52,7 +59,7 @@ export default async function DashboardPage({
 
   const allCourses = showAll
     ? await prisma.course.findMany({
-        where: { isPublished: true },
+        where: { isPublished: true, owner: { email: storeOwnerEmail } },
         orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
         select: {
           id: true,

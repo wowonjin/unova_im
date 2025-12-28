@@ -41,6 +41,7 @@ type ProductData = {
   dailyPrice: number;
   type: "course" | "textbook";
   description: string;
+  composition?: string | null;
   rating: number;
   reviewCount: number;
   tags: string[];
@@ -240,6 +241,20 @@ export default function ProductDetailClient({
   
   // 무료 강의 미리보기 상태
   const [expandedLessonIdx, setExpandedLessonIdx] = useState<number | null>(null);
+
+  const displayTags = Array.isArray(product.tags)
+    ? product.tags
+        .filter((t) => typeof t === "string" && t.trim().length > 0)
+        .filter((t) => t.trim().toUpperCase() !== "ORIGINAL")
+    : [];
+
+  const benefitImageUrls = (product.benefits ?? [])
+    .map((x) => {
+      const t = (typeof x === "string" ? x : "").trim();
+      if (t.toLowerCase().startsWith("gs://")) return `https://storage.googleapis.com/${t.slice(5)}`;
+      return t;
+    })
+    .filter((x) => typeof x === "string" && /^https?:\/\//i.test(x.trim()));
   
   // 스크롤 감지 - 탭이 sticky 상태일 때 말풍선 숨김
   const [isTabSticky, setIsTabSticky] = useState(false);
@@ -589,7 +604,12 @@ export default function ProductDetailClient({
         <nav className="flex items-center gap-2 text-[13px] text-white/50 mb-6">
           <Link href="/" className="hover:text-white transition-colors">홈</Link>
           <span className="text-white/30">›</span>
-          <Link href="/store" className="hover:text-white transition-colors">강의</Link>
+          <Link
+            href={`/store?type=${encodeURIComponent(product.type === "textbook" ? "교재" : "강좌")}`}
+            className="hover:text-white transition-colors"
+          >
+            {product.type === "textbook" ? "교재" : "강의"}
+          </Link>
           <span className="text-white/30">›</span>
           <span className="text-white/70">{product.subject}</span>
         </nav>
@@ -625,12 +645,18 @@ export default function ProductDetailClient({
         {/* 강의 정보 섹션 */}
         <section className="mb-4">
           {/* 태그 */}
-          {Array.isArray(product.tags) && product.tags.length > 0 && (
+          {displayTags.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 mb-4">
-              {product.tags.slice(0, 6).map((tag, idx) => (
+              {displayTags.slice(0, 6).map((tag, idx) => (
                 <span
                   key={`${product.id}-tag-top-${idx}`}
-                  className="px-2.5 py-1 rounded text-[12px] font-bold bg-[#333] text-white/90"
+                  className={`px-2.5 py-1 rounded-md text-[12px] font-bold ${
+                    idx === 0
+                      ? "bg-white text-black"
+                      : idx === 1
+                        ? "bg-[#6376EC] text-white"
+                        : "bg-white/[0.06] text-white/90"
+                  }`}
                 >
                   {tag}
                 </span>
@@ -761,7 +787,7 @@ export default function ProductDetailClient({
                     <tr>
                       <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">구성</td>
                       <td className="px-5 py-4 text-white/90">
-                        {product.type === "textbook" ? "PDF 교재" : `총 ${totalLessons}개 수업`}
+                        {product.type === "textbook" ? (product.composition || "PDF 교재") : `총 ${totalLessons}개 수업`}
                       </td>
                     </tr>
                     {product.type === "textbook" &&
@@ -775,16 +801,9 @@ export default function ProductDetailClient({
                 </table>
               </div>
 
-              {product.type === "course" ? (
+              {benefitImageUrls.length > 0 ? (
                 <div className="mb-8 space-y-3">
-                  {(product.benefits ?? [])
-                    .map((x) => {
-                      const t = (typeof x === "string" ? x : "").trim();
-                      if (t.toLowerCase().startsWith("gs://")) return `https://storage.googleapis.com/${t.slice(5)}`;
-                      return t;
-                    })
-                    .filter((x) => typeof x === "string" && /^https?:\/\//i.test(x.trim()))
-                    .map((url, idx) => (
+                  {benefitImageUrls.map((url, idx) => (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         key={`${product.id}-benefit-img-${idx}`}
@@ -797,11 +816,15 @@ export default function ProductDetailClient({
               ) : null}
 
               {/* 강의 설명 */}
-              {product.type !== "course" && (
-              <div className="rounded-xl border border-white/10 p-6">
-                <p className="text-[15px] text-white/80 leading-relaxed whitespace-pre-line">
-                  {product.description}
-                </p>
+              {product.type !== "course" &&
+                (((product.description ?? "").trim().length > 0) ||
+                  ((product.teacherDescription ?? "").trim().length > 0)) && (
+                <div className="rounded-xl border border-white/10 p-6">
+                  {((product.description ?? "").trim().length > 0) && (
+                    <p className="text-[15px] text-white/80 leading-relaxed whitespace-pre-line">
+                      {product.description}
+                    </p>
+                  )}
                 
                 {/* 선생님 소개 (있을 때만) */}
                 {product.teacherDescription && product.teacherDescription.trim().length > 0 && (
@@ -813,21 +836,8 @@ export default function ProductDetailClient({
                   </div>
                 )}
 
-                {/* 강의 특징 */}
-                <div className="mt-6 pt-6 border-t border-white/10">
-                  <p className="text-[14px] font-semibold text-white/90 mb-3">이런 분들께 추천합니다</p>
-                  <ul className="space-y-2">
-                    {product.benefits
-                      .filter((b) => !/^https?:\/\//i.test((b ?? "").trim()))
-                      .map((benefit, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-[14px] text-white/70">
-                        <span className="text-blue-400 mt-0.5">✓</span>
-                        {benefit}
-                      </li>
-                    ))}
-                  </ul>
+                {/* NOTE: 교재 상세 페이지에서는 "이런 분들께 추천합니다" 섹션을 노출하지 않습니다. */}
                 </div>
-              </div>
               )}
             </section>
           )}
@@ -1320,14 +1330,16 @@ export default function ProductDetailClient({
           <div className="px-5 pt-5 pb-2">
             {/* 태그 */}
             <div className="flex items-center gap-2 mb-3">
-              {Array.isArray(product.tags) &&
-                product.tags
-                  .filter((t) => typeof t === "string" && t.trim().length > 0)
-                  .slice(0, 3)
-                  .map((tag, idx) => (
+              {displayTags.slice(0, 3).map((tag, idx) => (
                     <span
                       key={`${product.id}-tag-side-${idx}`}
-                      className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#333] text-white/90"
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                        idx === 0
+                          ? "bg-white text-black"
+                          : idx === 1
+                            ? "bg-[#6376EC] text-white"
+                            : "bg-white/[0.06] text-white/90"
+                      }`}
                     >
                       {tag}
                     </span>

@@ -8,6 +8,7 @@ type Props = {
   initialTeacherName: string;
   initialSubjectName: string;
   initialEntitlementDays: number;
+  initialComposition: string;
 };
 
 export default function TextbookBasicInfoClient({
@@ -16,11 +17,13 @@ export default function TextbookBasicInfoClient({
   initialTeacherName,
   initialSubjectName,
   initialEntitlementDays,
+  initialComposition,
 }: Props) {
   const [title, setTitle] = useState(initialTitle);
   const [teacherName, setTeacherName] = useState(initialTeacherName);
   const [subjectName, setSubjectName] = useState(initialSubjectName);
   const [entitlementDays, setEntitlementDays] = useState(initialEntitlementDays);
+  const [composition, setComposition] = useState(initialComposition);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -36,6 +39,7 @@ export default function TextbookBasicInfoClient({
       formData.append("teacherName", teacherName);
       formData.append("subjectName", subjectName);
       formData.append("entitlementDays", entitlementDays.toString());
+      formData.append("composition", composition);
 
       const res = await fetch("/api/admin/textbooks/update", {
         method: "POST",
@@ -56,7 +60,7 @@ export default function TextbookBasicInfoClient({
       console.error("Save error:", error);
       setSaveStatus("error");
     }
-  }, [textbookId, title, teacherName, subjectName, entitlementDays]);
+  }, [textbookId, title, teacherName, subjectName, entitlementDays, composition]);
 
   // 입력 변경 시 자동 저장 (디바운스)
   useEffect(() => {
@@ -81,7 +85,7 @@ export default function TextbookBasicInfoClient({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [title, teacherName, subjectName, entitlementDays, saveData]);
+  }, [title, teacherName, subjectName, entitlementDays, composition, saveData]);
 
   return (
     <div className="space-y-4">
@@ -159,6 +163,19 @@ export default function TextbookBasicInfoClient({
           className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
         />
         <p className="mt-1 text-xs text-white/40">구매 후 교재를 이용할 수 있는 기간입니다.</p>
+      </div>
+
+      {/* 구성 */}
+      <div>
+        <label className="block text-sm font-medium text-white/70 mb-1.5">구성</label>
+        <input
+          type="text"
+          value={composition}
+          onChange={(e) => setComposition(e.target.value)}
+          placeholder="예: PDF 교재 / PDF+해설 / 2권 세트"
+          className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+        />
+        <p className="mt-1 text-xs text-white/40">스토어 교재 상세 페이지의 &ldquo;구성&rdquo; 항목에 표시됩니다.</p>
       </div>
     </div>
   );

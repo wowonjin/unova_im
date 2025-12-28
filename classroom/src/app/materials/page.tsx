@@ -104,7 +104,7 @@ export default async function MaterialsPage() {
   return (
     <AppShell>
       {/* 헤더 카드 */}
-      <div className="mb-6 rounded-2xl border border-white/[0.06] bg-[#1C1C1C] p-5">
+      <div className="mb-4 lg:mb-6 rounded-2xl border border-white/[0.06] bg-[#1C1C1C] p-4 sm:p-5">
         <div className="flex items-center gap-4">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/[0.08]">
             <span className="material-symbols-outlined text-[22px] text-white/70">menu_book</span>
@@ -132,7 +132,7 @@ export default async function MaterialsPage() {
               {textbooks.length}
             </span>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {textbooks.map((t) => (
               <div
                 key={t.id}

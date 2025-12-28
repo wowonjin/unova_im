@@ -293,9 +293,17 @@ function ProductSection({ title, products }: { title: string; products: Product[
   return (
     <div className="mt-6">
       <h3 className="text-[18px] font-bold text-white mb-4">{title}</h3>
-      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+      {/* Mobile: 한 줄에 4개(그리드) */}
+      <div className="grid grid-cols-4 gap-3 sm:hidden">
         {products.map((product, idx) => (
-          <ProductCard key={idx} product={product} />
+          <ProductCard key={`m-${idx}`} product={product} />
+        ))}
+      </div>
+
+      {/* Tablet/Desktop: 기존처럼 가로 스크롤 */}
+      <div className="hidden sm:flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+        {products.map((product, idx) => (
+          <ProductCard key={`d-${idx}`} product={product} />
         ))}
       </div>
     </div>
@@ -313,7 +321,7 @@ function ProductCard({ product }: { product: Product }) {
       href={product.href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex-shrink-0 w-[200px] sm:w-[220px]"
+      className="group w-full sm:flex-shrink-0 sm:w-[220px]"
     >
       {/* 이미지 */}
       <div className="relative aspect-[4/5] rounded-lg overflow-hidden bg-[#222] mb-3">

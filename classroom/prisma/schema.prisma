@@ -350,6 +350,8 @@ model Textbook {
   thumbnailUrl  String?
   // 이용 기간 (일 단위, 기본값 365일)
   entitlementDays Int    @default(365)
+  // 스토어 상세 페이지의 "구성"에 노출할 텍스트 (예: PDF 교재, PDF+해설, 2권 세트 등)
+  composition  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

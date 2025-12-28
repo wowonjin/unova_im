@@ -82,6 +82,9 @@ export default async function StorePage({
     let courses: DbCourseRow[] = [];
     let textbooks: DbTextbookRow[] = [];
     try {
+      // NOTE: 교재는 "교재 관리하기" 페이지 정렬과 동일하게 맞춤
+      // - 1차: position desc -> createdAt desc
+      // - 폴백: (운영 환경에서 position 컬럼 누락 등) createdAt desc
       [courses, textbooks] = await Promise.all([
         prisma.course.findMany({
           where: { isPublished: true, owner: { email: storeOwnerEmail } },
@@ -99,22 +102,44 @@ export default async function StorePage({
           },
           orderBy: { createdAt: "desc" },
         }),
-        prisma.textbook.findMany({
-          where: { isPublished: true, owner: { email: storeOwnerEmail } },
-          select: {
-            id: true,
-            title: true,
-            subjectName: true,
-            teacherName: true,
-            price: true,
-            originalPrice: true,
-            tags: true,
-            thumbnailUrl: true,
-            rating: true,
-            reviewCount: true,
-          },
-          orderBy: { createdAt: "desc" },
-        }),
+        (async () => {
+          try {
+            return await prisma.textbook.findMany({
+              where: { isPublished: true, owner: { email: storeOwnerEmail } },
+              select: {
+                id: true,
+                title: true,
+                subjectName: true,
+                teacherName: true,
+                price: true,
+                originalPrice: true,
+                tags: true,
+                thumbnailUrl: true,
+                rating: true,
+                reviewCount: true,
+              },
+              orderBy: [{ position: "desc" }, { createdAt: "desc" }],
+            });
+          } catch (e) {
+            console.error("[store] textbooks query failed with position order, fallback to createdAt:", e);
+            return await prisma.textbook.findMany({
+              where: { isPublished: true, owner: { email: storeOwnerEmail } },
+              select: {
+                id: true,
+                title: true,
+                subjectName: true,
+                teacherName: true,
+                price: true,
+                originalPrice: true,
+                tags: true,
+                thumbnailUrl: true,
+                rating: true,
+                reviewCount: true,
+              },
+              orderBy: [{ createdAt: "desc" }],
+            });
+          }
+        })(),
       ]);
     } catch (e) {
       console.error("[store] failed to load products from DB:", e);
@@ -254,23 +279,6 @@ export default async function StorePage({
                       ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02] group-hover:scale-[1.02]" 
                       : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
                   }`}>
-                    {/* 태그 */}
-                    {product.tag && (
-                      <div className="absolute top-3 left-3 z-10">
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                            product.tag === "BEST"
-                              ? "bg-orange-500 text-white"
-                              : product.tag === "NEW"
-                              ? "bg-blue-500 text-white"
-                              : "bg-white/20 text-white"
-                          }`}
-                        >
-                          {product.tag}
-                        </span>
-                      </div>
-                    )}
-
                     {/* 상품 이미지 영역 */}
                     {product.thumbnailUrl ? (
                       product.type === "textbook" ? (
@@ -342,28 +350,37 @@ export default async function StorePage({
                       )}
                     </div>
                     {/* 평점, 강사, 과목 */}
-                    <div className="mt-2 flex items-center gap-2 text-[12px] text-white/50">
+                    <div className="mt-2 flex items-center gap-2 text-[12px] text-white">
                       <span className="flex items-center gap-0.5">
-                        <span>⭐</span>
+                        <span className="text-yellow-400">⭐</span>
                         <span>{(product.rating ?? 0).toFixed(1)}</span>
-                        <span className="text-white/40">({product.reviewCount ?? 0})</span>
+                        <span>({product.reviewCount ?? 0})</span>
                       </span>
                       {product.teacher && (
                         <>
-                          <span className="text-white/30">·</span>
+                          <span className="text-white/70">·</span>
                           <span>{product.teacher}T</span>
                         </>
                       )}
-                      <span className="text-white/30">·</span>
+                      <span className="text-white/70">·</span>
                       <span>{product.subject}</span>
                     </div>
-                    {/* 강좌 태그 (관리자 상세 탭에서 입력한 쉼표 구분 태그들) */}
-                    {product.type === "course" && product.tags.length > 0 && (
+                    {/* 태그 (관리자 상세 탭에서 입력한 쉼표 구분 태그들) */}
+                    {product.tags.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {product.tags.slice(0, 6).map((t) => (
+                        {product.tags
+                          .filter((t) => t.trim().toUpperCase() !== "ORIGINAL")
+                          .slice(0, 6)
+                          .map((t, idx) => (
                           <span
                             key={`${product.id}-tag-${t}`}
-                            className="rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium text-white/70"
+                            className={`rounded-md px-2.5 py-1 text-[11px] font-medium ${
+                              idx === 0
+                                ? "bg-white text-black"
+                                : idx === 1
+                                  ? "bg-[#6376EC] text-white"
+                                  : "bg-white/[0.06] text-white/70"
+                            }`}
                           >
                             {t}
                           </span>
