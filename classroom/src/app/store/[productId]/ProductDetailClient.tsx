@@ -1418,8 +1418,8 @@ export default function ProductDetailClient({
                 {/* 기본 상품 금액 */}
                 {showBaseRow && (
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[14px] font-medium text-white">기본 상품</span>
-                    <span className="text-[16px] font-medium">
+                    <span className="text-[12px] font-medium text-white/90">기본 상품</span>
+                    <span className="text-[13px] font-medium">
                       {product.formattedPrice}
                     </span>
                   </div>
@@ -1428,8 +1428,8 @@ export default function ProductDetailClient({
                 {/* 추가 교재 금액 (선택한 경우에만) */}
                 {selectedRelatedIds.size > 0 && (
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[14px] font-medium text-white">추가 교재 {selectedRelatedIds.size}개</span>
-                    <span className="text-[16px] font-medium text-white">
+                    <span className="text-[12px] font-medium text-white/90">추가 교재 {selectedRelatedIds.size}개</span>
+                    <span className="text-[13px] font-medium text-white">
                       +{additionalAmount.toLocaleString()}원
                     </span>
                   </div>
@@ -1438,8 +1438,8 @@ export default function ProductDetailClient({
                 {/* 추가 강의 금액 (선택한 경우에만) */}
                 {selectedAddonCourseIds.size > 0 && (
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[14px] font-medium text-white">추가 강의 {selectedAddonCourseIds.size}개</span>
-                    <span className="text-[16px] font-medium text-white">
+                    <span className="text-[12px] font-medium text-white/90">추가 강의 {selectedAddonCourseIds.size}개</span>
+                    <span className="text-[13px] font-medium text-white">
                       +{additionalCourseAmount.toLocaleString()}원
                     </span>
                   </div>
@@ -1448,13 +1448,13 @@ export default function ProductDetailClient({
                 {/* 교재 할인 (선택한 경우에만) */}
                 {selectedRelatedIds.size > 0 && additionalTextbookDiscount > 0 && (
                   <div className="flex items-center justify-between mb-2">
-                    <span className="flex items-center gap-2 text-[14px] font-medium text-white">
+                    <span className="flex items-center gap-2 text-[12px] font-medium text-white/90">
                       교재 할인
-                      <span className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-1.5 py-0.5 text-[9px] font-bold leading-none text-white">
+                      <span className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-1.5 py-0.5 text-[8px] font-bold leading-none text-white">
                         SALE
                       </span>
                     </span>
-                    <span className="text-[16px] font-medium text-white">
+                    <span className="text-[13px] font-medium text-white">
                       -{additionalTextbookDiscount.toLocaleString()}원
                     </span>
                   </div>
@@ -1463,13 +1463,13 @@ export default function ProductDetailClient({
                 {/* 강의 할인 (강좌 + 교재 선택한 경우에만) */}
                 {product.type === "course" && courseBundleDiscount > 0 && (
                   <div className="flex items-center justify-between mb-2">
-                    <span className="flex items-center gap-2 text-[14px] font-medium text-white">
+                    <span className="flex items-center gap-2 text-[12px] font-medium text-white/90">
                       강의 할인
-                      <span className="inline-flex items-center justify-center rounded-full bg-rose-500/90 px-1.5 py-0.5 text-[9px] font-bold leading-none text-white">
+                      <span className="inline-flex items-center justify-center rounded-full bg-rose-500/90 px-1.5 py-0.5 text-[8px] font-bold leading-none text-white">
                         SALE
                       </span>
                     </span>
-                    <span className="text-[16px] font-medium text-white">
+                    <span className="text-[13px] font-medium text-white">
                       -{courseBundleDiscount.toLocaleString()}원
                     </span>
                   </div>
@@ -1481,8 +1481,8 @@ export default function ProductDetailClient({
                     hasSummaryLinesAboveTotal ? "" : "mt-0"
                   }`}
                 >
-                  <span className="text-[14px] font-bold">총 결제 금액</span>
-                  <span className="text-[20px] font-bold">{totalAmount.toLocaleString()}원</span>
+                  <span className="text-[12px] font-bold">총 결제 금액</span>
+                  <span className="text-[18px] font-bold">{totalAmount.toLocaleString()}원</span>
                 </div>
               </div>
             </>
