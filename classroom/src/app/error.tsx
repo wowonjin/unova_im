@@ -8,12 +8,17 @@ export default function GlobalError({
   reset: () => void;
 }) {
   const msg = (error?.message || "").toLowerCase();
+  // NOTE:
+  // Prisma 에러는 다양합니다(스키마 불일치/마이그레이션 누락/검증 에러 등).
+  // 여기서는 "DB 환경변수 누락/잘못된 연결 문자열" 케이스만 선별해서 안내합니다.
   const looksLikeMissingDbEnv =
-    msg.includes("database_url") ||
-    msg.includes("postgres_url") ||
-    msg.includes("postgres_prisma_url") ||
+    msg.includes("database_url is not set") ||
+    msg.includes("set database_url") ||
     msg.includes("requires postgres") ||
-    msg.includes("prisma");
+    msg.includes("must be a postgres connection string") ||
+    msg.includes("postgres_prisma_url") ||
+    msg.includes("postgres_url_non_pooling") ||
+    msg.includes("postgres_url");
 
   const host = typeof window !== "undefined" ? window.location.hostname : "";
   const isLocalhost = host === "localhost" || host === "127.0.0.1";
