@@ -4,6 +4,7 @@ import Footer from "@/app/_components/Footer";
 import { notFound } from "next/navigation";
 import TeacherDetailClient from "./TeacherDetailClient";
 import type { TeacherDetailTeacher } from "./TeacherDetailClient";
+import { prisma } from "@/lib/prisma";
 
 type Banner = {
   topText: string;
@@ -88,6 +89,7 @@ type TeacherData = {
   achievements: string[];
   courses: { title: string; price: string; href: string }[];
   socialLinks?: { type: 'instagram' | 'youtube'; url: string; icon: string }[];
+  promoImageUrl?: string;
   // 새로운 필드들
   headerSub?: string;
   imageUrl?: string;
@@ -624,10 +626,57 @@ for (const id of Object.keys(teachersData)) {
 
 export default async function TeacherDetailPage({ params }: { params: Promise<{ teacherId: string }> }) {
   const { teacherId } = await params;
+  // 1) 레거시 하드코딩 데이터 우선
   const teacher = teachersData[teacherId];
 
+  // 2) DB 기반 선생님(어드민 등록) 폴백 → 유예린 디자인 템플릿 적용
   if (!teacher) {
-    notFound();
+    const dbTeacher = await prisma.teacher.findUnique({
+      where: { slug: teacherId },
+      select: { slug: true, name: true, subjectName: true, imageUrl: true, mainImageUrl: true, promoImageUrl: true },
+    });
+    if (!dbTeacher) notFound();
+
+    // 유예린 선생님 데이터를 템플릿으로 사용
+    const yooYerinTemplate = teachersData["yoo-yerin"];
+    if (!yooYerinTemplate) notFound();
+
+    // DB 선생님 정보를 기반으로 유예린 디자인 템플릿 채우기
+    const dbTeacherData: TeacherDetailTeacher = {
+      name: dbTeacher.name,
+      subject: dbTeacher.subjectName || "과목",
+      subjectColor: "text-emerald-400",
+      bgColor: "bg-emerald-500/10",
+      headerSub: `${dbTeacher.name} 선생님의 강의`,
+      imageUrl: dbTeacher.mainImageUrl || dbTeacher.imageUrl || yooYerinTemplate.imageUrl || "",
+      promoImageUrl: dbTeacher.promoImageUrl || undefined,
+      banners: yooYerinTemplate.banners || [],
+      reviews: yooYerinTemplate.reviews || [],
+      notices: yooYerinTemplate.notices || [],
+      floatingBanners: yooYerinTemplate.floatingBanners || [],
+      curriculum: yooYerinTemplate.curriculum,
+      bookSets: yooYerinTemplate.bookSets,
+      lectureSets: yooYerinTemplate.lectureSets,
+      curriculumLink: yooYerinTemplate.curriculumLink,
+      youtubeVideos: yooYerinTemplate.youtubeVideos,
+      faqItems: yooYerinTemplate.faqItems,
+      profile: yooYerinTemplate.profile || {
+        education: { title: "학력", content: "정보 없음" },
+        career: { title: "약력", content: "정보 없음" },
+      },
+      socialLinks: yooYerinTemplate.socialLinks || [],
+      navigationLinks: yooYerinTemplate.navigationLinks || {},
+    };
+
+    return (
+      <div className="min-h-screen bg-[#C7D5E1] text-white flex flex-col">
+        <LandingHeader backgroundColor="#ffffff" variant="light" />
+        <main className="flex-1 pt-[104px] md:pt-[116px]">
+          <TeacherDetailClient teacher={dbTeacherData} />
+        </main>
+        <Footer />
+      </div>
+    );
   }
 
   // 새로운 디자인이 있는 선생님은 새로운 컴포넌트 사용
@@ -647,8 +696,8 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
 
   if (hasNewDesign) {
     return (
-      <div className="min-h-screen bg-[#5f4253] text-white flex flex-col">
-        <LandingHeader backgroundColor="#1D1D1F" />
+      <div className="min-h-screen bg-[#C7D5E1] text-white flex flex-col">
+        <LandingHeader backgroundColor="#ffffff" variant="light" />
         <main className="flex-1 pt-[104px] md:pt-[116px]">
           <TeacherDetailClient teacher={teacher as TeacherDetailTeacher} />
         </main>
@@ -659,8 +708,8 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
 
   // 기존 디자인 (다른 선생님들)
   return (
-    <div className="min-h-screen bg-[#161616] text-white flex flex-col">
-      <LandingHeader backgroundColor="#1D1D1F" />
+    <div className="min-h-screen bg-[#C7D5E1] text-white flex flex-col">
+      <LandingHeader backgroundColor="#ffffff" variant="light" />
       
       <main className="flex-1 pt-[70px]">
         {/* 프로필 섹션 */}

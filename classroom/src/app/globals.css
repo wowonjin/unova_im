@@ -32,7 +32,6 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
-
 .material-symbols-outlined {
   font-family: "Material Symbols Outlined";
   font-weight: normal;
@@ -125,6 +124,7 @@ html, body {
   margin-right: auto;
   padding-left: 1rem; /* = px-4 */
   padding-right: 1rem; /* = px-4 */
+  /* 선생님 상세 상단(이미지 포함) 섹션 배경 */
   background-color: transparent;
   font-family: 'Noto Sans KR', sans-serif;
   color: var(--u-text);
@@ -136,6 +136,19 @@ html, body {
   box-sizing: border-box;
 }
 
+/* 메인(상단) 섹터 뒤 배경을 화면 전체(100vw)로 #C7D5E1 깔기 */
+.unova-wrapper::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  background: #C7D5E1;
+  z-index: 0;
+}
+
 .unova-container {
   width: 100%;
   max-width: none;
@@ -143,7 +156,7 @@ html, body {
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 0;
+  gap: 18px;
   z-index: 1;
 }
 
@@ -215,6 +228,231 @@ a.unova-menu-item:active {
   max-width: 550px;
 }
 
+.unova-content--no-sidebar {
+  margin-left: 0;
+}
+
+.unova-right-panel {
+  width: 340px;
+  flex: 0 0 340px;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 6px;
+}
+
+.unova-panel-title {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: -0.2px;
+  color: rgba(255,255,255,0.90);
+  margin-bottom: 8px;
+}
+
+.unova-youtube,
+.unova-news {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  padding: 12px 12px 12px;
+}
+
+.unova-youtube__frame {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.25);
+  aspect-ratio: 16 / 9;
+}
+
+.unova-youtube__frame iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.unova-youtube__more {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.unova-youtube__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.10);
+  color: rgba(255,255,255,0.85);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.unova-youtube__link:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.unova-news__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.unova-news__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.unova-news__tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #fff;
+  flex: 0 0 auto;
+}
+
+.unova-news__text {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: rgba(255,255,255,0.82);
+  word-break: keep-all;
+}
+
+.unova-inline-menu {
+  margin-top: 14px;
+  margin-bottom: 10px;
+}
+
+.unova-inline-menu .unova-sidebar {
+  width: 100%;
+  /* 컨테이너 배경/테두리 제거 (구분선은 .unova-menu-item의 border-bottom으로 유지) */
+  background-color: transparent;
+  border: none;
+}
+
+/* 인라인 메뉴 항목: 배경 제거 + 구분선 유지(가독성 위해 라이트 배경 기준) */
+.unova-inline-menu .unova-menu-item {
+  background: transparent;
+  border-bottom-color: rgba(0, 0, 0, 0.14);
+  color: rgba(17, 17, 17, 0.95);
+}
+
+.unova-inline-menu .unova-menu-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.unova-rating {
+  margin-top: 16px;
+  padding: 14px 14px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.unova-rating__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.unova-rating__title {
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: -0.2px;
+}
+
+.unova-rating__score {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.unova-rating__num {
+  font-size: 20px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.96);
+  letter-spacing: -0.4px;
+}
+
+.unova-rating__max {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.60);
+}
+
+.unova-rating__stars {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.unova-rating__stars .is-on {
+  color: #ff6f9f; /* 기존 팔레트의 포인트 컬러 */
+}
+
+.unova-rating__stars .is-off {
+  color: rgba(255, 255, 255, 0.18);
+}
+
+.unova-rating__count {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.60);
+}
+
+.unova-rating__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.unova-rating__item {
+  padding: 10px 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.unova-rating__text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+  word-break: keep-all;
+}
+
 .unova-header-sub {
   font-size: 16px;
   color: var(--u-text);
@@ -238,6 +476,40 @@ a.unova-menu-item:active {
   border-radius: 0;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+
+/* 광고/프로모션 배너 (선생님 상세 상단 섹터 아래) */
+.unova-promo {
+  width: 100%;
+  max-width: 72rem; /* max-w-6xl */
+  margin: 14px auto 0;
+  padding: 0 1rem; /* px-4 */
+  box-sizing: border-box;
+}
+
+.unova-promo__inner {
+  position: relative;
+  width: 100%;
+  height: clamp(160px, 18vw, 260px); /* "길게" 보이는 가로 배너 */
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.15);
+  border: 1px solid rgba(0,0,0,0.10);
+}
+
+.unova-promo__img {
+  object-fit: cover; /* 이미지 채우기 */
+}
+
+.unova-promo__empty {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 18px;
+  color: rgba(17, 17, 17, 0.65);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .unova-banner-box {
@@ -429,12 +701,13 @@ a.unova-menu-item:active {
   width: auto;
   min-width: clamp(300px, 26vw, 360px);
   height: clamp(640px, 78vh, 780px);
-  flex: 1 1 0;
+  flex: 0 0 clamp(300px, 26vw, 360px);
   margin-left: 0;
   align-self: flex-end;
   display: flex;
   align-items: flex-end;
-  justify-content: flex-end;
+  /* 선생님 이미지를 오른쪽에 붙이지 않고 가운데로 */
+  justify-content: center;
   z-index: 1;
   pointer-events: none;
   overflow: visible;
@@ -443,7 +716,7 @@ a.unova-menu-item:active {
 .unova-teacher-img {
   /* 항상 컨테이너 바닥에 '붙여서' 보이도록 고정 */
   position: absolute;
-  right: 0;
+  left: 50%;
   bottom: 0;
   width: 100%;
   height: 100%;
@@ -451,6 +724,7 @@ a.unova-menu-item:active {
   margin-top: 0;
   object-fit: contain;
   object-position: bottom;
+  transform: translateX(-50%);
   display: block;
 }
 
@@ -637,7 +911,11 @@ a.unova-menu-item:active {
 
 @media (max-width: 1000px) {
   .unova-teacher-area {
-    display: none;
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    height: clamp(360px, 52vh, 520px);
+    order: 2;
   }
   .unova-left-col {
     display: none;
@@ -651,6 +929,12 @@ a.unova-menu-item:active {
   .unova-content {
     margin-left: 0;
     max-width: 100%;
+    order: 1;
+  }
+  .unova-right-panel {
+    width: 100%;
+    flex: 0 0 auto;
+    order: 3;
   }
   .unova-floating-banners {
     position: static;
@@ -678,7 +962,7 @@ a.unova-menu-item:active {
   left: 50%;
   width: 100vw;
   transform: translateX(-50%);
-  background: linear-gradient(180deg, #1d1d1f 0%, #000 100%);
+  background: #1D1D1F;
   z-index: 0;
 }
 
@@ -755,7 +1039,7 @@ a.unova-menu-item:active {
   min-height: var(--card-min-h);
   background:
     radial-gradient(900px 520px at 50% 25%, rgba(255,255,255,.10), transparent 55%),
-    linear-gradient(180deg, #0b0b0c 0%, #020203 60%, #000 100%);
+    linear-gradient(180deg, #1D1D1F 0%, #141416 60%, #1D1D1F 100%);
   border: 1px solid rgba(255,255,255,.08);
   box-shadow: 0 30px 90px rgba(0,0,0,.60);
 }
@@ -1039,7 +1323,7 @@ a.unova-menu-item:active {
   margin-right: calc(50% - 50vw);
   padding: 60px 0 80px;
   box-sizing: border-box;
-  background: linear-gradient(180deg, #1d1d1f 0%, #000 100%);
+  background: #1D1D1F;
 }
 
 .unova-bookwall-title {
@@ -1324,7 +1608,7 @@ a.unova-menu-item:active {
   --muted: rgba(255,255,255,.72);
 
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
-  background: #000;
+  background: #1D1D1F;
   /* 배경은 전체 너비로 깔고(보라색 여백 제거), 내부 컨텐츠는 unova-ios__inner에서 max-width로 제한 */
   width: 100vw;
   max-width: none;
@@ -1641,7 +1925,7 @@ a.unova-menu-item:active {
    =========================== */
 .yt-section {
   width: 100%;
-  background: #000;
+  background: #1D1D1F;
   padding: 60px 0 40px;
 }
 
@@ -1660,7 +1944,7 @@ a.unova-menu-item:active {
   position: relative;
   overflow: hidden;
   width: 100%;
-  background: #000;
+  background: #1D1D1F;
   padding: 34px 0;
   box-sizing: border-box;
 }
@@ -1678,12 +1962,12 @@ a.unova-menu-item:active {
 
 .yt-marquee-container::before {
   left: 0;
-  background: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0) 100%);
+  background: linear-gradient(to right, #1D1D1F 0%, rgba(29, 29, 31, 0) 100%);
 }
 
 .yt-marquee-container::after {
   right: 0;
-  background: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0) 100%);
+  background: linear-gradient(to left, #1D1D1F 0%, rgba(29, 29, 31, 0) 100%);
 }
 
 .yt-marquee-track {
@@ -1705,7 +1989,7 @@ a.unova-menu-item:active {
   max-width: 86vw;
   border-radius: 14px;
   overflow: hidden;
-  background: #000;
+  background: #1D1D1F;
   transform: translateZ(0);
   display: flex;
   flex-direction: column;
@@ -1813,7 +2097,7 @@ a.unova-menu-item:active {
 
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, "Noto Sans KR", sans-serif;
   color: var(--w);
-  background: #000;
+  background: #1D1D1F;
   padding: 60px 0;
 }
 

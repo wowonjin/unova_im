@@ -67,6 +67,14 @@ const adminMenus = [
     color: "from-indigo-500/20 to-indigo-600/20",
     iconColor: "text-indigo-300",
   },
+  {
+    title: "선생님 관리",
+    description: "Teachers 페이지에 노출할 선생님 목록 관리",
+    href: "/admin/teachers",
+    icon: "badge",
+    color: "from-slate-500/20 to-slate-600/20",
+    iconColor: "text-slate-300",
+  },
 ];
 
 export default async function AdminPage() {

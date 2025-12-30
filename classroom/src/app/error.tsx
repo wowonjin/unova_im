@@ -20,8 +20,7 @@ export default function GlobalError({
   const isRenderHost = host.endsWith(".onrender.com");
 
   return (
-    <html lang="ko">
-      <body style={{ background: "#0b0b0b", color: "#fff", padding: 24, fontFamily: "system-ui" }}>
+    <div style={{ background: "#0b0b0b", color: "#fff", minHeight: "100vh", padding: 24, fontFamily: "system-ui" }}>
         <h2 style={{ margin: "0 0 12px" }}>서버 오류가 발생했습니다.</h2>
         {looksLikeMissingDbEnv ? (
           <p style={{ margin: "0 0 12px", opacity: 0.8 }}>
@@ -56,8 +55,7 @@ export default function GlobalError({
         >
           다시 시도
         </button>
-      </body>
-    </html>
+    </div>
   );
 }
 

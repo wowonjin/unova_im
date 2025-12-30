@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 type User = {
@@ -18,6 +18,7 @@ type LandingHeaderProps = {
   fullWidth?: boolean;
   backgroundColor?: string;
   scrolledOpacity?: number; // 0~1
+  variant?: "dark" | "light";
 };
 
 type SubMenuItem = {
@@ -56,14 +57,6 @@ const menuItems: MenuItem[] = [
   {
     label: "유노바 선생님",
     href: "/teachers",
-    subItems: [
-      { label: "이상엽 선생님", href: "/teachers/lee-sangyeob", icon: "badge" },
-      { label: "백하욱 선생님", href: "/teachers/baek-hawook", icon: "badge" },
-      { label: "유예린 선생님", href: "/teachers/yoo-yerin", icon: "badge" },
-      { label: "김동현 선생님", href: "/teachers/kim-donghyeon", icon: "badge" },
-      { label: "장진우 선생님", href: "/teachers/jang-jinwoo", icon: "badge" },
-      { label: "Study Crack", href: "/teachers/study-crack", icon: "badge" },
-    ],
   },
   {
     label: "공지사항",
@@ -87,6 +80,7 @@ export default function LandingHeader({
   fullWidth = false,
   backgroundColor = "#161616",
   scrolledOpacity = 0.72,
+  variant = "dark",
 }: LandingHeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -98,6 +92,13 @@ export default function LandingHeader({
   const sidebar = showMobileMenu ? useSidebarOptional() : null;
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [teacherSubItems, setTeacherSubItems] = useState<SubMenuItem[] | null>(null);
+  const isLight = variant === "light";
+  const fgClass = isLight ? "text-black" : "text-white";
+  const fgMutedClass = isLight ? "text-black/60" : "text-white/50";
+  const fgSubtleClass = isLight ? "text-black/80" : "text-white/90";
+  const hoverBgClass = isLight ? "hover:bg-black/5" : "hover:bg-white/10";
+  const hoverSoftBgClass = isLight ? "hover:bg-black/[0.06]" : "hover:bg-white/[0.06]";
 
   const isActiveHref = (href: string) => {
     // 책/강의는 현재 구현상 /books, /lectures가 /store?type=... 로 리다이렉트되므로
@@ -135,6 +136,36 @@ export default function LandingHeader({
 
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // "유노바 선생님" 서브메뉴: DB(어드민 등록) 기반으로 동적 생성
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const res = await fetch("/api/teachers/list", { cache: "no-store" });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.ok) throw new Error("FETCH_FAILED");
+        const list = Array.isArray(json.teachers) ? json.teachers : [];
+        const items: SubMenuItem[] = list
+          .filter((t: any) => t && typeof t.slug === "string" && typeof t.name === "string")
+          .map((t: any) => ({
+            label: `${t.name} 선생님`,
+            href: `/teachers/${t.slug}`,
+            icon: "badge",
+          }));
+        setTeacherSubItems(items.length ? items : []);
+      } catch {
+        // 실패 시 서브메뉴 숨김(하드코딩 노출 방지)
+        setTeacherSubItems([]);
+      }
+    };
+    run();
+  }, []);
+
+  const mergedMenuItems = useMemo(() => {
+    // teacherSubItems가 null이면 아직 로드 전이므로 서브메뉴를 숨깁니다.
+    const teachersSub = teacherSubItems && teacherSubItems.length ? teacherSubItems : undefined;
+    return menuItems.map((item) => (item.href === "/teachers" ? { ...item, subItems: teachersSub } : item));
+  }, [teacherSubItems]);
 
   const toRgba = (color: string, alpha: number) => {
     // 이미 rgba/hsla면 그대로 사용(중복 변환 방지)
@@ -236,7 +267,7 @@ export default function LandingHeader({
             type="button"
             onClick={openMenu}
             aria-label="메뉴 열기"
-            className="mr-3 rounded-lg p-2 hover:bg-white/10 lg:hidden"
+            className={`mr-3 rounded-lg p-2 ${hoverBgClass} lg:hidden ${fgClass}`}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -273,7 +304,7 @@ export default function LandingHeader({
 
           {/* Center Navigation - 로고 옆에 배치 */}
           <div className="hidden lg:flex items-center gap-[2px] ml-6">
-            {menuItems.map((item) => (
+            {mergedMenuItems.map((item) => (
               <div
                 key={item.label}
                 className="relative"
@@ -286,6 +317,7 @@ export default function LandingHeader({
                   icon={item.icon}
                   external={item.external}
                   active={isActiveHref(item.href)}
+                  variant={variant}
                 />
                 
                 {/* 서브메뉴 드롭다운 */}
@@ -342,7 +374,7 @@ export default function LandingHeader({
                 )}
                 {/* 사용자 프로필 드롭다운 */}
                 <div className="relative group">
-                  <button className="flex items-center gap-3 py-2 px-3 rounded-xl hover:bg-white/[0.06] transition-colors">
+                  <button className={`flex items-center gap-3 py-2 px-3 rounded-xl ${hoverSoftBgClass} transition-colors ${fgClass}`}>
                     {/* 프로필 이미지 */}
                     {user.profileImageUrl ? (
                       <img
@@ -351,23 +383,23 @@ export default function LandingHeader({
                         className="w-8 h-8 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-[#242424] flex items-center justify-center">
-                        <span className="text-[14px] font-semibold text-white">
+                      <div className={`w-8 h-8 rounded-full ${isLight ? "bg-black/10" : "bg-[#242424]"} flex items-center justify-center`}>
+                        <span className={`text-[14px] font-semibold ${fgClass}`}>
                           {(user.name || user.email).charAt(0).toUpperCase()}
                         </span>
                       </div>
                     )}
                     {/* 이름과 이메일 - 데스크탑에서만 표시 */}
                     <div className="hidden sm:block text-left">
-                      <p className="text-[14px] font-medium text-white leading-tight">
+                      <p className={`text-[14px] font-medium ${fgClass} leading-tight`}>
                         {user.name || "회원"}
                       </p>
-                      <p className="text-[12px] text-white/50 leading-tight">
+                      <p className={`text-[12px] ${fgMutedClass} leading-tight`}>
                         {user.email.length > 20 ? user.email.slice(0, 20) + "..." : user.email}
                       </p>
                     </div>
                     <span
-                      className="material-symbols-outlined hidden sm:block text-white/50 group-hover:rotate-180 transition-transform duration-200"
+                      className={`material-symbols-outlined hidden sm:block ${fgMutedClass} group-hover:rotate-180 transition-transform duration-200`}
                       style={{ fontSize: "18px" }}
                     >
                       expand_more
@@ -402,13 +434,13 @@ export default function LandingHeader({
               <>
             <Link
                   href="/signup"
-                  className="hidden sm:inline-flex text-[16px] text-white hover:text-white/80 transition-colors"
+                  className={`hidden sm:inline-flex text-[16px] ${fgClass} ${isLight ? "hover:text-black/80" : "hover:text-white/80"} transition-colors`}
             >
               회원가입
             </Link>
             <Link
                   href="/login"
-                  className="flex items-center gap-1.5 px-4 py-2 text-[15px] text-white transition-all hover:text-white/80"
+                  className={`flex items-center gap-1.5 px-4 py-2 text-[15px] ${fgClass} transition-all ${isLight ? "hover:text-black/80" : "hover:text-white/80"}`}
             >
                   <span 
                     className="material-symbols-outlined"
@@ -449,7 +481,7 @@ export default function LandingHeader({
                   type="button"
                   onClick={closeMenu}
                   aria-label="메뉴 닫기"
-                  className="rounded-lg p-2 hover:bg-white/10"
+                  className={`rounded-lg p-2 ${hoverBgClass} ${fgClass}`}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -458,11 +490,11 @@ export default function LandingHeader({
               </div>
 
               <nav className="mt-6 space-y-1 text-sm">
-                {menuItems.map((item) => (
+                {mergedMenuItems.map((item) => (
                   <div key={`mobile-${item.label}`} className="rounded-lg">
                     <div
                       className={`flex items-center justify-between rounded-lg px-3 py-2 transition-colors ${
-                        isActiveHref(item.href) ? "text-white font-semibold" : "text-white/90"
+                        isActiveHref(item.href) ? `${fgClass} font-semibold` : fgSubtleClass
                       }`}
                     >
                       <Link
@@ -471,7 +503,9 @@ export default function LandingHeader({
                         rel={item.external ? "noopener noreferrer" : undefined}
                         onClick={closeMenu}
                         className={`flex-1 font-medium ${
-                          isActiveHref(item.href) ? "underline underline-offset-4 decoration-white/60" : ""
+                          isActiveHref(item.href)
+                            ? `underline underline-offset-4 ${isLight ? "decoration-black/60" : "decoration-white/60"}`
+                            : ""
                         }`}
                       >
                         {item.label}
@@ -488,7 +522,7 @@ export default function LandingHeader({
                           className="ml-2 rounded-md p-1.5"
                         >
                           <span
-                            className="material-symbols-outlined text-white/70 transition-transform duration-200"
+                            className={`material-symbols-outlined ${isLight ? "text-black/60" : "text-white/70"} transition-transform duration-200`}
                             style={{
                               fontSize: "18px",
                               transform: mobileExpanded[item.label] ? "rotate(180deg)" : "rotate(0deg)",
@@ -507,7 +541,11 @@ export default function LandingHeader({
                           mobileExpanded[item.label] ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
                         }`}
                       >
-                        <div className="mt-2 rounded-xl border border-white/10 bg-[#1a1a1c] p-2">
+                        <div
+                          className={`mt-2 rounded-xl border p-2 ${
+                            isLight ? "border-black/10 bg-white" : "border-white/10 bg-[#1a1a1c]"
+                          }`}
+                        >
                           <div className="space-y-1">
                           {item.subItems.map((sub) => (
                             <Link
@@ -518,8 +556,8 @@ export default function LandingHeader({
                               onClick={closeMenu}
                               className={`block rounded-lg px-3 py-2 text-[13px] transition-colors ${
                                 isActiveHref(sub.href)
-                                  ? "bg-white/10 text-white"
-                                  : "text-white/70"
+                                  ? `${isLight ? "bg-black/5 text-black" : "bg-white/10 text-white"}`
+                                  : `${isLight ? "text-black/70 hover:bg-black/5" : "text-white/70"}`
                               }`}
                             >
                               {sub.label}
@@ -546,7 +584,7 @@ export default function LandingHeader({
                 ) : null}
               </nav>
 
-              <div className="mt-auto pt-6 border-t border-white/10">
+              <div className={`mt-auto pt-6 border-t ${isLight ? "border-black/10" : "border-white/10"}`}>
                 {loading ? (
                   <div className="h-10" />
                 ) : user ? (
@@ -593,16 +631,20 @@ export default function LandingHeader({
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={user.profileImageUrl} alt="프로필" className="h-9 w-9 rounded-full object-cover" />
                       ) : (
-                        <div className="h-9 w-9 rounded-full bg-white/10 flex items-center justify-center text-sm font-semibold">
+                        <div
+                          className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-semibold ${
+                            isLight ? "bg-black/10 text-black" : "bg-white/10 text-white"
+                          }`}
+                        >
                           {(user.name || user.email).charAt(0).toUpperCase()}
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-white truncate">{user.name || "회원"}</p>
-                        <p className="text-xs text-white/50 truncate">{user.email}</p>
+                        <p className={`text-sm font-medium ${fgClass} truncate`}>{user.name || "회원"}</p>
+                        <p className={`text-xs ${fgMutedClass} truncate`}>{user.email}</p>
                       </div>
                       <span
-                        className="material-symbols-outlined text-white/50 transition-transform duration-200"
+                        className={`material-symbols-outlined ${fgMutedClass} transition-transform duration-200`}
                         style={{
                           fontSize: "20px",
                           transform: mobileProfileExpanded ? "rotate(180deg)" : "rotate(0deg)",
@@ -615,10 +657,22 @@ export default function LandingHeader({
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
-                    <Link href="/signup" onClick={closeMenu} className="rounded-lg px-3 py-2 text-center text-sm text-white/80 border border-white/10">
+                    <Link
+                      href="/signup"
+                      onClick={closeMenu}
+                      className={`rounded-lg px-3 py-2 text-center text-sm border ${
+                        isLight ? "text-black/80 border-black/10" : "text-white/80 border-white/10"
+                      }`}
+                    >
                       회원가입
                     </Link>
-                    <Link href="/login" onClick={closeMenu} className="rounded-lg px-3 py-2 text-center text-sm font-semibold text-white border border-white/10">
+                    <Link
+                      href="/login"
+                      onClick={closeMenu}
+                      className={`rounded-lg px-3 py-2 text-center text-sm font-semibold border ${
+                        isLight ? "text-black border-black/10" : "text-white border-white/10"
+                      }`}
+                    >
                       로그인
                     </Link>
                   </div>
@@ -638,21 +692,27 @@ function NavLink({
   icon,
   external,
   active,
+  variant = "dark",
 }: {
   href: string;
   label: string;
   icon?: string;
   external?: boolean;
   active?: boolean;
+  variant?: "dark" | "light";
 }) {
   const isExternal = external || href.startsWith("http");
+  const isLight = variant === "light";
+  const fgClass = isLight ? "text-black" : "text-white";
+  const hoverFgClass = isLight ? "hover:text-black/70" : "hover:text-white/80";
+  const decoClass = isLight ? "decoration-black/60" : "decoration-white/70";
   return (
     <Link
       href={href}
       target={isExternal ? "_blank" : undefined}
       rel={isExternal ? "noopener noreferrer" : undefined}
-      className={`flex items-center gap-1.5 px-[8px] py-2 text-[16px] text-white hover:text-white/80 transition-all whitespace-nowrap tracking-[0] ${
-        active ? "underline underline-offset-[10px] decoration-2 decoration-white/70" : ""
+      className={`flex items-center gap-1.5 px-[8px] py-2 text-[16px] ${fgClass} ${hoverFgClass} transition-all whitespace-nowrap tracking-[0] ${
+        active ? `underline underline-offset-[10px] decoration-2 ${decoClass}` : ""
       }`}
     >
       {icon && (

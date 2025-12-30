@@ -33,6 +33,28 @@ declare global {
 
 let _prisma: PrismaClient | undefined;
 
+function ensureFreshClient(client: PrismaClient): PrismaClient {
+  // In dev, PrismaClient is cached globally to prevent hot-reload connection storms.
+  // But if the Prisma schema changes (new model added) without restarting the dev server,
+  // the cached client can be missing new delegates (e.g., `prisma.teacher`).
+  // If we detect that, recreate the client once.
+  const anyClient = client as unknown as Record<string, unknown>;
+  if (typeof anyClient.teacher === "undefined") {
+    // eslint-disable-next-line no-console
+    console.warn("[prisma] cached PrismaClient is missing `teacher` delegate. Recreating client...");
+    try {
+      client.$disconnect();
+    } catch {
+      // ignore
+    }
+    const fresh = createPrismaClient();
+    global.__prisma = fresh;
+    _prisma = fresh;
+    return fresh;
+  }
+  return client;
+}
+
 function shouldUsePgSsl(dbUrl: string): boolean {
   if (process.env.PGSSLMODE === "require") return true;
   try {
@@ -94,8 +116,8 @@ function createPrismaClient(): PrismaClient {
 
 // Lazy initialization
 function getPrismaClient(): PrismaClient {
-  if (global.__prisma) return global.__prisma;
-  if (_prisma) return _prisma;
+  if (global.__prisma) return ensureFreshClient(global.__prisma);
+  if (_prisma) return ensureFreshClient(_prisma);
 
   _prisma = createPrismaClient();
   

@@ -585,3 +585,26 @@ model HomeShortcut {
   @@index([isActive, position, createdAt])
   @@index([createdAt])
 }
+
+// 선생님(Teachers 페이지 노출용) - 관리자에서 관리
+model Teacher {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  subjectName String
+  // Teachers 목록/헤더 등에서 사용할 대표 썸네일
+  imageUrl    String?
+  // 선생님 개인 페이지(상단 중앙)에 사용할 메인 이미지
+  mainImageUrl String?
+  // 선생님 상세 상단 섹터 아래에 노출할 광고/프로모션 이미지 (가로 배너)
+  promoImageUrl String?
+  isActive    Boolean  @default(true)
+  // 정렬(오름차순). 0은 레거시/미설정
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive, position, createdAt])
+  @@index([subjectName])
+  @@index([createdAt])
+}
