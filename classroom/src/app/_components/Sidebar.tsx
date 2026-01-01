@@ -101,7 +101,7 @@ export default async function Sidebar() {
     : enrolledCourses
         .filter((c) => Boolean(c.lastWatchedAtISO))
         .sort((a, b) => (b.lastWatchedAtISO ?? "").localeCompare(a.lastWatchedAtISO ?? ""))
-        .slice(0, 8);
+        .slice(0, 6);
 
   return (
     <Suspense

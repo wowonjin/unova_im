@@ -32,6 +32,7 @@ export default function VimeoPlayer({ lessonId, vimeoVideoId }: Props) {
       const res = await fetch(withAllParamIfNeeded(`/api/progress/${lessonId}`, allowAll), {
       method: "POST",
       headers: { "content-type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ lastSeconds: seconds, durationSeconds: duration }),
       });
       // UI 갱신은 timeupdate 기반으로 즉시 처리하고, 서버 저장은 백그라운드로만 수행
@@ -92,7 +93,7 @@ export default function VimeoPlayer({ lessonId, vimeoVideoId }: Props) {
 
       // fallback (keepalive)
       try {
-        fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: payload, keepalive: true }).catch(() => {});
+        fetch(url, { method: "POST", headers: { "content-type": "application/json" }, credentials: "include", body: payload, keepalive: true }).catch(() => {});
       } catch {
         // ignore
       }
@@ -142,17 +143,25 @@ export default function VimeoPlayer({ lessonId, vimeoVideoId }: Props) {
         await player!.ready().catch(() => null);
 
         // 이어보기 위치 가져오기
-        const res = await fetch(withAllParamIfNeeded(`/api/progress/${lessonId}`, allowAll), { method: "GET" });
+        const res = await fetch(withAllParamIfNeeded(`/api/progress/${lessonId}`, allowAll), { method: "GET", credentials: "include" });
         const data = await res.json().catch(() => null);
+        const hadProgress = Boolean(data?.progress?.updatedAt);
         const lastSeconds = data?.progress?.lastSeconds ?? 0;
         lastSecondsRef.current = Math.max(0, lastSeconds);
 
         const duration = await player!.getDuration().catch(() => null);
         if (duration && typeof duration === "number") {
           durationRef.current = duration;
-          // duration을 서버에 1회 저장(lesson.durationSeconds 채우기용)
-          pendingRef.current = { seconds: Math.max(0, lastSeconds), duration };
-          scheduleFlush();
+          // 최근 수강 목록이 "진도 저장 타이밍" 때문에 비지 않도록,
+          // 최초 진입(기록 없음)에는 즉시 1회 upsert해서 updatedAt을 찍어둔다.
+          // (사용자가 바로 뒤로 가도 사이드바에서 최근 수강이 잡히도록)
+          if (!hadProgress) {
+            await saveProgress(Math.max(0, lastSeconds), duration);
+          } else {
+            // duration을 서버에 1회 저장(lesson.durationSeconds 채우기용) - 백그라운드 쓰로틀
+            pendingRef.current = { seconds: Math.max(0, lastSeconds), duration };
+            scheduleFlush();
+          }
         }
 
         if (lastSeconds > 2) {
