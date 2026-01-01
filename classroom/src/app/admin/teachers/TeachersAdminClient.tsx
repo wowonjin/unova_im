@@ -10,6 +10,7 @@ type Teacher = {
   subjectName: string;
   imageUrl: string | null;
   mainImageUrl: string | null;
+  promoImageUrl: string | null;
   educationText: string | null;
   careerText: string | null;
   instagramUrl: string | null;
@@ -31,6 +32,7 @@ export default function TeachersAdminClient() {
     subjectName: "",
     imageUrl: "",
     mainImageUrl: "",
+    promoImageUrl: "",
     educationText: "",
     careerText: "",
     instagramUrl: "",
@@ -69,6 +71,7 @@ export default function TeachersAdminClient() {
       subjectName: t.subjectName,
       imageUrl: t.imageUrl || "",
       mainImageUrl: t.mainImageUrl || "",
+      promoImageUrl: t.promoImageUrl || "",
       educationText: t.educationText || "",
       careerText: t.careerText || "",
       instagramUrl: t.instagramUrl || "",
@@ -87,6 +90,7 @@ export default function TeachersAdminClient() {
       subjectName: "",
       imageUrl: "",
       mainImageUrl: "",
+      promoImageUrl: "",
       educationText: "",
       careerText: "",
       instagramUrl: "",
@@ -106,6 +110,7 @@ export default function TeachersAdminClient() {
     fd.append("subjectName", t.subjectName);
     fd.append("imageUrl", t.imageUrl || "");
     fd.append("mainImageUrl", t.mainImageUrl || "");
+    fd.append("promoImageUrl", t.promoImageUrl || "");
     fd.append("educationText", t.educationText || "");
     fd.append("careerText", t.careerText || "");
     fd.append("instagramUrl", t.instagramUrl || "");
@@ -141,6 +146,7 @@ export default function TeachersAdminClient() {
     fd.append("subjectName", formData.subjectName.trim());
     fd.append("imageUrl", formData.imageUrl.trim());
     fd.append("mainImageUrl", formData.mainImageUrl.trim());
+    fd.append("promoImageUrl", formData.promoImageUrl.trim());
     fd.append("educationText", formData.educationText);
     fd.append("careerText", formData.careerText);
     fd.append("instagramUrl", formData.instagramUrl.trim());
