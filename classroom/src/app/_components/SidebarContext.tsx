@@ -5,15 +5,25 @@ import { createContext, useContext, useState, ReactNode } from "react";
 type SidebarContextType = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  isDesktopSidebarCollapsed: boolean;
+  setIsDesktopSidebarCollapsed: (collapsed: boolean) => void;
 };
 
 const SidebarContext = createContext<SidebarContextType | null>(null);
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
 
   return (
-    <SidebarContext.Provider value={{ isOpen, setIsOpen }}>
+    <SidebarContext.Provider
+      value={{
+        isOpen,
+        setIsOpen,
+        isDesktopSidebarCollapsed,
+        setIsDesktopSidebarCollapsed,
+      }}
+    >
       {children}
     </SidebarContext.Provider>
   );

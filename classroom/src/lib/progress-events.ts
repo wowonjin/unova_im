@@ -6,6 +6,10 @@ export type ProgressUpdatedDetail = {
   lessonId: string;
   percent: number;
   completed: boolean;
+  // Optional extras (used for live UI sync like sidebar recent list)
+  courseId?: string;
+  courseTitle?: string;
+  lessonTitle?: string | null;
 };
 
 export function emitProgressUpdated(detail: ProgressUpdatedDetail) {

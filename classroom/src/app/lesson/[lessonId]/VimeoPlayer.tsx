@@ -84,7 +84,14 @@ export default function VimeoPlayer({ lessonId, vimeoVideoId, courseId, courseTi
     if (percent100 == null) return;
 
     const pct = Math.max(0, Math.min(100, percent100));
-    emitProgressUpdated({ lessonId, percent: pct, completed: pct >= 90 });
+    emitProgressUpdated({
+      lessonId,
+      percent: pct,
+      completed: pct >= 90,
+      courseId,
+      courseTitle,
+      lessonTitle,
+    });
   }, [lessonId, userKey, courseId, courseTitle, lessonTitle]);
 
   useEffect(() => {

@@ -7,6 +7,7 @@ import Image from "next/image";
 import { warmupThumb } from "./pdfThumbWarmup";
 import { useSidebar } from "./SidebarContext";
 import { readRecentWatched } from "@/lib/recent-watch";
+import { onProgressUpdated } from "@/lib/progress-events";
 
 type Props = {
   email: string;
@@ -87,9 +88,57 @@ function NavItem({ href, label, icon }: { href: string; label: string; icon?: st
 export default function SidebarClient({ email, userId, displayName, avatarUrl, isAdmin, isLoggedIn, showAllCourses, enrolledCourses }: Props) {
   const pathname = usePathname();
   const isAdminArea = pathname?.startsWith("/admin");
-  const { isOpen, setIsOpen } = useSidebar();
+  const { isOpen, setIsOpen, isDesktopSidebarCollapsed } = useSidebar();
   const [showLogout, setShowLogout] = useState(false);
   const [recentFallback, setRecentFallback] = useState<Props["enrolledCourses"]>([]);
+  const [liveCourses, setLiveCourses] = useState<Props["enrolledCourses"]>(enrolledCourses);
+  const isClassroomSection =
+    pathname === "/dashboard" ||
+    pathname?.startsWith("/dashboard/") ||
+    pathname === "/materials" ||
+    pathname?.startsWith("/materials/") ||
+    pathname?.startsWith("/lesson/") ||
+    pathname?.startsWith("/course/");
+
+  useEffect(() => {
+    // 서버에서 내려온 초기값/갱신값과 동기화
+    setLiveCourses(enrolledCourses);
+  }, [enrolledCourses]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if (showAllCourses) return; // 테스트 모드에서는 "최근" 개념이 아니라 목록 노출이 목적
+
+    // 오른쪽 커리큘럼과 동일하게 progress 이벤트를 구독해서
+    // 1) 최근 수강 목록을 즉시 갱신하고
+    // 2) 시청률(퍼센트)을 사이드바에도 즉시 반영
+    return onProgressUpdated((d) => {
+      const cid = typeof d.courseId === "string" ? d.courseId : "";
+      if (!cid) return;
+
+      const nowISO = new Date().toISOString();
+      const pct = Math.max(0, Math.min(100, Math.round(Number.isFinite(d.percent) ? d.percent : 0)));
+
+      setLiveCourses((prev) => {
+        const cur = Array.isArray(prev) ? prev : [];
+        const idx = cur.findIndex((x) => x.courseId === cid);
+        const existing = idx >= 0 ? cur[idx] : null;
+        const nextItem = {
+          courseId: cid,
+          title: existing?.title ?? (typeof d.courseTitle === "string" && d.courseTitle ? d.courseTitle : "강좌"),
+          lastLessonId: d.lessonId || existing?.lastLessonId || null,
+          lastLessonTitle: d.lessonTitle ?? existing?.lastLessonTitle ?? null,
+          lastWatchedAtISO: nowISO,
+          lastSeconds: existing?.lastSeconds ?? null,
+          percent: pct,
+        };
+
+        const without = cur.filter((x) => x.courseId !== cid);
+        const merged = [nextItem, ...without];
+        return merged.slice(0, 6);
+      });
+    });
+  }, [isLoggedIn, showAllCourses]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -165,7 +214,7 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
 
 
   const EnrolledCoursesSection = useMemo(() => {
-    const list = enrolledCourses.length > 0 ? enrolledCourses : recentFallback;
+    const list = liveCourses.length > 0 ? liveCourses : recentFallback;
     return (
       <div className="mt-6">
         <p className="px-3 text-xs font-semibold text-white/60">{showAllCourses ? "강좌 목록(테스트)" : "최근 수강 목록"}</p>
@@ -199,7 +248,7 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
         )}
       </div>
     );
-  }, [enrolledCourses, recentFallback, showAllCourses]);
+  }, [liveCourses, recentFallback, showAllCourses]);
 
   const Nav = (
     <nav className="space-y-1 text-sm">
@@ -242,6 +291,8 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
         </span>
         <span className="truncate">유노바 홈페이지</span>
       </a>
+      {/* 구분선: 유노바 홈페이지 ↔ 최근 수강 목록 */}
+      <div className="my-3 -mx-5 border-t-2 border-white/10" />
       {/* 최근 수강 목록 */}
       {EnrolledCoursesSection}
         </>
@@ -324,9 +375,7 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
           >
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between">
-                <Link href="/" className="inline-flex items-center">
-                  <Image src="/unova-logo.png" alt="UNOVA" width={140} height={24} priority className="h-5 w-auto" />
-                </Link>
+                <div />
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
@@ -350,18 +399,17 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
       ) : null}
 
       {/* 데스크탑 사이드바 */}
-      <aside className="hidden w-64 shrink-0 border-r border-white/10 bg-[#161616] p-5 lg:block">
+      <aside
+        className={`${isDesktopSidebarCollapsed ? "hidden" : "hidden lg:block"} w-64 shrink-0 bg-[#161616] p-5`}
+      >
         <div className="flex h-full flex-col">
-          {/* 로고 */}
-          <div className="mb-6 px-3">
-            <Link href="/" className="inline-flex items-center">
-              <Image src="/unova-logo.png" alt="UNOVA" width={140} height={24} priority className="h-5 w-auto" />
-            </Link>
-          </div>
           {Nav}
-          <div className="mt-auto pt-6">
-            {Profile}
-          </div>
+          {/* 나의 강의실(PC)은 헤더 우측으로 회원 UI를 이동하므로, 데스크탑 사이드바 하단 프로필은 숨깁니다. */}
+          {!isClassroomSection ? (
+            <div className="mt-auto pt-6">
+              {Profile}
+            </div>
+          ) : null}
         </div>
       </aside>
     </>
