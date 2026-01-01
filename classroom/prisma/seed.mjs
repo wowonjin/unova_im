@@ -71,6 +71,242 @@ function createPrisma() {
 }
 
 const prisma = createPrisma();
+
+function truthyEnv(v) {
+  if (!v) return false;
+  const s = String(v).trim().toLowerCase();
+  return s === "1" || s === "true" || s === "yes" || s === "y" || s === "on";
+}
+
+function extractTeachersFromTeachersDataFile(fileText) {
+  // teachersData:  "slug": { ... name: "이름", ... }
+  // name이 첫 필드가 아닐 수 있어서, 블록 초반(대략 500자)에서 name을 찾는다.
+  const re = /"([^"]+)"\s*:\s*\{[\s\S]{0,500}?name\s*:\s*"([^"]+)"/g;
+  const out = [];
+  let m;
+  while ((m = re.exec(fileText))) {
+    const slug = m[1];
+    const name = m[2];
+    if (typeof slug === "string" && slug.length && typeof name === "string" && name.length) {
+      out.push({ slug, name });
+    }
+  }
+  // slug unique
+  const map = new Map();
+  for (const t of out) map.set(t.slug, t);
+  return Array.from(map.values());
+}
+
+async function seedTeacherTestData() {
+  const enabled = truthyEnv(process.env.SEED_TEACHER_TEST_DATA);
+  if (!enabled) return { enabled: false, teachers: 0 };
+
+  const teachersFile = path.join(process.cwd(), "src", "app", "teachers", "[teacherId]", "page.tsx");
+  if (!fs.existsSync(teachersFile)) {
+    console.warn("[seed] SEED_TEACHER_TEST_DATA enabled but teachersData file not found:", teachersFile);
+    return { enabled: true, teachers: 0 };
+  }
+
+  const text = fs.readFileSync(teachersFile, "utf-8");
+  const teachers = extractTeachersFromTeachersDataFile(text);
+
+  for (const t of teachers) {
+    const teacherEmail = `seed-teacher+${t.slug}@unova.local`;
+    const teacherUser = await prisma.user.upsert({
+      where: { email: teacherEmail },
+      update: { name: t.name },
+      create: { email: teacherEmail, name: t.name, createdAt: new Date() },
+    });
+
+    // === 공지사항(선생님별 카테고리) ===
+    const teacherNoticeCategory = `선생님 공지사항 - ${t.name}`;
+    for (let i = 1; i <= 3; i++) {
+      const slug = `seed-${t.slug}-notice-${i}`;
+      await prisma.notice.upsert({
+        where: { slug },
+        update: {
+          authorId: teacherUser.id,
+          isPublished: true,
+          category: teacherNoticeCategory,
+          title: `${t.name} 선생님 공지 ${i}`,
+          body: `<p>${t.name} 선생님 공지 테스트 내용 ${i} 입니다.</p>`,
+        },
+        create: {
+          authorId: teacherUser.id,
+          slug,
+          isPublished: true,
+          category: teacherNoticeCategory,
+          title: `${t.name} 선생님 공지 ${i}`,
+          body: `<p>${t.name} 선생님 공지 테스트 내용 ${i} 입니다.</p>`,
+        },
+      });
+    }
+
+    // === 강의(Course) 1개 + 리뷰 ===
+    const courseSlug = `seed-${t.slug}-course`;
+    const existingCourse = await prisma.course.findUnique({
+      where: { slug: courseSlug },
+      select: { id: true, position: true },
+    });
+    const maxCoursePos = await prisma.course.findFirst({
+      where: { ownerId: teacherUser.id },
+      orderBy: { position: "desc" },
+      select: { position: true },
+    });
+    const coursePosition = existingCourse?.position ?? ((maxCoursePos?.position ?? 0) + 1);
+
+    const course = existingCourse
+      ? await prisma.course.update({
+          where: { slug: courseSlug },
+          data: {
+            title: `${t.name}T 강의`,
+            description: `선생님 페이지 리뷰/평점 연동 테스트용 강의`,
+            isPublished: true,
+            ownerId: teacherUser.id,
+            teacherName: t.name,
+            position: coursePosition,
+          },
+        })
+      : await prisma.course.create({
+          data: {
+            ownerId: teacherUser.id,
+            title: `${t.name}T 강의`,
+            slug: courseSlug,
+            description: `선생님 페이지 리뷰/평점 연동 테스트용 강의`,
+            thumbnailUrl: null,
+            isPublished: true,
+            imwebGroupCode: null,
+            teacherName: t.name,
+            subjectName: null,
+            position: coursePosition,
+          },
+        });
+
+    // 기존 시드 리뷰 제거(재실행 시 덮어쓰기)
+    await prisma.review.deleteMany({
+      where: {
+        productType: "COURSE",
+        courseId: course.id,
+        OR: [
+          { authorName: { startsWith: "테스터" } },
+          { content: { contains: "강의 리뷰 테스트" } },
+        ],
+      },
+    });
+    const courseRatings = [5, 4, 5, 3, 4];
+    for (let i = 0; i < courseRatings.length; i++) {
+      const rating = courseRatings[i];
+      await prisma.review.create({
+        data: {
+          productType: "COURSE",
+          courseId: course.id,
+          textbookId: null,
+          userId: null,
+          authorName: `테스터${i + 1}`,
+          rating,
+          content: `(${rating}점) ${t.name}T 강의 리뷰 테스트 ${i + 1}`,
+          isApproved: true,
+        },
+      });
+    }
+
+    const courseCount = await prisma.review.count({ where: { productType: "COURSE", courseId: course.id, isApproved: true } });
+    const courseAvg = await prisma.review.aggregate({
+      where: { productType: "COURSE", courseId: course.id, isApproved: true },
+      _avg: { rating: true },
+    });
+    await prisma.course.update({
+      where: { id: course.id },
+      data: { reviewCount: courseCount, rating: courseAvg._avg.rating || 0 },
+    });
+
+    // === 교재(Textbook) 1개 + 리뷰 ===
+    const tbStoredPath = `seed/textbooks/${t.slug}.pdf`;
+    const existingTb = await prisma.textbook.findFirst({
+      where: { ownerId: teacherUser.id, storedPath: tbStoredPath },
+      select: { id: true, position: true },
+    });
+    const maxTbPos = await prisma.textbook.findFirst({
+      where: { ownerId: teacherUser.id },
+      orderBy: { position: "desc" },
+      select: { position: true },
+    });
+    const tbPosition = existingTb?.position ?? ((maxTbPos?.position ?? 0) + 1);
+
+    const tb = existingTb
+      ? await prisma.textbook.update({
+          where: { id: existingTb.id },
+          data: {
+            title: `${t.name}T 교재`,
+            ownerId: teacherUser.id,
+            teacherName: t.name,
+            isPublished: true,
+            position: tbPosition,
+            originalName: `${t.slug}.pdf`,
+            mimeType: "application/pdf",
+            sizeBytes: 0,
+          },
+        })
+      : await prisma.textbook.create({
+          data: {
+            ownerId: teacherUser.id,
+            position: tbPosition,
+            title: `${t.name}T 교재`,
+            teacherName: t.name,
+            subjectName: null,
+            storedPath: tbStoredPath,
+            originalName: `${t.slug}.pdf`,
+            mimeType: "application/pdf",
+            sizeBytes: 0,
+            isPublished: true,
+            imwebProdCode: null,
+            thumbnailUrl: null,
+            entitlementDays: 365,
+          },
+        });
+
+    // 기존 시드 리뷰 제거(재실행 시 덮어쓰기)
+    await prisma.review.deleteMany({
+      where: {
+        productType: "TEXTBOOK",
+        textbookId: tb.id,
+        OR: [
+          { authorName: { startsWith: "테스터TB" } },
+          { content: { contains: "교재 리뷰 테스트" } },
+        ],
+      },
+    });
+    const tbRatings = [5, 5, 4];
+    for (let i = 0; i < tbRatings.length; i++) {
+      const rating = tbRatings[i];
+      await prisma.review.create({
+        data: {
+          productType: "TEXTBOOK",
+          courseId: null,
+          textbookId: tb.id,
+          userId: null,
+          authorName: `테스터TB${i + 1}`,
+          rating,
+          content: `(${rating}점) ${t.name}T 교재 리뷰 테스트 ${i + 1}`,
+          isApproved: true,
+        },
+      });
+    }
+
+    const tbCount = await prisma.review.count({ where: { productType: "TEXTBOOK", textbookId: tb.id, isApproved: true } });
+    const tbAvg = await prisma.review.aggregate({
+      where: { productType: "TEXTBOOK", textbookId: tb.id, isApproved: true },
+      _avg: { rating: true },
+    });
+    await prisma.textbook.update({
+      where: { id: tb.id },
+      data: { reviewCount: tbCount, rating: tbAvg._avg.rating || 0 },
+    });
+  }
+
+  return { enabled: true, teachers: teachers.length };
+}
+
 async function main() {
   const seedEmail =
     (process.env.DEFAULT_USER_EMAIL || process.env.ADMIN_SEED_EMAIL || "admin@gmail.com").toLowerCase().trim();
@@ -123,10 +359,19 @@ async function main() {
   ];
 
   const courses = [];
-  for (const c of sampleCourses) {
+  // NOTE: Course has @@unique([ownerId, position]) so seeded sample courses must have unique positions per owner.
+  for (let idx = 0; idx < sampleCourses.length; idx++) {
+    const c = sampleCourses[idx];
+    const seededCoursePosition = 9000 + idx;
     const course = await prisma.course.upsert({
       where: { slug: c.slug },
-      update: { title: c.title, description: c.description, isPublished: true, ownerId: user.id },
+      update: {
+        title: c.title,
+        description: c.description,
+        isPublished: true,
+        ownerId: user.id,
+        position: seededCoursePosition,
+      },
       create: {
         ownerId: user.id,
         title: c.title,
@@ -135,6 +380,7 @@ async function main() {
         thumbnailUrl: null,
         isPublished: true,
         imwebGroupCode: null,
+        position: seededCoursePosition,
         lessons: {
           create: c.lessons.map((l, idx) => ({
             title: l.title,
@@ -216,9 +462,12 @@ async function main() {
     }
   }
 
+  const teacherTest = await seedTeacherTestData();
+
   console.log("Seed complete.");
   console.log(`- Seed email: ${seedEmail}`);
   console.log(`- Sample courses: ${courses.map((c) => c.slug).join(", ")}`);
+  console.log(`- Teacher test data: ${teacherTest.enabled ? `enabled (${teacherTest.teachers} teachers)` : "disabled"}`);
   console.log("Tip: ADMIN_EMAILS 환경변수에 admin 이메일을 넣으면 관리자 메뉴가 열립니다.");
 }
 

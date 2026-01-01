@@ -11,6 +11,7 @@ function fmt(d: Date) {
 
 export default async function AdminNoticesPage() {
   const teacher = await requireAdminUser();
+  const teacherCategory = teacher.name ? `선생님 공지사항 - ${teacher.name}` : "선생님 공지사항";
 
   const categoriesRaw = await prisma.notice.findMany({
     where: { authorId: teacher.id },
@@ -57,11 +58,13 @@ export default async function AdminNoticesPage() {
                     <Input
                       name="category"
                       required
-                      placeholder="예: 공지 / 이벤트 / 과제"
+                      placeholder={`예: ${teacherCategory} / 이벤트 / 과제`}
                       className="bg-transparent"
                       list="notice-category"
+                      defaultValue={teacherCategory}
                     />
                     <datalist id="notice-category">
+                      <option value={teacherCategory} />
                       {categories.map((c) => (
                         <option key={c} value={c} />
                       ))}

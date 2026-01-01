@@ -9,7 +9,8 @@
 }
 
 :root {
-  --background: #1d1d1f;
+  /* 섹션(히어로) 배경색과 맞춰 전체 배경도 통일 */
+  --background: #464065;
   --foreground: #ffffff;
 }
 
@@ -22,7 +23,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #1d1d1f;
+    --background: #464065;
     --foreground: #ffffff;
   }
 }
@@ -78,17 +79,37 @@ body {
   display: none;
 }
 
+/* 전역 스크롤바 숨김(스크롤은 유지) */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge legacy */
+}
+*::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+*::-webkit-scrollbar-thumb {
+  background: transparent !important;
+}
+*::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
 /* 기본 스크롤바 숨기기 - 웹킷 브라우저(크롬, 사파리 등) */
 html::-webkit-scrollbar,
 body::-webkit-scrollbar {
   width: 0;
+  height: 0;
   background: transparent;
+  display: none;
 }
 
 /* 파이어폭스용 스크롤바 숨기기 */
 html, body {
   scrollbar-width: none;
   -ms-overflow-style: none;
+  /* 레이아웃에서 100vw 요소 등으로 생기는 가로 스크롤 방지 */
+  overflow-x: hidden;
 }
 
 /* 선생님 페이지 스타일 */
@@ -125,18 +146,27 @@ html, body {
   padding-left: 1rem; /* = px-4 */
   padding-right: 1rem; /* = px-4 */
   /* 선생님 상세 상단(이미지 포함) 섹션 배경 */
-  background-color: transparent;
+  /* 메인 섹션 배경 */
+  background-color: #464065;
   font-family: 'Noto Sans KR', sans-serif;
   color: var(--u-text);
   position: relative;
   overflow-x: hidden;
   overflow-y: visible;
-  padding-top: 0;
+  /* 헤더는 fixed로 "겹치게" 두고, 내용만 가려지지 않도록 여백 확보 (간격을 더 줄임) */
+  padding-top: 72px;
   padding-bottom: 0;
   box-sizing: border-box;
 }
 
-/* 메인(상단) 섹터 뒤 배경을 화면 전체(100vw)로 #C7D5E1 깔기 */
+@media (min-width: 768px) {
+  .unova-wrapper {
+    /* PC에서 헤더 아래 과도한 빈공간을 줄임(헤더 높이만큼만 확보) */
+    padding-top: 72px;
+  }
+}
+
+/* 메인(상단) 섹터 뒤 배경을 화면 전체(100vw)로 #464065 깔기 */
 .unova-wrapper::before {
   content: "";
   position: absolute;
@@ -145,7 +175,7 @@ html, body {
   left: 50%;
   width: 100vw;
   transform: translateX(-50%);
-  background: #C7D5E1;
+  background: #464065;
   z-index: 0;
 }
 
@@ -158,6 +188,13 @@ html, body {
   align-items: flex-start;
   gap: 18px;
   z-index: 1;
+}
+
+/* PC: 선생님 이미지가 끝까지 붙어 있도록 최소 높이를 확보 */
+@media (min-width: 1001px) {
+  .unova-container {
+    min-height: calc(100vh - 120px);
+  }
 }
 
 .unova-left-col {
@@ -230,6 +267,8 @@ a.unova-menu-item:active {
 
 .unova-content--no-sidebar {
   margin-left: 0;
+  /* 좌측 요소를 아래로 내려 선생님 이미지와 밸런스 맞춤 */
+  padding-top: 90px;
 }
 
 .unova-right-panel {
@@ -238,69 +277,136 @@ a.unova-menu-item:active {
   align-self: flex-start;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding-top: 6px;
+  gap: 12px;
+  /* 우측 요소를 아래로 내려 선생님 이미지와 밸런스 맞춤 */
+  padding-top: 100px;
 }
 
-.unova-panel-title {
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: -0.2px;
-  color: rgba(255,255,255,0.90);
-  margin-bottom: 8px;
+/* PC에서 헤더 아래 과도한 빈공간(콘텐츠/우측 패널 상단 여백)을 줄임 */
+@media (min-width: 1001px) {
+  .unova-content--no-sidebar {
+    padding-top: 32px;
+  }
+  .unova-right-panel {
+    padding-top: 40px;
+  }
 }
 
-.unova-youtube,
-.unova-news {
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  padding: 12px 12px 12px;
+/* 최근 소식 ↔ 총 평점 사이 간격을 더 타이트하게 */
+.unova-right-panel .unova-rating {
+  margin-top: 2px;
 }
 
-.unova-youtube__frame {
-  width: 100%;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(0,0,0,0.25);
-  aspect-ratio: 16 / 9;
-}
-
-.unova-youtube__frame iframe {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  display: block;
-}
-
-.unova-youtube__more {
-  margin-top: 10px;
+.unova-card-head {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
+  margin-bottom: 10px;
 }
 
-.unova-youtube__link {
+.unova-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.15px;
+}
+
+/* 총 리뷰 N개: 배지(칩) 제거하고 텍스트만 표시 */
+.unova-card-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+/* 커리큘럼 소개 헤더 텍스트 숨김 */
+.unova-youtube .unova-panel-title {
+  display: none;
+}
+
+/* 왼쪽 메뉴 아래 유튜브: 더 아래로 내리고(여백), 세로 길이 살짝 늘림 */
+.unova-youtube--below-menu {
+  margin-top: 40px;
+}
+
+.unova-youtube--below-menu .unova-youtube__frame {
+  aspect-ratio: 16 / 10;
+}
+
+.unova-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 30px;
+  height: 22px;
   padding: 0 10px;
   border-radius: 999px;
-  background: rgba(0,0,0,0.18);
-  border: 1px solid rgba(255,255,255,0.10);
-  color: rgba(255,255,255,0.85);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  text-decoration: none;
+  letter-spacing: 0.2px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
 }
 
-.unova-youtube__link:hover {
-  background: rgba(255,255,255,0.08);
+.unova-chip--ghost {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
-.unova-news__list {
+.unova-chip--tag {
+  height: 20px;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.unova-news-card,
+.unova-rating-card {
+  /* 요청사항: 컨테이너 배경색 */
+  background: #2A263D;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  /* 요청사항: 컨테이너 둥글기 제거 */
+  border-radius: 0;
+  padding: 14px 14px 12px;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* 요청사항: 최근 소식/총 강의 평점 컨테이너 내부 텍스트를 전부 흰색으로 */
+.unova-news-card,
+.unova-news-card * ,
+.unova-rating-card,
+.unova-rating-card * {
+  color: #fff !important;
+}
+
+/* 작성자/시간 메타는 약간 회색으로 */
+.unova-news-card__meta,
+.unova-news-card__author,
+.unova-news-card__time,
+.unova-rating-card__meta-row,
+.unova-rating-card__author,
+.unova-rating-card__time {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+/* 별(★) 색상은 원래대로 유지 */
+.unova-rating-card__stars {
+  color: rgba(255, 199, 92, 0.95) !important;
+}
+
+.unova-rating-card__stars .is-on {
+  color: rgba(255, 199, 92, 0.95) !important;
+}
+
+.unova-rating-card__stars .is-off {
+  color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.unova-news-card__list {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -308,35 +414,180 @@ a.unova-menu-item:active {
   gap: 8px;
 }
 
-.unova-news__item {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 9px 10px;
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.18);
-  border: 1px solid rgba(255,255,255,0.08);
-}
-
-.unova-news__tag {
-  display: inline-flex;
+.unova-news-card__item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
   align-items: center;
-  justify-content: center;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-  color: #fff;
-  flex: 0 0 auto;
+  padding: 10px 10px;
+  border-radius: 0;
+  /* 요청사항: 아이템 배경 제거 */
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.unova-news__text {
+.unova-news-card__body {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.unova-news-card__meta {
+  display: flex;
+  gap: 8px;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.2;
+}
+
+.unova-news-card__author,
+.unova-news-card__time {
+  white-space: nowrap;
+}
+
+.unova-news-card__text {
   font-size: 12.5px;
   line-height: 1.45;
-  color: rgba(255,255,255,0.82);
+  color: rgba(255, 255, 255, 0.9);
   word-break: keep-all;
+}
+
+.unova-rating-card__meta {
+  display: flex;
+  align-items: flex-end;
+  /* 별점을 왼쪽으로 이동 */
+  justify-content: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.unova-rating-card__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.unova-rating-card__count {
+  /* 요청사항: '총 리뷰 N개'는 더 작게 */
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.unova-rating-card__score {
+  /* 요청사항: 별(★) 크기와 동일하게 */
+  font-size: 16px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.unova-rating-card__score small {
+  /* 요청사항: '/5'는 더 작게 */
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.unova-rating-card__stars {
+  display: flex;
+  align-items: center;
+  /* 요청사항: 별 사이 간격 촘촘히 */
+  gap: 2px;
+  color: rgba(255, 199, 92, 0.95);
+  font-size: 16px;
+}
+
+.unova-rating-card__stars .is-off {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.unova-rating-card__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.unova-rating-card__item {
+  padding: 10px;
+  border-radius: 0;
+  /* 요청사항: 아이템 배경 제거 */
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.unova-rating-card__text {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.9);
+  word-break: keep-all;
+}
+
+.unova-rating-card__item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.unova-rating-card__item-title {
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.9);
+  word-break: keep-all;
+}
+
+.unova-rating-card__item-score {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+}
+
+.unova-rating-card__item-score-suffix {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.unova-rating-card__item-sub {
+  display: grid;
+  gap: 2px;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.2;
+}
+
+.unova-rating-card__meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.unova-rating-card__review-meta {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.2;
+}
+
+.unova-rating-card__author,
+.unova-rating-card__time {
+  white-space: nowrap;
 }
 
 .unova-inline-menu {
@@ -345,29 +596,49 @@ a.unova-menu-item:active {
 }
 
 .unova-inline-menu .unova-sidebar {
-  width: 100%;
-  /* 컨테이너 배경/테두리 제거 (구분선은 .unova-menu-item의 border-bottom으로 유지) */
-  background-color: transparent;
+  /* 메뉴 컨테이너: 배경/테두리 + 폭(절반) */
+  width: min(275px, 50%);
+  /* 이전의 어두운 톤으로 복구 */
+  background: #2a263d;
   border: none;
+  border-radius: 0; /* 둥글기 제거 */
+  overflow: hidden; /* 구분선이 깔끔하게 보이도록 */
 }
 
-/* 인라인 메뉴 항목: 배경 제거 + 구분선 유지(가독성 위해 라이트 배경 기준) */
+/* 인라인 메뉴 항목: 구분선 유지 + 흰 글씨 */
 .unova-inline-menu .unova-menu-item {
   background: transparent;
-  border-bottom-color: rgba(0, 0, 0, 0.14);
-  color: rgba(17, 17, 17, 0.95);
+  border-bottom-color: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.unova-inline-menu a.unova-menu-item,
+.unova-inline-menu a.unova-menu-item:visited,
+.unova-inline-menu a.unova-menu-item:hover,
+.unova-inline-menu a.unova-menu-item:active {
+  /* SNS 링크(인스타그램/유튜브) 포함: 텍스트는 흰색 */
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .unova-inline-menu .unova-menu-item:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* 모바일에서는 반으로 줄이면 너무 좁아서 100%로 */
+@media (max-width: 700px) {
+  .unova-inline-menu .unova-sidebar {
+    width: 100%;
+  }
 }
 
 .unova-rating {
   margin-top: 16px;
   padding: 14px 14px 12px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  /* 평점 컨테이너: 배경/테두리 제거 */
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .unova-rating__top {
@@ -380,8 +651,8 @@ a.unova-menu-item:active {
 
 .unova-rating__title {
   font-size: 13px;
-  font-weight: 800;
-  color: rgba(255, 255, 255, 0.85);
+  font-weight: 300;
+  color: #fff;
   letter-spacing: -0.2px;
 }
 
@@ -394,14 +665,14 @@ a.unova-menu-item:active {
 .unova-rating__num {
   font-size: 20px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.96);
+  color: rgba(255, 255, 255, 0.95);
   letter-spacing: -0.4px;
 }
 
 .unova-rating__max {
   font-size: 12px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.60);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .unova-rating__stars {
@@ -410,7 +681,7 @@ a.unova-menu-item:active {
   gap: 6px;
   flex-wrap: wrap;
   margin-bottom: 10px;
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.65);
   font-size: 14px;
   line-height: 1;
 }
@@ -427,7 +698,7 @@ a.unova-menu-item:active {
   margin-left: 6px;
   font-size: 12px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.60);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .unova-rating__list {
@@ -441,23 +712,28 @@ a.unova-menu-item:active {
 .unova-rating__item {
   padding: 10px 10px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.10);
 }
 
 .unova-rating__text {
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.82);
   word-break: keep-all;
 }
 
 .unova-header-sub {
   font-size: 16px;
-  color: var(--u-text);
+  color: #fff;
   margin-bottom: 5px;
   font-weight: 300;
+}
+
+.unova-header-sub--accent {
+  color: #fff !important;
+  font-weight: 700 !important;
 }
 
 .unova-header-title {
@@ -467,10 +743,19 @@ a.unova-menu-item:active {
   display: flex;
   align-items: center;
   gap: 10px;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.unova-header-rating {
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
 }
 
 .unova-header-title .unova-subject {
-  color: #e386b9;
+  /* 과목명 */
+  color: #957FF3;
   background: transparent;
   padding: 0;
   border-radius: 0;
@@ -482,7 +767,7 @@ a.unova-menu-item:active {
 .unova-promo {
   width: 100%;
   max-width: 72rem; /* max-w-6xl */
-  margin: 14px auto 0;
+  margin: 0 auto 0;
   padding: 0 1rem; /* px-4 */
   box-sizing: border-box;
 }
@@ -699,9 +984,11 @@ a.unova-menu-item:active {
 .unova-teacher-area {
   position: relative;
   width: auto;
-  min-width: clamp(300px, 26vw, 360px);
-  height: clamp(640px, 78vh, 780px);
-  flex: 0 0 clamp(300px, 26vw, 360px);
+  /* 선생님 이미지를 "살짝"만 크게 */
+  min-width: clamp(320px, 28vw, 400px);
+  /* (원복) 기본 높이 */
+  height: clamp(660px, 80vh, 820px);
+  flex: 0 0 clamp(320px, 28vw, 400px);
   margin-left: 0;
   align-self: flex-end;
   display: flex;
@@ -711,6 +998,31 @@ a.unova-menu-item:active {
   z-index: 1;
   pointer-events: none;
   overflow: visible;
+}
+
+/* PC: 선생님(중앙 이미지) 섹션이 스크롤에 같이 밀리지 않게 고정 */
+@media (min-width: 1001px) {
+  .unova-teacher-area {
+    position: sticky;
+    /* LandingHeader가 fixed라서 내용이 가려지지 않도록 여백 확보 */
+    top: 84px;
+    align-self: flex-start;
+  }
+}
+
+.unova-teacher-area::after {
+  /* 선생님 이미지 뒤 은은한 그림자(배경 레이어) */
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  width: min(420px, 86%);
+  height: 160px;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0));
+  filter: blur(26px);
+  opacity: 1;
+  z-index: 0;
 }
 
 .unova-teacher-img {
@@ -724,8 +1036,72 @@ a.unova-menu-item:active {
   margin-top: 0;
   object-fit: contain;
   object-position: bottom;
-  transform: translateX(-50%);
+  /* 중앙에서 살짝 왼쪽으로 이동 */
+  transform: translateX(-50%) scale(1.04);
   display: block;
+  /* 이미지 자체에도 아주 약한 그림자 */
+  filter:
+    drop-shadow(0 26px 46px rgba(0, 0, 0, 0.38))
+    drop-shadow(0 10px 20px rgba(0, 0, 0, 0.22));
+}
+
+/* 선생님 슬로건(메가스터디 스타일 카피) */
+.unova-teacher-slogan {
+  position: absolute;
+  left: 50%;
+  /* 요청사항: 문구 전체를 더 아래로 */
+  bottom: 70px;
+  /* 요청사항: 문구 전체를 대각선으로 기울임 */
+  transform: translateX(-50%) rotate(-8deg);
+  transform-origin: center;
+  text-align: center;
+  /* 요청사항: 두 줄 문구가 글자 단위로 꺾이지 않도록(정확히 2줄 유지) */
+  width: fit-content;
+  pointer-events: none;
+  z-index: 2;
+  text-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.unova-teacher-slogan__line1 {
+  /* 요청사항: 전체 글씨(두 줄) 폰트 크기 36px */
+  font-size: 48px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  word-break: keep-all;
+  /* 강조용 점(동그라미) 배치를 위해 */
+  position: relative;
+  display: inline-block;
+}
+
+.unova-teacher-slogan__line1::before {
+  /* 점(동그라미) 제거 */
+  content: none;
+}
+
+.unova-teacher-slogan__line2 {
+  margin-top: 2px;
+  font-size: 48px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.03em;
+  /* 기울임은 부모(.unova-teacher-slogan)에 적용 */
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+@media (max-width: 1000px) {
+  .unova-teacher-slogan {
+    /* 모바일에서도 동일하게 더 아래쪽 */
+    bottom: 70px;
+  }
+  .unova-teacher-slogan__line1 {
+    font-size: 40px;
+  }
+  .unova-teacher-slogan__line2 {
+    font-size: 40px;
+  }
 }
 
 .unova-floating-banners {
@@ -948,31 +1324,28 @@ a.unova-menu-item:active {
 .uac-section {
   position: relative;
   padding: 60px 0 34px;
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
+  /* teachers 개인페이지에서는 별도 '섹션(검은 배경/풀블리드)'처럼 보이지 않게
+     보라색(페이지 기본 배경) 위에서 일반 컨테이너 흐름으로 표시 */
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
   box-sizing: border-box;
+  /* 커리큘럼 섹션부터 배경을 어두운 #161616으로 전환 */
+  background: #161616;
 }
 
 .uac-section::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 100vw;
-  transform: translateX(-50%);
-  background: #1D1D1F;
-  z-index: 0;
+  /* 기존 풀블리드 배경 제거 */
+  content: none;
 }
 
 .uac-section .uac-content {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 1350px;
+  max-width: 72rem; /* = Tailwind max-w-6xl */
   margin: 0 auto;
-  padding: 0 14px;
+  padding: 0 1rem; /* = px-4 */
   box-sizing: border-box;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', Helvetica, Arial, sans-serif;
 }
@@ -1318,12 +1691,14 @@ a.unova-menu-item:active {
    =========================== */
 .unova-bookwall-section {
   position: relative;
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
+  /* teachers 개인페이지: 보라색 배경 흐름 유지 */
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
   padding: 60px 0 80px;
   box-sizing: border-box;
-  background: #1D1D1F;
+  /* 커리큘럼 이후 영역도 동일하게 #161616 배경 */
+  background: #161616;
 }
 
 .unova-bookwall-title {
@@ -1347,7 +1722,7 @@ a.unova-menu-item:active {
   --unova-origin-lift: 24px;
 
   width: 100%;
-  max-width: 1200px;
+  max-width: 72rem; /* = Tailwind max-w-6xl */
   margin: 0 auto;
   padding: 0;
   box-sizing: border-box;
@@ -1516,7 +1891,7 @@ a.unova-menu-item:active {
 
 .unova-phy-switcher .unova-phy__inner {
   width: 100%;
-  max-width: 1200px;
+  max-width: 72rem; /* = Tailwind max-w-6xl */
   margin: 0 auto;
   padding: 0 18px;
 }
@@ -1608,12 +1983,12 @@ a.unova-menu-item:active {
   --muted: rgba(255,255,255,.72);
 
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
-  background: #1D1D1F;
-  /* 배경은 전체 너비로 깔고(보라색 여백 제거), 내부 컨텐츠는 unova-ios__inner에서 max-width로 제한 */
-  width: 100vw;
-  max-width: none;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
+  /* 커리큘럼 이후 섹션 배경을 #161616으로 통일 */
+  background: #161616;
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
   overflow: hidden;
   box-sizing: border-box;
 }
@@ -1621,7 +1996,7 @@ a.unova-menu-item:active {
 .unova-ios__inner {
   max-width: var(--max);
   margin: 0 auto;
-  padding: 76px var(--pad) 64px;
+  padding: 60px var(--pad) 64px;
   box-sizing: border-box;
 }
 
@@ -2245,5 +2620,871 @@ a.unova-menu-item:active {
   }
   .unova-faq__q {
     padding: 16px 10px;
+  }
+}
+
+/* 로그인 아이콘 크기 */
+.login-icon {
+  font-size: 16px;
+}
+
+@media (min-width: 640px) {
+  .login-icon {
+    font-size: 14px;
+  }
+}
+
+/* ============================================
+   메가스터디 스타일 모바일 레이아웃
+   ============================================ */
+
+/* 모바일 레이아웃: 데스크탑에서 숨김 */
+.mega-mobile-layout {
+  display: none;
+}
+
+/* 데스크탑 레이아웃: 기본 표시 */
+.unova-desktop-layout {
+  display: block;
+}
+
+/* 모바일 (768px 이하) */
+@media (max-width: 768px) {
+  /* 모바일 레이아웃 표시 */
+  .mega-mobile-layout {
+    display: block;
+    background: #464065;
+    min-height: 100vh;
+    color: #fff;
+    padding-top: 50px; /* 헤더 높이만큼 여백 */
+  }
+
+  /* === 헤더 아래 얇은 이벤트 바 === */
+  .mega-mobile-eventbar {
+    background: #2A263D;
+    color: #fff;
+    font-size: 12px;
+    padding: 8px 16px;
+    position: relative;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .mega-mobile-eventbar__text {
+    display: block;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 8px;
+  }
+
+  /* 데스크탑 레이아웃 숨김 */
+  .unova-desktop-layout {
+    display: none;
+  }
+
+  /* === 상단 타이틀 바 === */
+  .mega-mobile-titlebar {
+    background: #464065;
+    padding: 12px 16px;
+    text-align: center;
+    color: #fff;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .mega-mobile-titlebar__subject {
+    font-size: 14px;
+    font-weight: 500;
+    color: #a78bfa;
+  }
+
+  .mega-mobile-titlebar__name {
+    margin-left: 6px;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  /* === 히어로 섹션 === */
+  .mega-mobile-hero {
+    position: relative;
+    background: #464065;
+    padding-bottom: 0;
+  }
+
+  .mega-mobile-hero__content {
+    display: flex;
+    padding: 24px 16px 0;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .mega-mobile-hero__info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding-top: 24px;
+    padding-bottom: 0;
+  }
+
+  .mega-mobile-hero__catchphrase {
+    font-size: 13px;
+    color: #fff;
+    margin: 0 0 8px;
+  }
+
+  .mega-mobile-hero__name {
+    font-size: 28px;
+    font-weight: 500;
+    color: #fff;
+    margin: 0 0 16px;
+    line-height: 1.2;
+  }
+
+  .mega-mobile-hero__subject {
+    color: #a78bfa;
+  }
+
+  .mega-mobile-hero__profile-btn {
+    align-self: flex-start;
+    background: #2A263D !important;
+    color: #fff !important;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 0;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: none;
+    transition: transform 0.2s;
+  }
+
+  .mega-mobile-hero__profile-btn:active {
+    transform: scale(0.96);
+  }
+
+  .mega-mobile-hero__rating {
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .mega-mobile-hero__stars {
+    display: flex;
+    gap: 2px;
+  }
+
+  .mega-mobile-hero__stars .is-on {
+    color: #fbbf24;
+  }
+
+  .mega-mobile-hero__stars .is-off {
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .mega-mobile-hero__score {
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .mega-mobile-hero__score small {
+    font-size: 10px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .mega-mobile-hero__review-count {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-size: 11px;
+  }
+
+  .mega-mobile-hero__notices {
+    margin-top: 12px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .mega-mobile-hero__notices .mega-mobile-notice {
+    font-size: 12px;
+  }
+
+  .mega-mobile-hero__image {
+    width: 160px;
+    flex-shrink: 0;
+    margin-bottom: -1px; /* 아래 영역과 완전히 붙도록 */
+    position: relative;
+  }
+
+  .mega-mobile-hero__img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    display: block;
+  }
+
+  .mega-mobile-hero__slogan {
+    position: absolute;
+    left: 56%;
+    bottom: 28px;
+    transform: translateX(-50%) rotate(-10deg);
+    transform-origin: center bottom;
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 500;
+    font-size: 18px;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+    pointer-events: none;
+    white-space: nowrap; /* <br>만 줄바꿈, 자동 줄바꿈 금지 */
+    text-align: center;
+  }
+
+  /* === 공지사항 === */
+  .mega-mobile-notices {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #161616;
+  }
+
+  .mega-mobile-notice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .mega-mobile-notice__tag {
+    color: #fff;
+    font-weight: 400;
+    flex-shrink: 0;
+  }
+
+  .mega-mobile-notice__text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .mega-mobile-notice__author {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .mega-mobile-notice__new {
+    flex-shrink: 0;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+  }
+
+  /* === 이벤트 배너 === */
+  .mega-mobile-event-banner {
+    margin: 0;
+    padding: 16px;
+    background: #161616;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+  }
+  
+  .mega-mobile-event-banner__inner {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .mega-mobile-event-banner__content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #fff;
+    border-radius: 12px;
+    color: #000;
+    padding: 16px;
+  }
+
+  .mega-mobile-event-banner__badge {
+    background: #161616;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .mega-mobile-event-banner__text {
+    flex: 1;
+    color: #000;
+  }
+
+  .mega-mobile-event-banner__sub {
+    display: block;
+    font-size: 12px;
+    color: #555;
+  }
+
+  .mega-mobile-event-banner__title {
+    display: block;
+    font-size: 16px;
+    font-weight: 700;
+    margin-top: 4px;
+    color: #000;
+  }
+
+  /* === 메인 탭 메뉴 === */
+  .mega-mobile-tabs {
+    position: sticky;
+    top: 50px; /* 헤더 높이 */
+    z-index: 100;
+    background: #161616;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .mega-mobile-tabs__scroll {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .mega-mobile-tabs__scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mega-mobile-tab {
+    flex-shrink: 0;
+    padding: 12px 16px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    white-space: nowrap;
+    transition: color 0.2s;
+  }
+
+  .mega-mobile-tab.is-active {
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .mega-mobile-tab.is-active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #fff;
+  }
+
+  /* === 서브 탭 === */
+  .mega-mobile-subtabs {
+    display: flex;
+    justify-content: flex-start;
+    gap: 16px;
+    padding: 12px 16px;
+    background: #161616;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    flex-wrap: wrap;
+  }
+
+  .mega-mobile-subtab {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 13px;
+    font-weight: 400;
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .mega-mobile-subtab:hover {
+    color: #fff;
+  }
+
+  .mega-mobile-subtab.is-active {
+    background: transparent;
+    border-color: transparent;
+    color: #fff;
+    font-weight: 600;
+  }
+
+  /* === 콘텐츠 영역 === */
+  .mega-mobile-content {
+    min-height: 50vh;
+    background: #161616;
+  }
+
+  .mega-mobile-section {
+    padding: 16px;
+  }
+
+  .mega-mobile-empty {
+    text-align: center;
+    padding: 48px 16px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+  }
+
+  /* === 비디오 === */
+  .mega-mobile-video {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    margin-bottom: 16px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000;
+  }
+
+  .mega-mobile-video iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  /* === 커리큘럼 카드 === */
+  .mega-mobile-curriculum-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .mega-mobile-curriculum-card {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .mega-mobile-curriculum-card__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .mega-mobile-curriculum-card__step {
+    background: linear-gradient(135deg, #a78bfa, #c084fc);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 12px;
+  }
+
+  .mega-mobile-curriculum-card__title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .mega-mobile-curriculum-card__desc {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  /* === 강좌 카테고리 === */
+  .mega-mobile-lecture-category {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 0 12px;
+    border-bottom: none;
+    margin-bottom: 8px;
+  }
+
+  .mega-mobile-lecture-category__icon {
+    display: none;
+  }
+
+  .mega-mobile-lecture-category__title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  /* === 강좌 카드 === */
+  .mega-mobile-lecture-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .mega-mobile-lecture-list > div {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .mega-mobile-lecture-card {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0;
+    padding: 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .mega-mobile-lecture-card:last-child {
+    border-bottom: none;
+  }
+
+  .mega-mobile-lecture-card__thumb {
+    width: 96px;
+    height: 54px; /* 강좌 구매 페이지 미리보기(16:9) 비율 */
+    flex-shrink: 0;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .mega-mobile-lecture-card__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .mega-mobile-lecture-card__content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .mega-mobile-lecture-card__rating {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  .mega-mobile-lecture-card__stars {
+    display: flex;
+    gap: 1px;
+  }
+
+  .mega-mobile-lecture-card__stars .is-on {
+    color: #fbbf24;
+  }
+
+  .mega-mobile-lecture-card__stars .is-off {
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .mega-mobile-lecture-card__score {
+    color: #fff;
+    font-weight: 500;
+  }
+
+  .mega-mobile-lecture-card__review-count {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .mega-mobile-lecture-card__title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 4px;
+    line-height: 1.4;
+  }
+
+  .mega-mobile-lecture-card__price,
+  .mega-mobile-lecture-card__book {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+
+  .mega-mobile-lecture-card__label {
+    color: rgba(255, 255, 255, 0.6);
+    min-width: 36px;
+  }
+
+  .mega-mobile-lecture-card__amount {
+    color: #fbbf24;
+    font-weight: 700;
+  }
+
+  .mega-mobile-lecture-card__book-count {
+    color: #a78bfa;
+    font-weight: 600;
+  }
+
+  /* === 교재 카드 === */
+  .mega-mobile-book-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .mega-mobile-book-card {
+    display: flex;
+    gap: 16px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    text-decoration: none;
+  }
+
+  .mega-mobile-book-card__image {
+    width: 80px;
+    flex-shrink: 0;
+  }
+
+  .mega-mobile-book-card__img {
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .mega-mobile-book-card__info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .mega-mobile-book-card__title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 8px;
+    line-height: 1.4;
+  }
+
+  .mega-mobile-book-card__sub {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .mega-mobile-book-card__price {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fbbf24;
+  }
+
+  .mega-mobile-lecture-card__link {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* === 게시판 === */
+  .mega-mobile-board-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mega-mobile-board-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .mega-mobile-board-item__tag {
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 12px;
+  }
+
+  .mega-mobile-board-item__title {
+    flex: 1;
+    font-size: 14px;
+    color: #fff;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mega-mobile-board-item__date {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  /* === Q&A === */
+  .mega-mobile-qna-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .mega-mobile-qna-item {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .mega-mobile-qna-item__q,
+  .mega-mobile-qna-item__a {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .mega-mobile-qna-item__a {
+    background: rgba(255, 255, 255, 0.04);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .mega-mobile-qna-item__icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    background: #a78bfa;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mega-mobile-qna-item__icon--a {
+    background: #c084fc;
+  }
+
+  .mega-mobile-qna-item__text {
+    flex: 1;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.5;
+  }
+
+  /* === 평점 요약 === */
+  .mega-mobile-rating-summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.3), rgba(192, 132, 252, 0.2));
+    border-radius: 12px;
+    margin-bottom: 16px;
+    border: 1px solid rgba(167, 139, 250, 0.3);
+  }
+
+  .mega-mobile-rating-summary__stars {
+    display: flex;
+    gap: 2px;
+  }
+
+  .mega-mobile-rating-summary__stars .is-on {
+    color: #fbbf24;
+    font-size: 20px;
+  }
+
+  .mega-mobile-rating-summary__stars .is-off {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 20px;
+  }
+
+  .mega-mobile-rating-summary__score {
+    font-size: 24px;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  .mega-mobile-rating-summary__count {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  /* === 리뷰 리스트 === */
+  .mega-mobile-review-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .mega-mobile-review-list__title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 12px;
+  }
+
+  .mega-mobile-review-item {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .mega-mobile-review-item__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .mega-mobile-review-item__rating {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 12px;
+  }
+
+  .mega-mobile-review-item__author {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .mega-mobile-review-item__date {
+    margin-left: auto;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .mega-mobile-review-item__text {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.6;
+    margin: 0;
   }
 }

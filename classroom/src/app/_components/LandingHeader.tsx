@@ -17,8 +17,13 @@ type LandingHeaderProps = {
   showMobileMenu?: boolean;
   fullWidth?: boolean;
   backgroundColor?: string;
+  topBackgroundColor?: string;
+  scrolledBackgroundColor?: string;
   scrolledOpacity?: number; // 0~1
   variant?: "dark" | "light";
+  scrolledVariant?: "dark" | "light";
+  /** PC(>=1024px)에서 스크롤 전 헤더 배경을 투명하게 만들어 콘텐츠와 겹치게(오버레이) 보이도록 합니다. */
+  overlayOnDesktop?: boolean;
 };
 
 type SubMenuItem = {
@@ -79,10 +84,15 @@ export default function LandingHeader({
   showMobileMenu = false,
   fullWidth = false,
   backgroundColor = "#161616",
+  topBackgroundColor,
+  scrolledBackgroundColor,
   scrolledOpacity = 0.72,
   variant = "dark",
+  scrolledVariant,
+  overlayOnDesktop = false,
 }: LandingHeaderProps) {
   const [scrolled, setScrolled] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -93,7 +103,8 @@ export default function LandingHeader({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [teacherSubItems, setTeacherSubItems] = useState<SubMenuItem[] | null>(null);
-  const isLight = variant === "light";
+  const currentVariant = scrolled ? scrolledVariant ?? variant : variant;
+  const isLight = currentVariant === "light";
   const fgClass = isLight ? "text-black" : "text-white";
   const fgMutedClass = isLight ? "text-black/60" : "text-white/50";
   const fgSubtleClass = isLight ? "text-black/80" : "text-white/90";
@@ -135,6 +146,15 @@ export default function LandingHeader({
     handleScroll(); // 초기 상태 확인
 
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // PC 여부(헤더 오버레이 효과는 PC에서만)
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
   }, []);
 
   // "유노바 선생님" 서브메뉴: DB(어드민 등록) 기반으로 동적 생성
@@ -256,12 +276,14 @@ export default function LandingHeader({
       className="fixed top-0 left-0 right-0 z-[1000] transition-colors duration-300"
       style={{
         // 스크롤 시에는 살짝 반투명 + blur
-        backgroundColor: scrolled ? toRgba(backgroundColor, scrolledOpacity) : backgroundColor,
+        backgroundColor: scrolled
+          ? toRgba(scrolledBackgroundColor ?? backgroundColor, scrolledOpacity)
+          : (overlayOnDesktop && isDesktop ? "transparent" : (topBackgroundColor ?? backgroundColor)),
         backdropFilter: scrolled ? "blur(12px)" : "none",
       }}
     >
       <div className={fullWidth ? "px-4" : "mx-auto max-w-6xl px-4"}>
-        <div className="relative flex items-center h-[70px]">
+        <div className="relative flex items-center h-[50px] lg:h-[70px]">
           {/* Mobile Menu Button */}
           <button
             type="button"
@@ -283,6 +305,7 @@ export default function LandingHeader({
               height={24}
               priority
               className="h-5 w-auto"
+              style={isLight ? { filter: "brightness(0)" } : undefined}
             />
           </Link>
 
@@ -299,6 +322,7 @@ export default function LandingHeader({
               height={24}
               priority
               className="h-5 w-auto"
+              style={isLight ? { filter: "brightness(0)" } : undefined}
             />
           </Link>
 
@@ -317,7 +341,7 @@ export default function LandingHeader({
                   icon={item.icon}
                   external={item.external}
                   active={isActiveHref(item.href)}
-                  variant={variant}
+                  variant={currentVariant}
                 />
                 
                 {/* 서브메뉴 드롭다운 */}
@@ -336,7 +360,7 @@ export default function LandingHeader({
                           rel={subItem.external ? "noopener noreferrer" : undefined}
                           className={`flex items-center rounded-lg px-3 py-2 text-[14px] transition-colors ${
                             isActiveHref(subItem.href)
-                              ? "bg-[rgba(94,91,92,0.2)] text-black font-semibold"
+                              ? "bg-[rgba(94,91,92,0.2)] text-black"
                               : "text-black/80 hover:bg-[rgba(94,91,92,0.2)]"
                           }`}
                         >
@@ -443,15 +467,14 @@ export default function LandingHeader({
                   className={`flex items-center gap-1.5 px-4 py-2 text-[15px] ${fgClass} transition-all ${isLight ? "hover:text-black/80" : "hover:text-white/80"}`}
             >
                   <span 
-                    className="material-symbols-outlined"
+                    className="material-symbols-outlined login-icon"
                     style={{ 
-                      fontSize: "16px",
                       fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20"
                     }}
                   >
                     login
                   </span>
-                  <span className="font-bold">로그인</span>
+                  <span className="hidden sm:inline">로그인</span>
             </Link>
               </>
             )}
@@ -475,7 +498,15 @@ export default function LandingHeader({
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between">
                 <Link href="/" className="inline-flex items-center" onClick={closeMenu}>
-                  <Image src="/unova-logo.png" alt="UNOVA" width={140} height={24} priority className="h-5 w-auto" />
+                  <Image
+                    src="/unova-logo.png"
+                    alt="UNOVA"
+                    width={140}
+                    height={24}
+                    priority
+                    className="h-5 w-auto"
+                    style={isLight ? { filter: "brightness(0)" } : undefined}
+                  />
                 </Link>
                 <button
                   type="button"

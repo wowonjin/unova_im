@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import TeacherDetailClient from "./TeacherDetailClient";
 import type { TeacherDetailTeacher } from "./TeacherDetailClient";
 import { prisma } from "@/lib/prisma";
+import { getTeacherRatingSummaryByName } from "@/lib/teacher-rating";
 
 type Banner = {
   topText: string;
@@ -16,11 +17,16 @@ type Banner = {
 type Review = {
   text: string;
   rating: number;
+  authorName?: string;
+  createdAt?: string;
 };
 
 type Notice = {
   tag: 'book' | 'event' | 'notice';
   text: string;
+  href?: string;
+  authorName?: string;
+  createdAt?: string;
 };
 
 type FloatingBanner = {
@@ -116,6 +122,82 @@ type TeacherData = {
     board?: string;
   };
 };
+
+function noticeCategoryToTag(category: string): Notice["tag"] {
+  const c = (category || "").toLowerCase();
+  if (c.includes("이벤트") || c.includes("event")) return "event";
+  if (c.includes("교재") || c.includes("book")) return "book";
+  return "notice";
+}
+
+async function getTeacherRecentNoticesForRightPanel(teacherName: string): Promise<Notice[]> {
+  const take = 5;
+  const baseWhere = { isPublished: true } as const;
+
+  // 1) 선생님별 카테고리("선생님 공지사항 - {이름}") 우선
+  const byTeacherCategory = await prisma.notice.findMany({
+    where: {
+      ...baseWhere,
+      category: { contains: `선생님 공지사항 - ${teacherName}` },
+    },
+    orderBy: [{ createdAt: "desc" }],
+    take,
+    select: { slug: true, title: true, category: true, createdAt: true, author: { select: { name: true } } },
+  });
+
+  // 2) 레거시/유연 매칭: 카테고리 내 "선생님"+"이름" 포함
+  const byCategoryContainsName =
+    byTeacherCategory.length > 0
+      ? []
+      : await prisma.notice.findMany({
+          where: {
+            ...baseWhere,
+            category: { contains: "선생님" },
+            title: { not: "" },
+            ...(teacherName ? { category: { contains: teacherName } } : {}),
+          } as any,
+          orderBy: [{ createdAt: "desc" }],
+          take,
+          select: { slug: true, title: true, category: true, createdAt: true, author: { select: { name: true } } },
+        });
+
+  // 3) 가능하면 작성자 이름에 선생님 이름이 들어간 공지를 노출(레거시)
+  const byAuthorName =
+    byTeacherCategory.length > 0 || byCategoryContainsName.length > 0
+      ? []
+      : await prisma.notice.findMany({
+          where: {
+            ...baseWhere,
+            category: { contains: "선생님" },
+            author: { name: { contains: teacherName } },
+          },
+          orderBy: [{ createdAt: "desc" }],
+          take,
+          select: { slug: true, title: true, category: true, createdAt: true, author: { select: { name: true } } },
+        });
+
+  const list =
+    byTeacherCategory.length > 0
+      ? byTeacherCategory
+      : byCategoryContainsName.length > 0
+        ? byCategoryContainsName
+        : byAuthorName.length > 0
+          ? byAuthorName
+          : await prisma.notice.findMany({
+              where: { ...baseWhere, category: { contains: "선생님" } },
+              orderBy: [{ createdAt: "desc" }],
+              take,
+              select: { slug: true, title: true, category: true, createdAt: true, author: { select: { name: true } } },
+            });
+
+  return list.map((n) => ({
+    tag: noticeCategoryToTag(n.category),
+    text: n.title,
+    href: `/notices/${n.slug}`,
+    authorName: n.author?.name || undefined,
+    createdAt: n.createdAt?.toISOString?.() ? n.createdAt.toISOString() : undefined,
+  }));
+}
 
 const teachersData: Record<string, TeacherData> = {
   "lee-sangyeob": {
@@ -631,10 +713,21 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
 
   // 2) DB 기반 선생님(어드민 등록) 폴백 → 유예린 디자인 템플릿 적용
   if (!teacher) {
-    const dbTeacher = await prisma.teacher.findUnique({
+    const dbTeacher: any = await prisma.teacher.findUnique({
       where: { slug: teacherId },
-      select: { slug: true, name: true, subjectName: true, imageUrl: true, mainImageUrl: true, promoImageUrl: true },
-    });
+      select: {
+        slug: true,
+        name: true,
+        subjectName: true,
+        imageUrl: true,
+        mainImageUrl: true,
+        promoImageUrl: true,
+        instagramUrl: true,
+        youtubeUrl: true,
+        educationText: true,
+        careerText: true,
+      },
+    } as any);
     if (!dbTeacher) notFound();
 
     // 유예린 선생님 데이터를 템플릿으로 사용
@@ -642,36 +735,100 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
     if (!yooYerinTemplate) notFound();
 
     // DB 선생님 정보를 기반으로 유예린 디자인 템플릿 채우기
+    const ratingSummary = await getTeacherRatingSummaryByName(dbTeacher.name);
+    const recentNotices = await getTeacherRecentNoticesForRightPanel(dbTeacher.name);
+    const fixedHeaderSub =
+      dbTeacher.slug === "lsy" || dbTeacher.slug === "lee-sangyeob" || dbTeacher.name === "이상엽"
+        ? "막연한 국어의 끝"
+        : `${dbTeacher.name} 선생님의 강의`;
+
+    const normalizeLines = (v: unknown): string[] => {
+      if (typeof v !== "string") return [];
+      return v
+        .split(/\r?\n/g)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    };
+
+    const defaultInstaIcon =
+      yooYerinTemplate.socialLinks?.find((s) => s.type === "instagram")?.icon ??
+      "https://img.etoos.com/teacher/event/2019/12/pmo_00/05_30x30.png";
+    const defaultYoutubeIcon =
+      yooYerinTemplate.socialLinks?.find((s) => s.type === "youtube")?.icon ??
+      "https://img.etoos.com/enp/front/2019/11/29/200391/bn/icon_01.png";
+
+    const socialLinks: TeacherDetailTeacher["socialLinks"] = [
+      ...(typeof dbTeacher.instagramUrl === "string" && dbTeacher.instagramUrl.trim()
+        ? [{ type: "instagram" as const, url: dbTeacher.instagramUrl.trim(), icon: defaultInstaIcon }]
+        : []),
+      ...(typeof dbTeacher.youtubeUrl === "string" && dbTeacher.youtubeUrl.trim()
+        ? [{ type: "youtube" as const, url: dbTeacher.youtubeUrl.trim(), icon: defaultYoutubeIcon }]
+        : []),
+    ];
+
     const dbTeacherData: TeacherDetailTeacher = {
+      slug: dbTeacher.slug,
       name: dbTeacher.name,
       subject: dbTeacher.subjectName || "과목",
       subjectColor: "text-emerald-400",
       bgColor: "bg-emerald-500/10",
-      headerSub: `${dbTeacher.name} 선생님의 강의`,
+      headerSub: fixedHeaderSub,
       imageUrl: dbTeacher.mainImageUrl || dbTeacher.imageUrl || yooYerinTemplate.imageUrl || "",
       promoImageUrl: dbTeacher.promoImageUrl || undefined,
       banners: yooYerinTemplate.banners || [],
-      reviews: yooYerinTemplate.reviews || [],
-      notices: yooYerinTemplate.notices || [],
+      reviews: ratingSummary.recentReviews.map((r) => ({
+        text: r.content,
+        rating: r.rating,
+        authorName: r.authorName,
+        createdAt: r.createdAt.toISOString(),
+      })),
+      ratingSummary: { reviewCount: ratingSummary.reviewCount, avgRating: ratingSummary.avgRating },
+      notices: recentNotices.length > 0 ? recentNotices : yooYerinTemplate.notices || [],
       floatingBanners: yooYerinTemplate.floatingBanners || [],
       curriculum: yooYerinTemplate.curriculum,
       bookSets: yooYerinTemplate.bookSets,
       lectureSets: yooYerinTemplate.lectureSets,
       curriculumLink: yooYerinTemplate.curriculumLink,
-      youtubeVideos: yooYerinTemplate.youtubeVideos,
+      youtubeVideos: dbTeacher.youtubeUrl
+        ? [{ url: dbTeacher.youtubeUrl }]
+        : yooYerinTemplate.youtubeVideos,
       faqItems: yooYerinTemplate.faqItems,
-      profile: yooYerinTemplate.profile || {
-        education: { title: "학력", content: "정보 없음" },
-        career: { title: "약력", content: "정보 없음" },
+      profile: {
+        education: {
+          title: "학력",
+          content:
+            (typeof dbTeacher.educationText === "string" && dbTeacher.educationText.trim())
+              ? dbTeacher.educationText.trim()
+              : (yooYerinTemplate.profile?.education?.content ?? "정보 없음"),
+        },
+        career: {
+          title: "약력",
+          content: (() => {
+            const lines = normalizeLines(dbTeacher.careerText);
+            if (lines.length > 0) return lines;
+            const template = yooYerinTemplate.profile?.career?.content;
+            return template ?? "정보 없음";
+          })(),
+        },
+        ...(yooYerinTemplate.profile?.gradeImprovements ? { gradeImprovements: yooYerinTemplate.profile.gradeImprovements } : {}),
+        ...(yooYerinTemplate.profile?.mockTestImprovements ? { mockTestImprovements: yooYerinTemplate.profile.mockTestImprovements } : {}),
       },
-      socialLinks: yooYerinTemplate.socialLinks || [],
+      socialLinks: socialLinks.length > 0 ? socialLinks : (yooYerinTemplate.socialLinks || []),
       navigationLinks: yooYerinTemplate.navigationLinks || {},
     };
 
     return (
-      <div className="min-h-screen bg-[#C7D5E1] text-white flex flex-col">
-        <LandingHeader backgroundColor="#ffffff" variant="light" />
-        <main className="flex-1 pt-[104px] md:pt-[116px]">
+      <div className="min-h-screen bg-[#464065] text-white flex flex-col">
+        <LandingHeader
+          backgroundColor="#161616"
+          topBackgroundColor="#161616"
+          scrolledBackgroundColor="#161616"
+          variant="dark"
+          scrolledVariant="dark"
+          scrolledOpacity={0.72}
+          overlayOnDesktop
+        />
+        <main className="flex-1">
           <TeacherDetailClient teacher={dbTeacherData} />
         </main>
         <Footer />
@@ -695,11 +852,44 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
     Boolean(teacher.navigationLinks);
 
   if (hasNewDesign) {
+    const recentNotices = await getTeacherRecentNoticesForRightPanel((teacher as any)?.name ?? "");
+    const ratingSummary = await getTeacherRatingSummaryByName((teacher as any)?.name ?? "");
+    const fixedHeaderSub =
+      teacherId === "lsy" || teacherId === "lee-sangyeob" || (teacher as any)?.name === "이상엽"
+        ? "막연한 국어의 끝"
+        : (teacher as any)?.headerSub;
+
+    const teacherWithLiveData: TeacherDetailTeacher = {
+      ...(teacher as any),
+      slug: teacherId,
+      ...(typeof fixedHeaderSub === "string" ? { headerSub: fixedHeaderSub } : {}),
+      ...(recentNotices.length > 0 ? { notices: recentNotices } : {}),
+      ...(ratingSummary.reviewCount > 0
+        ? {
+            reviews: ratingSummary.recentReviews.map((r) => ({
+              text: r.content,
+              rating: r.rating,
+              authorName: r.authorName,
+              createdAt: r.createdAt.toISOString(),
+            })),
+            ratingSummary: { reviewCount: ratingSummary.reviewCount, avgRating: ratingSummary.avgRating },
+          }
+        : {}),
+    };
+
     return (
-      <div className="min-h-screen bg-[#C7D5E1] text-white flex flex-col">
-        <LandingHeader backgroundColor="#ffffff" variant="light" />
-        <main className="flex-1 pt-[104px] md:pt-[116px]">
-          <TeacherDetailClient teacher={teacher as TeacherDetailTeacher} />
+      <div className="min-h-screen bg-[#464065] text-white flex flex-col">
+        <LandingHeader
+          backgroundColor="#161616"
+          topBackgroundColor="#161616"
+          scrolledBackgroundColor="#161616"
+          variant="dark"
+          scrolledVariant="dark"
+          scrolledOpacity={0.72}
+          overlayOnDesktop
+        />
+        <main className="flex-1">
+          <TeacherDetailClient teacher={teacherWithLiveData} />
         </main>
         <Footer />
       </div>
@@ -708,8 +898,16 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
 
   // 기존 디자인 (다른 선생님들)
   return (
-    <div className="min-h-screen bg-[#C7D5E1] text-white flex flex-col">
-      <LandingHeader backgroundColor="#ffffff" variant="light" />
+    <div className="min-h-screen bg-[#464065] text-white flex flex-col">
+      <LandingHeader
+        backgroundColor="#161616"
+        topBackgroundColor="#161616"
+        scrolledBackgroundColor="#161616"
+        variant="dark"
+        scrolledVariant="dark"
+        scrolledOpacity={0.72}
+        overlayOnDesktop
+      />
       
       <main className="flex-1 pt-[70px]">
         {/* 프로필 섹션 */}

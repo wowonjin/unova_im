@@ -10,7 +10,10 @@ type Teacher = {
   subjectName: string;
   imageUrl: string | null;
   mainImageUrl: string | null;
-  promoImageUrl: string | null;
+  educationText: string | null;
+  careerText: string | null;
+  instagramUrl: string | null;
+  youtubeUrl: string | null;
   isActive: boolean;
   position: number;
   createdAt: string;
@@ -28,7 +31,10 @@ export default function TeachersAdminClient() {
     subjectName: "",
     imageUrl: "",
     mainImageUrl: "",
-    promoImageUrl: "",
+    educationText: "",
+    careerText: "",
+    instagramUrl: "",
+    youtubeUrl: "",
     position: "0",
     isActive: true,
   });
@@ -63,7 +69,10 @@ export default function TeachersAdminClient() {
       subjectName: t.subjectName,
       imageUrl: t.imageUrl || "",
       mainImageUrl: t.mainImageUrl || "",
-      promoImageUrl: t.promoImageUrl || "",
+      educationText: t.educationText || "",
+      careerText: t.careerText || "",
+      instagramUrl: t.instagramUrl || "",
+      youtubeUrl: t.youtubeUrl || "",
       position: String(t.position ?? 0),
       isActive: Boolean(t.isActive),
     });
@@ -78,7 +87,10 @@ export default function TeachersAdminClient() {
       subjectName: "",
       imageUrl: "",
       mainImageUrl: "",
-      promoImageUrl: "",
+      educationText: "",
+      careerText: "",
+      instagramUrl: "",
+      youtubeUrl: "",
       position: "0",
       isActive: true,
     });
@@ -94,7 +106,10 @@ export default function TeachersAdminClient() {
     fd.append("subjectName", t.subjectName);
     fd.append("imageUrl", t.imageUrl || "");
     fd.append("mainImageUrl", t.mainImageUrl || "");
-    fd.append("promoImageUrl", t.promoImageUrl || "");
+    fd.append("educationText", t.educationText || "");
+    fd.append("careerText", t.careerText || "");
+    fd.append("instagramUrl", t.instagramUrl || "");
+    fd.append("youtubeUrl", t.youtubeUrl || "");
     fd.append("position", String(t.position ?? 0));
     fd.append("isActive", next ? "1" : "0");
     const res = await fetch("/api/admin/teachers/update", { method: "POST", body: fd });
@@ -126,7 +141,10 @@ export default function TeachersAdminClient() {
     fd.append("subjectName", formData.subjectName.trim());
     fd.append("imageUrl", formData.imageUrl.trim());
     fd.append("mainImageUrl", formData.mainImageUrl.trim());
-    fd.append("promoImageUrl", formData.promoImageUrl.trim());
+    fd.append("educationText", formData.educationText);
+    fd.append("careerText", formData.careerText);
+    fd.append("instagramUrl", formData.instagramUrl.trim());
+    fd.append("youtubeUrl", formData.youtubeUrl.trim());
     fd.append("position", formData.position);
     fd.append("isActive", formData.isActive ? "1" : "0");
 
@@ -224,15 +242,49 @@ export default function TeachersAdminClient() {
               </div>
 
               <div>
-                <label className="block text-[13px] text-white/50 mb-2">광고 이미지 URL (선생님 상세 상단 아래 배너)</label>
+                <label className="block text-[13px] text-white/50 mb-2">커리큘럼 유튜브 URL</label>
                 <input
                   type="text"
-                  value={formData.promoImageUrl}
-                  onChange={(e) => setFormData({ ...formData, promoImageUrl: e.target.value })}
-                  placeholder="https://storage.googleapis.com/..."
+                  value={formData.youtubeUrl}
+                  onChange={(e) => setFormData({ ...formData, youtubeUrl: e.target.value })}
+                  placeholder="https://www.youtube.com/watch?v=..."
                   className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
                 />
-                <p className="mt-2 text-[12px] text-white/40">선생님 상세 페이지의 상단 섹션 아래에 가로 배너로 노출됩니다.</p>
+                <p className="mt-2 text-[12px] text-white/40">선생님 페이지 우측 패널에 임베드됩니다 (단일 URL).</p>
+              </div>
+
+              <div>
+                <label className="block text-[13px] text-white/50 mb-2">인스타그램 URL</label>
+                <input
+                  type="text"
+                  value={formData.instagramUrl}
+                  onChange={(e) => setFormData({ ...formData, instagramUrl: e.target.value })}
+                  placeholder="https://instagram.com/..."
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                />
+                <p className="mt-2 text-[12px] text-white/40">선생님 페이지 상단 아이콘에서 해당 URL로 이동합니다.</p>
+              </div>
+
+              <div>
+                <label className="block text-[13px] text-white/50 mb-2">학력 (선생님 페이지 학력/약력 모달)</label>
+                <textarea
+                  value={formData.educationText}
+                  onChange={(e) => setFormData({ ...formData, educationText: e.target.value })}
+                  placeholder={"예)\\n서울대학교 국어교육과 졸업\\n(전) ○○고등학교 교사"}
+                  className="w-full min-h-[120px] px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                />
+                <p className="mt-2 text-[12px] text-white/40">줄바꿈이 그대로 표시됩니다.</p>
+              </div>
+
+              <div>
+                <label className="block text-[13px] text-white/50 mb-2">약력 (줄바꿈 = 항목)</label>
+                <textarea
+                  value={formData.careerText}
+                  onChange={(e) => setFormData({ ...formData, careerText: e.target.value })}
+                  placeholder={"예)\\n현) 유노바 국어 강사\\n전) ○○학원 대표강사"}
+                  className="w-full min-h-[120px] px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                />
+                <p className="mt-2 text-[12px] text-white/40">줄바꿈 단위로 리스트로 표시됩니다.</p>
               </div>
 
               <div>
@@ -354,6 +406,11 @@ export default function TeachersAdminClient() {
                     <p className="mt-1 text-[12px] text-emerald-200/80">광고 배너: 설정됨</p>
                   ) : (
                     <p className="mt-1 text-[12px] text-white/30">광고 배너: 없음</p>
+                  )}
+                  {t.youtubeUrl ? (
+                    <p className="mt-1 text-[12px] text-emerald-200/80">유튜브: 설정됨</p>
+                  ) : (
+                    <p className="mt-1 text-[12px] text-white/30">유튜브: 없음</p>
                   )}
                 </div>
 

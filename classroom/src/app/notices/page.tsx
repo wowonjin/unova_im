@@ -3,6 +3,24 @@ import LandingHeader from "@/app/_components/LandingHeader";
 import Footer from "@/app/_components/Footer";
 import { prisma } from "@/lib/prisma";
 
+function parseTeacherNameFromCategory(category: string): string | null {
+  const c = (category || "").trim();
+  const prefix = "선생님 공지사항 -";
+  if (!c.startsWith(prefix)) return null;
+  const name = c.slice(prefix.length).trim();
+  return name || null;
+}
+
+function displayBoardName(category: string): string {
+  const c = (category || "").trim();
+  const prefix = "선생님 공지사항 -";
+  if (c.startsWith(prefix)) {
+    const name = c.slice(prefix.length).trim();
+    if (name) return `${name}T 게시판`;
+  }
+  return c || "공지사항";
+}
+
 function fmtDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -28,6 +46,15 @@ function getRelativeTime(date: Date): string {
 export default async function NoticesPage({ searchParams }: { searchParams?: Promise<{ cat?: string; page?: string }> }) {
   const sp = await searchParams;
 
+  // "선생님 게시판" 카테고리 → 해당 선생님 상세 페이지로 이동시키기 위한 name→slug 매핑
+  const teacherSlugByName = new Map<string, string>();
+  const teachers = await prisma.teacher.findMany({ select: { slug: true, name: true } } as any);
+  for (const t of teachers as any[]) {
+    if (t && typeof t.name === "string" && typeof t.slug === "string") {
+      teacherSlugByName.set(t.name.trim(), t.slug);
+    }
+  }
+
   const categoriesRaw = await prisma.notice.groupBy({
     by: ["category"],
     where: { isPublished: true },
@@ -38,6 +65,7 @@ export default async function NoticesPage({ searchParams }: { searchParams?: Pro
 
   const selected = typeof sp?.cat === "string" ? sp.cat.trim() : "";
   const selectedCategory = selected && categories.some((c) => c.category === selected) ? selected : "";
+  const pageTitle = selectedCategory ? displayBoardName(selectedCategory) : "공지사항";
 
   const where = {
     isPublished: true,
@@ -69,42 +97,69 @@ export default async function NoticesPage({ searchParams }: { searchParams?: Pro
       <main className="flex-1 pt-[70px]">
         {/* 히어로 */}
         <section className="py-10 md:py-12">
-          <div className="mx-auto max-w-3xl px-6 text-center">
-            <h1 className="text-[28px] md:text-[36px] font-semibold tracking-[-0.02em] leading-[1.15]">
-              공지사항
+          {/* LandingHeader의 좌측 정렬선(mx-auto max-w-6xl px-4)과 맞춤 */}
+          <div className="mx-auto max-w-6xl px-4 text-left">
+            <h1 className="text-[32px] md:text-[40px] font-bold tracking-[-0.02em]">
+              {pageTitle}
             </h1>
+            <p className="mt-3 text-[15px] md:text-[16px] text-white/50">
+              유노바 선생님의 칼럼을 읽어보세요
+            </p>
           </div>
         </section>
 
         {/* 컨텐츠 */}
         <section className="pb-24">
-          <div className="mx-auto max-w-3xl px-6">
-      {/* 카테고리 필터 */}
-            <div className="flex items-center gap-2 mb-10">
+          <div className="mx-auto max-w-6xl px-4">
+            <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-10">
+              {/* 왼쪽: 카테고리 리스트 */}
+              <aside className="md:sticky md:top-[92px] self-start">
+                {/* 요청사항: 컨테이너 배경/카드 제거 */}
+                <div className="p-0">
+                  {/* 오른쪽 리스트(첫 항목 py-6)와 시각적 상단 정렬을 맞추기 위해 데스크톱에서만 약간 아래로 */}
+                  <nav className="space-y-1 md:pt-4">
           <Link
             href="/notices"
-                className={`px-4 py-2 rounded-full text-[14px] font-medium transition-all ${
+                      className={`block px-3 py-2 rounded-lg text-[14px] transition-colors ${
               !selectedCategory
-                ? "bg-white text-black"
-                    : "text-white/50 hover:text-white"
+                          ? "bg-white/12 text-white"
+                          : "text-white/70 hover:bg-white/8 hover:text-white"
             }`}
           >
             전체
           </Link>
+
           {categories.map((c) => (
             <Link
               key={c.category}
-              href={`/notices?cat=${encodeURIComponent(c.category)}`}
-                  className={`px-4 py-2 rounded-full text-[14px] font-medium transition-all ${
+              href={(() => {
+                const teacherName = parseTeacherNameFromCategory(c.category);
+                const slug = teacherName ? teacherSlugByName.get(teacherName) : null;
+                // 매핑이 되면 선생님 상세 페이지로 이동, 아니면 기존처럼 공지사항 필터
+                return slug ? `/teachers/${encodeURIComponent(slug)}` : `/notices?cat=${encodeURIComponent(c.category)}`;
+              })()}
+                        className={`block px-3 py-2 rounded-lg text-[14px] transition-colors ${
                 selectedCategory === c.category
-                  ? "bg-white text-black"
-                      : "text-white/50 hover:text-white"
+                            ? "bg-white/12 text-white"
+                            : "text-white/70 hover:bg-white/8 hover:text-white"
               }`}
-            >
-              {c.category}
+                        aria-current={selectedCategory === c.category ? "page" : undefined}
+                        title={c.category}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="truncate">{displayBoardName(c.category)}</span>
+                          <span className={`text-[12px] ${selectedCategory === c.category ? "text-white/70" : "text-white/30"}`}>
+                            {c.count}
+                          </span>
+                        </div>
             </Link>
           ))}
+                  </nav>
       </div>
+              </aside>
+
+              {/* 오른쪽: 목록 */}
+              <div>
 
             {/* 목록 */}
             {filteredList.length > 0 ? (
@@ -125,7 +180,7 @@ export default async function NoticesPage({ searchParams }: { searchParams?: Pro
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3">
                           <span className="text-[12px] font-medium text-white/40">
-                      {n.category}
+                      {displayBoardName(n.category)}
                     </span>
                           {showNew && (
                             <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
@@ -197,6 +252,8 @@ export default async function NoticesPage({ searchParams }: { searchParams?: Pro
                 )}
               </div>
             )}
+              </div>
+            </div>
           </div>
         </section>
       </main>

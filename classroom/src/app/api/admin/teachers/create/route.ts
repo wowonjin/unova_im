@@ -12,6 +12,10 @@ const Schema = z.object({
   imageUrl: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   mainImageUrl: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   promoImageUrl: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
+  instagramUrl: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
+  youtubeUrl: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
+  educationText: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
+  careerText: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   position: z
     .string()
     .optional()
@@ -34,6 +38,10 @@ export async function POST(req: Request) {
     imageUrl: typeof form.get("imageUrl") === "string" ? form.get("imageUrl") : undefined,
     mainImageUrl: typeof form.get("mainImageUrl") === "string" ? form.get("mainImageUrl") : undefined,
     promoImageUrl: typeof form.get("promoImageUrl") === "string" ? form.get("promoImageUrl") : undefined,
+    instagramUrl: typeof form.get("instagramUrl") === "string" ? form.get("instagramUrl") : undefined,
+    youtubeUrl: typeof form.get("youtubeUrl") === "string" ? form.get("youtubeUrl") : undefined,
+    educationText: typeof form.get("educationText") === "string" ? form.get("educationText") : undefined,
+    careerText: typeof form.get("careerText") === "string" ? form.get("careerText") : undefined,
     position: typeof form.get("position") === "string" ? form.get("position") : undefined,
     isActive: typeof form.get("isActive") === "string" ? form.get("isActive") : undefined,
   });
@@ -48,9 +56,13 @@ export async function POST(req: Request) {
         imageUrl: parsed.data.imageUrl,
         mainImageUrl: parsed.data.mainImageUrl,
         promoImageUrl: parsed.data.promoImageUrl,
+        instagramUrl: parsed.data.instagramUrl,
+        youtubeUrl: parsed.data.youtubeUrl,
+        educationText: parsed.data.educationText,
+        careerText: parsed.data.careerText,
         position: parsed.data.position,
         isActive: parsed.data.isActive ?? true,
-      },
+      } as any,
       select: { id: true },
     });
     return NextResponse.json({ ok: true, id: created.id });
