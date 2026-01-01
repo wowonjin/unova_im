@@ -113,6 +113,7 @@ export default async function Sidebar() {
     >
       <SidebarClient
         email={email}
+        userId={user.id}
         displayName={displayName}
         avatarUrl={avatarUrl}
         isAdmin={user.isAdmin}

@@ -6,9 +6,11 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { warmupThumb } from "./pdfThumbWarmup";
 import { useSidebar } from "./SidebarContext";
+import { readRecentWatched } from "@/lib/recent-watch";
 
 type Props = {
   email: string;
+  userId: string;
   displayName: string;
   avatarUrl: string | null;
   isAdmin: boolean;
@@ -82,11 +84,36 @@ function NavItem({ href, label, icon }: { href: string; label: string; icon?: st
   );
 }
 
-export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, isLoggedIn, showAllCourses, enrolledCourses }: Props) {
+export default function SidebarClient({ email, userId, displayName, avatarUrl, isAdmin, isLoggedIn, showAllCourses, enrolledCourses }: Props) {
   const pathname = usePathname();
   const isAdminArea = pathname?.startsWith("/admin");
   const { isOpen, setIsOpen } = useSidebar();
   const [showLogout, setShowLogout] = useState(false);
+  const [recentFallback, setRecentFallback] = useState<Props["enrolledCourses"]>([]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if (showAllCourses) return;
+    // 서버(Progress) 기반 목록이 비어 있으면, 클라이언트 로컬 기록으로 즉시 보완
+    if (enrolledCourses.length > 0) return;
+    const userKey = (typeof (email ?? "") === "string" && email) ? email : "";
+    // 가능하면 userId를 우선 사용(더 안정적)
+    const key = (typeof (userId ?? "") === "string" && userId) ? userId : userKey;
+    if (!key) return;
+    const items = readRecentWatched(key, 6);
+    if (!items.length) return;
+    setRecentFallback(
+      items.map((it) => ({
+        courseId: it.courseId,
+        title: it.courseTitle,
+        lastLessonId: it.lessonId,
+        lastLessonTitle: it.lessonTitle,
+        lastWatchedAtISO: it.watchedAtISO,
+        lastSeconds: null,
+        percent: 0,
+      }))
+    );
+  }, [enrolledCourses.length, email, isLoggedIn, showAllCourses, userId]);
 
   // Close sidebar on route change
   useEffect(() => {
@@ -138,12 +165,13 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
 
 
   const EnrolledCoursesSection = useMemo(() => {
+    const list = enrolledCourses.length > 0 ? enrolledCourses : recentFallback;
     return (
       <div className="mt-6">
         <p className="px-3 text-xs font-semibold text-white/60">{showAllCourses ? "강좌 목록(테스트)" : "최근 수강 목록"}</p>
-        {enrolledCourses.length > 0 ? (
+        {list.length > 0 ? (
           <ul className="mt-2 space-y-1">
-            {enrolledCourses.map((c) => {
+            {list.map((c) => {
               // 마지막 시청 강의가 있으면 해당 강의로, 없으면 대시보드로
               const href = c.lastLessonId ? `/lesson/${c.lastLessonId}` : `/dashboard`;
               return (
@@ -171,7 +199,7 @@ export default function SidebarClient({ email, displayName, avatarUrl, isAdmin, 
         )}
       </div>
     );
-  }, [enrolledCourses, showAllCourses]);
+  }, [enrolledCourses, recentFallback, showAllCourses]);
 
   const Nav = (
     <nav className="space-y-1 text-sm">

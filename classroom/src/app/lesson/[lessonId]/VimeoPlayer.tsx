@@ -5,13 +5,18 @@ import Player from "@vimeo/player";
 import { emitProgressUpdated } from "@/lib/progress-events";
 import { useSearchParams } from "next/navigation";
 import { isAllCoursesTestModeFromAllParam, withAllParamIfNeeded } from "@/lib/test-mode";
+import { recordRecentWatch } from "@/lib/recent-watch";
 
 type Props = {
   lessonId: string;
   vimeoVideoId: string;
+  courseId: string;
+  courseTitle: string;
+  lessonTitle: string | null;
+  userKey: string;
 };
 
-export default function VimeoPlayer({ lessonId, vimeoVideoId }: Props) {
+export default function VimeoPlayer({ lessonId, vimeoVideoId, courseId, courseTitle, lessonTitle, userKey }: Props) {
   const searchParams = useSearchParams();
   const allowAll = isAllCoursesTestModeFromAllParam(searchParams.get("all"));
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -21,6 +26,7 @@ export default function VimeoPlayer({ lessonId, vimeoVideoId }: Props) {
   const durationRef = useRef<number | null>(null);
   const lastSecondsRef = useRef<number>(0);
   const lastUiEmitAtRef = useRef<number>(0);
+  const didRecordRecentRef = useRef<boolean>(false);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const iframeId = `vimeo-${lessonId}`;
@@ -58,6 +64,17 @@ export default function VimeoPlayer({ lessonId, vimeoVideoId }: Props) {
     if (now - lastUiEmitAtRef.current < 500) return; // UI 쓰로틀(너무 잦은 렌더 방지)
     lastUiEmitAtRef.current = now;
 
+    // 최근 수강 목록(계정별) 기록: 최소 5초 이상 시청한 시점에 1회만 저장
+    if (!didRecordRecentRef.current && typeof userKey === "string" && userKey && seconds >= 5) {
+      didRecordRecentRef.current = true;
+      recordRecentWatch(userKey, {
+        courseId,
+        courseTitle,
+        lessonId,
+        lessonTitle,
+      }, 6);
+    }
+
     let percent100: number | null = null;
     if (typeof percent01 === "number" && Number.isFinite(percent01)) {
       percent100 = percent01 * 100;
@@ -68,7 +85,7 @@ export default function VimeoPlayer({ lessonId, vimeoVideoId }: Props) {
 
     const pct = Math.max(0, Math.min(100, percent100));
     emitProgressUpdated({ lessonId, percent: pct, completed: pct >= 90 });
-  }, [lessonId]);
+  }, [lessonId, userKey, courseId, courseTitle, lessonTitle]);
 
   useEffect(() => {
     // 페이지 이탈/백그라운드 시 마지막 진도 저장(sendBeacon 우선)

@@ -177,7 +177,14 @@ export default async function LessonPage({
         left={
           <>
             {/* VimeoPlayer 내부에 이미 surface가 있어서 추가 래퍼를 얹지 않음(덜 덕지덕지) */}
-            <VimeoPlayer lessonId={lesson.id} vimeoVideoId={lesson.vimeoVideoId} />
+            <VimeoPlayer
+              lessonId={lesson.id}
+              vimeoVideoId={lesson.vimeoVideoId}
+              courseId={lesson.courseId}
+              courseTitle={lesson.course.title}
+              lessonTitle={syncedLessonTitle}
+              userKey={user.id}
+            />
 
             <LessonResourcesTabs
               lessonId={lesson.id}
