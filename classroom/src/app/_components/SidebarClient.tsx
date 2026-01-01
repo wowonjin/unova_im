@@ -92,6 +92,8 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
   const [showLogout, setShowLogout] = useState(false);
   const [recentFallback, setRecentFallback] = useState<Props["enrolledCourses"]>([]);
   const [liveCourses, setLiveCourses] = useState<Props["enrolledCourses"]>(enrolledCourses);
+  const [recentLocal, setRecentLocal] = useState<Props["enrolledCourses"]>([]);
+  const [recentProgressByLessonId, setRecentProgressByLessonId] = useState<Map<string, number>>(new Map());
   const isClassroomSection =
     pathname === "/dashboard" ||
     pathname?.startsWith("/dashboard/") ||
@@ -105,6 +107,29 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
     setLiveCourses(enrolledCourses);
   }, [enrolledCourses]);
 
+  const userStorageKey = useMemo(() => {
+    const userKeyFromEmail = (typeof (email ?? "") === "string" && email) ? email : "";
+    const key = (typeof (userId ?? "") === "string" && userId) ? userId : userKeyFromEmail;
+    return key || "";
+  }, [email, userId]);
+
+  // localStorage 기반 최근 수강(강의 단위 누적) 로드
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if (showAllCourses) return;
+    if (!userStorageKey) return;
+    const items = readRecentWatched(userStorageKey, 6).map((it) => ({
+      courseId: it.courseId,
+      title: it.courseTitle,
+      lastLessonId: it.lessonId,
+      lastLessonTitle: it.lessonTitle,
+      lastWatchedAtISO: it.watchedAtISO,
+      lastSeconds: null,
+      percent: 0,
+    }));
+    setRecentLocal(items);
+  }, [isLoggedIn, showAllCourses, userStorageKey, pathname]);
+
   useEffect(() => {
     if (!isLoggedIn) return;
     if (showAllCourses) return; // 테스트 모드에서는 "최근" 개념이 아니라 목록 노출이 목적
@@ -113,32 +138,94 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
     // 1) 최근 수강 목록을 즉시 갱신하고
     // 2) 시청률(퍼센트)을 사이드바에도 즉시 반영
     return onProgressUpdated((d) => {
-      const cid = typeof d.courseId === "string" ? d.courseId : "";
-      if (!cid) return;
+      const lessonId = typeof d.lessonId === "string" ? d.lessonId : "";
+      const courseId = typeof d.courseId === "string" ? d.courseId : "";
+      if (!lessonId) return;
 
       const nowISO = new Date().toISOString();
       const pct = Math.max(0, Math.min(100, Math.round(Number.isFinite(d.percent) ? d.percent : 0)));
 
       setLiveCourses((prev) => {
         const cur = Array.isArray(prev) ? prev : [];
-        const idx = cur.findIndex((x) => x.courseId === cid);
+        const idx = cur.findIndex((x) => x.lastLessonId === lessonId);
         const existing = idx >= 0 ? cur[idx] : null;
         const nextItem = {
-          courseId: cid,
+          courseId: courseId || existing?.courseId || "",
           title: existing?.title ?? (typeof d.courseTitle === "string" && d.courseTitle ? d.courseTitle : "강좌"),
-          lastLessonId: d.lessonId || existing?.lastLessonId || null,
+          lastLessonId: lessonId,
           lastLessonTitle: d.lessonTitle ?? existing?.lastLessonTitle ?? null,
           lastWatchedAtISO: nowISO,
           lastSeconds: existing?.lastSeconds ?? null,
           percent: pct,
         };
 
-        const without = cur.filter((x) => x.courseId !== cid);
+        // 최근 수강 목록은 강의(lesson) 단위로 누적
+        const without = cur.filter((x) => x.lastLessonId !== lessonId);
         const merged = [nextItem, ...without];
         return merged.slice(0, 6);
       });
+
+      // 최근 수강 목록(localStorage)을 실제 화면 표시 기준으로 쓰므로, 최신 로컬 기록을 다시 읽어온다.
+      if (userStorageKey) {
+        const items = readRecentWatched(userStorageKey, 6).map((it) => ({
+          courseId: it.courseId,
+          title: it.courseTitle,
+          lastLessonId: it.lessonId,
+          lastLessonTitle: it.lessonTitle,
+          lastWatchedAtISO: it.watchedAtISO,
+          lastSeconds: null,
+          percent: 0,
+        }));
+        setRecentLocal(items);
+      }
+
+      // 새로고침 없이도 sidebar의 percent가 0으로 튀지 않게 캐시 업데이트
+      setRecentProgressByLessonId((prev) => {
+        const next = new Map(prev);
+        next.set(lessonId, pct);
+        return next;
+      });
     });
-  }, [isLoggedIn, showAllCourses]);
+  }, [isLoggedIn, showAllCourses, userStorageKey]);
+
+  // 새로고침/재진입 시에도 계정(DB)에 저장된 percent를 최근 수강 목록에 반영
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if (showAllCourses) return;
+    const lessonIds = recentLocal.map((x) => x.lastLessonId).filter((x): x is string => typeof x === "string" && x.length > 0);
+    if (lessonIds.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        lessonIds.map(async (lessonId) => {
+          try {
+            const res = await fetch(`/api/progress/${lessonId}`, { method: "GET", credentials: "include" });
+            if (!res.ok) return null;
+            const data = await res.json().catch(() => null);
+            const pct = Number(data?.progress?.percent);
+            if (!Number.isFinite(pct)) return null;
+            return [lessonId, Math.max(0, Math.min(100, pct))] as const;
+          } catch {
+            return null;
+          }
+        })
+      );
+      if (cancelled) return;
+      setRecentProgressByLessonId(() => {
+        const m = new Map<string, number>();
+        for (const e of entries) {
+          if (!e) continue;
+          m.set(e[0], e[1]);
+        }
+        return m;
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, showAllCourses, recentLocal]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -214,32 +301,49 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
 
 
   const EnrolledCoursesSection = useMemo(() => {
-    const list = liveCourses.length > 0 ? liveCourses : recentFallback;
+    // 서버(progress) 목록은 퍼센트 즉시 반영용으로만 보조 활용
+    const percentByLessonId = new Map(
+      (Array.isArray(liveCourses) ? liveCourses : [])
+        .filter((x) => x?.lastLessonId)
+        .map((x) => [x.lastLessonId as string, x.percent] as const)
+    );
+
+    // DB(progress) 기반 목록은 환경/스키마에 따라 "강좌별 1개"만 갱신될 수 있어
+    // 실제 UX(강의별 최근 수강 누적)는 로컬 기록(localStorage)을 우선 사용한다.
+    const base = recentLocal.length > 0 ? recentLocal : (liveCourses.length > 0 ? liveCourses : recentFallback);
+    const list = base.map((x) => ({
+      ...x,
+      percent:
+        recentProgressByLessonId.get(x.lastLessonId ?? "") ??
+        percentByLessonId.get(x.lastLessonId ?? "") ??
+        x.percent,
+    }));
     return (
       <div className="mt-6">
         <p className="px-3 text-xs font-semibold text-white/60">{showAllCourses ? "강좌 목록(테스트)" : "최근 수강 목록"}</p>
         {list.length > 0 ? (
-          <ul className="mt-2 space-y-1">
+          <ul className="recent-watch-list mt-2 flex flex-col gap-1 p-0">
             {list.map((c) => {
               // 마지막 시청 강의가 있으면 해당 강의로, 없으면 대시보드로
               const href = c.lastLessonId ? `/lesson/${c.lastLessonId}` : `/dashboard`;
               return (
-                <Link
-                  key={c.courseId}
-                  href={href}
-                  className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 hover:bg-white/10"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm">{c.title}</p>
-                    {c.lastLessonTitle ? (
-                      <p className="mt-0.5 truncate text-xs text-white/70">{c.lastLessonTitle}</p>
-                    ) : null}
-                    {!c.lastLessonTitle && !c.lastWatchedAtISO ? (
-                      <p className="truncate text-xs text-white/60">{showAllCourses ? "미수강" : "시청 기록 없음"}</p>
-                    ) : null}
-                  </div>
-                  <ProgressRing percent={c.percent} />
-                </Link>
+                <li key={c.lastLessonId ?? `${c.courseId}-${c.title}`} className="static block">
+                  <Link
+                    href={href}
+                    className="static flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 hover:bg-white/10"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm">{c.title}</p>
+                      {c.lastLessonTitle ? (
+                        <p className="mt-0.5 truncate text-xs text-white/70">{c.lastLessonTitle}</p>
+                      ) : null}
+                      {!c.lastLessonTitle && !c.lastWatchedAtISO ? (
+                        <p className="truncate text-xs text-white/60">{showAllCourses ? "미수강" : "시청 기록 없음"}</p>
+                      ) : null}
+                    </div>
+                    <ProgressRing percent={c.percent} />
+                  </Link>
+                </li>
               );
             })}
           </ul>
@@ -248,7 +352,7 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
         )}
       </div>
     );
-  }, [liveCourses, recentFallback, showAllCourses]);
+  }, [liveCourses, recentFallback, recentLocal, recentProgressByLessonId, showAllCourses]);
 
   const Nav = (
     <nav className="space-y-1 text-sm">
@@ -292,7 +396,7 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
         <span className="truncate">유노바 홈페이지</span>
       </a>
       {/* 구분선: 유노바 홈페이지 ↔ 최근 수강 목록 */}
-      <div className="my-3 -mx-5 border-t-2 border-white/10" />
+      <div className="my-3 mx-3 border-t-2 border-white/10" />
       {/* 최근 수강 목록 */}
       {EnrolledCoursesSection}
         </>
@@ -400,7 +504,7 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
 
       {/* 데스크탑 사이드바 */}
       <aside
-        className={`${isDesktopSidebarCollapsed ? "hidden" : "hidden lg:block"} w-64 shrink-0 bg-[#161616] p-5`}
+        className={`${isDesktopSidebarCollapsed ? "hidden" : "hidden lg:block"} w-72 shrink-0 bg-[#161616] p-5`}
       >
         <div className="flex h-full flex-col">
           {Nav}

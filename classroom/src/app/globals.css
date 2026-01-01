@@ -33,6 +33,26 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* --- Classroom Sidebar: 최근 수강 목록이 "겹쳐 보이는" 문제 방지용 강제 레이아웃 --- */
+/* 외부/전역 CSS가 a/li에 position:absolute 등을 걸어도 이 영역만큼은 세로 스택을 보장 */
+.recent-watch-list {
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+.recent-watch-list > li {
+  position: static !important;
+  display: block !important;
+}
+.recent-watch-list > li > a {
+  position: static !important;
+  display: flex !important;
+  width: 100% !important;
+}
 .material-symbols-outlined {
   font-family: "Material Symbols Outlined";
   font-weight: normal;
