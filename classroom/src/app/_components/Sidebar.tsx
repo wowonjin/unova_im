@@ -66,47 +66,32 @@ export default async function Sidebar() {
       })
     : [];
 
-  const latestByCourse = new Map<string, (typeof progresses)[number]>();
-  const percentByLesson = new Map<string, number>();
-  for (const p of progresses) {
-    percentByLesson.set(p.lessonId, p.percent);
-    const courseId = p.lesson.courseId;
-    if (!latestByCourse.has(courseId)) latestByCourse.set(courseId, p);
-  }
+  const courseTitleById = new Map(courseList.map((c) => [c.id, c.title] as const));
 
-  const enrolledCourses = courseList.map((c) => {
-    const total = c.lessons.length || 1;
-    let sum = 0;
-    for (const l of c.lessons) sum += percentByLesson.get(l.id) ?? 0;
-    const coursePercent = Math.max(0, Math.min(100, Math.round(sum / total)));
-    const latest = latestByCourse.get(c.id) ?? null;
-    // 마지막으로 시청한 강의의 진도율 (해당 강의를 얼마나 봤는지)
-    const lastLessonPercent = latest ? Math.max(0, Math.min(100, Math.round(latest.percent))) : 0;
-    return {
-      courseId: c.id,
-      title: c.title,
-      lastLessonId: latest?.lesson?.id ?? null,
-      lastLessonTitle: latest?.lesson?.title ?? null,
-      lastWatchedAtISO: latest ? latest.updatedAt.toISOString() : null,
-      lastSeconds: latest ? latest.lastSeconds : null,
-      percent: lastLessonPercent, // 마지막 강의 진도율
-      coursePercent, // 전체 강좌 진도율 (필요시 사용)
-    };
-  });
-
-  // "최근 수강 목록"은 실제 시청 기록(Progress)이 있는 강좌만 노출
-  // (테스트 모드 showAllCourses에서는 "강좌 목록(테스트)"로서 미수강도 보여줌)
+  // "최근 수강 목록": 강의(lesson) 단위로 쌓이도록 구성
+  // (같은 강좌의 다른 강의도 각각 최근 항목으로 노출)
   const recentEnrolledCourses = showAllCourses
-    ? enrolledCourses
-    : enrolledCourses
-        .filter((c) => Boolean(c.lastWatchedAtISO))
-        .sort((a, b) => (b.lastWatchedAtISO ?? "").localeCompare(a.lastWatchedAtISO ?? ""))
-        .slice(0, 6);
+    ? []
+    : progresses
+        .filter((p) => p && p.lesson && typeof p.lessonId === "string")
+        .slice(0, 6)
+        .map((p) => {
+          const courseId = p.lesson.courseId;
+          return {
+            courseId,
+            title: courseTitleById.get(courseId) ?? "강좌",
+            lastLessonId: p.lessonId,
+            lastLessonTitle: p.lesson.title ?? null,
+            lastWatchedAtISO: p.updatedAt.toISOString(),
+            lastSeconds: p.lastSeconds ?? null,
+            percent: Math.max(0, Math.min(100, Math.round(p.percent))),
+          };
+        });
 
   return (
     <Suspense
       fallback={
-        <div className="hidden w-64 shrink-0 border-r border-white/10 bg-[#1d1d1f] p-5 md:block">
+        <div className="hidden w-72 shrink-0 border-r border-white/10 bg-[#1d1d1f] p-5 md:block">
           <div className="text-sm text-white/60">로딩중…</div>
         </div>
       }

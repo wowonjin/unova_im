@@ -1,15 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import LoginModal from "./LoginModal";
+import Link from "next/link";
 
 type Props = {
   isLoggedIn: boolean;
 };
 
 export default function DashboardEmptyState({ isLoggedIn }: Props) {
-  const [showLoginModal, setShowLoginModal] = useState(false);
-
   if (!isLoggedIn) {
     return (
       <>
@@ -28,19 +25,16 @@ export default function DashboardEmptyState({ isLoggedIn }: Props) {
               이메일을 입력하여 로그인하세요.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowLoginModal(true)}
+          <Link
+            href="/login"
             className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-white/90"
           >
             <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
               login
             </span>
             로그인
-          </button>
+          </Link>
         </div>
-
-        <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
       </>
     );
   }

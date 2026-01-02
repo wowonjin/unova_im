@@ -79,11 +79,11 @@ export default function TeachersPage() {
       <main className="flex-1 pt-[70px]">
         {/* 헤더 섹션 */}
         <section className="py-10 md:py-12">
-          <div className="mx-auto max-w-6xl px-4">
-            <h1 className="text-[32px] md:text-[40px] font-bold tracking-[-0.02em]">
+          <div className="mx-auto max-w-6xl px-4 text-left md:text-center">
+            <h1 className="text-[22px] md:text-[40px] font-bold tracking-[-0.02em]">
               유노바 선생님
             </h1>
-            <p className="mt-3 text-[15px] md:text-[16px] text-white/50">
+            <p className="mt-2 text-[13px] md:mt-3 md:text-[16px] text-white/55 md:text-white/50">
               문제풀이 실력으로 검증된 유노바 선생님과 함께하세요.
             </p>
           </div>

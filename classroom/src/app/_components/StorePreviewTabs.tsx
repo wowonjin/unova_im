@@ -112,13 +112,13 @@ export default function StorePreviewTabs({
       {/* 상품 그리드 */}
       <div className="mt-6">
         {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-5 sm:gap-y-10">
             {filteredProducts.slice(0, 12).map((product) => (
               <Link key={product.id} href={`/store/${product.id}`} className="group">
                 <div
                   className={`relative aspect-video overflow-hidden transition-all rounded-2xl ${
                     product.type === "textbook"
-                      ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02] group-hover:scale-[1.02]"
+                      ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02]"
                       : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
                   }`}
                 >

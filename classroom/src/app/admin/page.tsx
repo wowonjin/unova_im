@@ -28,14 +28,6 @@ const adminMenus = [
     iconColor: "text-purple-400",
   },
   {
-    title: "공지사항 관리",
-    description: "공지사항 작성, 수정, 삭제",
-    href: "/admin/notices",
-    icon: "campaign",
-    color: "from-amber-500/20 to-amber-600/20",
-    iconColor: "text-amber-400",
-  },
-  {
     title: "회원 관리",
     description: "전체 회원 목록, 수강 현황, 권한 관리",
     href: "/admin/members",

@@ -101,7 +101,7 @@ export default function LessonCurriculumSidebar({ courseId, courseTitle, current
   }, []);
 
   return (
-    <aside className="flex h-full flex-col rounded-2xl border border-white/10">
+    <aside className="flex h-full flex-col rounded-2xl">
       <div className="shrink-0 border-b border-white/10 px-4 py-3">
         <p className="text-xs text-white/60">강의 목차</p>
         <p className="mt-1 truncate text-sm font-semibold">{courseTitle}</p>

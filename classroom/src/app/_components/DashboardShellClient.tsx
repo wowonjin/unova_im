@@ -35,7 +35,7 @@ export default function DashboardShellClient({
   const open = Boolean(selectedCourseId);
 
   return (
-    <div className="mt-6">
+    <div className="mt-2">
       <div className="min-w-0 flex-1">
         <DashboardCourseList
           cards={cards}

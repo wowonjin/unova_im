@@ -51,17 +51,10 @@ function parseCourseMeta(title: string) {
   return { subject, teacher };
 }
 
-type SortKey = "recent" | "teacher" | "subject" | "progress" | "subjectWatch";
+type SortKey = "teacher" | "subject" | "progress" | "subjectWatch";
 type SortDir = "asc" | "desc";
 
-function getSortKey(v: string | null): SortKey {
-  if (v === "teacher" || v === "subject" || v === "progress" || v === "subjectWatch") return v;
-  return "recent";
-}
-
-function getSortDir(v: string | null): SortDir {
-  return v === "asc" ? "asc" : "desc";
-}
+// 요청사항: 정렬 옵션 UI 제거 → URL 파라미터(sort/dir)는 무시하고 고정 정렬만 사용
 
 export default function DashboardCourseList({
   cards,
@@ -78,8 +71,6 @@ export default function DashboardCourseList({
   const router = useRouter();
   const searchParams = useSearchParams();
   const allowAll = isAllCoursesTestModeFromAllParam(searchParams.get("all"));
-  const sortKey = getSortKey(searchParams.get("sort"));
-  const sortDir = getSortDir(searchParams.get("dir"));
 
   const shouldOpenSidePanel = () => {
     if (!onSelectCourse) return false;
@@ -97,27 +88,8 @@ export default function DashboardCourseList({
     };
   }, []);
 
-  const subjectAvgPercent = useMemo(() => {
-    const sumBy = new Map<string, { sum: number; n: number }>();
-    for (const c of cards) {
-      const meta = parseCourseMeta(c.title);
-      const subject = (meta.subject ?? "").trim();
-      if (!subject) continue;
-      const cur = sumBy.get(subject) ?? { sum: 0, n: 0 };
-      cur.sum += Number.isFinite(c.avgPercent) ? c.avgPercent : 0;
-      cur.n += 1;
-      sumBy.set(subject, cur);
-    }
-    const out = new Map<string, number>();
-    for (const [k, v] of sumBy.entries()) out.set(k, v.n ? v.sum / v.n : 0);
-    return out;
-  }, [cards]);
-
   const sorted = useMemo(() => {
     const arr = [...cards];
-    const dirMul = sortDir === "asc" ? 1 : -1;
-    const cmpStr = (a: string, b: string) => a.localeCompare(b, "ko");
-    const cmpNum = (a: number, b: number) => (a === b ? 0 : a < b ? -1 : 1);
 
     const recentCmp = (a: typeof arr[number], b: typeof arr[number]) => {
       const ad = a.lastProgressAtISO ?? a.startAtISO;
@@ -126,37 +98,11 @@ export default function DashboardCourseList({
       return a.endAtISO.localeCompare(b.endAtISO);
     };
 
+    // 고정 정렬: (1) 즐겨찾기 우선 (2) 진도율 내림차순 (3) 최근 수강 보조정렬
     const keyCmp = (a: typeof arr[number], b: typeof arr[number]) => {
-      if (sortKey === "recent") return recentCmp(a, b);
-
-      const am = parseCourseMeta(a.title);
-      const bm = parseCourseMeta(b.title);
-      if (sortKey === "teacher") {
-        const at = (am.teacher ?? "").trim();
-        const bt = (bm.teacher ?? "").trim();
-        const r = cmpStr(at, bt) * dirMul;
-        return r !== 0 ? r : recentCmp(a, b);
-      }
-      if (sortKey === "subject") {
-        const as = (am.subject ?? "").trim();
-        const bs = (bm.subject ?? "").trim();
-        const r = cmpStr(as, bs) * dirMul;
-        return r !== 0 ? r : recentCmp(a, b);
-      }
-      if (sortKey === "progress") {
-        const r = cmpNum(a.avgPercent, b.avgPercent) * dirMul;
-        return r !== 0 ? r : recentCmp(a, b);
-      }
-      if (sortKey === "subjectWatch") {
-        const as = (am.subject ?? "").trim();
-        const bs = (bm.subject ?? "").trim();
-        const av = subjectAvgPercent.get(as) ?? 0;
-        const bv = subjectAvgPercent.get(bs) ?? 0;
-        const r = cmpNum(av, bv) * dirMul;
-        if (r !== 0) return r;
-        const r2 = cmpNum(a.avgPercent, b.avgPercent) * dirMul;
-        return r2 !== 0 ? r2 : recentCmp(a, b);
-      }
+      const ap = Number.isFinite(a.avgPercent) ? a.avgPercent : 0;
+      const bp = Number.isFinite(b.avgPercent) ? b.avgPercent : 0;
+      if (ap !== bp) return bp - ap;
       return recentCmp(a, b);
     };
 
@@ -167,7 +113,7 @@ export default function DashboardCourseList({
       return keyCmp(a, b);
     });
     return arr;
-  }, [cards, fav, sortKey, sortDir, subjectAvgPercent]);
+  }, [cards, fav]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -187,7 +133,7 @@ export default function DashboardCourseList({
   }, [query, sorted]);
 
   return (
-    <div className="mt-6">
+    <div className="mt-2">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {filtered.map((en) => {
           const meta = parseCourseMeta(en.title);

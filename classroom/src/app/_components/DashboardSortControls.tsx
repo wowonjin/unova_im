@@ -3,12 +3,13 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 
-type SortKey = "recent" | "teacher" | "subject" | "progress" | "subjectWatch";
+type SortKey = "teacher" | "subject" | "progress" | "subjectWatch";
 type SortDir = "asc" | "desc";
 
 function getSortKey(v: string | null): SortKey {
+  if (v === "recent") return "progress";
   if (v === "teacher" || v === "subject" || v === "progress" || v === "subjectWatch") return v;
-  return "recent";
+  return "progress";
 }
 
 function getSortDir(v: string | null): SortDir {
@@ -16,7 +17,6 @@ function getSortDir(v: string | null): SortDir {
 }
 
 const SORT_OPTIONS: { key: SortKey; label: string; icon: string }[] = [
-  { key: "recent", label: "최근 수강순", icon: "🕐" },
   { key: "progress", label: "진도율순", icon: "📊" },
   { key: "teacher", label: "선생님별", icon: "👤" },
   { key: "subject", label: "과목별", icon: "📚" },
@@ -49,7 +49,7 @@ export default function DashboardSortControls() {
     const sp = new URLSearchParams(searchParams.toString());
     const nextSort = next.sort ?? sort;
     const nextDir = next.dir ?? dir;
-    if (nextSort === "recent") sp.delete("sort");
+    if (nextSort === "progress") sp.delete("sort");
     else sp.set("sort", nextSort);
     sp.set("dir", nextDir);
     const qs = sp.toString();

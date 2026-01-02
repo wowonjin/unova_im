@@ -71,7 +71,8 @@ export function recordRecentWatch(
       lessonTitle: item.lessonTitle ?? null,
       watchedAtISO: nowISO,
     },
-    ...current.filter((x) => x.courseId !== item.courseId),
+    // 최근 수강 목록은 "강의(lesson)" 단위로 쌓이도록(같은 강좌의 다른 강의도 별도 항목으로)
+    ...current.filter((x) => x.lessonId !== item.lessonId),
   ];
   writeRecentWatched(userKey, next, limit);
 }

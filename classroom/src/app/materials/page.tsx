@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 export default async function MaterialsPage() {
   const user = await getCurrentUserOrGuest();
   const now = new Date();
+  const TEST_TITLE_MARKER = "T 교재";
 
   // 교재: 이용자 목록(Entitlement)에 있는 사용자만 볼 수 있음
   // 로그인하지 않으면 교재 목록 비움
@@ -23,6 +24,7 @@ export default async function MaterialsPage() {
     // 관리자(admin@gmail.com 등)는 모든 교재를 열람/다운로드 가능
     if (user.isAdmin) {
       textbooks = await prisma.textbook.findMany({
+        where: { NOT: [{ title: { contains: TEST_TITLE_MARKER } }] },
         orderBy: [{ createdAt: "desc" }],
         select: {
           id: true,
@@ -46,6 +48,7 @@ export default async function MaterialsPage() {
         where: { 
           isPublished: true,
           id: { in: entitledIds },
+          NOT: [{ title: { contains: TEST_TITLE_MARKER } }],
         },
         orderBy: [{ createdAt: "desc" }],
         select: {
@@ -103,35 +106,9 @@ export default async function MaterialsPage() {
 
   return (
     <AppShell>
-      {/* 헤더 카드 */}
-      <div className="mb-4 lg:mb-6 rounded-2xl border border-white/[0.06] bg-[#1C1C1C] p-4 sm:p-5">
-        <div className="flex items-center gap-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/[0.08]">
-            <span className="material-symbols-outlined text-[22px] text-white/70">menu_book</span>
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-white">교재 다운로드</h1>
-            <p className="mt-0.5 text-sm text-white/50">
-              {totalMaterials > 0 ? (
-                <>총 <span className="font-medium text-white/70">{totalMaterials}개</span>의 자료를 다운로드할 수 있습니다</>
-              ) : (
-                "다운로드 가능한 자료가 없습니다"
-              )}
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* 교재 섹션 */}
       {textbooks.length > 0 && (
         <div className="mb-8">
-          <div className="mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-[18px] text-white/40">book</span>
-            <h2 className="text-sm font-medium text-white/60">교재</h2>
-            <span className="rounded-full bg-white/[0.08] px-2 py-0.5 text-xs font-medium text-white/50">
-              {textbooks.length}
-            </span>
-          </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {textbooks.map((t) => (
               <div

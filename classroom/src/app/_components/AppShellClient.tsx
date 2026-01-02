@@ -28,6 +28,8 @@ export default function AppShellClient({ children, sidebar, floatingButton }: Pr
     pathname?.startsWith("/materials/") ||
     pathname?.startsWith("/lesson/") ||
     pathname?.startsWith("/course/");
+
+  const isLessonPage = pathname?.startsWith("/lesson/");
   
   return (
     <SidebarProvider>
@@ -59,7 +61,16 @@ export default function AppShellClient({ children, sidebar, floatingButton }: Pr
           }`}
         >
           {sidebar}
-          <main className="flex-1 px-4 pb-6 pt-4 md:px-8 md:py-6 lg:pt-6">{children}</main>
+          <main
+            className={`flex-1 pb-6 ${
+              // 레슨 페이지: 좌측 패딩을 줄여(강의/아래 요소를 더 크게) 사이드바와 콘텐츠 사이 빈공간을 축소
+              isLessonPage
+                ? "pl-2 pr-2 pt-0 md:pl-4 md:pr-4 md:pt-2 lg:pt-2 md:pb-6"
+                : "px-4 pt-4 md:px-8 md:py-6 lg:pt-6"
+            }`}
+          >
+            {children}
+          </main>
         </div>
         
         {floatingButton}

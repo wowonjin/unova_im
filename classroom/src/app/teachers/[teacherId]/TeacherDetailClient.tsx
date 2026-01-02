@@ -361,7 +361,9 @@ export default function TeacherDetailClient({ teacher }: Props) {
               }
             }}
           >
-            선생님 게시판<span className="unova-inline-n">N</span>
+            <span className="hidden md:inline">선생님 게시판</span>
+            <span className="md:hidden">게시판</span>
+            <span className="unova-inline-n">N</span>
           </div>
         )}
 

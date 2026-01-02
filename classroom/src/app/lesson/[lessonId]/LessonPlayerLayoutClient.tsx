@@ -7,7 +7,7 @@ type Props = {
 
 export default function LessonPlayerLayoutClient({ left, right }: Props) {
   return (
-    <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="mt-0 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="min-w-0">{left}</div>
 
       {/* 우측 패널은 스크롤 내내 자연스럽게 따라다니도록(viewport 기준) sticky + 고정 높이로 처리 */}

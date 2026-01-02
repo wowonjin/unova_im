@@ -85,6 +85,7 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
                       : "bg-white";
 
             const isOriginal = item.iconClass === "shortcut-icon--original";
+            const hideLabelOnMobile = item.label.replaceAll(" ", "") === "선생님게시판";
 
             return (
               <a
@@ -115,7 +116,11 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
                     className={isOriginal ? "h-full w-full object-cover" : "h-[70%] w-[70%] object-contain"}
                   />
                 </div>
-                <div className="text-[11px] font-normal tracking-[-0.02em] text-white sm:text-[14px]">
+                <div
+                  className={`text-[11px] font-normal tracking-[-0.02em] text-white sm:text-[14px] ${
+                    hideLabelOnMobile ? "hidden sm:block" : ""
+                  }`}
+                >
                   {item.label}
                 </div>
               </a>

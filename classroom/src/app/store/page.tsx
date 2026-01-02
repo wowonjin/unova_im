@@ -239,11 +239,11 @@ export default async function StorePage({
 
         <main className="flex-1 pt-[70px]">
           {/* 페이지 타이틀(필터 버튼 위) */}
-          <section className="mx-auto max-w-6xl px-4 pt-10 pb-6">
-            <h1 className="text-[32px] md:text-[40px] font-bold tracking-[-0.02em]">
+          <section className="mx-auto max-w-6xl px-4 pt-10 pb-6 text-left md:text-center">
+            <h1 className="text-[22px] md:text-[40px] font-bold tracking-[-0.02em]">
               {pageCopy.title}
             </h1>
-            <p className="mt-3 text-[15px] md:text-[16px] text-white/50">
+            <p className="mt-2 text-[13px] md:mt-3 md:text-[16px] text-white/55 md:text-white/50">
               {pageCopy.subtitle}
             </p>
           </section>
@@ -302,7 +302,7 @@ export default async function StorePage({
           </div>
 
           {filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-5 sm:gap-y-10">
               {filteredProducts.map((product) => (
                 <Link
                   key={product.id}
@@ -311,7 +311,7 @@ export default async function StorePage({
                 >
                   <div className={`relative aspect-video overflow-hidden transition-all rounded-2xl ${
                     product.type === "textbook" 
-                      ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02] group-hover:scale-[1.02]" 
+                      ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02]" 
                       : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
                   }`}>
                     {/* 교재 종류 배지 (교재만) */}

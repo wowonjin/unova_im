@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_BASE_URL ?? "https://unova-im.onrender.com",
+  ),
   title: "유노바",
   description: "최상위권의 모든 지식을 담은 실전 독학서",
   icons: {
@@ -27,9 +30,9 @@ export const metadata: Metadata = {
     description: "최상위권의 모든 지식을 담은 실전 독학서",
     images: [
       {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
+        url: "/unova_main.png",
+        width: 1024,
+        height: 1024,
         alt: "유노바",
       },
     ],
@@ -40,7 +43,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "유노바",
     description: "최상위권의 모든 지식을 담은 실전 독학서",
-    images: ["/og-image.png"],
+    images: ["/unova_main.png"],
   },
 };
 
@@ -62,6 +65,8 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
         />
+        {/* Quill editor styles (avoid bundler import path issues under Turbopack) */}
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" />
       </head>
       <body
         suppressHydrationWarning

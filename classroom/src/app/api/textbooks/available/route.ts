@@ -7,9 +7,10 @@ export const runtime = "nodejs";
 export async function GET() {
   const user = await getCurrentUser();
   const now = new Date();
+  const TEST_TITLE_MARKER = "T 교재";
 
   const textbooksRaw = await prisma.textbook.findMany({
-    where: { isPublished: true },
+    where: { isPublished: true, NOT: [{ title: { contains: TEST_TITLE_MARKER } }] },
     orderBy: [{ createdAt: "desc" }],
     select: {
       id: true,

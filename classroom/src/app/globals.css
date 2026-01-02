@@ -9,8 +9,8 @@
 }
 
 :root {
-  /* 섹션(히어로) 배경색과 맞춰 전체 배경도 통일 */
-  --background: #464065;
+  /* 기본 페이지 배경(스토어/마이페이지/강의실 등) */
+  --background: #161616;
   --foreground: #ffffff;
 }
 
@@ -29,7 +29,7 @@
 }
 
 body {
-  background: var(--background);
+  background: #161616;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -130,6 +130,8 @@ html, body {
   -ms-overflow-style: none;
   /* 레이아웃에서 100vw 요소 등으로 생기는 가로 스크롤 방지 */
   overflow-x: hidden;
+  /* 초기 렌더/라우트 전환 시 body 배경이 먼저 보이는 순간(보라색 플래시) 방지 */
+  background: #161616;
 }
 
 /* 선생님 페이지 스타일 */
@@ -2651,6 +2653,13 @@ a.unova-menu-item:active {
 @media (min-width: 640px) {
   .login-icon {
     font-size: 14px;
+  }
+}
+
+/* PC(데스크탑)에서만 로그인 아이콘을 더 작게 */
+@media (min-width: 1024px) {
+  .login-icon {
+    font-size: 12px;
   }
 }
 

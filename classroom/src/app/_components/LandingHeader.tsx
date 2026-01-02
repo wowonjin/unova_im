@@ -91,6 +91,14 @@ export default function LandingHeader({
   scrolledVariant,
   overlayOnDesktop = false,
 }: LandingHeaderProps) {
+  // hydration mismatch 방지:
+  // - 헤더는 scroll/matchMedia/라우팅 훅 등 클라 환경 영향을 많이 받는 UI라
+  //   SSR 결과와 클라 최초 렌더가 조금이라도 달라지면 mismatch가 발생하기 쉬움.
+  // - 단, 훅은 항상 동일한 순서/개수로 호출돼야 하므로 "early return"은 금지.
+  // - 모든 훅을 호출한 뒤, 렌더 결과만 mounted 기준으로 분기합니다.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const [scrolled, setScrolled] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -271,14 +279,16 @@ export default function LandingHeader({
   };
 
 
-  return (
+  return mounted ? (
     <nav
       className="fixed top-0 left-0 right-0 z-[1000] transition-colors duration-300"
       style={{
         // 스크롤 시에는 살짝 반투명 + blur
         backgroundColor: scrolled
           ? toRgba(scrolledBackgroundColor ?? backgroundColor, scrolledOpacity)
-          : (overlayOnDesktop && isDesktop ? "transparent" : (topBackgroundColor ?? backgroundColor)),
+          : overlayOnDesktop && isDesktop
+            ? "transparent"
+            : topBackgroundColor ?? backgroundColor,
         backdropFilter: scrolled ? "blur(12px)" : "none",
       }}
     >
@@ -520,11 +530,12 @@ export default function LandingHeader({
                 </button>
               </div>
 
-              <nav className="mt-6 space-y-1 text-sm">
+              {/* 모바일 사이드 메뉴: 좌우 여백 제거(컨테이너가 드로어 끝까지 붙도록) */}
+              <nav className="mt-6 -mx-5 space-y-1 text-sm">
                 {mergedMenuItems.map((item) => (
-                  <div key={`mobile-${item.label}`} className="rounded-lg">
+                  <div key={`mobile-${item.label}`} className="w-full">
                     <div
-                      className={`flex items-center justify-between rounded-lg px-3 py-2 transition-colors ${
+                      className={`flex w-full items-center justify-between px-5 py-2 transition-colors ${hoverBgClass} ${
                         isActiveHref(item.href) ? `${fgClass} font-semibold` : fgSubtleClass
                       }`}
                     >
@@ -533,11 +544,7 @@ export default function LandingHeader({
                         target={item.external ? "_blank" : undefined}
                         rel={item.external ? "noopener noreferrer" : undefined}
                         onClick={closeMenu}
-                        className={`flex-1 font-medium ${
-                          isActiveHref(item.href)
-                            ? `underline underline-offset-4 ${isLight ? "decoration-black/60" : "decoration-white/60"}`
-                            : ""
-                        }`}
+                        className="flex-1 font-medium"
                       >
                         {item.label}
                       </Link>
@@ -568,16 +575,12 @@ export default function LandingHeader({
 
                     {item.subItems ? (
                       <div
-                        className={`overflow-hidden pl-2 transition-[max-height,opacity] duration-200 ease-out ${
+                        className={`overflow-hidden px-5 transition-[max-height,opacity] duration-200 ease-out ${
                           mobileExpanded[item.label] ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
                         }`}
                       >
-                        <div
-                          className={`mt-2 rounded-xl border p-2 ${
-                            isLight ? "border-black/10 bg-white" : "border-white/10 bg-[#1a1a1c]"
-                          }`}
-                        >
-                          <div className="space-y-1">
+                        {/* 서브메뉴 컨테이너(테두리/배경 박스) 제거: 링크들만 바로 노출 */}
+                        <div className="mt-1 space-y-0.5 pl-3">
                           {item.subItems.map((sub) => (
                             <Link
                               key={`mobile-sub-${sub.label}`}
@@ -585,16 +588,15 @@ export default function LandingHeader({
                               target={sub.external ? "_blank" : undefined}
                               rel={sub.external ? "noopener noreferrer" : undefined}
                               onClick={closeMenu}
-                              className={`block rounded-lg px-3 py-2 text-[13px] transition-colors ${
+                              className={`block w-full py-1.5 text-[13px] transition-colors ${
                                 isActiveHref(sub.href)
-                                  ? `${isLight ? "bg-black/5 text-black" : "bg-white/10 text-white"}`
-                                  : `${isLight ? "text-black/70 hover:bg-black/5" : "text-white/70"}`
-                              }`}
+                                  ? `${isLight ? "text-black font-semibold" : "text-white font-semibold"}`
+                                  : `${isLight ? "text-black/70" : "text-white/70"}`
+                              } ${hoverBgClass}`}
                             >
                               {sub.label}
                             </Link>
                           ))}
-                          </div>
                         </div>
                       </div>
                     ) : null}
@@ -606,7 +608,7 @@ export default function LandingHeader({
                   <Link
                     href="/admin"
                     onClick={closeMenu}
-                    className={`mt-2 flex items-center rounded-lg px-3 py-2 text-[14px] transition-colors ${
+                    className={`mt-2 flex w-full items-center px-5 py-2 text-[14px] transition-colors ${hoverBgClass} ${
                       isActiveHref("/admin") ? "text-amber-300 font-semibold" : "text-amber-400"
                     }`}
                   >
@@ -714,7 +716,7 @@ export default function LandingHeader({
         </>
       ) : null}
     </nav>
-  );
+  ) : null;
 }
 
 function NavLink({
