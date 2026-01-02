@@ -4,6 +4,7 @@ import Footer from "@/app/_components/Footer";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/current-user";
 import AdminNoticeComposerClient from "./AdminNoticeComposerClient";
+import NoticeDeleteButton from "./NoticeDeleteButton";
 
 function parseTeacherNameFromCategory(category: string): string | null {
   const c = (category || "").trim();
@@ -164,6 +165,8 @@ export default async function NoticesPage({
     return qs ? `/notices?${qs}` : "/notices";
   };
 
+  const listHref = buildNoticesHref({ cat: selectedCategory || undefined, page: validPage, slug: null });
+
   const notice = activeSlug
     ? await prisma.notice.findFirst({
         where: { slug: activeSlug, ...(user?.isAdmin ? {} : { isPublished: true }) },
@@ -276,6 +279,13 @@ export default async function NoticesPage({
                             <span className="inline-flex items-center rounded-full bg-white/[0.08] px-3 py-1 text-xs font-medium text-white/70">
                               {displayBoardName(notice.category)}
                             </span>
+                            {user?.isAdmin ? (
+                              <NoticeDeleteButton
+                                noticeId={notice.id}
+                                redirectTo={listHref}
+                                className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[13px] font-semibold text-rose-200 hover:bg-rose-500/15"
+                              />
+                            ) : null}
                           </div>
                           <h2 className="text-2xl md:text-3xl font-bold leading-tight">{notice.title}</h2>
                           <p className="mt-3 text-sm text-white/40">{fmtDate(notice.createdAt)}</p>
@@ -322,22 +332,26 @@ export default async function NoticesPage({
                         const showNew = isNew(n.createdAt);
 
                         return (
-                          <Link
+                          <div
                             key={n.id}
-                            href={href}
                             className={`group flex items-start justify-between gap-6 py-6 transition-opacity hover:opacity-60 ${
                               idx !== 0 ? "border-t border-white/[0.08]" : ""
                             }`}
                           >
-                            <div className="flex-1 min-w-0">
+                            <Link href={href} className="flex-1 min-w-0">
                               <div className="flex items-center gap-3">
                                 <span className="text-[12px] font-medium text-white/40">{displayBoardName(n.category)}</span>
                                 {showNew && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
                               </div>
                               <h3 className="mt-2 text-[17px] font-medium leading-snug text-white/90">{n.title}</h3>
+                            </Link>
+                            <div className="flex shrink-0 items-center gap-3 pt-6">
+                              <div className="text-[14px] text-white/30">{relTime}</div>
+                              {user?.isAdmin ? (
+                                <NoticeDeleteButton noticeId={n.id} redirectTo={listHref} />
+                              ) : null}
                             </div>
-                            <div className="shrink-0 text-[14px] text-white/30 pt-6">{relTime}</div>
-                          </Link>
+                          </div>
                         );
                       })}
                     </div>
@@ -467,6 +481,13 @@ export default async function NoticesPage({
                             {displayBoardName(notice.category)}
                           </span>
                           <span className="text-[12px] text-white/45">{fmtDate(notice.createdAt)}</span>
+                          {user?.isAdmin ? (
+                            <NoticeDeleteButton
+                              noticeId={notice.id}
+                              redirectTo={listHref}
+                              className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[13px] font-semibold text-rose-200 hover:bg-rose-500/15"
+                            />
+                          ) : null}
                         </div>
                         <h2 className="mt-3 text-[20px] font-bold leading-snug tracking-[-0.02em]">{notice.title}</h2>
                       </header>
@@ -511,20 +532,30 @@ export default async function NoticesPage({
                       const showNew = isNew(n.createdAt);
 
                       return (
-                        <Link
+                        <div
                           key={n.id}
-                          href={href}
-                          className="block rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4 active:bg-white/[0.05]"
+                          className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4"
                         >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="min-w-0 flex items-center gap-2">
-                              <span className="truncate text-[12px] font-medium text-white/55">{displayBoardName(n.category)}</span>
-                              {showNew ? <span className="h-1.5 w-1.5 rounded-full bg-blue-500" /> : null}
-                            </div>
-                            <span className="shrink-0 text-[12px] text-white/45">{relTime}</span>
+                          <div className="flex items-start justify-between gap-3">
+                            <Link href={href} className="block min-w-0 flex-1 active:opacity-80">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0 flex items-center gap-2">
+                                  <span className="truncate text-[12px] font-medium text-white/55">{displayBoardName(n.category)}</span>
+                                  {showNew ? <span className="h-1.5 w-1.5 rounded-full bg-blue-500" /> : null}
+                                </div>
+                                <span className="shrink-0 text-[12px] text-white/45">{relTime}</span>
+                              </div>
+                              <h3 className="mt-2 text-[16px] font-semibold leading-snug text-white/90">{n.title}</h3>
+                            </Link>
+                            {user?.isAdmin ? (
+                              <NoticeDeleteButton
+                                noticeId={n.id}
+                                redirectTo={listHref}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] font-semibold text-rose-200"
+                              />
+                            ) : null}
                           </div>
-                          <h3 className="mt-2 text-[16px] font-semibold leading-snug text-white/90">{n.title}</h3>
-                        </Link>
+                        </div>
                       );
                     })}
                   </div>
