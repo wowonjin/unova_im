@@ -68,7 +68,7 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
       <section
         id="shortcuts"
         aria-label="바로가기 메뉴"
-        className="mx-auto max-w-[1080px] px-6 pb-7 pt-1 sm:pt-3"
+        className="mx-auto max-w-[1080px] px-6 pb-4 sm:pb-7 pt-1 sm:pt-3"
       >
         {/* Mobile: 한 줄에 4개 고정 (overflow 방지) */}
         <div className="grid grid-cols-4 justify-items-center gap-x-2 gap-y-6 sm:flex sm:flex-wrap sm:justify-center sm:gap-y-0">
@@ -97,7 +97,7 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
               >
                 <div
                   className={[
-                    "mx-auto mb-3 flex items-center justify-center overflow-hidden",
+                    "mx-auto mb-2 sm:mb-3 flex items-center justify-center overflow-hidden",
                     "h-[56px] w-[56px] rounded-[16px] sm:h-[92px] sm:w-[92px] sm:rounded-[22px]",
                     "shadow-[0_12px_26px_rgba(15,23,42,0.10)] border border-white/10",
                     "transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-[0_18px_34px_rgba(15,23,42,0.16)]",

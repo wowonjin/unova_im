@@ -317,7 +317,13 @@ export default async function StorePage({
                     {/* 교재 종류 배지 (교재만) */}
                     {product.type === "textbook" && product.textbookType ? (
                       <div className="absolute left-3 top-3 z-10">
-                        <span className="rounded-lg bg-black/70 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">
+                        <span
+                          className={`rounded-lg font-semibold text-white backdrop-blur ${
+                            String(product.textbookType).trim().toUpperCase() === "PDF"
+                              ? "bg-gradient-to-r from-blue-500 to-purple-500 px-2 py-0.5 text-[10px] sm:px-2.5 sm:py-1 sm:text-[11px]"
+                              : "bg-black/70 px-2.5 py-1 text-[11px]"
+                          }`}
+                        >
                           {product.textbookType}
                         </span>
                       </div>

@@ -64,12 +64,12 @@ export default function StorePreviewTabs({
   }, [selectedSubject, subjects]);
 
   return (
-    <section className="mx-auto max-w-6xl px-4 pt-10">
+    <section className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
       {/* 모바일: 세그먼트(교재/강의) + 가로 스크롤 과목 칩 */}
       <div className="md:hidden">
-        {/* 타입 세그먼트 */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="inline-flex rounded-2xl bg-white/[0.06] p-1 ring-1 ring-white/10">
+        {/* 타입 선택: 탭 메뉴(과목 탭과 동일한 스타일) */}
+        <div className="-mx-4 px-4">
+          <div className="flex gap-6 border-b border-white/10 pb-2" role="tablist" aria-label="교재/강의 선택">
             {types.map((t) => {
               const active = selectedType === t;
               return (
@@ -80,22 +80,26 @@ export default function StorePreviewTabs({
                     setSelectedType(t);
                     setSelectedSubject("전체");
                   }}
-                  className={`min-w-[92px] rounded-xl px-4 py-2 text-[13px] font-semibold transition-all ${
-                    active ? "bg-white text-black shadow-sm" : "text-white/70"
+                  role="tab"
+                  aria-selected={active}
+                  className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold transition-colors ${
+                    active ? "text-white" : "text-white/55"
                   }`}
-                  aria-pressed={active}
                 >
                   {t}
+                  {active ? (
+                    <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                  ) : null}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* 과목 칩: 가로 스크롤 */}
+        {/* 과목 탭: 가로 스크롤 탭바(underline) */}
         {subjects.length > 1 ? (
           <div className="mt-4 -mx-4 px-4">
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
               {subjects.map((subject) => {
                 const active = selectedSubject === subject;
                 return (
@@ -103,12 +107,16 @@ export default function StorePreviewTabs({
                     key={subject}
                     type="button"
                     onClick={() => setSelectedSubject(subject)}
-                    className={`shrink-0 rounded-full px-3.5 py-2 text-[12px] font-semibold transition-colors ${
-                      active ? "bg-white text-black" : "bg-white/[0.06] text-white/70"
+                    role="tab"
+                    aria-selected={active}
+                    className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold transition-colors ${
+                      active ? "text-white" : "text-white/55"
                     }`}
-                    aria-pressed={active}
                   >
                     {subject}
+                    {active ? (
+                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                    ) : null}
                   </button>
                 );
               })}
@@ -175,7 +183,13 @@ export default function StorePreviewTabs({
                   {/* 교재 종류 배지 (교재만) */}
                   {product.type === "textbook" && product.textbookType ? (
                     <div className="absolute left-3 top-3 z-10">
-                      <span className="rounded-lg bg-black/70 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">
+                      <span
+                        className={`rounded-lg font-semibold text-white backdrop-blur ${
+                          String(product.textbookType).trim().toUpperCase() === "PDF"
+                            ? "bg-gradient-to-r from-blue-500 to-purple-500 px-2 py-0.5 text-[10px] sm:px-2.5 sm:py-1 sm:text-[11px]"
+                            : "bg-black/70 px-2.5 py-1 text-[11px]"
+                        }`}
+                      >
                         {product.textbookType}
                       </span>
                     </div>
