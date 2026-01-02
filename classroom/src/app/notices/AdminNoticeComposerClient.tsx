@@ -7,12 +7,36 @@ type Props = {
   isAdmin: boolean;
   defaultCategory: string;
   categorySuggestions: string[];
+  selectedCategory?: string;
 };
 
-export default function AdminNoticeComposerClient({ isAdmin, defaultCategory, categorySuggestions }: Props) {
+export default function AdminNoticeComposerClient({
+  isAdmin,
+  defaultCategory,
+  categorySuggestions,
+  selectedCategory,
+}: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [category, setCategory] = useState(defaultCategory);
+
+  const categoryOptions = useMemo(() => {
+    const set = new Set(
+      (categorySuggestions || [])
+        .map((x) => (typeof x === "string" ? x.trim() : ""))
+        .filter((x) => x.length > 0),
+    );
+    return Array.from(set);
+  }, [categorySuggestions]);
+
+  const getPreferredCategory = () => {
+    const sel = typeof selectedCategory === "string" ? selectedCategory.trim() : "";
+    if (sel && categoryOptions.includes(sel)) return sel;
+    const def = (defaultCategory || "").trim();
+    if (def && categoryOptions.includes(def)) return def;
+    return categoryOptions[0] ?? "";
+  };
+
+  const [category, setCategory] = useState<string>(() => "");
   const [title, setTitle] = useState("");
   const [isPublished, setIsPublished] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -21,7 +45,11 @@ export default function AdminNoticeComposerClient({ isAdmin, defaultCategory, ca
   const editorHostRef = useRef<HTMLDivElement | null>(null);
   const quillRef = useRef<any>(null);
 
-  const datalistId = useMemo(() => `notice-category-${Math.random().toString(36).slice(2)}`, []);
+  useEffect(() => {
+    // 카테고리 옵션/선택 게시판이 바뀌면(예: 다른 게시판으로 이동) 기본 선택값을 동기화
+    setCategory(getPreferredCategory());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory, defaultCategory, categoryOptions.join("|")]);
 
   useEffect(() => {
     if (!open) return;
@@ -81,7 +109,7 @@ export default function AdminNoticeComposerClient({ isAdmin, defaultCategory, ca
   if (!isAdmin) return null;
 
   const reset = () => {
-    setCategory(defaultCategory);
+    setCategory(getPreferredCategory());
     setTitle("");
     setIsPublished(true);
     setError(null);
@@ -113,13 +141,14 @@ export default function AdminNoticeComposerClient({ isAdmin, defaultCategory, ca
     try {
       const q = quillRef.current;
       const body = q ? String(q.root?.innerHTML || "").trim() : "";
-      if (!category.trim() || !title.trim() || !body || body === "<p><br></p>") {
-        setError("카테고리/제목/내용을 모두 입력해주세요.");
+      const categoryTrim = category.trim();
+      if (!categoryTrim || !categoryOptions.includes(categoryTrim) || !title.trim() || !body || body === "<p><br></p>") {
+        setError("카테고리(선택)/제목/내용을 모두 입력해주세요.");
         return;
       }
 
       const fd = new FormData();
-      fd.set("category", category.trim());
+      fd.set("category", categoryTrim);
       fd.set("title", title.trim());
       fd.set("body", body);
       fd.set("isPublished", isPublished ? "1" : "0");
@@ -150,7 +179,10 @@ export default function AdminNoticeComposerClient({ isAdmin, defaultCategory, ca
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setCategory(getPreferredCategory());
+          setOpen(true);
+        }}
         className="mt-4 w-full rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-black hover:bg-white/90"
       >
         글 작성하기
@@ -175,18 +207,18 @@ export default function AdminNoticeComposerClient({ isAdmin, defaultCategory, ca
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3 md:items-end">
               <div className="md:col-span-1">
                 <label className="block text-xs font-medium text-white/70">카테고리</label>
-                <input
-                  list={datalistId}
+                <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="mt-1 h-10 w-full rounded-xl border border-white/10 bg-[#1a1a1c] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
-                  placeholder="예: 선생님 공지사항 - 홍길동"
-                />
-                <datalist id={datalistId}>
-                  {categorySuggestions.map((c) => (
-                    <option key={c} value={c} />
+                >
+                  {categoryOptions.length === 0 ? <option value="">카테고리가 없습니다</option> : null}
+                  {categoryOptions.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </div>
 
               <div className="md:col-span-1">

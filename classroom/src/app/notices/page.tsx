@@ -264,6 +264,7 @@ export default async function NoticesPage({
                       isAdmin={Boolean(user?.isAdmin)}
                       defaultCategory={defaultCategory}
                       categorySuggestions={categorySuggestions}
+                      selectedCategory={selectedCategory || undefined}
                     />
                   </div>
                 </aside>
@@ -457,6 +458,7 @@ export default async function NoticesPage({
                   isAdmin={Boolean(user?.isAdmin)}
                   defaultCategory={defaultCategory}
                   categorySuggestions={categorySuggestions}
+                  selectedCategory={selectedCategory || undefined}
                 />
               </div>
 
