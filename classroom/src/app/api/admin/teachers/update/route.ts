@@ -17,6 +17,11 @@ const Schema = z.object({
   youtubeUrl: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   educationText: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   careerText: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
+  headerSubText: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
+  pageBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
+  menuBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
+  newsBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
+  ratingBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   position: z
     .string()
     .optional()
@@ -44,6 +49,11 @@ export async function POST(req: Request) {
     youtubeUrl: typeof form.get("youtubeUrl") === "string" ? form.get("youtubeUrl") : undefined,
     educationText: typeof form.get("educationText") === "string" ? form.get("educationText") : undefined,
     careerText: typeof form.get("careerText") === "string" ? form.get("careerText") : undefined,
+    headerSubText: typeof form.get("headerSubText") === "string" ? form.get("headerSubText") : undefined,
+    pageBgColor: typeof form.get("pageBgColor") === "string" ? form.get("pageBgColor") : undefined,
+    menuBgColor: typeof form.get("menuBgColor") === "string" ? form.get("menuBgColor") : undefined,
+    newsBgColor: typeof form.get("newsBgColor") === "string" ? form.get("newsBgColor") : undefined,
+    ratingBgColor: typeof form.get("ratingBgColor") === "string" ? form.get("ratingBgColor") : undefined,
     position: typeof form.get("position") === "string" ? form.get("position") : undefined,
     isActive: typeof form.get("isActive") === "string" ? form.get("isActive") : undefined,
   });
@@ -63,6 +73,11 @@ export async function POST(req: Request) {
         youtubeUrl: parsed.data.youtubeUrl,
         educationText: parsed.data.educationText,
         careerText: parsed.data.careerText,
+        headerSubText: parsed.data.headerSubText,
+        pageBgColor: parsed.data.pageBgColor,
+        menuBgColor: parsed.data.menuBgColor,
+        newsBgColor: parsed.data.newsBgColor,
+        ratingBgColor: parsed.data.ratingBgColor,
         position: parsed.data.position,
         isActive: parsed.data.isActive ?? true,
       } as any,

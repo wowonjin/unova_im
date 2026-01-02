@@ -726,6 +726,11 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
         youtubeUrl: true,
         educationText: true,
         careerText: true,
+        headerSubText: true,
+        pageBgColor: true,
+        menuBgColor: true,
+        newsBgColor: true,
+        ratingBgColor: true,
       },
     } as any);
     if (!dbTeacher) notFound();
@@ -737,10 +742,11 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
     // DB 선생님 정보를 기반으로 유예린 디자인 템플릿 채우기
     const ratingSummary = await getTeacherRatingSummaryByName(dbTeacher.name);
     const recentNotices = await getTeacherRecentNoticesForRightPanel(dbTeacher.name);
-    const fixedHeaderSub =
-      dbTeacher.slug === "lsy" || dbTeacher.slug === "lee-sangyeob" || dbTeacher.name === "이상엽"
-        ? "막연한 국어의 끝"
-        : `${dbTeacher.name} 선생님의 강의`;
+    // 몸통 문장: 관리자 입력값이 있을 때만 표시. 없으면 공백(렌더링도 숨김 처리)
+    const headerSubText =
+      (typeof dbTeacher.headerSubText === "string" && dbTeacher.headerSubText.trim())
+        ? dbTeacher.headerSubText.trim()
+        : "";
 
     const normalizeLines = (v: unknown): string[] => {
       if (typeof v !== "string") return [];
@@ -757,6 +763,7 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
       yooYerinTemplate.socialLinks?.find((s) => s.type === "youtube")?.icon ??
       "https://img.etoos.com/enp/front/2019/11/29/200391/bn/icon_01.png";
 
+    // 입력이 없는 경우(빈 문자열/null)에는 아이콘 자체를 노출하지 않음
     const socialLinks: TeacherDetailTeacher["socialLinks"] = [
       ...(typeof dbTeacher.instagramUrl === "string" && dbTeacher.instagramUrl.trim()
         ? [{ type: "instagram" as const, url: dbTeacher.instagramUrl.trim(), icon: defaultInstaIcon }]
@@ -772,9 +779,13 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
       subject: dbTeacher.subjectName || "과목",
       subjectColor: "text-emerald-400",
       bgColor: "bg-emerald-500/10",
-      headerSub: fixedHeaderSub,
+      headerSub: headerSubText,
       imageUrl: dbTeacher.mainImageUrl || dbTeacher.imageUrl || yooYerinTemplate.imageUrl || "",
       promoImageUrl: dbTeacher.promoImageUrl || undefined,
+      pageBgColor: typeof dbTeacher.pageBgColor === "string" ? dbTeacher.pageBgColor : undefined,
+      menuBgColor: typeof dbTeacher.menuBgColor === "string" ? dbTeacher.menuBgColor : undefined,
+      newsBgColor: typeof dbTeacher.newsBgColor === "string" ? dbTeacher.newsBgColor : undefined,
+      ratingBgColor: typeof dbTeacher.ratingBgColor === "string" ? dbTeacher.ratingBgColor : undefined,
       banners: yooYerinTemplate.banners || [],
       reviews: ratingSummary.recentReviews.map((r) => ({
         text: r.content,
@@ -791,7 +802,7 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
       curriculumLink: yooYerinTemplate.curriculumLink,
       youtubeVideos: dbTeacher.youtubeUrl
         ? [{ url: dbTeacher.youtubeUrl }]
-        : yooYerinTemplate.youtubeVideos,
+        : [],
       faqItems: yooYerinTemplate.faqItems,
       profile: {
         education: {
@@ -799,26 +810,29 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
           content:
             (typeof dbTeacher.educationText === "string" && dbTeacher.educationText.trim())
               ? dbTeacher.educationText.trim()
-              : (yooYerinTemplate.profile?.education?.content ?? "정보 없음"),
+              : "",
         },
         career: {
           title: "약력",
           content: (() => {
             const lines = normalizeLines(dbTeacher.careerText);
+            // 아무것도 입력하지 않으면 공백(빈 리스트)로 노출
             if (lines.length > 0) return lines;
-            const template = yooYerinTemplate.profile?.career?.content;
-            return template ?? "정보 없음";
+            return [];
           })(),
         },
         ...(yooYerinTemplate.profile?.gradeImprovements ? { gradeImprovements: yooYerinTemplate.profile.gradeImprovements } : {}),
         ...(yooYerinTemplate.profile?.mockTestImprovements ? { mockTestImprovements: yooYerinTemplate.profile.mockTestImprovements } : {}),
       },
-      socialLinks: socialLinks.length > 0 ? socialLinks : (yooYerinTemplate.socialLinks || []),
+      socialLinks,
       navigationLinks: yooYerinTemplate.navigationLinks || {},
     };
 
     return (
-      <div className="min-h-screen bg-[#464065] text-white flex flex-col">
+      <div
+        className="min-h-screen text-white flex flex-col"
+        style={{ backgroundColor: (typeof dbTeacher.pageBgColor === "string" && dbTeacher.pageBgColor.trim()) ? dbTeacher.pageBgColor.trim() : "#464065" }}
+      >
         <LandingHeader
           backgroundColor="#161616"
           topBackgroundColor="#161616"

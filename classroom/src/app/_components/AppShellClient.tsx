@@ -62,7 +62,7 @@ export default function AppShellClient({ children, sidebar, floatingButton }: Pr
         >
           {sidebar}
           <main
-            className={`flex-1 pb-6 ${
+            className={`flex-1 pb-6 ${isAdminPage ? "admin-wide" : ""} ${
               // 레슨 페이지: 좌측 패딩을 줄여(강의/아래 요소를 더 크게) 사이드바와 콘텐츠 사이 빈공간을 축소
               isLessonPage
                 ? "pl-2 pr-2 pt-0 md:pl-4 md:pr-4 md:pt-2 lg:pt-2 md:pb-6"

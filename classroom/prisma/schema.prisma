@@ -607,6 +607,20 @@ model Teacher {
   educationText String?
   // careerText: 줄바꿈으로 항목 구분(표시 시 리스트)
   careerText    String?
+  // 선생님 개인 페이지 "몸통 문장"(상단 문구). 비어 있으면 화면에 표시하지 않음.
+  headerSubText String?
+
+  // =========================
+  // 선생님 개인 페이지 커스터마이징(테마)
+  // =========================
+  // 페이지 전체 배경색(예: "#464065")
+  pageBgColor   String?
+  // 좌측 메뉴(학력/약력, 커리큘럼 등) 컨테이너 배경색
+  menuBgColor   String?
+  // 우측 패널 "최근 소식" 컨테이너 배경색
+  newsBgColor   String?
+  // 우측 패널 "총 강의 평점" 컨테이너 배경색
+  ratingBgColor String?
   isActive    Boolean  @default(true)
   // 정렬(오름차순). 0은 레거시/미설정
   position    Int      @default(0)

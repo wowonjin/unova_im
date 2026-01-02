@@ -52,6 +52,11 @@ export type TeacherDetailTeacher = {
   headerSub: string;
   imageUrl: string;
   promoImageUrl?: string;
+  // 선생님 개인 페이지 커스터마이징(테마)
+  pageBgColor?: string;
+  menuBgColor?: string;
+  newsBgColor?: string;
+  ratingBgColor?: string;
   banners: Banner[];
   reviews: Review[];
   ratingSummary?: {
@@ -99,6 +104,29 @@ export default function TeacherDetailClient({ teacher }: Props) {
   const [lectureSubTab, setLectureSubTab] = useState<LectureSubTab>('single');
   const containerRef = useRef<HTMLDivElement>(null);
   const isLsy = teacher.slug === "lsy" || teacher.slug === "lee-sangyeob";
+
+  // ===== 커스터마이징(개인 페이지에서 바로 설정) =====
+  const [showCustomizer, setShowCustomizer] = useState(false);
+  const [subjectDraft, setSubjectDraft] = useState<string>(teacher.subject || "");
+  const [pageBgDraft, setPageBgDraft] = useState<string>(teacher.pageBgColor || "");
+  const [menuBgDraft, setMenuBgDraft] = useState<string>(teacher.menuBgColor || "");
+  const [newsBgDraft, setNewsBgDraft] = useState<string>(teacher.newsBgColor || "");
+  const [ratingBgDraft, setRatingBgDraft] = useState<string>(teacher.ratingBgColor || "");
+  const [isSavingTheme, setIsSavingTheme] = useState(false);
+
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    setShowCustomizer(sp.get("customize") === "1");
+  }, []);
+
+  const themeVars = {
+    ["--u-page-bg" as any]: (pageBgDraft || teacher.pageBgColor || "") || undefined,
+    ["--u-menu-bg" as any]: (menuBgDraft || teacher.menuBgColor || "") || undefined,
+    ["--u-news-bg" as any]: (newsBgDraft || teacher.newsBgColor || "") || undefined,
+    ["--u-rating-bg" as any]: (ratingBgDraft || teacher.ratingBgColor || "") || undefined,
+  } as React.CSSProperties;
+
+  const effectiveSubject = (subjectDraft || teacher.subject || "").trim();
 
   const [liveSummary, setLiveSummary] = useState<{ reviewCount: number; avgRating: number } | null>(
     teacher.ratingSummary && typeof teacher.ratingSummary.reviewCount === "number" && typeof teacher.ratingSummary.avgRating === "number"
@@ -392,7 +420,137 @@ export default function TeacherDetailClient({ teacher }: Props) {
   return (
     <>
       {/* ============ 모바일 전용 레이아웃 (메가스터디 스타일) ============ */}
-      <div className="mega-mobile-layout">
+      <div className="mega-mobile-layout" style={themeVars}>
+        {showCustomizer && (
+          <div style={{ padding: "12px 16px 0" }}>
+            <div
+              style={{
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(0,0,0,0.18)",
+                padding: "12px",
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>페이지 커스터마이징</div>
+              <div style={{ display: "grid", gap: 8 }}>
+                <label style={{ display: "grid", gap: 6, fontSize: 12, opacity: 0.92 }}>
+                  과목명
+                  <input
+                    value={subjectDraft}
+                    onChange={(e) => setSubjectDraft(e.target.value)}
+                    placeholder="예: 영어"
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      color: "#fff",
+                    }}
+                  />
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <label style={{ display: "grid", gap: 6, fontSize: 12, opacity: 0.92 }}>
+                    뒤 배경색
+                    <input
+                      type="color"
+                      value={(pageBgDraft && pageBgDraft.startsWith("#")) ? pageBgDraft : "#464065"}
+                      onChange={(e) => setPageBgDraft(e.target.value)}
+                      style={{ width: "100%", height: 40, background: "transparent", border: 0, padding: 0 }}
+                    />
+                  </label>
+                  <label style={{ display: "grid", gap: 6, fontSize: 12, opacity: 0.92 }}>
+                    메뉴 배경(좌측)
+                    <input
+                      type="color"
+                      value={(menuBgDraft && menuBgDraft.startsWith("#")) ? menuBgDraft : "#2f232b"}
+                      onChange={(e) => setMenuBgDraft(e.target.value)}
+                      style={{ width: "100%", height: 40, background: "transparent", border: 0, padding: 0 }}
+                    />
+                  </label>
+                  <label style={{ display: "grid", gap: 6, fontSize: 12, opacity: 0.92 }}>
+                    최근 소식 컨테이너
+                    <input
+                      type="color"
+                      value={(newsBgDraft && newsBgDraft.startsWith("#")) ? newsBgDraft : "#2A263D"}
+                      onChange={(e) => setNewsBgDraft(e.target.value)}
+                      style={{ width: "100%", height: 40, background: "transparent", border: 0, padding: 0 }}
+                    />
+                  </label>
+                  <label style={{ display: "grid", gap: 6, fontSize: 12, opacity: 0.92 }}>
+                    총 강의 평점 컨테이너
+                    <input
+                      type="color"
+                      value={(ratingBgDraft && ratingBgDraft.startsWith("#")) ? ratingBgDraft : "#2A263D"}
+                      onChange={(e) => setRatingBgDraft(e.target.value)}
+                      style={{ width: "100%", height: 40, background: "transparent", border: 0, padding: 0 }}
+                    />
+                  </label>
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                  <button
+                    type="button"
+                    disabled={isSavingTheme}
+                    onClick={async () => {
+                      try {
+                        setIsSavingTheme(true);
+                        const res = await fetch("/api/admin/teachers/theme", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            slug: teacher.slug,
+                            subjectName: subjectDraft.trim(),
+                            pageBgColor: pageBgDraft || null,
+                            menuBgColor: menuBgDraft || null,
+                            newsBgColor: newsBgDraft || null,
+                            ratingBgColor: ratingBgDraft || null,
+                          }),
+                        });
+                        const json = await res.json().catch(() => null);
+                        if (!res.ok || !json?.ok) throw new Error("SAVE_FAILED");
+                        alert("저장되었습니다. (새로고침 시에도 유지됩니다)");
+                      } catch {
+                        alert("저장에 실패했습니다.");
+                      } finally {
+                        setIsSavingTheme(false);
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "10px 12px",
+                      background: "#3b82f6",
+                      border: 0,
+                      color: "#fff",
+                      fontWeight: 700,
+                    }}
+                  >
+                    저장
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSavingTheme}
+                    onClick={() => {
+                      setPageBgDraft("");
+                      setMenuBgDraft("");
+                      setNewsBgDraft("");
+                      setRatingBgDraft("");
+                    }}
+                    style={{
+                      padding: "10px 12px",
+                      background: "rgba(255,255,255,0.08)",
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      color: "#fff",
+                      fontWeight: 600,
+                    }}
+                  >
+                    초기화
+                  </button>
+                </div>
+                <div style={{ fontSize: 11, opacity: 0.65 }}>
+                  팁: URL에 <b>?customize=1</b>을 붙이면 이 설정창이 표시됩니다.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         {/* 헤더 아래 얇은 이벤트 바 */}
         <div className="mega-mobile-eventbar" role="note" aria-label="이벤트 안내">
           <span className="mega-mobile-eventbar__text">
@@ -405,9 +563,11 @@ export default function TeacherDetailClient({ teacher }: Props) {
           <div className="mega-mobile-hero__bg" />
           <div className="mega-mobile-hero__content">
             <div className="mega-mobile-hero__info">
-              <p className="mega-mobile-hero__catchphrase">{teacher.headerSub}</p>
+              {teacher.headerSub ? (
+                <p className="mega-mobile-hero__catchphrase">{teacher.headerSub}</p>
+              ) : null}
               <h1 className="mega-mobile-hero__name">
-                <span className="mega-mobile-hero__subject">{teacher.subject}</span> {teacher.name} 선생님
+                <span className="mega-mobile-hero__subject">{effectiveSubject}</span> {teacher.name} 선생님
               </h1>
               <button
                 type="button"
@@ -779,19 +939,149 @@ export default function TeacherDetailClient({ teacher }: Props) {
 
       {/* ============ 데스크탑 전용 레이아웃 (기존) ============ */}
       <div className="unova-desktop-layout">
-        <div className="unova-wrapper" ref={containerRef}>
+        <div className="unova-wrapper" ref={containerRef} style={themeVars}>
+          {showCustomizer && (
+            <div style={{ position: "sticky", top: 72, zIndex: 20, paddingTop: 10 }}>
+              <div
+                style={{
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(0,0,0,0.18)",
+                  padding: 12,
+                  marginBottom: 10,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800 }}>페이지 커스터마이징</div>
+                  <div style={{ fontSize: 12, opacity: 0.7 }}>?customize=1</div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr 1fr", gap: 10, marginTop: 10 }}>
+                  <label style={{ display: "grid", gap: 6, fontSize: 12, opacity: 0.92 }}>
+                    과목명
+                    <input
+                      value={subjectDraft}
+                      onChange={(e) => setSubjectDraft(e.target.value)}
+                      placeholder="예: 영어"
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        background: "rgba(255,255,255,0.06)",
+                        border: "1px solid rgba(255,255,255,0.14)",
+                        color: "#fff",
+                      }}
+                    />
+                  </label>
+                  <label style={{ display: "grid", gap: 6, fontSize: 12, opacity: 0.92 }}>
+                    뒤 배경색
+                    <input
+                      type="color"
+                      value={(pageBgDraft && pageBgDraft.startsWith("#")) ? pageBgDraft : "#464065"}
+                      onChange={(e) => setPageBgDraft(e.target.value)}
+                      style={{ width: "100%", height: 40, background: "transparent", border: 0, padding: 0 }}
+                    />
+                  </label>
+                  <label style={{ display: "grid", gap: 6, fontSize: 12, opacity: 0.92 }}>
+                    메뉴 배경
+                    <input
+                      type="color"
+                      value={(menuBgDraft && menuBgDraft.startsWith("#")) ? menuBgDraft : "#2f232b"}
+                      onChange={(e) => setMenuBgDraft(e.target.value)}
+                      style={{ width: "100%", height: 40, background: "transparent", border: 0, padding: 0 }}
+                    />
+                  </label>
+                  <label style={{ display: "grid", gap: 6, fontSize: 12, opacity: 0.92 }}>
+                    최근 소식
+                    <input
+                      type="color"
+                      value={(newsBgDraft && newsBgDraft.startsWith("#")) ? newsBgDraft : "#2A263D"}
+                      onChange={(e) => setNewsBgDraft(e.target.value)}
+                      style={{ width: "100%", height: 40, background: "transparent", border: 0, padding: 0 }}
+                    />
+                  </label>
+                  <label style={{ display: "grid", gap: 6, fontSize: 12, opacity: 0.92 }}>
+                    총 강의 평점
+                    <input
+                      type="color"
+                      value={(ratingBgDraft && ratingBgDraft.startsWith("#")) ? ratingBgDraft : "#2A263D"}
+                      onChange={(e) => setRatingBgDraft(e.target.value)}
+                      style={{ width: "100%", height: 40, background: "transparent", border: 0, padding: 0 }}
+                    />
+                  </label>
+                </div>
+                <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                  <button
+                    type="button"
+                    disabled={isSavingTheme}
+                    onClick={async () => {
+                      try {
+                        setIsSavingTheme(true);
+                        const res = await fetch("/api/admin/teachers/theme", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            slug: teacher.slug,
+                            subjectName: subjectDraft.trim(),
+                            pageBgColor: pageBgDraft || null,
+                            menuBgColor: menuBgDraft || null,
+                            newsBgColor: newsBgDraft || null,
+                            ratingBgColor: ratingBgDraft || null,
+                          }),
+                        });
+                        const json = await res.json().catch(() => null);
+                        if (!res.ok || !json?.ok) throw new Error("SAVE_FAILED");
+                        alert("저장되었습니다. (새로고침 시에도 유지됩니다)");
+                      } catch {
+                        alert("저장에 실패했습니다.");
+                      } finally {
+                        setIsSavingTheme(false);
+                      }
+                    }}
+                    style={{
+                      padding: "10px 14px",
+                      background: "#3b82f6",
+                      border: 0,
+                      color: "#fff",
+                      fontWeight: 800,
+                    }}
+                  >
+                    저장
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSavingTheme}
+                    onClick={() => {
+                      setPageBgDraft("");
+                      setMenuBgDraft("");
+                      setNewsBgDraft("");
+                      setRatingBgDraft("");
+                    }}
+                    style={{
+                      padding: "10px 14px",
+                      background: "rgba(255,255,255,0.08)",
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      color: "#fff",
+                      fontWeight: 700,
+                    }}
+                  >
+                    초기화
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="unova-container">
             {/* 중앙 콘텐츠 */}
             <div className="unova-content unova-content--no-sidebar">
               {/* 헤더 */}
-              <div
-                className={`unova-header-sub ${isLsy ? "unova-header-sub--accent" : ""}`}
-                style={isLsy ? { color: "#fff", fontWeight: 400 } : undefined}
-              >
-                {teacher.headerSub}
-              </div>
+              {teacher.headerSub ? (
+                <div
+                  className={`unova-header-sub ${isLsy ? "unova-header-sub--accent" : ""}`}
+                  style={isLsy ? { color: "#fff", fontWeight: 400 } : undefined}
+                >
+                  {teacher.headerSub}
+                </div>
+              ) : null}
               <div className="unova-header-title">
-                <span className="unova-subject">{teacher.subject}</span> {teacher.name} 선생님
+                <span className="unova-subject">{subjectDraft || teacher.subject}</span> {teacher.name} 선생님
               </div>
 
               {/* 메뉴 */}
@@ -824,7 +1114,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
                 priority
               />
 
-              {typeof teacher.subject === "string" && teacher.subject.includes("국어") ? (
+              {typeof effectiveSubject === "string" && effectiveSubject.includes("국어") ? (
                 <div className="unova-teacher-slogan" aria-label="선생님 슬로건">
                   <div className="unova-teacher-slogan__line1">막연한 국어의 끝,</div>
                   <div className="unova-teacher-slogan__line2">알고리즘 국어</div>
