@@ -42,6 +42,7 @@ export default function HeroCarousel({ slides }: { slides?: Slide[] }) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [slideWidth, setSlideWidth] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -134,6 +135,15 @@ export default function HeroCarousel({ slides }: { slides?: Slide[] }) {
     return () => window.removeEventListener("resize", updateSizes);
   }, [updateSizes]);
 
+  // 모바일 여부(슬라이드 높이 조정용)
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
   // 슬라이드 너비 변경시 위치 업데이트
   useEffect(() => {
     if (slideWidth > 0) {
@@ -162,7 +172,7 @@ export default function HeroCarousel({ slides }: { slides?: Slide[] }) {
   };
 
   return (
-    <section className="pt-[110px] pb-16">
+    <section className="pt-[60px] lg:pt-[110px] pb-6 lg:pb-16">
       <div 
         ref={containerRef}
         className="relative mx-auto max-w-[1100px] overflow-visible"
@@ -190,7 +200,8 @@ export default function HeroCarousel({ slides }: { slides?: Slide[] }) {
                 }`}
                 style={{ 
                   width: slideWidth > 0 ? `${slideWidth}px` : `${slideRatio * 100}%`,
-                  aspectRatio: "2.5 / 1"
+                  // 모바일에서 세로 길이를 더 길게(높이 증가)
+                  aspectRatio: isMobile ? "2 / 1" : "2.5 / 1"
                 }}
               >
                 {/* 이미지 */}
@@ -226,6 +237,15 @@ export default function HeroCarousel({ slides }: { slides?: Slide[] }) {
                     {slide.subtitle}
                   </div>
                 </div>
+
+                {/* 모바일 카운터: 활성 슬라이드 우측 하단에 고정 */}
+                {isActive ? (
+                  <div className="md:hidden absolute right-3 bottom-3 z-30">
+                    <div className="px-3 py-1 rounded-full bg-black/55 backdrop-blur-sm text-xs text-white">
+                      <strong className="font-semibold">{logicalIndex}</strong> / {totalSlides}
+                    </div>
+                  </div>
+                ) : null}
               </a>
             );
           })}
@@ -262,12 +282,7 @@ export default function HeroCarousel({ slides }: { slides?: Slide[] }) {
           </button>
         </div>
 
-        {/* 모바일 카운터 */}
-        <div className="md:hidden absolute right-4 bottom-8 z-20">
-          <div className="px-3 py-1 rounded-full bg-black/50 backdrop-blur-sm text-xs text-white">
-            <strong className="font-semibold">{logicalIndex}</strong> / {totalSlides}
-          </div>
-        </div>
+        {/* 모바일 카운터는 각 슬라이드 내부(활성 슬라이드)에 배치 */}
       </div>
     </section>
   );

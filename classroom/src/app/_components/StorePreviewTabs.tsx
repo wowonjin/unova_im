@@ -65,8 +65,60 @@ export default function StorePreviewTabs({
 
   return (
     <section className="mx-auto max-w-6xl px-4 pt-10">
-      {/* 과목(왼쪽) + 타입(오른쪽) 한 줄 */}
-      <div className="flex items-center justify-between gap-3">
+      {/* 모바일: 세그먼트(교재/강의) + 가로 스크롤 과목 칩 */}
+      <div className="md:hidden">
+        {/* 타입 세그먼트 */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="inline-flex rounded-2xl bg-white/[0.06] p-1 ring-1 ring-white/10">
+            {types.map((t) => {
+              const active = selectedType === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => {
+                    setSelectedType(t);
+                    setSelectedSubject("전체");
+                  }}
+                  className={`min-w-[92px] rounded-xl px-4 py-2 text-[13px] font-semibold transition-all ${
+                    active ? "bg-white text-black shadow-sm" : "text-white/70"
+                  }`}
+                  aria-pressed={active}
+                >
+                  {t}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 과목 칩: 가로 스크롤 */}
+        {subjects.length > 1 ? (
+          <div className="mt-4 -mx-4 px-4">
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {subjects.map((subject) => {
+                const active = selectedSubject === subject;
+                return (
+                  <button
+                    key={subject}
+                    type="button"
+                    onClick={() => setSelectedSubject(subject)}
+                    className={`shrink-0 rounded-full px-3.5 py-2 text-[12px] font-semibold transition-colors ${
+                      active ? "bg-white text-black" : "bg-white/[0.06] text-white/70"
+                    }`}
+                    aria-pressed={active}
+                  >
+                    {subject}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {/* 데스크탑: 기존 버튼 레이아웃 유지 */}
+      <div className="hidden md:flex items-center justify-between gap-3">
         {/* 과목 필터 */}
         {subjects.length > 1 ? (
           <div className="flex min-w-0 flex-1 flex-wrap gap-2">
@@ -76,9 +128,7 @@ export default function StorePreviewTabs({
                 type="button"
                 onClick={() => setSelectedSubject(subject)}
                 className={`px-4 py-2 rounded-full text-[13px] font-medium transition-all ${
-                  selectedSubject === subject
-                    ? "bg-white text-black"
-                    : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"
+                  selectedSubject === subject ? "bg-white text-black" : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"
                 }`}
               >
                 {subject}
@@ -210,8 +260,6 @@ export default function StorePreviewTabs({
                         <span>{product.teacher}T</span>
                       </>
                     ) : null}
-                    <span className="text-white/70">·</span>
-                    <span>{product.subject}</span>
                   </div>
 
                   {product.tags.length > 0 ? (

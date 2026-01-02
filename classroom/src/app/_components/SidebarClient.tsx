@@ -265,6 +265,25 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isOpen, setIsOpen]);
 
+  // 모바일 사이드바가 열려 있을 때: 페이지(body) 스크롤 잠금 + 드로어만 스크롤
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    const body = document.body;
+    const cls = "unova-no-scroll";
+    if (isOpen) {
+      root.classList.add(cls);
+      body.classList.add(cls);
+    } else {
+      root.classList.remove(cls);
+      body.classList.remove(cls);
+    }
+    return () => {
+      root.classList.remove(cls);
+      body.classList.remove(cls);
+    };
+  }, [isOpen]);
+
   // 앱 첫 진입 시 교재 썸네일을 idle 타이밍에 미리 준비 (warmup)
   useEffect(() => {
     let cancelled = false;
@@ -468,13 +487,13 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
       {isOpen ? (
         <>
           <div
-            className="fixed inset-0 z-[60] bg-black/60 lg:hidden animate-[fadeIn_180ms_ease-out]"
+            className="fixed inset-0 z-[1100] bg-black/60 lg:hidden animate-[fadeIn_180ms_ease-out]"
             onClick={() => setIsOpen(false)}
           />
           <div
             role="dialog"
             aria-modal="true"
-            className="fixed inset-y-0 left-0 z-[70] w-72 bg-[#161616] p-5 lg:hidden animate-[drawerIn_180ms_ease-out]"
+            className="fixed inset-y-0 left-0 z-[1200] w-72 bg-[#161616] p-5 lg:hidden animate-[drawerIn_180ms_ease-out] overflow-y-auto overscroll-contain"
           >
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between">

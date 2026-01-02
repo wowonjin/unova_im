@@ -406,8 +406,6 @@ export default async function StorePage({
                           <span>{product.teacher}T</span>
                         </>
                       )}
-                      <span className="text-white/70">·</span>
-                      <span>{product.subject}</span>
                     </div>
                     {/* 태그 (관리자 상세 탭에서 입력한 쉼표 구분 태그들) */}
                     {product.tags.length > 0 && (

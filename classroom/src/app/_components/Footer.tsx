@@ -10,7 +10,7 @@ export default function Footer() {
           {/* 로고 및 설명 */}
           <div>
             <Image src="/unova-logo.png" alt="UNOVA" width={120} height={24} className="h-5 w-auto" />
-            <p className="mt-5 text-[13px] text-white/50 leading-relaxed">
+            <p className="mt-5 text-[12px] text-white/50 leading-relaxed">
               당신이 노바가 될 수 있도록,<br />
               가장 실전적인 지식을 제공합니다
             </p>
@@ -19,8 +19,8 @@ export default function Footer() {
           {/* 3열 메뉴 */}
           <div className="mt-8 grid grid-cols-3 gap-8">
             <div>
-              <p className="font-bold text-white mb-3 text-[14px]">서비스</p>
-              <ul className="space-y-2 text-[13px] text-white/50">
+              <p className="font-bold text-white mb-3 text-[13px]">서비스</p>
+              <ul className="space-y-2 text-[12px] text-white/50">
                 <li>
                   <Link href="/store" className="hover:text-white transition-colors">
                     구매하기
@@ -39,8 +39,8 @@ export default function Footer() {
               </ul>
             </div>
             <div>
-              <p className="font-bold text-white mb-3 text-[14px]">고객지원</p>
-              <ul className="space-y-2 text-[13px] text-white/50">
+              <p className="font-bold text-white mb-3 text-[13px]">고객지원</p>
+              <ul className="space-y-2 text-[12px] text-white/50">
                 <li>
                   <Link href="/notices" className="hover:text-white transition-colors">
                     강의 / 결제 공지사항
@@ -69,8 +69,8 @@ export default function Footer() {
               </ul>
             </div>
             <div>
-              <p className="font-bold text-white mb-3 text-[14px]">SNS</p>
-              <ul className="space-y-2 text-[13px] text-white/50">
+              <p className="font-bold text-white mb-3 text-[13px]">SNS</p>
+              <ul className="space-y-2 text-[12px] text-white/50">
                 <li>
                   <a
                     href="https://www.instagram.com/unova_edu"
@@ -198,7 +198,7 @@ export default function Footer() {
         {/* 구분선 */}
         <div className="mt-12 pt-8 border-t border-white/10">
           {/* 사업자 정보 - PC에서는 한 줄로, 모바일에서는 세로 배열 */}
-          <div className="text-[13px] text-white/40 leading-relaxed">
+          <div className="text-white/40 leading-relaxed md:text-[13px] text-[11px]">
             {/* PC 버전 - 한 줄로 표시 */}
             <div className="hidden md:block">
               <p>
@@ -209,20 +209,31 @@ export default function Footer() {
               </p>
             </div>
             {/* 모바일 버전 - 세로 배열 */}
-            <div className="md:hidden space-y-1 text-[12px]">
-              <p>대표 : 장진우 · 개인정보책임관리자: 장진우</p>
+            <div className="md:hidden space-y-1.5">
+              <p>상호 : 유노바</p>
+              <p>대표 : 장진우</p>
+              <p>개인정보책임관리자 : 장진우</p>
               <p>
-                사업자등록번호 : 259-40-01233 · <a href="https://www.ftc.go.kr/bizCommPop.do?wrkr_no=2594001233" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">사업자정보확인</a>
+                사업자등록번호 : 259-40-01233 ·{" "}
+                <a
+                  href="https://www.ftc.go.kr/bizCommPop.do?wrkr_no=2594001233"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-white"
+                >
+                  사업자정보확인
+                </a>
               </p>
-              <p>소재지 : 서울특별시 강남구 학동로 24길 20, 참존빌딩 402호</p>
-              <p>TEL : 050-6678-6390 · 이메일 : unova.team.cs@gmail.com</p>
+              <p>소재지 : 서울특별시 강남구 학동로 24길 20, 4층 402호 a411</p>
+              <p>TEL : 050-6678-6390</p>
+              <p>이메일 : unova.team.cs@gmail.com</p>
               <p>운영시간 : 평일 13:00~21:00, 토요일 13:00~18:00, 일요일 휴무</p>
               <p>통신판매업 신고번호 : 2024-서울강남-06080</p>
             </div>
           </div>
 
           {/* 저작권 */}
-          <p className="mt-6 text-[13px] text-white/40">
+          <p className="mt-6 text-white/40 md:text-[13px] text-[11px]">
             COPYRIGHT 2024. UNOVA. ALL RIGHTS RESERVED.
           </p>
         </div>

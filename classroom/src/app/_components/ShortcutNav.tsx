@@ -68,7 +68,7 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
       <section
         id="shortcuts"
         aria-label="바로가기 메뉴"
-        className="mx-auto max-w-[1080px] px-6 pb-7 pt-3"
+        className="mx-auto max-w-[1080px] px-6 pb-7 pt-1 sm:pt-3"
       >
         {/* Mobile: 한 줄에 4개 고정 (overflow 방지) */}
         <div className="grid grid-cols-4 justify-items-center gap-x-2 gap-y-6 sm:flex sm:flex-wrap sm:justify-center sm:gap-y-0">

@@ -91,14 +91,6 @@ export default function LandingHeader({
   scrolledVariant,
   overlayOnDesktop = false,
 }: LandingHeaderProps) {
-  // hydration mismatch 방지:
-  // - 헤더는 scroll/matchMedia/라우팅 훅 등 클라 환경 영향을 많이 받는 UI라
-  //   SSR 결과와 클라 최초 렌더가 조금이라도 달라지면 mismatch가 발생하기 쉬움.
-  // - 단, 훅은 항상 동일한 순서/개수로 호출돼야 하므로 "early return"은 금지.
-  // - 모든 훅을 호출한 뒤, 렌더 결과만 mounted 기준으로 분기합니다.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
   const [scrolled, setScrolled] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -118,6 +110,8 @@ export default function LandingHeader({
   const fgSubtleClass = isLight ? "text-black/80" : "text-white/90";
   const hoverBgClass = isLight ? "hover:bg-black/5" : "hover:bg-white/10";
   const hoverSoftBgClass = isLight ? "hover:bg-black/[0.06]" : "hover:bg-white/[0.06]";
+  // 모바일 드로어에서 hover 배경색이 "붙어 보이는" 현상 방지
+  const mobileNoHoverBgClass = "hover:bg-transparent";
 
   const isActiveHref = (href: string) => {
     // 책/강의는 현재 구현상 /books, /lectures가 /store?type=... 로 리다이렉트되므로
@@ -245,6 +239,30 @@ export default function LandingHeader({
     }
   }, [mobileDrawerOpen]);
 
+  // 모바일 드로어가 열려 있을 때: 페이지(body) 스크롤을 잠가서
+  // 스크롤에 따른 헤더 반투명 전환(scrolled)이 "메뉴 위에서" 발생하는 현상을 방지합니다.
+  useEffect(() => {
+    if (sidebar) return; // AppShell(대시보드 등) 사이드바 사용 시에는 관여하지 않음
+    if (typeof document === "undefined") return;
+
+    const root = document.documentElement;
+    const body = document.body;
+    const cls = "unova-no-scroll";
+
+    if (mobileDrawerOpen) {
+      root.classList.add(cls);
+      body.classList.add(cls);
+    } else {
+      root.classList.remove(cls);
+      body.classList.remove(cls);
+    }
+
+    return () => {
+      root.classList.remove(cls);
+      body.classList.remove(cls);
+    };
+  }, [mobileDrawerOpen, sidebar]);
+
   // 로그인 상태 확인
   useEffect(() => {
     const checkAuth = async () => {
@@ -279,7 +297,7 @@ export default function LandingHeader({
   };
 
 
-  return mounted ? (
+  return (
     <nav
       className="fixed top-0 left-0 right-0 z-[1000] transition-colors duration-300"
       style={{
@@ -502,11 +520,11 @@ export default function LandingHeader({
           <div
             role="dialog"
             aria-modal="true"
-            className="fixed inset-y-0 left-0 z-[1200] w-72 p-5 lg:hidden animate-[drawerIn_180ms_ease-out]"
+            className="fixed inset-y-0 left-0 z-[1200] w-72 p-5 lg:hidden animate-[drawerIn_180ms_ease-out] overflow-y-auto overscroll-contain"
             style={{ backgroundColor }}
           >
             <div className="flex h-full flex-col">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center">
                 <Link href="/" className="inline-flex items-center" onClick={closeMenu}>
                   <Image
                     src="/unova-logo.png"
@@ -518,16 +536,6 @@ export default function LandingHeader({
                     style={isLight ? { filter: "brightness(0)" } : undefined}
                   />
                 </Link>
-                <button
-                  type="button"
-                  onClick={closeMenu}
-                  aria-label="메뉴 닫기"
-                  className={`rounded-lg p-2 ${hoverBgClass} ${fgClass}`}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </button>
               </div>
 
               {/* 모바일 사이드 메뉴: 좌우 여백 제거(컨테이너가 드로어 끝까지 붙도록) */}
@@ -535,7 +543,7 @@ export default function LandingHeader({
                 {mergedMenuItems.map((item) => (
                   <div key={`mobile-${item.label}`} className="w-full">
                     <div
-                      className={`flex w-full items-center justify-between px-5 py-2 transition-colors ${hoverBgClass} ${
+                      className={`flex w-full items-center justify-between px-5 py-2 transition-colors ${mobileNoHoverBgClass} ${
                         isActiveHref(item.href) ? `${fgClass} font-semibold` : fgSubtleClass
                       }`}
                     >
@@ -570,7 +578,10 @@ export default function LandingHeader({
                             expand_more
                           </span>
                         </button>
-                      ) : null}
+                      ) : (
+                        // 서브메뉴가 없는 항목도 우측 영역 폭을 맞춰 높이/간격이 들쭉날쭉해 보이지 않게 함
+                        <span className="ml-2 h-8 w-8" aria-hidden="true" />
+                      )}
                     </div>
 
                     {item.subItems ? (
@@ -580,7 +591,7 @@ export default function LandingHeader({
                         }`}
                       >
                         {/* 서브메뉴 컨테이너(테두리/배경 박스) 제거: 링크들만 바로 노출 */}
-                        <div className="mt-1 space-y-0.5 pl-3">
+                        <div className="mt-1 space-y-0.5 pl-3 pb-0.5">
                           {item.subItems.map((sub) => (
                             <Link
                               key={`mobile-sub-${sub.label}`}
@@ -592,7 +603,7 @@ export default function LandingHeader({
                                 isActiveHref(sub.href)
                                   ? `${isLight ? "text-black font-semibold" : "text-white font-semibold"}`
                                   : `${isLight ? "text-black/70" : "text-white/70"}`
-                              } ${hoverBgClass}`}
+                              } ${mobileNoHoverBgClass}`}
                             >
                               {sub.label}
                             </Link>
@@ -608,7 +619,7 @@ export default function LandingHeader({
                   <Link
                     href="/admin"
                     onClick={closeMenu}
-                    className={`mt-2 flex w-full items-center px-5 py-2 text-[14px] transition-colors ${hoverBgClass} ${
+                    className={`mt-2 flex w-full items-center px-5 py-2 text-[14px] transition-colors ${mobileNoHoverBgClass} ${
                       isActiveHref("/admin") ? "text-amber-300 font-semibold" : "text-amber-400"
                     }`}
                   >
@@ -617,7 +628,7 @@ export default function LandingHeader({
                 ) : null}
               </nav>
 
-              <div className={`mt-auto pt-6 border-t ${isLight ? "border-black/10" : "border-white/10"}`}>
+              <div className={`mt-auto pt-6 ${user ? `border-t ${isLight ? "border-black/10" : "border-white/10"}` : ""}`}>
                 {loading ? (
                   <div className="h-10" />
                 ) : user ? (
@@ -693,8 +704,10 @@ export default function LandingHeader({
                     <Link
                       href="/signup"
                       onClick={closeMenu}
-                      className={`rounded-lg px-3 py-2 text-center text-sm border ${
-                        isLight ? "text-black/80 border-black/10" : "text-white/80 border-white/10"
+                      className={`rounded-xl px-3 py-2.5 text-center text-[14px] font-semibold transition-colors border ${
+                        isLight
+                          ? "text-black/80 border-black/15 bg-black/[0.04] hover:bg-black/[0.07]"
+                          : "text-white/85 border-white/15 bg-white/[0.06] hover:bg-white/[0.10]"
                       }`}
                     >
                       회원가입
@@ -702,8 +715,10 @@ export default function LandingHeader({
                     <Link
                       href="/login"
                       onClick={closeMenu}
-                      className={`rounded-lg px-3 py-2 text-center text-sm font-semibold border ${
-                        isLight ? "text-black border-black/10" : "text-white border-white/10"
+                      className={`rounded-xl px-3 py-2.5 text-center text-[14px] font-bold transition-all shadow-sm ${
+                        isLight
+                          ? "bg-black text-white hover:bg-black/90"
+                          : "bg-white text-black hover:bg-white/90"
                       }`}
                     >
                       로그인
@@ -716,7 +731,7 @@ export default function LandingHeader({
         </>
       ) : null}
     </nav>
-  ) : null;
+  );
 }
 
 function NavLink({

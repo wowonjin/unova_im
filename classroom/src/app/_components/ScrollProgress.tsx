@@ -3,16 +3,10 @@
 import { useEffect, useState, useRef } from "react";
 
 export default function ScrollProgress() {
-  const [mounted, setMounted] = useState(false);
   const [progress, setProgress] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
     const handleScroll = () => {
       // 문서의 현재 스크롤 위치
       const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
@@ -27,10 +21,7 @@ export default function ScrollProgress() {
     handleScroll(); // 초기 값 설정
 
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [mounted]);
-
-  // hydration mismatch 방지: 클라이언트 마운트 이후에만 렌더
-  if (!mounted) return null;
+  }, []);
 
   // 진행바 컨테이너 클릭 시 해당 위치로 스크롤 이동
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
