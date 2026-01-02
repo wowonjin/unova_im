@@ -122,7 +122,7 @@ export default function TeachersPage() {
             {loading ? (
               <div className="py-16 text-center text-white/50">불러오는 중...</div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {filteredTeachers.map((teacher) => (
                   <Link
                     key={teacher.slug}
@@ -144,16 +144,16 @@ export default function TeachersPage() {
                     )}
 
                     {/* 이름 / 과목 */}
-                    <div className="p-5">
+                    <div className="p-3 sm:p-5">
                       <div className="flex items-center gap-3">
                         <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-[12px] border shrink-0 ${subjectBadgeClass(
+                          className={`inline-flex items-center px-2 py-1 sm:px-2.5 rounded-full text-[11px] sm:text-[12px] border shrink-0 ${subjectBadgeClass(
                             teacher.subjectName
                           )}`}
                         >
                           {teacher.subjectName}
                         </span>
-                        <h3 className="text-[18px] font-semibold text-white truncate">{teacher.name} 선생님</h3>
+                        <h3 className="text-[16px] sm:text-[18px] font-semibold text-white truncate">{teacher.name} 선생님</h3>
                       </div>
                     </div>
                   </Link>
