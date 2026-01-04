@@ -5,7 +5,92 @@ import { notFound } from "next/navigation";
 import TeacherDetailClient from "./TeacherDetailClient";
 import type { TeacherDetailTeacher } from "./TeacherDetailClient";
 import { prisma } from "@/lib/prisma";
-import { getTeacherRatingSummaryByName } from "@/lib/teacher-rating";
+import { getTeacherRatingSummary } from "@/lib/teacher-rating";
+
+function toPublicGcsUrl(input?: string | null) {
+  const s = typeof input === "string" ? input.trim() : "";
+  if (!s) return "";
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  // gs://bucket/path -> https://storage.googleapis.com/bucket/path
+  if (s.startsWith("gs://")) return `https://storage.googleapis.com/${s.slice("gs://".length)}`;
+  return s;
+}
+
+async function getTeacherSelectedProductIdsBySlug(teacherSlug: string): Promise<{
+  courseIds: string[];
+  textbookIds: string[];
+}> {
+  try {
+    const rows = (await prisma.$queryRawUnsafe(
+      'SELECT "selectedCourseIds", "selectedTextbookIds" FROM "Teacher" WHERE "slug" = $1 LIMIT 1',
+      teacherSlug
+    )) as any[];
+    const row = Array.isArray(rows) ? rows[0] : null;
+    return {
+      courseIds: Array.isArray(row?.selectedCourseIds) ? row.selectedCourseIds.filter((x: any) => typeof x === "string") : [],
+      textbookIds: Array.isArray(row?.selectedTextbookIds) ? row.selectedTextbookIds.filter((x: any) => typeof x === "string") : [],
+    };
+  } catch {
+    return { courseIds: [], textbookIds: [] };
+  }
+}
+
+async function buildTeacherLectureAndBookSets({
+  courseIds,
+  textbookIds,
+}: {
+  courseIds: string[];
+  textbookIds: string[];
+}): Promise<{
+  lectureSets: LectureSet[];
+  bookSets: BookSet[];
+}> {
+  const [courses, textbooks] = await Promise.all([
+    courseIds.length
+      ? prisma.course.findMany({
+          where: { id: { in: courseIds }, isPublished: true },
+          select: { id: true, slug: true, title: true, thumbnailUrl: true, thumbnailStoredPath: true },
+        })
+      : Promise.resolve([]),
+    textbookIds.length
+      ? prisma.textbook.findMany({
+          where: { id: { in: textbookIds }, isPublished: true },
+          select: { id: true, title: true, thumbnailUrl: true, composition: true, textbookType: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const courseById = new Map(courses.map((c) => [c.id, c]));
+  const orderedCourses = courseIds.map((id) => courseById.get(id)).filter(Boolean) as typeof courses;
+
+  const single: Lecture[] = [];
+  const pack: Lecture[] = [];
+  for (const c of orderedCourses) {
+    const thumb = toPublicGcsUrl(c.thumbnailUrl) || toPublicGcsUrl(c.thumbnailStoredPath) || "/course-placeholder.svg";
+    const href = `/store/${c.slug || c.id}`;
+    const item: Lecture = { title: c.title, thumbnail: thumb, href };
+    const isPackage = /패키지|package/i.test(c.title);
+    (isPackage ? pack : single).push(item);
+  }
+
+  const lectureSets: LectureSet[] = [
+    ...(single.length ? [{ id: "single", label: "단과강좌", lectures: single }] : []),
+    ...(pack.length ? [{ id: "package", label: "패키지강좌", lectures: pack }] : []),
+  ];
+
+  const textbookById = new Map(textbooks.map((t) => [t.id, t]));
+  const orderedTextbooks = textbookIds.map((id) => textbookById.get(id)).filter(Boolean) as typeof textbooks;
+  const books: Book[] = orderedTextbooks.map((t) => ({
+    title: t.title,
+    sub: (t.composition || t.textbookType || "교재") as string,
+    href: `/store/${t.id}`,
+    cover: toPublicGcsUrl(t.thumbnailUrl) || "/course-placeholder.svg",
+  }));
+
+  const bookSets: BookSet[] = books.length ? [{ id: "selected", label: "교재", books }] : [];
+
+  return { lectureSets, bookSets };
+}
 
 type Banner = {
   topText: string;
@@ -740,13 +825,19 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
     if (!yooYerinTemplate) notFound();
 
     // DB 선생님 정보를 기반으로 유예린 디자인 템플릿 채우기
-    const ratingSummary = await getTeacherRatingSummaryByName(dbTeacher.name);
+    const ratingSummary = await getTeacherRatingSummary({ teacherSlug: dbTeacher.slug, teacherName: dbTeacher.name });
     const recentNotices = await getTeacherRecentNoticesForRightPanel(dbTeacher.name);
+    const boardCategory = `선생님 공지사항 - ${dbTeacher.name}`.replace(/\s+/g, " ").trim();
+    const boardHref = `/notices?${new URLSearchParams({ cat: boardCategory }).toString()}`;
     // 몸통 문장: 관리자 입력값이 있을 때만 표시. 없으면 공백(렌더링도 숨김 처리)
     const headerSubText =
       (typeof dbTeacher.headerSubText === "string" && dbTeacher.headerSubText.trim())
         ? dbTeacher.headerSubText.trim()
         : "";
+
+    // 관리자에서 선택한 강좌/교재를 선생님 페이지에 연동 (더미 데이터 제거)
+    const selected = await getTeacherSelectedProductIdsBySlug(dbTeacher.slug);
+    const { lectureSets, bookSets } = await buildTeacherLectureAndBookSets(selected);
 
     const normalizeLines = (v: unknown): string[] => {
       if (typeof v !== "string") return [];
@@ -797,8 +888,8 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
       notices: recentNotices.length > 0 ? recentNotices : yooYerinTemplate.notices || [],
       floatingBanners: yooYerinTemplate.floatingBanners || [],
       curriculum: yooYerinTemplate.curriculum,
-      bookSets: yooYerinTemplate.bookSets,
-      lectureSets: yooYerinTemplate.lectureSets,
+      bookSets,
+      lectureSets,
       curriculumLink: yooYerinTemplate.curriculumLink,
       youtubeVideos: dbTeacher.youtubeUrl
         ? [{ url: dbTeacher.youtubeUrl }]
@@ -825,7 +916,12 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
         ...(yooYerinTemplate.profile?.mockTestImprovements ? { mockTestImprovements: yooYerinTemplate.profile.mockTestImprovements } : {}),
       },
       socialLinks,
-      navigationLinks: yooYerinTemplate.navigationLinks || {},
+      navigationLinks: {
+        ...(yooYerinTemplate.navigationLinks || {}),
+        ...(lectureSets.length ? { lecture: "#teacher-lectures" } : {}),
+        ...(bookSets.length ? { book: "#teacher-books" } : {}),
+        board: boardHref,
+      },
     };
 
     return (
@@ -867,28 +963,39 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
 
   if (hasNewDesign) {
     const recentNotices = await getTeacherRecentNoticesForRightPanel((teacher as any)?.name ?? "");
-    const ratingSummary = await getTeacherRatingSummaryByName((teacher as any)?.name ?? "");
+    const ratingSummary = await getTeacherRatingSummary({ teacherSlug: teacherId, teacherName: (teacher as any)?.name ?? "" });
+    const boardCategory = `선생님 공지사항 - ${((teacher as any)?.name ?? "").trim()}`.replace(/\s+/g, " ").trim();
+    const boardHref = boardCategory.endsWith("-") ? "/notices" : `/notices?${new URLSearchParams({ cat: boardCategory }).toString()}`;
     const fixedHeaderSub =
       teacherId === "lsy" || teacherId === "lee-sangyeob" || (teacher as any)?.name === "이상엽"
         ? "막연한 국어의 끝"
         : (teacher as any)?.headerSub;
+
+    // 관리자에서 선택한 강좌/교재를 선생님 페이지에 연동 (더미 데이터 제거)
+    const selected = await getTeacherSelectedProductIdsBySlug(teacherId);
+    const { lectureSets, bookSets } = await buildTeacherLectureAndBookSets(selected);
 
     const teacherWithLiveData: TeacherDetailTeacher = {
       ...(teacher as any),
       slug: teacherId,
       ...(typeof fixedHeaderSub === "string" ? { headerSub: fixedHeaderSub } : {}),
       ...(recentNotices.length > 0 ? { notices: recentNotices } : {}),
-      ...(ratingSummary.reviewCount > 0
-        ? {
-            reviews: ratingSummary.recentReviews.map((r) => ({
-              text: r.content,
-              rating: r.rating,
-              authorName: r.authorName,
-              createdAt: r.createdAt.toISOString(),
-            })),
-            ratingSummary: { reviewCount: ratingSummary.reviewCount, avgRating: ratingSummary.avgRating },
-          }
-        : {}),
+      navigationLinks: {
+        ...(((teacher as any)?.navigationLinks ?? {}) as any),
+        ...(lectureSets.length ? { lecture: "#teacher-lectures" } : {}),
+        ...(bookSets.length ? { book: "#teacher-books" } : {}),
+        board: boardHref,
+      },
+      lectureSets,
+      bookSets,
+      // NOTE: 템플릿(하드코딩) 테스트 리뷰가 노출되지 않도록, 항상 "실제 DB 리뷰 집계"로 덮어씀
+      reviews: ratingSummary.recentReviews.map((r) => ({
+        text: r.content,
+        rating: r.rating,
+        authorName: r.authorName,
+        createdAt: r.createdAt.toISOString(),
+      })),
+      ratingSummary: { reviewCount: ratingSummary.reviewCount, avgRating: ratingSummary.avgRating },
     };
 
     return (

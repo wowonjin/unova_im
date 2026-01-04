@@ -163,7 +163,7 @@ export default function LandingHeader({
   useEffect(() => {
     const run = async () => {
       try {
-        const res = await fetch("/api/teachers/list", { cache: "no-store" });
+        const res = await fetch("/api/teachers/list");
         const json = await res.json().catch(() => null);
         if (!res.ok || !json?.ok) throw new Error("FETCH_FAILED");
         const list = Array.isArray(json.teachers) ? json.teachers : [];

@@ -382,11 +382,14 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
           <div className="mt-4">
           <p className="px-3 text-xs font-semibold text-white/60">관리</p>
           <div className="mt-2 space-y-1">
+              <NavItem href="/admin/home" label="메인페이지 설정" icon="tune" />
               <NavItem href="/admin/textbooks" label="교재 관리" icon="menu_book" />
               <NavItem href="/admin/courses" label="강좌 관리" icon="video_library" />
               <NavItem href="/admin/members" label="회원 관리" icon="group" />
               <NavItem href="/admin/orders" label="주문 관리" icon="receipt_long" />
               <NavItem href="/admin/popups" label="팝업 관리" icon="web_asset" />
+              <NavItem href="/admin/reviews" label="후기 관리" icon="rate_review" />
+              <NavItem href="/admin/teachers" label="선생님 관리" icon="badge" />
             </div>
           </div>
         </>

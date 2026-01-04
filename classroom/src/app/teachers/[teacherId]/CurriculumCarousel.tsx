@@ -24,6 +24,7 @@ export default function CurriculumCarousel({ slides, title = "커리큘럼 확�
   const [slideWidth, setSlideWidth] = useState(0);
   const [gap, setGap] = useState(22);
   const [peek, setPeek] = useState(140);
+  const indexRef = useRef(0);
 
   // 드래그 상태
   const [isDragging, setIsDragging] = useState(false);
@@ -36,6 +37,10 @@ export default function CurriculumCarousel({ slides, title = "커리큘럼 확�
   const trackRef = useRef<HTMLDivElement>(null);
   const t0Ref = useRef(performance.now());
   const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    indexRef.current = index;
+  }, [index]);
 
   // 슬라이드 크기 계산
   const measure = useCallback(() => {
@@ -117,12 +122,13 @@ export default function CurriculumCarousel({ slides, title = "커리큘럼 확�
     return () => window.removeEventListener('resize', measure);
   }, [measure]);
 
-  // 슬라이드 크기 변경 시 위치 업데이트
+  // 슬라이드 크기(측정) 변경 시에만 위치를 "스냅"으로 재정렬
+  // (index 변경 때마다 스냅을 해버리면 애니메이션이 딱딱하게 끊겨 보임)
   useEffect(() => {
     if (slideWidth > 0) {
-      goTo(index, false);
+      goTo(indexRef.current, false);
     }
-  }, [slideWidth, index, goTo]);
+  }, [slideWidth, goTo]);
 
   // 드래그 핸들러
   const handlePointerDown = (e: React.PointerEvent) => {

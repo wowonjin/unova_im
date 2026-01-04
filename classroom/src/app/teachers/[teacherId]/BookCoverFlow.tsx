@@ -24,6 +24,7 @@ type Props = {
 export default function BookCoverFlow({ title = "교재 구매하기.", bookSets, defaultTab }: Props) {
   const [activeTab, setActiveTab] = useState(defaultTab || bookSets[0]?.id || '');
   const [currentIdx, setCurrentIdx] = useState(0);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const originRef = useRef<HTMLDivElement>(null);
@@ -97,14 +98,6 @@ export default function BookCoverFlow({ title = "교재 구매하기.", bookSets
     setCurrentIdx(((i % n) + n) % n);
   };
 
-  const handleBookClick = (i: number, book: Book) => {
-    if (i === currentIdx) {
-      window.location.href = book.href;
-    } else {
-      focusAt(i);
-    }
-  };
-
   const getBookStyle = (i: number) => {
     const n = currentBooks.length;
     let offset = i - currentIdx;
@@ -115,16 +108,22 @@ export default function BookCoverFlow({ title = "교재 구매하기.", bookSets
     const step = 340;
     const zStep = 200;
     const x = offset * step;
-    const z = -abs * zStep;
-    const rot = -offset * 35;
-    const scale = 1 - abs * 0.12;
+    const zBase = -abs * zStep;
+    const rotBase = -offset * 35;
+    const scaleBase = 1 - abs * 0.12;
     const opacity = abs > 3 ? 0 : (1 - abs * 0.18);
     const bright = 1 - abs * 0.08;
 
+    const isHovered = hoveredIdx === i;
+    const zBoost = isHovered ? 260 : 0;
+    const scaleBoost = isHovered ? 0.08 : 0;
+    const rotBoost = isHovered ? -offset * 6 : 0;
+    const tiltZ = isHovered ? (offset === 0 ? 0 : (offset > 0 ? -2 : 2)) : 0;
+
     return {
-      transform: `translate(-50%, -50%) translateX(${x}px) translateZ(${z}px) rotateY(${rot}deg) scale(${scale})`,
+      transform: `translate(-50%, -50%) translateX(${x}px) translateZ(${zBase + zBoost}px) rotateY(${rotBase + rotBoost}deg) rotateZ(${tiltZ}deg) scale(${scaleBase + scaleBoost})`,
       opacity,
-      zIndex: 100 - abs,
+      zIndex: isHovered ? 999 : 100 - abs,
       filter: `brightness(${bright})`,
     };
   };
@@ -143,11 +142,20 @@ export default function BookCoverFlow({ title = "교재 구매하기.", bookSets
           <div ref={stageRef} className="unova-stage" aria-label="교재 커버플로우">
             <div ref={originRef} className="unova-origin">
               {currentBooks.map((book, i) => (
-                <div
+                <a
                   key={`${activeTab}-${i}`}
-                  className="unova-book"
+                  className={`unova-book ${hoveredIdx === i ? 'is-hovered' : ''}`}
                   style={getBookStyle(i)}
-                  onClick={() => handleBookClick(i, book)}
+                  href={book.href}
+                  onMouseEnter={() => setHoveredIdx(i)}
+                  onMouseLeave={() => setHoveredIdx(null)}
+                  onFocus={() => setHoveredIdx(i)}
+                  onBlur={() => setHoveredIdx(null)}
+                  onClick={(e) => {
+                    // hover는 효과용. 클릭은 즉시 이동(요청사항)
+                    void e;
+                  }}
+                  aria-label={`${book.title} 이동`}
                 >
                   <div
                     className="unova-cover"
@@ -158,7 +166,7 @@ export default function BookCoverFlow({ title = "교재 구매하기.", bookSets
                     <p className="unova-title">{book.title}</p>
                     <p className="unova-sub">{book.sub}</p>
                   </div>
-                </div>
+                </a>
               ))}
             </div>
           </div>

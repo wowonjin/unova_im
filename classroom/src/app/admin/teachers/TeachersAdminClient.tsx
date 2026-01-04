@@ -10,6 +10,9 @@ type Teacher = {
   subjectName: string;
   imageUrl: string | null;
   mainImageUrl: string | null;
+  promoImageUrl: string | null;
+  selectedCourseIds?: string[];
+  selectedTextbookIds?: string[];
   headerSubText: string | null;
   pageBgColor: string | null;
   menuBgColor: string | null;
@@ -30,6 +33,21 @@ export default function TeachersAdminClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const teacherTabs = [
+    { key: "basic", label: "기본" },
+    { key: "images", label: "이미지" },
+    { key: "promo", label: "상세이미지" },
+    { key: "products", label: "강좌/교재" },
+    { key: "links", label: "링크" },
+    { key: "career", label: "학력/약력" },
+    { key: "design", label: "디자인" },
+  ] as const;
+  type TeacherTabKey = (typeof teacherTabs)[number]["key"];
+  const [activeTab, setActiveTab] = useState<TeacherTabKey>("basic");
+  const [productTab, setProductTab] = useState<"courses" | "textbooks">("courses");
+  const [courseOptions, setCourseOptions] = useState<Array<{ id: string; title: string; teacherName?: string | null; subjectName?: string | null }>>([]);
+  const [textbookOptions, setTextbookOptions] = useState<Array<{ id: string; title: string; teacherName?: string | null; subjectName?: string | null }>>([]);
+  const [productSearch, setProductSearch] = useState("");
   const [formData, setFormData] = useState({
     slug: "",
     name: "",
@@ -37,6 +55,9 @@ export default function TeachersAdminClient() {
     headerSubText: "",
     imageUrl: "",
     mainImageUrl: "",
+    promoImageUrl: "",
+    selectedCourseIds: [] as string[],
+    selectedTextbookIds: [] as string[],
     pageBgColor: "",
     menuBgColor: "",
     newsBgColor: "",
@@ -73,6 +94,7 @@ export default function TeachersAdminClient() {
   const startEdit = (t: Teacher) => {
     setEditingId(t.id);
     setShowForm(true);
+    setActiveTab("basic");
     setFormData({
       slug: t.slug,
       name: t.name,
@@ -80,6 +102,9 @@ export default function TeachersAdminClient() {
       headerSubText: t.headerSubText || "",
       imageUrl: t.imageUrl || "",
       mainImageUrl: t.mainImageUrl || "",
+      promoImageUrl: t.promoImageUrl || "",
+      selectedCourseIds: Array.isArray(t.selectedCourseIds) ? t.selectedCourseIds : [],
+      selectedTextbookIds: Array.isArray(t.selectedTextbookIds) ? t.selectedTextbookIds : [],
       pageBgColor: t.pageBgColor || "",
       menuBgColor: t.menuBgColor || "",
       newsBgColor: t.newsBgColor || "",
@@ -96,6 +121,7 @@ export default function TeachersAdminClient() {
   const resetForm = () => {
     setEditingId(null);
     setShowForm(false);
+    setActiveTab("basic");
     setFormData({
       slug: "",
       name: "",
@@ -103,6 +129,9 @@ export default function TeachersAdminClient() {
       headerSubText: "",
       imageUrl: "",
       mainImageUrl: "",
+      promoImageUrl: "",
+      selectedCourseIds: [],
+      selectedTextbookIds: [],
       pageBgColor: "",
       menuBgColor: "",
       newsBgColor: "",
@@ -127,6 +156,9 @@ export default function TeachersAdminClient() {
     fd.append("headerSubText", t.headerSubText || "");
     fd.append("imageUrl", t.imageUrl || "");
     fd.append("mainImageUrl", t.mainImageUrl || "");
+    fd.append("promoImageUrl", t.promoImageUrl || "");
+    fd.append("selectedCourseIds", JSON.stringify(Array.isArray(t.selectedCourseIds) ? t.selectedCourseIds : []));
+    fd.append("selectedTextbookIds", JSON.stringify(Array.isArray(t.selectedTextbookIds) ? t.selectedTextbookIds : []));
     fd.append("pageBgColor", t.pageBgColor || "");
     fd.append("menuBgColor", t.menuBgColor || "");
     fd.append("newsBgColor", t.newsBgColor || "");
@@ -159,6 +191,12 @@ export default function TeachersAdminClient() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // 탭 UI로 인해 필수 필드가 화면에 보이지 않아도 제출될 수 있으므로, 최소 필수값은 직접 검증
+    if (!formData.slug.trim() || !formData.name.trim() || !formData.subjectName.trim()) {
+      setActiveTab("basic");
+      alert("페이지 주소(slug), 선생님 성함, 과목은 필수 입력입니다.");
+      return;
+    }
 
     const fd = new FormData();
     fd.append("slug", formData.slug.trim());
@@ -167,6 +205,9 @@ export default function TeachersAdminClient() {
     fd.append("headerSubText", formData.headerSubText.trim());
     fd.append("imageUrl", formData.imageUrl.trim());
     fd.append("mainImageUrl", formData.mainImageUrl.trim());
+    fd.append("promoImageUrl", formData.promoImageUrl.trim());
+    fd.append("selectedCourseIds", JSON.stringify(formData.selectedCourseIds));
+    fd.append("selectedTextbookIds", JSON.stringify(formData.selectedTextbookIds));
     fd.append("pageBgColor", formData.pageBgColor.trim());
     fd.append("menuBgColor", formData.menuBgColor.trim());
     fd.append("newsBgColor", formData.newsBgColor.trim());
@@ -193,6 +234,43 @@ export default function TeachersAdminClient() {
 
   const formTitle = useMemo(() => (editingId ? "선생님 수정" : "새 선생님 등록"), [editingId]);
   const teacherSlug = formData.slug.trim();
+
+  // 강좌/교재 옵션 로드 (1회)
+  useEffect(() => {
+    if (!showForm) return;
+    (async () => {
+      try {
+        const [cRes, tRes] = await Promise.all([
+          fetch("/api/admin/courses/list", { cache: "no-store" }),
+          fetch("/api/admin/textbooks/list", { cache: "no-store" }),
+        ]);
+        const cJson = await cRes.json().catch(() => null);
+        const tJson = await tRes.json().catch(() => null);
+        if (cRes.ok && cJson?.ok && Array.isArray(cJson.courses)) {
+          setCourseOptions(
+            cJson.courses.map((c: any) => ({
+              id: String(c.id),
+              title: String(c.title ?? "강좌"),
+              teacherName: typeof c.teacherName === "string" ? c.teacherName : null,
+              subjectName: typeof c.subjectName === "string" ? c.subjectName : null,
+            }))
+          );
+        }
+        if (tRes.ok && tJson?.ok && Array.isArray(tJson.textbooks)) {
+          setTextbookOptions(
+            tJson.textbooks.map((t: any) => ({
+              id: String(t.id),
+              title: String(t.title ?? "교재"),
+              teacherName: typeof t.teacherName === "string" ? t.teacherName : null,
+              subjectName: typeof t.subjectName === "string" ? t.subjectName : null,
+            }))
+          );
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, [showForm]);
 
   const isHexColor = (v: string) => /^#([0-9a-fA-F]{6})$/.test((v || "").trim());
   const toHexOrFallback = (v: string, fallback: string) => (isHexColor(v) ? v.trim() : fallback);
@@ -253,7 +331,10 @@ export default function TeachersAdminClient() {
         <button
           onClick={() => {
             if (showForm) resetForm();
-            else setShowForm(true);
+            else {
+              setShowForm(true);
+              setActiveTab("basic");
+            }
           }}
           className="flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
         >
@@ -297,9 +378,35 @@ export default function TeachersAdminClient() {
             ) : null}
           </div>
 
+          {/* 탭 메뉴 */}
+          <div className="mb-6 -mx-2 px-2">
+            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide" role="tablist" aria-label="선생님 설정 탭">
+              {teacherTabs.map((t) => {
+                const isActive = activeTab === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setActiveTab(t.key)}
+                    role="tab"
+                    aria-selected={isActive}
+                    className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold transition-colors ${
+                      isActive ? "text-white" : "text-white/55 hover:text-white/75"
+                    }`}
+                  >
+                    {t.label}
+                    {isActive ? (
+                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* 기본 정보 */}
-            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5">
+            <div className={`${activeTab === "basic" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-[15px] font-semibold">기본 정보</h3>
                 <label className="inline-flex items-center gap-2 text-[13px] text-white/70 select-none">
@@ -377,7 +484,7 @@ export default function TeachersAdminClient() {
             </div>
 
             {/* 이미지 */}
-            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5">
+            <div className={`${activeTab === "images" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
               <h3 className="text-[15px] font-semibold mb-4">이미지</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -405,8 +512,171 @@ export default function TeachersAdminClient() {
               </div>
             </div>
 
+            {/* 상세페이지 이미지 */}
+            <div className={`${activeTab === "promo" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
+              <h3 className="text-[15px] font-semibold mb-4">상세페이지 이미지</h3>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-[13px] text-white/50 mb-2">상세페이지 이미지 URL</label>
+                  <input
+                    type="text"
+                    value={formData.promoImageUrl}
+                    onChange={(e) => setFormData({ ...formData, promoImageUrl: e.target.value })}
+                    placeholder="https://storage.googleapis.com/..."
+                    className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                  />
+                  <p className="mt-2 text-[12px] text-white/40">
+                    모바일: 선생님 페이지 <span className="text-white/60">커리큘럼</span> 탭에 노출 · PC: 선생님 페이지 하단에 노출
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 강좌/교재 선택 */}
+            <div className={`${activeTab === "products" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
+              <h3 className="text-[15px] font-semibold mb-4">강좌 / 교재 선택</h3>
+              <div className="flex items-center gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setProductTab("courses")}
+                  className={`px-4 py-2 rounded-xl text-[13px] font-semibold border transition ${
+                    productTab === "courses"
+                      ? "bg-white/10 border-white/20 text-white"
+                      : "bg-white/[0.03] border-white/[0.08] text-white/60 hover:bg-white/[0.06]"
+                  }`}
+                >
+                  강좌
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProductTab("textbooks")}
+                  className={`px-4 py-2 rounded-xl text-[13px] font-semibold border transition ${
+                    productTab === "textbooks"
+                      ? "bg-white/10 border-white/20 text-white"
+                      : "bg-white/[0.03] border-white/[0.08] text-white/60 hover:bg-white/[0.06]"
+                  }`}
+                >
+                  교재
+                </button>
+                <div className="ml-auto text-[12px] text-white/45">
+                  선택됨:{" "}
+                  {productTab === "courses" ? formData.selectedCourseIds.length : formData.selectedTextbookIds.length}개
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <input
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="검색: 제목/선생님/과목"
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {productTab === "courses" ? (
+                <div className="space-y-2">
+                  {courseOptions
+                    .filter((c) => {
+                      const q = productSearch.trim().toLowerCase();
+                      if (!q) return true;
+                      const hay = `${c.title} ${c.teacherName ?? ""} ${c.subjectName ?? ""}`.toLowerCase();
+                      return hay.includes(q);
+                    })
+                    .map((c) => {
+                      const checked = formData.selectedCourseIds.includes(c.id);
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              selectedCourseIds: checked
+                                ? prev.selectedCourseIds.filter((x) => x !== c.id)
+                                : [...prev.selectedCourseIds, c.id],
+                            }));
+                          }}
+                          className={`w-full flex items-center gap-3 text-left p-3 rounded-xl border transition ${
+                            checked
+                              ? "bg-blue-500/10 border-blue-400/30"
+                              : "bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.05]"
+                          }`}
+                        >
+                          <input type="checkbox" checked={checked} readOnly className="accent-blue-500" />
+                          <div className="flex-1">
+                            <div className="text-[13px] font-semibold text-white/90">{c.title}</div>
+                            <div className="text-[12px] text-white/45">
+                              {c.teacherName ? `${c.teacherName}` : "선생님 미지정"}
+                              {c.subjectName ? ` · ${c.subjectName}` : ""}
+                            </div>
+                          </div>
+                          <span className={`text-[12px] font-semibold ${checked ? "text-blue-300" : "text-white/45"}`}>
+                            {checked ? "선택됨" : "선택"}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  {courseOptions.length === 0 ? (
+                    <div className="py-10 text-center text-white/45 text-[13px]">게시된 강좌가 없습니다.</div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {textbookOptions
+                    .filter((t) => {
+                      const q = productSearch.trim().toLowerCase();
+                      if (!q) return true;
+                      const hay = `${t.title} ${t.teacherName ?? ""} ${t.subjectName ?? ""}`.toLowerCase();
+                      return hay.includes(q);
+                    })
+                    .map((t) => {
+                      const checked = formData.selectedTextbookIds.includes(t.id);
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              selectedTextbookIds: checked
+                                ? prev.selectedTextbookIds.filter((x) => x !== t.id)
+                                : [...prev.selectedTextbookIds, t.id],
+                            }));
+                          }}
+                          className={`w-full flex items-center gap-3 text-left p-3 rounded-xl border transition ${
+                            checked
+                              ? "bg-purple-500/10 border-purple-400/30"
+                              : "bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.05]"
+                          }`}
+                        >
+                          <input type="checkbox" checked={checked} readOnly className="accent-purple-500" />
+                          <div className="flex-1">
+                            <div className="text-[13px] font-semibold text-white/90">{t.title}</div>
+                            <div className="text-[12px] text-white/45">
+                              {t.teacherName ? `${t.teacherName}` : "선생님 미지정"}
+                              {t.subjectName ? ` · ${t.subjectName}` : ""}
+                            </div>
+                          </div>
+                          <span className={`text-[12px] font-semibold ${checked ? "text-purple-300" : "text-white/45"}`}>
+                            {checked ? "선택됨" : "선택"}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  {textbookOptions.length === 0 ? (
+                    <div className="py-10 text-center text-white/45 text-[13px]">게시된 교재가 없습니다.</div>
+                  ) : null}
+                </div>
+              )}
+
+              <p className="mt-4 text-[12px] text-white/40">
+                선생님 페이지의 <span className="text-white/60">강좌 및 교재</span> 탭(모바일) / 강좌·교재 섹션(PC)에 이 선택값이 그대로 반영됩니다.
+              </p>
+            </div>
+
             {/* SNS/유튜브 */}
-            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5">
+            <div className={`${activeTab === "links" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
               <h3 className="text-[15px] font-semibold mb-4">링크</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -435,7 +705,7 @@ export default function TeachersAdminClient() {
             </div>
 
             {/* 학력/약력 */}
-            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5">
+            <div className={`${activeTab === "career" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
               <h3 className="text-[15px] font-semibold mb-4">학력 / 약력</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -462,7 +732,7 @@ export default function TeachersAdminClient() {
             </div>
 
             {/* 디자인(색상) */}
-            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5">
+            <div className={`${activeTab === "design" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
               <h3 className="text-[15px] font-semibold mb-4">디자인(색상)</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <ColorField

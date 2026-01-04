@@ -1,6 +1,7 @@
 import AppShell from "@/app/_components/AppShell";
 import { requireAdminUser } from "@/lib/current-user";
 import Link from "next/link";
+import { prisma } from "@/lib/prisma";
 
 const adminMenus = [
   {
@@ -69,8 +70,24 @@ const adminMenus = [
   },
 ];
 
+function fmtDate(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+function fmtRating(v: number | null | undefined) {
+  const n = typeof v === "number" && Number.isFinite(v) ? v : 0;
+  return n.toFixed(1);
+}
+
 export default async function AdminPage() {
   await requireAdminUser();
+
+  // NOTE: 후기 관련 상세 섹션은 /admin/reviews 로 이동했습니다.
+  const [publishedCoursesCount, publishedTextbooksCount] = await Promise.all([
+    prisma.course.count({ where: { isPublished: true } }),
+    prisma.textbook.count({ where: { isPublished: true } }),
+  ]);
+  const totalPublished = publishedCoursesCount + publishedTextbooksCount;
 
   return (
     <AppShell>
@@ -84,20 +101,31 @@ export default async function AdminPage() {
         {/* 통계 카드 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
           <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
-            <p className="text-[13px] text-white/40 mb-1">총 회원 수</p>
-            <p className="text-[28px] font-bold">-</p>
+            <p className="text-[13px] text-white/40 mb-1">판매중 상품(공개)</p>
+            <p className="text-[28px] font-bold">{totalPublished}</p>
+            <p className="mt-1 text-[12px] text-white/35">강좌 {publishedCoursesCount} · 교재 {publishedTextbooksCount}</p>
           </div>
           <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
-            <p className="text-[13px] text-white/40 mb-1">오늘 방문자</p>
+            <p className="text-[13px] text-white/40 mb-1">승인된 후기</p>
             <p className="text-[28px] font-bold">-</p>
+            <p className="mt-1 text-[12px] text-white/35">자세한 현황은 후기 관리</p>
           </div>
           <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
-            <p className="text-[13px] text-white/40 mb-1">총 강좌 수</p>
+            <p className="text-[13px] text-white/40 mb-1">평균 평점</p>
             <p className="text-[28px] font-bold">-</p>
+            <p className="mt-1 text-[12px] text-white/35">후기 관리에서 확인</p>
           </div>
           <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
-            <p className="text-[13px] text-white/40 mb-1">이번 달 주문</p>
-            <p className="text-[28px] font-bold">-</p>
+            <p className="text-[13px] text-white/40 mb-1">후기 관리</p>
+            <Link
+              href="/admin/reviews"
+              className="mt-2 inline-flex items-center gap-2 rounded-xl bg-white/[0.06] px-4 py-2 text-[13px] text-white/85 hover:bg-white/[0.1]"
+            >
+              후기 전체 보기
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                arrow_forward
+              </span>
+            </Link>
           </div>
                   </div>
 

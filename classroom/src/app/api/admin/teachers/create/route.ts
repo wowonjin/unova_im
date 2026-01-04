@@ -36,6 +36,19 @@ export async function POST(req: Request) {
   await requireAdminUser();
 
   const form = await req.formData();
+  const parseJsonIds = (raw: unknown): string[] => {
+    if (typeof raw !== "string" || !raw.trim()) return [];
+    try {
+      const v = JSON.parse(raw);
+      if (!Array.isArray(v)) return [];
+      return v.filter((x) => typeof x === "string" && x.trim().length > 0);
+    } catch {
+      return [];
+    }
+  };
+  const selectedCourseIds = parseJsonIds(form.get("selectedCourseIds"));
+  const selectedTextbookIds = parseJsonIds(form.get("selectedTextbookIds"));
+
   const parsed = Schema.safeParse({
     slug: typeof form.get("slug") === "string" ? form.get("slug") : "",
     name: typeof form.get("name") === "string" ? form.get("name") : "",
@@ -58,6 +71,14 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
 
   try {
+    // Ensure optional columns exist (deployment-safe; avoids Prisma migrations).
+    try {
+      await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedCourseIds" JSONB;');
+      await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedTextbookIds" JSONB;');
+    } catch {
+      // ignore
+    }
+
     const created = await prisma.teacher.create({
       data: {
         slug: parsed.data.slug,
@@ -80,6 +101,19 @@ export async function POST(req: Request) {
       } as any,
       select: { id: true },
     });
+
+    // Save selected products (raw JSONB columns)
+    try {
+      await prisma.$executeRawUnsafe(
+        'UPDATE "Teacher" SET "selectedCourseIds" = $2::jsonb, "selectedTextbookIds" = $3::jsonb WHERE "id" = $1',
+        created.id,
+        JSON.stringify(selectedCourseIds),
+        JSON.stringify(selectedTextbookIds)
+      );
+    } catch {
+      // ignore
+    }
+
     return NextResponse.json({ ok: true, id: created.id });
   } catch {
     return NextResponse.json({ ok: false, error: "CREATE_FAILED" }, { status: 400 });

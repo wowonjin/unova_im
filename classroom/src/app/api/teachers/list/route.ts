@@ -33,7 +33,10 @@ export async function GET() {
       position: t.position,
     }));
 
-  return NextResponse.json({ ok: true, teachers: sorted });
+  const res = NextResponse.json({ ok: true, teachers: sorted });
+  // 선생님 목록은 자주 바뀌지 않으므로 짧은 CDN/브라우저 캐시로 반복 로딩 비용을 줄입니다.
+  res.headers.set("cache-control", "public, max-age=60, stale-while-revalidate=300");
+  return res;
 }
 
 

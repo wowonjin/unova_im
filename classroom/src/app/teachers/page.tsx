@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import LandingHeader from "@/app/_components/LandingHeader";
 import Footer from "@/app/_components/Footer";
@@ -52,7 +53,7 @@ export default function TeachersPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/teachers/list", { cache: "no-store" });
+        const res = await fetch("/api/teachers/list");
         const json = await res.json().catch(() => null);
         if (!res.ok || !json?.ok) throw new Error("FETCH_FAILED");
         const list: Teacher[] = Array.isArray(json.teachers) ? json.teachers : [];
@@ -92,10 +93,42 @@ export default function TeachersPage() {
         {/* 과목 필터 */}
         <section className="sticky top-[70px] z-40 bg-[#161616]">
           <div className="mx-auto max-w-6xl px-4">
-            <div className="flex items-center gap-1 py-4 overflow-x-auto scrollbar-hide">
+            {/* 모바일: 탭바(가로 스크롤 + 활성 밑줄) */}
+            <div className="md:hidden -mx-4 px-4">
+              <div
+                className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide"
+                role="tablist"
+                aria-label="과목 선택"
+              >
+                {subjects.map((subject) => {
+                  const active = selectedSubject === subject;
+                  return (
+                    <button
+                      key={subject}
+                      type="button"
+                      onClick={() => setSelectedSubject(subject)}
+                      role="tab"
+                      aria-selected={active}
+                      className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold transition-colors ${
+                        active ? "text-white" : "text-white/55"
+                      }`}
+                    >
+                      {subject}
+                      {active ? (
+                        <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 데스크탑: 기존 버튼 UI 유지 */}
+            <div className="hidden md:flex items-center gap-1 py-4 overflow-x-auto scrollbar-hide">
               {subjects.map((subject) => (
                 <button
                   key={subject}
+                  type="button"
                   onClick={() => setSelectedSubject(subject)}
                   className={`px-4 py-2 rounded-full text-[14px] font-medium transition-all whitespace-nowrap ${
                     selectedSubject === subject
@@ -131,11 +164,14 @@ export default function TeachersPage() {
                   >
                     {/* 이미지(컨테이너 없이 이미지 자체) */}
                     {teacher.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <Image
                         src={teacher.imageUrl}
                         alt={teacher.name}
+                        width={600}
+                        height={800}
                         className="w-full h-auto"
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        loading="lazy"
                       />
                     ) : (
                       <div className="w-full flex items-center justify-center bg-white/[0.04] py-12">
@@ -147,13 +183,13 @@ export default function TeachersPage() {
                     <div className="p-3 sm:p-5">
                       <div className="flex items-center gap-3">
                         <span
-                          className={`inline-flex items-center px-2 py-1 sm:px-2.5 rounded-full text-[11px] sm:text-[12px] border shrink-0 ${subjectBadgeClass(
+                          className={`inline-flex items-center px-2 py-1 sm:px-2.5 rounded-full text-[10px] sm:text-[12px] border shrink-0 ${subjectBadgeClass(
                             teacher.subjectName
                           )}`}
                         >
                           {teacher.subjectName}
                         </span>
-                        <h3 className="text-[16px] sm:text-[18px] font-semibold text-white truncate">{teacher.name} 선생님</h3>
+                        <h3 className="text-[14px] sm:text-[18px] font-semibold text-white truncate">{teacher.name} 선생님</h3>
                       </div>
                     </div>
                   </Link>

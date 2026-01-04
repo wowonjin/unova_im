@@ -37,6 +37,19 @@ export async function POST(req: Request) {
   await requireAdminUser();
 
   const form = await req.formData();
+  const parseJsonIds = (raw: unknown): string[] => {
+    if (typeof raw !== "string" || !raw.trim()) return [];
+    try {
+      const v = JSON.parse(raw);
+      if (!Array.isArray(v)) return [];
+      return v.filter((x) => typeof x === "string" && x.trim().length > 0);
+    } catch {
+      return [];
+    }
+  };
+  const selectedCourseIds = parseJsonIds(form.get("selectedCourseIds"));
+  const selectedTextbookIds = parseJsonIds(form.get("selectedTextbookIds"));
+
   const parsed = Schema.safeParse({
     id: typeof form.get("id") === "string" ? form.get("id") : "",
     slug: typeof form.get("slug") === "string" ? form.get("slug") : "",
@@ -60,6 +73,14 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
 
   try {
+    // Ensure optional columns exist (deployment-safe; avoids Prisma migrations).
+    try {
+      await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedCourseIds" JSONB;');
+      await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedTextbookIds" JSONB;');
+    } catch {
+      // ignore
+    }
+
     await prisma.teacher.update({
       where: { id: parsed.data.id },
       data: {
@@ -82,6 +103,19 @@ export async function POST(req: Request) {
         isActive: parsed.data.isActive ?? true,
       } as any,
     });
+
+    // Save selected products (raw JSONB columns)
+    try {
+      await prisma.$executeRawUnsafe(
+        'UPDATE "Teacher" SET "selectedCourseIds" = $2::jsonb, "selectedTextbookIds" = $3::jsonb WHERE "id" = $1',
+        parsed.data.id,
+        JSON.stringify(selectedCourseIds),
+        JSON.stringify(selectedTextbookIds)
+      );
+    } catch {
+      // ignore
+    }
+
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ ok: false, error: "UPDATE_FAILED" }, { status: 400 });

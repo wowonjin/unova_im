@@ -12,6 +12,16 @@
   /* 기본 페이지 배경(스토어/마이페이지/강의실 등) */
   --background: #161616;
   --foreground: #ffffff;
+  /* LandingHeader 고정 높이(탭 고정 등 공통 오프셋) */
+  --unova-header-h-mobile: 50px;
+  --unova-header-h-desktop: 70px;
+  --unova-fixed-header-offset: var(--unova-header-h-mobile);
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --unova-fixed-header-offset: var(--unova-header-h-desktop);
+  }
 }
 
 @theme inline {
@@ -191,7 +201,7 @@ html, body {
   overflow-x: hidden;
   overflow-y: visible;
   /* 헤더는 fixed로 "겹치게" 두고, 내용만 가려지지 않도록 여백 확보 (간격을 더 줄임) */
-  padding-top: 72px;
+  padding-top: var(--unova-fixed-header-offset);
   padding-bottom: 0;
   box-sizing: border-box;
 }
@@ -199,7 +209,7 @@ html, body {
 @media (min-width: 768px) {
   .unova-wrapper {
     /* PC에서 헤더 아래 과도한 빈공간을 줄임(헤더 높이만큼만 확보) */
-    padding-top: 72px;
+    padding-top: var(--unova-fixed-header-offset);
   }
 }
 
@@ -227,10 +237,31 @@ html, body {
   z-index: 1;
 }
 
-/* PC: 선생님 이미지가 끝까지 붙어 있도록 최소 높이를 확보 */
+/* PC: 상단(선생님 이미지) 섹션이 과도하게 길어져 아래 섹션이 떠 보이는 문제 방지 */
 @media (min-width: 1001px) {
   .unova-container {
-    min-height: calc(100vh - 120px);
+    /*
+      메가스터디 스타일: 상단(보라색) 히어로 영역의 하단이
+      선생님 이미지 하단에 '딱' 닿도록, PC에서는 히어로 높이를 뷰포트 기준으로 고정.
+      (콘텐츠가 길면 컬럼 내부에서 스크롤)
+    */
+    /* 보라색(상단 히어로) 영역의 y축 길이를 더 짧게 */
+    height: clamp(560px, 72vh, 700px);
+    align-items: stretch;
+  }
+
+  .unova-left-col,
+  .unova-content,
+  .unova-right-panel {
+    max-height: 100%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 스크롤바 때문에 하단이 답답해 보이지 않도록 약간의 여유 */
+  .unova-content,
+  .unova-right-panel {
+    padding-bottom: 18px;
   }
 }
 
@@ -409,6 +440,15 @@ a.unova-menu-item:active {
   padding: 14px 14px 12px;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+
+/* PC 탭(게시판/리뷰)에서는 "컨테이너 박스" 없이 요소만 보이도록(flat) */
+.unova-desktop-tabpanel .unova-news-card--flat,
+.unova-desktop-tabpanel .unova-rating-card--flat {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
 }
 
 .unova-news-card {
@@ -634,9 +674,186 @@ a.unova-menu-item:active {
   white-space: nowrap;
 }
 
+/* PC: 게시판/실시간 리뷰 글씨 크기 확대 */
+@media (min-width: 1001px) {
+  .unova-card-title {
+    font-size: 15px;
+  }
+  .unova-news-card__text {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .unova-news-card__meta {
+    font-size: 13px;
+  }
+  .unova-rating-card__text {
+    font-size: 14px;
+  }
+  .unova-rating-card__item-title {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .unova-rating-card__item-score {
+    font-size: 14px;
+  }
+  .unova-rating-card__item-sub {
+    font-size: 13px;
+  }
+  .unova-rating-card__review-meta {
+    font-size: 13px;
+  }
+  .unova-rating-card__score {
+    font-size: 18px;
+  }
+  .unova-rating-card__stars {
+    font-size: 18px;
+  }
+  .unova-rating-card__count {
+    font-size: 12px;
+  }
+}
+
 .unova-inline-menu {
   margin-top: 14px;
   margin-bottom: 10px;
+}
+
+.unova-scroll-target {
+  scroll-margin-top: calc(var(--unova-fixed-header-offset) + 20px); /* fixed header + 여유 */
+}
+
+/* PC 탭 영역(#teacher-tabs)으로 스크롤될 때 헤더에 너무 딱 붙지 않도록 추가 여유 */
+#teacher-tabs.unova-scroll-target {
+  scroll-margin-top: calc(var(--unova-fixed-header-offset) + 100px);
+}
+
+/* PC 탭 섹션: sticky 탭 바가 자연스럽게 보이도록 상단 패딩 확보 */
+@media (min-width: 768px) {
+  #teacher-tabs {
+    padding-top: 12px;
+  }
+}
+
+/* PC 탭 메뉴 (모바일 탭 스타일을 PC에도 제공) */
+.unova-desktop-tabs {
+  margin-top: 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  /* 실제 고정은 래퍼(.unova-tabs-bar)가 담당 (sticky가 overflow/레이아웃에 의해 깨지는 케이스 방지) */
+  position: relative;
+  background: var(--u-tabs-bg, var(--u-page-bg, #464065));
+}
+
+.unova-desktop-tabs--black {
+  --u-tabs-bg: #161616;
+}
+
+/* PC 탭 바(래퍼): fixed 고정 */
+.unova-tabs-bar {
+  position: relative;
+  background: #161616;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
+.unova-tabs-bar.is-fixed {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--unova-fixed-header-offset);
+  z-index: 900;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.unova-desktop-tabs__scroll {
+  display: flex;
+  gap: 24px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* 모바일 탭과 동일하게: 컨테이너 패딩 없이 탭 자체 패딩으로 높이/언더라인을 맞춤 */
+  padding: 0 2px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* firefox */
+}
+.unova-desktop-tabs__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.unova-desktop-tab {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  font-weight: 600;
+  padding: 16px 2px;
+  cursor: pointer;
+  position: relative;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.unova-desktop-tab.is-active {
+  color: #fff;
+  /* 모바일 탭 활성화와 동일한 굵기 */
+  font-weight: 700;
+}
+
+.unova-desktop-tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: #fff;
+  border-radius: 0;
+}
+
+.unova-desktop-tab.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.unova-desktop-tabpanels {
+  padding: 14px 0 36px;
+}
+
+.unova-desktop-tabpanel {
+  /* 탭 전환 시 레이아웃 점프 최소화 */
+  min-height: 240px;
+}
+
+/* PC 상세페이지(소개 탭) 이미지: 아래 모서리만 살짝 둥글게 */
+.unova-desktop-tabpanel .unova-promo-image {
+  border-radius: 0 0 12px 12px !important;
+  overflow: hidden;
+}
+
+/* next/image 래핑 구조에서도 확실히 하단 라운드가 보이도록 */
+.unova-desktop-tabpanel .unova-promo-image > span,
+.unova-desktop-tabpanel .unova-promo-image img {
+  border-radius: 0 0 12px 12px !important;
+}
+
+.unova-desktop-panel {
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 16px;
+  padding: 18px;
+}
+
+/* PC 탭(강좌/교재)에서 컨테이너 박스 없이 요소만 보이도록(flat) */
+.unova-desktop-tabpanel .unova-desktop-panel--flat {
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+}
+
+.unova-desktop-panel-empty {
+  padding: 28px 8px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
 }
 
 .unova-inline-menu .unova-sidebar {
@@ -777,7 +994,7 @@ a.unova-menu-item:active {
 
 .unova-header-sub--accent {
   color: #fff !important;
-  font-weight: 700 !important;
+  font-weight: 300 !important; /* 상단 문구(몸통 문장) 굵게 효과 제거 */
 }
 
 .unova-header-title {
@@ -1030,8 +1247,8 @@ a.unova-menu-item:active {
   width: auto;
   /* 선생님 이미지를 "살짝"만 크게 */
   min-width: clamp(320px, 28vw, 400px);
-  /* (원복) 기본 높이 */
-  height: clamp(660px, 80vh, 820px);
+  /* 높이를 줄여서 선생님 사진과 붙이기 */
+  height: clamp(540px, 65vh, 680px);
   flex: 0 0 clamp(320px, 28vw, 400px);
   margin-left: 0;
   align-self: flex-end;
@@ -1048,8 +1265,15 @@ a.unova-menu-item:active {
 @media (min-width: 1001px) {
   .unova-teacher-area {
     position: sticky;
-    /* LandingHeader가 fixed라서 내용이 가려지지 않도록 여백 확보 */
-    top: 84px;
+    /* 헤더가 fixed라서 내용이 가려지지 않도록 여백 확보 */
+    top: var(--unova-fixed-header-offset);
+    /*
+      PC에서 하단 빈공간이 생기는 원인: 컨테이너 높이가 clamp로 제한되어
+      뷰포트보다 작아질 때 이미지 아래로 여백이 남음.
+      → 뷰포트 하단에 '딱' 붙도록 (메가스터디 스타일) 화면 높이에 맞춤.
+    */
+    /* 상단 히어로 높이(.unova-container)와 동일하게 맞춰 하단이 딱 떨어지게 */
+    height: clamp(560px, 72vh, 700px);
     align-self: flex-start;
   }
 }
@@ -1819,6 +2043,8 @@ a.unova-menu-item:active {
   height: var(--unova-book-h);
   border-radius: var(--unova-radius);
   transform-style: preserve-3d;
+  display: block;
+  text-decoration: none;
   transition:
     transform 900ms cubic-bezier(.2,.8,.2,1),
     opacity 900ms cubic-bezier(.2,.8,.2,1),
@@ -1827,9 +2053,9 @@ a.unova-menu-item:active {
   cursor: pointer;
 }
 
-.unova-book:hover {
-  transform: translate(-50%, -50%) scale(1.06) !important;
-}
+/* Hover transform is handled by inline 3D transform (JS) so we don't override it here. */
+.unova-book:hover { filter: brightness(1.02); }
+.unova-book.is-hovered .unova-cover { box-shadow: 0 24px 44px rgba(0,0,0,.45); }
 
 .unova-book .unova-cover {
   position: absolute;
@@ -2782,6 +3008,7 @@ a.unova-menu-item:active {
     font-size: 13px;
     color: #fff;
     margin: 0 0 8px;
+    font-weight: 400; /* 상단 문구(몸통 문장) 굵게 효과 제거 */
   }
 
   .mega-mobile-hero__name {
@@ -2999,11 +3226,24 @@ a.unova-menu-item:active {
 
   /* === 메인 탭 메뉴 === */
   .mega-mobile-tabs {
-    position: sticky;
-    top: 50px; /* 헤더 높이 */
-    z-index: 100;
+    /* 실제 고정은 래퍼(.mega-mobile-tabs-bar)가 담당 */
+    position: relative;
     background: #161616;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .mega-mobile-tabs-bar {
+    position: relative;
+    background: #161616;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .mega-mobile-tabs-bar.is-fixed {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: var(--unova-fixed-header-offset);
+    z-index: 1000;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
   }
 
   .mega-mobile-tabs__scroll {

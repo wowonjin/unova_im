@@ -23,6 +23,7 @@ export default function ReviewsAdminClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+  const [isPurging, setIsPurging] = useState(false);
   const lastSyncRef = useRef<string | null>(null);
 
   const sortedItems = useMemo(() => {
@@ -87,6 +88,22 @@ export default function ReviewsAdminClient() {
     }
   };
 
+  const handlePurgeTest = async () => {
+    if (!confirm("테스트 리뷰를 일괄 삭제할까요? (테스터/리뷰 테스트/test 포함) 삭제 후 복구할 수 없습니다.")) return;
+    setIsPurging(true);
+    try {
+      const res = await fetch("/api/admin/reviews/purge-test", { method: "POST" });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "PURGE_FAILED");
+      await fetchReviews("initial");
+      alert(`테스트 리뷰 ${json.deleted ?? 0}개를 삭제했습니다.`);
+    } catch {
+      alert("테스트 리뷰 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setIsPurging(false);
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#1C1C1C] px-4 py-3">
@@ -102,6 +119,19 @@ export default function ReviewsAdminClient() {
         >
           <span className="material-symbols-outlined text-[16px]">refresh</span>
           새로고침
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#1C1C1C] px-4 py-3">
+        <div className="text-sm text-white/60">배포 전 정리</div>
+        <button
+          type="button"
+          onClick={handlePurgeTest}
+          disabled={isPurging}
+          className="inline-flex items-center gap-2 rounded-lg bg-rose-500/15 px-3 py-2 text-xs font-semibold text-rose-200 hover:bg-rose-500/20 disabled:opacity-60"
+        >
+          <span className="material-symbols-outlined text-[16px]">delete_sweep</span>
+          {isPurging ? "삭제 중..." : "테스트 리뷰 일괄 삭제"}
         </button>
       </div>
 

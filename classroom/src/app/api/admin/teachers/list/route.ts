@@ -7,6 +7,14 @@ export const runtime = "nodejs";
 export async function GET() {
   await requireAdminUser();
 
+  // Ensure optional columns exist (deployment-safe; avoids Prisma migrations).
+  try {
+    await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedCourseIds" JSONB;');
+    await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedTextbookIds" JSONB;');
+  } catch {
+    // ignore
+  }
+
   // position: 오름차순 정렬용. 0은 "미설정/레거시"이므로 맨 뒤로 보냄.
   const teachers = (await prisma.teacher.findMany({
     // youtubeUrl 필드 포함 (타입 갱신 전 호환 위해 any 캐스팅)
@@ -33,6 +41,25 @@ export async function GET() {
     } as any,
   })) as any[];
 
+  // selected ids are stored as JSONB columns (not in Prisma schema) → load via raw.
+  let selectedById = new Map<string, { selectedCourseIds: string[]; selectedTextbookIds: string[] }>();
+  try {
+    const rows = (await prisma.$queryRawUnsafe(
+      'SELECT "id", "selectedCourseIds", "selectedTextbookIds" FROM "Teacher"'
+    )) as any[];
+    selectedById = new Map(
+      (rows ?? []).map((r) => [
+        String(r.id),
+        {
+          selectedCourseIds: Array.isArray(r.selectedCourseIds) ? r.selectedCourseIds : [],
+          selectedTextbookIds: Array.isArray(r.selectedTextbookIds) ? r.selectedTextbookIds : [],
+        },
+      ])
+    );
+  } catch {
+    // ignore
+  }
+
   const sorted = teachers.slice().sort((a, b) => {
     const ap = a.position === 0 ? Number.MAX_SAFE_INTEGER : a.position;
     const bp = b.position === 0 ? Number.MAX_SAFE_INTEGER : b.position;
@@ -45,6 +72,7 @@ export async function GET() {
     teachers: sorted.map((t) => ({
       ...t,
       createdAt: new Date(t.createdAt).toISOString(),
+      ...(selectedById.get(String(t.id)) ?? { selectedCourseIds: [], selectedTextbookIds: [] }),
     })),
   });
 }

@@ -436,7 +436,7 @@ export default async function HomePage() {
             <div className="text-white/40 leading-relaxed md:text-[13px] text-[11px]">
               {/* PC 버전 */}
               <div className="hidden md:block">
-                <p>
+              <p>
                   상호 : 유노바 · 대표 : 장진우 · 개인정보책임관리자 : 장진우 · 사업자등록번호 : 259-40-01233 ·{" "}
                   <a
                     href="https://www.ftc.go.kr/bizCommPop.do?wrkr_no=2594001233"
@@ -447,10 +447,10 @@ export default async function HomePage() {
                     사업자정보확인
                   </a>{" "}
                   · 소재지 : 서울특별시 강남구 학동로 24길 20, 4층 402호 a411 · TEL : 050-6678-6390
-                </p>
-                <p className="mt-1">
-                  이메일 : unova.team.cs@gmail.com · 운영시간 : 평일 13:00~21:00, 토요일 13:00~18:00, 일요일 휴무 · 통신판매업 신고번호 : 2024-서울강남-06080
-                </p>
+              </p>
+              <p className="mt-1">
+                이메일 : unova.team.cs@gmail.com · 운영시간 : 평일 13:00~21:00, 토요일 13:00~18:00, 일요일 휴무 · 통신판매업 신고번호 : 2024-서울강남-06080
+              </p>
               </div>
 
               {/* 모바일 버전 */}
