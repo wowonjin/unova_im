@@ -33,7 +33,6 @@ export default async function DashboardPage({
           userId: user.id,
           status: "ACTIVE",
           endAt: { gt: now },
-          course: { isPublished: true, owner: { email: storeOwnerEmail } },
         },
     select: {
       id: true,
@@ -70,6 +69,33 @@ export default async function DashboardPage({
         },
       })
     : null;
+
+  // 대시보드 검색(헤더 드롭다운)에서 교재도 함께 검색되도록, 사용자 권한 기준 교재 목록을 준비
+  let textbooksForSearch: { id: string; title: string }[] = [];
+  if (user.isLoggedIn && user.id) {
+    if (user.isAdmin) {
+      textbooksForSearch = await prisma.textbook.findMany({
+        where: { isPublished: true },
+        orderBy: [{ createdAt: "desc" }],
+        select: { id: true, title: true },
+        take: 50,
+      });
+    } else {
+      const entitlements = await prisma.textbookEntitlement.findMany({
+        where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
+        select: { textbookId: true },
+      });
+      const entitledIds = entitlements.map((e) => e.textbookId);
+      textbooksForSearch = entitledIds.length
+        ? await prisma.textbook.findMany({
+            where: { isPublished: true, id: { in: entitledIds } },
+            orderBy: [{ createdAt: "desc" }],
+            select: { id: true, title: true },
+            take: 50,
+          })
+        : [];
+    }
+  }
 
   // 각 강좌별 최근 시청 차시/진행률(전체 러닝타임 기준)
   const courseIds = (showAll ? (allCourses ?? []).map((c) => c.id) : enrollments.map((e) => e.courseId));
@@ -181,6 +207,26 @@ export default async function DashboardPage({
     };
   }));
 
+  // 강의 제목 검색 지원: 사용자가 접근 가능한 강좌들의 커리큘럼 제목을 검색 인덱스에 포함
+  const courseTitleMap = new Map(cards.map((c) => [c.courseId, c.title]));
+  const lessonSearchItems =
+    courseIds.length === 0
+      ? []
+      : await prisma.lesson.findMany({
+          where: { courseId: { in: courseIds }, isPublished: true },
+          select: { id: true, title: true, position: true, courseId: true },
+          orderBy: [{ courseId: "asc" }, { position: "asc" }],
+          take: 500, // 안전 가드: 과도한 커리큘럼 로드 방지
+        });
+
+  const lessonItemsForSearch = lessonSearchItems.map((l) => ({
+    id: l.id,
+    type: "lesson" as const,
+    title: l.title,
+    href: `/lesson/${l.id}`,
+    subtitle: courseTitleMap.get(l.courseId) ? `강의목차 · ${courseTitleMap.get(l.courseId)}` : "강의목차",
+  }));
+
   return (
     <AppShell>
       <DashboardHeader totalCount={cards.length} />
@@ -190,7 +236,18 @@ export default async function DashboardPage({
           <DashboardEmptyState isLoggedIn={user.isLoggedIn} />
         </div>
       ) : (
-        <DashboardShellClient cards={cards} initialQuery={query} />
+        <DashboardShellClient
+          cards={cards}
+          initialQuery={query}
+          lessonItems={lessonItemsForSearch}
+          textbookItems={textbooksForSearch.map((t) => ({
+            id: t.id,
+            type: "textbook" as const,
+            title: t.title,
+            href: `/materials#textbook-${t.id}`,
+            subtitle: null,
+          }))}
+        />
       )}
     </AppShell>
   );

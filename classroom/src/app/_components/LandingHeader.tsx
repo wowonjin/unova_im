@@ -355,7 +355,7 @@ export default function LandingHeader({
           </Link>
 
           {/* Center Navigation - 로고 옆에 배치 */}
-          <div className="hidden lg:flex items-center gap-[2px] ml-6">
+          <div className="hidden lg:flex items-center gap-[2px] ml-4">
             {mergedMenuItems.map((item) => (
               <div
                 key={item.label}

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { onProgressUpdated } from "@/lib/progress-events";
 import { useSearchParams } from "next/navigation";
 import { isAllCoursesTestModeFromAllParam, withAllParamIfNeeded } from "@/lib/test-mode";
+import { useClassroomSearch } from "@/app/_components/ClassroomSearchContext";
 
 type CurriculumLesson = {
   id: string;
@@ -72,6 +73,7 @@ export default function LessonCurriculumSidebar({ courseId, courseTitle, current
   const [items, setItems] = useState<CurriculumLesson[]>(curriculum);
   const searchParams = useSearchParams();
   const allowAll = isAllCoursesTestModeFromAllParam(searchParams.get("all"));
+  const { setItemsForKey, clearKey } = useClassroomSearch();
 
   useEffect(() => {
     // 현재 강의가 우측 커리큘럼 목록에서 자동으로 보이도록 스크롤
@@ -82,6 +84,19 @@ export default function LessonCurriculumSidebar({ courseId, courseTitle, current
     // 강의 이동 등으로 서버에서 새 curriculum이 내려오면 동기화
     setItems(curriculum);
   }, [curriculum]);
+
+  useEffect(() => {
+    // 헤더 검색 드롭다운용: 현재 강의 목차 목록을 등록
+    const list = (items ?? []).map((l) => ({
+      id: l.id,
+      type: "lesson" as const,
+      title: curriculumTitle(l.position, l.title),
+      href: withAllParamIfNeeded(`/lesson/${l.id}`, allowAll),
+      subtitle: courseTitle ? `강의목차 · ${courseTitle}` : "강의목차",
+    }));
+    setItemsForKey("lessonSidebar", list);
+    return () => clearKey("lessonSidebar");
+  }, [items, allowAll, courseTitle, setItemsForKey, clearKey]);
 
   useEffect(() => {
     // VimeoPlayer가 저장 성공 시 발행하는 이벤트를 받아 즉시 퍼센트 반영

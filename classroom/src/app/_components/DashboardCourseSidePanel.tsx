@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { isAllCoursesTestModeFromAllParam, withAllParamIfNeeded } from "@/lib/test-mode";
+import { useClassroomSearch } from "@/app/_components/ClassroomSearchContext";
 
 type Lesson = {
   id: string;
@@ -66,6 +67,7 @@ export default function DashboardCourseSidePanel({
 }) {
   const searchParams = useSearchParams();
   const allowAll = isAllCoursesTestModeFromAllParam(searchParams.get("all"));
+  const { setItemsForKey, clearKey } = useClassroomSearch();
   const [loading, setLoading] = useState(false);
   const [lessons, setLessons] = useState<Lesson[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +103,25 @@ export default function DashboardCourseSidePanel({
 
   const headerTitle = courseTitle || "커리큘럼";
   const list = useMemo(() => lessons ?? [], [lessons]);
+
+  useEffect(() => {
+    // 헤더 검색 드롭다운용: "현재 열려있는 커리큘럼"만 검색 대상으로 등록
+    if (!open || !courseId) {
+      clearKey("dashboardSidePanel");
+      return;
+    }
+    const items = list.map((l) => ({
+      id: l.id,
+      type: "lesson" as const,
+      title: curriculumTitle(l.position, l.title),
+      href: withAllParamIfNeeded(`/lesson/${l.id}`, allowAll),
+      subtitle: headerTitle ? `강의목차 · ${headerTitle}` : "강의목차",
+    }));
+    setItemsForKey("dashboardSidePanel", items);
+    return () => {
+      clearKey("dashboardSidePanel");
+    };
+  }, [open, courseId, list, allowAll, headerTitle, setItemsForKey, clearKey]);
 
   return (
     <>

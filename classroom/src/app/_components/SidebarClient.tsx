@@ -400,29 +400,9 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
         </>
       ) : (
         <>
-          {/* 일반 사용자 메뉴: 교재 다운로드 -> 수강중인 강좌 -> 선생님 공지사항 -> 유노바 홈페이지 -> 최근 수강 목록 */}
       <NavItem href="/materials" label="교재 다운로드" icon="menu_book" />
       <NavItem href="/dashboard" label="수강중인 강좌" icon="school" />
-      <NavItem href="/notices" label="선생님 공지사항" icon="campaign" />
-          {/* 유노바 홈페이지 */}
-      <a
-            href="/"
-        className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-white/10 text-white/90"
-      >
-        <span
-          className="material-symbols-outlined shrink-0 leading-none text-white/70"
-          style={{
-            fontSize: "14px",
-            fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 30",
-          }}
-          aria-hidden="true"
-        >
-          home
-        </span>
-        <span className="truncate">유노바 홈페이지</span>
-      </a>
-      {/* 구분선: 유노바 홈페이지 ↔ 최근 수강 목록 */}
-      <div className="my-3 mx-3 border-t-2 border-white/10" />
+
       {/* 최근 수강 목록 */}
       {EnrolledCoursesSection}
         </>

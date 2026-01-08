@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { siteConfig } from "@/lib/site-config";
 import { useSidebar } from "@/app/_components/SidebarContext";
+import HeaderSearchBar from "@/app/_components/HeaderSearchBar";
 
 type User = {
   id: string;
@@ -70,6 +71,11 @@ export default function ClassroomDesktopHeader() {
           <Link href="/" className="flex items-center gap-2">
             <Image src="/logoheader.png" alt={siteConfig.name} width={120} height={24} priority className="h-6 w-auto" />
           </Link>
+        </div>
+
+        {/* Center: Search Bar */}
+        <div className="flex-1 flex justify-center px-4 lg:px-8">
+          <HeaderSearchBar variant="dark" />
         </div>
 
         {/* Right: member buttons */}

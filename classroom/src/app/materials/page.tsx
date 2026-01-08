@@ -1,6 +1,8 @@
 import AppShell from "@/app/_components/AppShell";
 import PdfFirstPageThumb from "@/app/_components/PdfFirstPageThumb";
+import PdfPageCount from "@/app/_components/PdfPageCount";
 import DashboardEmptyState from "@/app/_components/DashboardEmptyState";
+import MaterialsSearchRegistrar from "@/app/materials/MaterialsSearchRegistrar";
 import { getCurrentUserOrGuest } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 
@@ -9,16 +11,40 @@ export default async function MaterialsPage() {
   const now = new Date();
   const TEST_TITLE_MARKER = "T 교재";
 
+  const formatBytes = (bytes: number) => {
+    if (!Number.isFinite(bytes) || bytes <= 0) return "-";
+    const units = ["B", "KB", "MB", "GB"];
+    let v = bytes;
+    let i = 0;
+    while (v >= 1024 && i < units.length - 1) {
+      v /= 1024;
+      i += 1;
+    }
+    const digits = i === 0 ? 0 : i === 1 ? 0 : 1;
+    return `${v.toFixed(digits)}${units[i]}`;
+  };
+
+  const formatKoreanDate = (d: Date) => {
+    // 2026.01.08 형태
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}.${mm}.${dd}`;
+  };
+
   // 교재: 이용자 목록(Entitlement)에 있는 사용자만 볼 수 있음
   // 로그인하지 않으면 교재 목록 비움
   let textbooks: {
     id: string;
     title: string;
-    originalName: string;
+    sizeBytes: number;
+    entitlementDays: number;
     createdAt: Date;
     imwebProdCode: string | null;
     thumbnailUrl: string | null;
   }[] = [];
+
+  let entitlementEndAtByTextbookId = new Map<string, Date>();
 
   if (user.isLoggedIn && user.id) {
     // 관리자(admin@gmail.com 등)는 모든 교재를 열람/다운로드 가능
@@ -29,7 +55,8 @@ export default async function MaterialsPage() {
         select: {
           id: true,
           title: true,
-          originalName: true,
+          sizeBytes: true,
+          entitlementDays: true,
           createdAt: true,
           imwebProdCode: true,
           thumbnailUrl: true,
@@ -39,9 +66,10 @@ export default async function MaterialsPage() {
     // 현재 사용자의 활성 권한이 있는 교재 ID 가져오기
     const entitlements = await prisma.textbookEntitlement.findMany({
       where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
-      select: { textbookId: true },
+      select: { textbookId: true, endAt: true },
     });
     const entitledIds = entitlements.map((e) => e.textbookId);
+    entitlementEndAtByTextbookId = new Map(entitlements.map((e) => [e.textbookId, e.endAt]));
 
     if (entitledIds.length > 0) {
       textbooks = await prisma.textbook.findMany({
@@ -54,7 +82,8 @@ export default async function MaterialsPage() {
         select: {
           id: true,
           title: true,
-          originalName: true,
+          sizeBytes: true,
+          entitlementDays: true,
           createdAt: true,
           imwebProdCode: true,
           thumbnailUrl: true,
@@ -63,6 +92,14 @@ export default async function MaterialsPage() {
     }
     }
   }
+
+  const searchItems = textbooks.map((t) => ({
+    id: t.id,
+    type: "textbook" as const,
+    title: t.title,
+    href: `/materials#textbook-${t.id}`,
+    subtitle: null,
+  }));
 
   const enrollments = user.id && !user.isAdmin
     ? await prisma.enrollment.findMany({
@@ -79,6 +116,16 @@ export default async function MaterialsPage() {
   const courseIds = user.isAdmin
     ? (allCoursesForTitle ?? []).map((c) => c.id)
     : enrollments.map((e) => e.courseId);
+
+  const courseSearchItems = (user.isAdmin ? (allCoursesForTitle ?? []) : enrollments.map((e) => e.course)).map((c) => ({
+    id: c.id,
+    type: "course" as const,
+    title: c.title,
+    href: `/dashboard?course=${encodeURIComponent(c.id)}`,
+    subtitle: "수강중인 강좌",
+  }));
+
+  const combinedSearchItems = [...courseSearchItems, ...searchItems];
 
   const attachments = user.isAdmin
     ? await prisma.attachment.findMany({
@@ -106,15 +153,30 @@ export default async function MaterialsPage() {
 
   return (
     <AppShell>
+      <MaterialsSearchRegistrar items={combinedSearchItems} />
       {/* 교재 섹션 */}
       {textbooks.length > 0 && (
         <div className="mb-8">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {textbooks.map((t) => (
-              <div
+              <a
                 key={t.id}
-                className="group relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#1C1C1C] transition-colors hover:border-white/[0.12] hover:bg-[#232323]"
+                id={`textbook-${t.id}`}
+                href={`/api/textbooks/${t.id}/download`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative block overflow-hidden rounded-xl border border-white/[0.08] bg-transparent transition-colors hover:border-white/[0.14] hover:bg-white/[0.04]"
               >
+                {/* Hover hint: download icon (doesn't block click) */}
+                <div className="pointer-events-none absolute right-3 top-3 z-10 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                  <span
+                    className="material-symbols-outlined text-white/85 drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)]"
+                    style={{ fontSize: "20px", fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+                    aria-hidden="true"
+                  >
+                    download
+                  </span>
+                </div>
                 <div className="flex gap-4 p-4">
                   {/* PDF 썸네일 - A4 비율 (1:1.414) */}
                   <div className="relative w-[68px] shrink-0 overflow-hidden rounded-lg bg-white/[0.04]" style={{ aspectRatio: '1 / 1.414' }}>
@@ -140,23 +202,47 @@ export default async function MaterialsPage() {
                       <p className="line-clamp-2 text-sm font-medium leading-snug text-white">
                         {t.title}
                       </p>
-                      <p className="mt-1.5 flex items-center gap-1.5 text-xs text-white/40">
-                        <span className="material-symbols-outlined text-[14px]">description</span>
-                        <span className="truncate">{t.originalName}</span>
-                      </p>
+                      <div className="mt-1.5 space-y-1 text-xs text-white/40">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="material-symbols-outlined !text-[10px] leading-none"
+                            style={{ fontSize: "10px", lineHeight: "10px" }}
+                          >
+                            data_usage
+                          </span>
+                          <span>{formatBytes(t.sizeBytes)}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="material-symbols-outlined !text-[10px] leading-none"
+                            style={{ fontSize: "10px", lineHeight: "10px" }}
+                          >
+                            auto_stories
+                          </span>
+                          <PdfPageCount src={`/api/textbooks/${t.id}/view`} />
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="material-symbols-outlined !text-[10px] leading-none"
+                            style={{ fontSize: "10px", lineHeight: "10px" }}
+                          >
+                            schedule
+                          </span>
+                          {user.isAdmin ? (
+                            <span>{t.entitlementDays}일</span>
+                          ) : (
+                            <span>
+                              {entitlementEndAtByTextbookId.get(t.id)
+                                ? `${formatKoreanDate(entitlementEndAtByTextbookId.get(t.id)!)}까지`
+                                : `${t.entitlementDays}일`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <a
-                      href={`/api/textbooks/${t.id}/download`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-lg bg-white/[0.08] px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/[0.12] hover:text-white"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">download</span>
-                      다운로드
-                    </a>
                   </div>
                 </div>
-              </div>
+              </a>
             ))}
           </div>
         </div>

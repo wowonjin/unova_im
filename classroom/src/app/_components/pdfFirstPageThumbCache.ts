@@ -123,6 +123,68 @@ async function loadPdfJs() {
   return lib;
 }
 
+type PageCountCacheEntryV1 = { v: 1; createdAt: number; pages: number };
+const PAGE_MEM = new Map<string, PageCountCacheEntryV1>();
+const PAGE_TTL_MS_DEFAULT = 1000 * 60 * 60 * 24; // 24h
+function pageKey(src: string) {
+  return `unova_pdf_pages_v1:${src}`;
+}
+
+export function readCachedPdfPageCount({ src, ttlMs = PAGE_TTL_MS_DEFAULT }: { src: string; ttlMs?: number }) {
+  const key = pageKey(src);
+  const now = safeNow();
+
+  const mem = PAGE_MEM.get(key);
+  if (mem && now - mem.createdAt <= ttlMs) return mem.pages;
+
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PageCountCacheEntryV1;
+    if (!parsed || parsed.v !== 1) return null;
+    if (!Number.isFinite(parsed.pages) || parsed.pages <= 0) return null;
+    if (!Number.isFinite(parsed.createdAt) || now - parsed.createdAt > ttlMs) return null;
+    PAGE_MEM.set(key, parsed);
+    return parsed.pages;
+  } catch {
+    return null;
+  }
+}
+
+export function writeCachedPdfPageCount({ src, pages }: { src: string; pages: number }) {
+  if (!Number.isFinite(pages) || pages <= 0) return;
+  const key = pageKey(src);
+  const entry: PageCountCacheEntryV1 = { v: 1, createdAt: safeNow(), pages };
+  PAGE_MEM.set(key, entry);
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(entry));
+  } catch {
+    // ignore
+  }
+}
+
+export async function getPdfPageCount({ src, ttlMs = PAGE_TTL_MS_DEFAULT }: { src: string; ttlMs?: number }) {
+  const cached = readCachedPdfPageCount({ src, ttlMs });
+  if (cached) return cached;
+
+  const lib = await loadPdfJs();
+  const task = lib.getDocument({ url: src, withCredentials: true });
+  try {
+    const pdf = await task.promise;
+    const pages = Number(pdf?.numPages ?? 0);
+    if (pages > 0) writeCachedPdfPageCount({ src, pages });
+    return pages;
+  } finally {
+    try {
+      task.destroy?.();
+    } catch {
+      // ignore
+    }
+  }
+}
+
 export async function generatePdfFirstPageThumbDataUrl({
   src,
   targetWidth,
