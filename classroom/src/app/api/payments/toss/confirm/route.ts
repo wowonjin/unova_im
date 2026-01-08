@@ -14,6 +14,13 @@ const Schema = z.object({
 
 type LineItem = { productType: "COURSE" | "TEXTBOOK"; productId: string; amount?: number };
 
+function getRedirectTo(order: { productType: "COURSE" | "TEXTBOOK"; providerPayload: unknown | null }): "/dashboard" | "/materials" {
+  const raw = order.providerPayload as any;
+  const items: LineItem[] | null = Array.isArray(raw?.lineItems?.items) ? raw.lineItems.items : null;
+  const hasCourse = items?.some((it) => it?.productType === "COURSE") || order.productType === "COURSE";
+  return hasCourse ? "/dashboard" : "/materials";
+}
+
 async function fulfillOne(orderNo: string, userId: string, item: LineItem) {
   const startAt = new Date();
 
@@ -112,7 +119,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "AMOUNT_MISMATCH" }, { status: 400 });
   }
   if (order.status === "COMPLETED") {
-    return NextResponse.json({ ok: true, alreadyConfirmed: true });
+    return NextResponse.json({ ok: true, alreadyConfirmed: true, redirectTo: getRedirectTo(order) });
   }
 
   // Confirm payment with Toss server
@@ -178,7 +185,7 @@ export async function POST(req: Request) {
     });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, redirectTo: getRedirectTo(order) });
 }
 
 

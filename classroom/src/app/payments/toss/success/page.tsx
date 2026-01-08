@@ -36,7 +36,8 @@ export default function TossSuccessPage() {
         }
         setStatus("ok");
         setMessage("결제가 완료되었습니다. 이동 중...");
-        setTimeout(() => router.replace("/dashboard"), 600);
+        const redirectTo = typeof json?.redirectTo === "string" ? json.redirectTo : "/dashboard";
+        setTimeout(() => router.replace(redirectTo), 600);
       } catch {
         setStatus("error");
         setMessage("결제 승인 중 오류가 발생했습니다.");
