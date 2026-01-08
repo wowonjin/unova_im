@@ -217,7 +217,7 @@ export default async function MaterialsPage() {
 
       {/* 빈 상태 */}
       {totalMaterials === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.06] bg-[#1C1C1C] py-16 text-center">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
           {!user.isLoggedIn ? (
             <DashboardEmptyState isLoggedIn={false} />
           ) : (
