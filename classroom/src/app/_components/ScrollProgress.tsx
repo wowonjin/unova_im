@@ -1,12 +1,20 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 
 export default function ScrollProgress() {
+  // SSR/CSR 첫 렌더 결과를 강제로 동일하게 맞춰 hydration mismatch를 방지합니다.
+  // (scroll 위치/이벤트 의존 UI는 마운트 후에만 노출)
+  const [mounted, setMounted] = useState(false);
   const [progress, setProgress] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     const handleScroll = () => {
       // 문서의 현재 스크롤 위치
       const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
@@ -21,10 +29,10 @@ export default function ScrollProgress() {
     handleScroll(); // 초기 값 설정
 
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [mounted]);
 
   // 진행바 컨테이너 클릭 시 해당 위치로 스크롤 이동
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleClick = (e: MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
     
     // 컨테이너의 크기와 위치 정보 가져오기
@@ -47,6 +55,8 @@ export default function ScrollProgress() {
       behavior: "smooth"
     });
   };
+
+  if (!mounted) return null;
 
   return (
     <div

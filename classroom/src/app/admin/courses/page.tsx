@@ -41,6 +41,8 @@ export default async function AdminCoursesPage({
       isPublished: true,
       thumbnailStoredPath: true,
       thumbnailUrl: true,
+      price: true,
+      originalPrice: true,
       lessons: { select: { id: true, isPublished: true } },
     },
   });
@@ -65,6 +67,8 @@ export default async function AdminCoursesPage({
     isPublished: c.isPublished,
     thumbnailStoredPath: c.thumbnailStoredPath,
     thumbnailUrl: c.thumbnailUrl,
+    price: c.price ?? null,
+    originalPrice: c.originalPrice ?? null,
     lessonCount: c.lessons.length,
     publishedLessonCount: c.lessons.filter((l) => l.isPublished).length,
     enrollmentCount: enrollmentCountByCourseId.get(c.id) ?? 0,

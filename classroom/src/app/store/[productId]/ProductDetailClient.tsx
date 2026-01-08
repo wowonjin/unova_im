@@ -444,29 +444,7 @@ export default function ProductDetailClient({
     }
   };
 
-  const loadTossPayments = async (): Promise<any> => {
-    const w = window as any;
-    if (w.TossPayments) return w.TossPayments;
-
-    await new Promise<void>((resolve, reject) => {
-      const existing = document.querySelector('script[data-toss-payments="1"]') as HTMLScriptElement | null;
-      if (existing) {
-        existing.addEventListener("load", () => resolve());
-        existing.addEventListener("error", () => reject(new Error("TOSS_SCRIPT_LOAD_FAILED")));
-        return;
-      }
-
-      const s = document.createElement("script");
-      s.src = "https://js.tosspayments.com/v1/payment";
-      s.async = true;
-      s.setAttribute("data-toss-payments", "1");
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error("TOSS_SCRIPT_LOAD_FAILED"));
-      document.head.appendChild(s);
-    });
-
-    return (window as any).TossPayments;
-  };
+  // NOTE: 토스 결제는 이 페이지에서 팝업(오버레이)로 렌더합니다.
 
   // 공유 기능
   const getShareUrl = () => {
@@ -541,26 +519,71 @@ export default function ProductDetailClient({
 
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) {
-        alert("결제 준비에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        const code = json?.error ? String(json.error) : `HTTP_${res.status}`;
+        const msg =
+          code === "TOSS_CLIENT_KEY_NOT_SET"
+            ? "토스 클라이언트 키가 설정되지 않았습니다. (.env.local의 TOSS_CLIENT_KEY 확인)"
+            : code === "TOSS_SECRET_KEY_NOT_SET"
+              ? "토스 시크릿 키가 설정되지 않았습니다. (.env.local의 TOSS_SECRET_KEY 확인)"
+              :
+          code === "TOSS_PAYMENT_CLIENT_KEY_NOT_SET"
+            ? "토스 결제창용 클라이언트 키가 설정되지 않았습니다. (.env.local의 TOSS_PAYMENT_CLIENT_KEY 또는 TOSS_CLIENT_KEY 확인)"
+            : code === "TOSS_PAYMENT_CLIENT_KEY_IS_WIDGET_KEY"
+              ? "표준 결제창에는 '결제위젯 연동 키(gck)'가 아닌 'API 개별 연동 키(test_ck_/live_ck_)'를 사용해야 합니다."
+              :
+          code === "PRICE_NOT_SET"
+            ? "상품 가격이 설정되지 않아 결제를 진행할 수 없습니다. 관리자에게 문의해주세요."
+            : code === "INVALID_REQUEST"
+              ? "결제 요청 정보가 올바르지 않습니다. 새로고침 후 다시 시도해주세요."
+              : code === "INVALID_AMOUNT"
+                ? "결제 금액 계산에 실패했습니다. 관리자에게 문의해주세요."
+                : "결제 준비에 실패했습니다. 잠시 후 다시 시도해주세요.";
+        alert(msg);
         return;
       }
 
-      const TossPayments = await loadTossPayments();
-      const tossPayments = TossPayments(json.clientKey);
-
-      await tossPayments.requestPayment("카드", {
-        amount: json.order.amount,
-        orderId: json.order.orderId,
-        orderName: json.order.orderName,
-        successUrl: json.order.successUrl,
-        failUrl: json.order.failUrl,
+      // 토스 기본 결제창(standard) 바로 호출
+      const TossPayments = await loadTossPaymentsV2();
+      const tossPayments = TossPayments(String(json.paymentClientKey || json.clientKey));
+      const payment = tossPayments.payment({ customerKey: String(json.customerKey) });
+      await payment.requestPayment({
+        method: "CARD",
+        amount: { currency: "KRW", value: Number(json.order.amount) },
+        orderId: String(json.order.orderId),
+        orderName: String(json.order.orderName),
+        successUrl: String(json.order.successUrl),
+        failUrl: String(json.order.failUrl),
       });
     } catch (e) {
       console.error("[checkout] error", e);
-      alert("결제 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+      alert("결제 요청 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
     } finally {
       setIsPaying(false);
     }
+  };
+
+  const loadTossPaymentsV2 = async (): Promise<any> => {
+    const w = window as any;
+    if (w.TossPayments) return w.TossPayments;
+
+    await new Promise<void>((resolve, reject) => {
+      const existing = document.querySelector('script[data-toss-payments-v2="1"]') as HTMLScriptElement | null;
+      if (existing) {
+        existing.addEventListener("load", () => resolve());
+        existing.addEventListener("error", () => reject(new Error("TOSS_V2_SCRIPT_LOAD_FAILED")));
+        return;
+      }
+
+      const s = document.createElement("script");
+      s.src = "https://js.tosspayments.com/v2/standard";
+      s.async = true;
+      s.setAttribute("data-toss-payments-v2", "1");
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error("TOSS_V2_SCRIPT_LOAD_FAILED"));
+      document.head.appendChild(s);
+    });
+
+    return (window as any).TossPayments;
   };
 
   const toggleChapter = (chapter: string) => {
@@ -1722,6 +1745,8 @@ export default function ProductDetailClient({
       </div>
     </div>
 
+    {/* 토스 기본 결제창(standard) 호출로 변경되어, 내부 위젯 모달은 사용하지 않습니다. */}
+
     {/* 공유하기 모달 */}
     {showShareModal && (
       <div 
@@ -1830,6 +1855,7 @@ export default function ProductDetailClient({
         </div>
       </div>
     )}
+
     </>
   );
 }

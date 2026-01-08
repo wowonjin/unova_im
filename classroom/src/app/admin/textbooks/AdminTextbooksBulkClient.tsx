@@ -30,6 +30,11 @@ function formatBytes(bytes: number) {
   return `${v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
 }
 
+function formatMoneyKRW(amount: number | null | undefined) {
+  if (!Number.isFinite(amount ?? NaN)) return null;
+  return new Intl.NumberFormat("ko-KR").format(amount as number);
+}
+
 function parseMoney(s: string): number | null | undefined {
   const trimmed = s.trim();
   if (!trimmed) return undefined; // empty => no change
@@ -352,6 +357,18 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
                           <span className="rounded-md bg-white/5 px-2 py-0.5 text-white/40">전체 공개</span>
                         )}
                         <span className="text-white/40">{t.entitlementDays ?? 30}일</span>
+                      </div>
+
+                      {/* Prices (always show both) */}
+                      <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
+                        <span className="text-white/40">할인가</span>
+                        <span className="font-semibold text-white/85">
+                          {formatMoneyKRW(t.price) ? `${formatMoneyKRW(t.price)}원` : "미설정"}
+                        </span>
+                        <span className="text-white/30">원래가</span>
+                        <span className="text-white/50 line-through decoration-white/30">
+                          {formatMoneyKRW(t.originalPrice) ? `${formatMoneyKRW(t.originalPrice)}원` : "미설정"}
+                        </span>
                       </div>
                     </div>
                   </Link>

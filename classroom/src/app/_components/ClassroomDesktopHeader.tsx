@@ -68,7 +68,7 @@ export default function ClassroomDesktopHeader() {
           </button>
 
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/unova-logo.png" alt={siteConfig.name} width={120} height={24} priority className="h-5 w-auto" />
+            <Image src="/logoheader.png" alt={siteConfig.name} width={120} height={24} priority className="h-6 w-auto" />
           </Link>
         </div>
 

@@ -12,10 +12,17 @@ type Course = {
   isPublished: boolean;
   thumbnailStoredPath: string | null;
   thumbnailUrl: string | null;
+  price: number | null;
+  originalPrice: number | null;
   lessonCount: number;
   publishedLessonCount: number;
   enrollmentCount: number;
 };
+
+function formatMoneyKRW(amount: number | null | undefined) {
+  if (!Number.isFinite(amount ?? NaN)) return null;
+  return new Intl.NumberFormat("ko-KR").format(amount as number);
+}
 
 function inferTeacherFromTitle(title: string) {
   const m = title.match(/\]\s*([^\s]+?)T\b/);
@@ -214,6 +221,18 @@ export default function CourseListClient({
                       <span>·</span>
                       <span>{c.publishedLessonCount}/{c.lessonCount}차시</span>
                     </div>
+                  </div>
+
+                  {/* Prices (always show both) */}
+                  <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
+                    <span className="text-white/40">할인가</span>
+                    <span className="font-semibold text-white/85">
+                      {formatMoneyKRW(c.price) ? `${formatMoneyKRW(c.price)}원` : "미설정"}
+                    </span>
+                    <span className="text-white/30">원래가</span>
+                    <span className="text-white/50 line-through decoration-white/30">
+                      {formatMoneyKRW(c.originalPrice) ? `${formatMoneyKRW(c.originalPrice)}원` : "미설정"}
+                    </span>
                   </div>
                 </div>
               </>

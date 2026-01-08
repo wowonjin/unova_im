@@ -1,5 +1,55 @@
 @import "tailwindcss";
 
+/* ===========================
+   Toss 결제 팝업/결제 페이지 폰트 (Pretendard 강제)
+   - 결제 위젯은 페이지 DOM에 렌더링되므로, 컨테이너에 font-family를 주면 함께 적용됩니다.
+   =========================== */
+.unova-toss-payment-popup,
+.unova-toss-payment-popup * {
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+}
+
+/* 아이콘 폰트는 예외 처리 */
+.unova-toss-payment-popup .material-symbols-outlined,
+.unova-toss-payment-popup .material-symbols-outlined * {
+  font-family: "Material Symbols Outlined" !important;
+}
+
+/* ===========================
+   Imweb 스타일 톤다운 (토스 결제 팝업)
+   =========================== */
+.imweb-toss-theme {
+  background: #f8f9fb;
+  box-shadow: 0 28px 80px rgba(17, 24, 39, 0.24);
+}
+.imweb-toss-theme h2 {
+  color: #344054;
+}
+.imweb-toss-left {
+  padding-left: 18px;
+  padding-right: 18px;
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+@media (min-width: 640px) {
+  .imweb-toss-left {
+    padding-left: 22px;
+    padding-right: 22px;
+    padding-top: 22px;
+    padding-bottom: 22px;
+  }
+}
+.imweb-toss-summary {
+  background: #f7f8fc;
+  border-left: 1px solid #e5e7eb;
+}
+.imweb-toss-summary p {
+  color: #4b5563;
+}
+.imweb-toss-summary .price-strong {
+  color: #111827;
+}
+
 @font-face {
   font-family: "Material Symbols Outlined";
   font-style: normal;

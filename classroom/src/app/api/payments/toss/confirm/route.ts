@@ -116,7 +116,15 @@ export async function POST(req: Request) {
   }
 
   // Confirm payment with Toss server
-  const secretKey = getTossSecretKey();
+  let secretKey: string;
+  try {
+    secretKey = getTossSecretKey();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "TOSS_SECRET_KEY_NOT_SET";
+    // eslint-disable-next-line no-console
+    console.error("[toss confirm] missing secret key", e);
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
   const res = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
     method: "POST",
     headers: {

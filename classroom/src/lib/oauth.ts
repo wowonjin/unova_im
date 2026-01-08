@@ -12,16 +12,35 @@ function randomState(): string {
 }
 
 export function getBaseUrl(req: Request): string {
-  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
+  // In local development it's very easy to have NEXT_PUBLIC_BASE_URL set to a different port
+  // (e.g. 3001) or to the deployed URL. That breaks payment redirect URLs (success/fail)
+  // for Toss Payments because the browser is running on a different origin.
+  //
+  // Rule:
+  // - In dev AND when the current request is from localhost/127.0.0.1, prefer req.origin.
+  // - Otherwise, allow NEXT_PUBLIC_BASE_URL override (recommended for production).
+  const envBase = process.env.NEXT_PUBLIC_BASE_URL;
+  const origin = new URL(req.url).origin;
+  const host = req.headers.get("host") || "";
+  const isLocalhost =
+    host.includes("localhost") ||
+    host.includes("127.0.0.1") ||
+    origin.includes("localhost") ||
+    origin.includes("127.0.0.1");
+
+  if (process.env.NODE_ENV !== "production" && isLocalhost) {
+    return origin;
+  }
+
+  if (envBase) return envBase;
 
   const forwardedHost = req.headers.get("x-forwarded-host");
   const forwardedProto = req.headers.get("x-forwarded-proto") || "https";
   if (forwardedHost) return `${forwardedProto}://${forwardedHost}`;
 
-  const host = req.headers.get("host");
-  if (host && !host.includes("localhost")) return `https://${host}`;
+  if (host && !host.includes("localhost") && !host.includes("127.0.0.1")) return `https://${host}`;
 
-  return new URL(req.url).origin;
+  return origin;
 }
 
 export async function setOAuthState(provider: Provider, redirectTo: string | null): Promise<string> {

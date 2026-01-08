@@ -327,12 +327,12 @@ export default function LandingHeader({
           {/* Logo (Desktop) */}
           <Link href="/" className="hidden lg:flex items-center gap-2 shrink-0">
             <Image
-              src="/unova-logo.png"
+              src="/logoheader.png"
               alt="UNOVA"
               width={120}
               height={24}
               priority
-              className="h-5 w-auto"
+              className="h-6 w-auto"
               style={isLight ? { filter: "brightness(0)" } : undefined}
             />
           </Link>
@@ -344,12 +344,12 @@ export default function LandingHeader({
             aria-label="홈으로"
           >
             <Image
-              src="/unova-logo.png"
+              src="/logoheader.png"
               alt="UNOVA"
               width={120}
               height={24}
               priority
-              className="h-5 w-auto"
+              className="h-6 w-auto"
               style={isLight ? { filter: "brightness(0)" } : undefined}
             />
           </Link>
@@ -527,12 +527,12 @@ export default function LandingHeader({
               <div className="flex items-center">
                 <Link href="/" className="inline-flex items-center" onClick={closeMenu}>
                   <Image
-                    src="/unova-logo.png"
+                    src="/logoheader.png"
                     alt="UNOVA"
                     width={140}
                     height={24}
                     priority
-                    className="h-5 w-auto"
+                    className="h-6 w-auto"
                     style={isLight ? { filter: "brightness(0)" } : undefined}
                   />
                 </Link>

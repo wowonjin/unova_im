@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/current-user";
-import { generateTossOrderId, getTossClientKey } from "@/lib/toss";
+import { generateTossOrderId, getTossClientKey, getTossPaymentClientKey } from "@/lib/toss";
 import { getBaseUrl } from "@/lib/oauth";
 
 export const runtime = "nodejs";
@@ -35,6 +35,25 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const baseUrl = getBaseUrl(req);
 
+  let clientKey: string; // 위젯/호환용
+  let paymentClientKey: string;
+  try {
+    clientKey = getTossClientKey();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "TOSS_CLIENT_KEY_NOT_SET";
+    // eslint-disable-next-line no-console
+    console.error("[toss create-order] missing client key", e);
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
+  try {
+    paymentClientKey = getTossPaymentClientKey();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "TOSS_PAYMENT_CLIENT_KEY_NOT_SET";
+    // eslint-disable-next-line no-console
+    console.error("[toss create-order] missing payment client key", e);
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
+
   // cartItems 방식인지 기존 방식인지 확인
   let cartItems: z.infer<typeof CartItemSchema>[] = [];
   
@@ -60,22 +79,34 @@ export async function POST(req: Request) {
     let itemName = "";
 
     if (item.productType === "COURSE") {
-      const course = await prisma.course.findUnique({
+      const course = await prisma.course.findFirst({
         where: { id: item.productId, isPublished: true },
         select: { id: true, title: true, price: true },
       });
       if (!course) return NextResponse.json({ ok: false, error: "PRODUCT_NOT_FOUND" }, { status: 404 });
       itemName = course.title;
-      itemAmount = course.price ?? 0;
+      if (!Number.isFinite(course.price as any) || (course.price ?? 0) <= 0) {
+        return NextResponse.json(
+          { ok: false, error: "PRICE_NOT_SET", details: { productType: "COURSE", productId: item.productId } },
+          { status: 400 }
+        );
+      }
+      itemAmount = course.price!;
       if (item.option === "regular") itemAmount = Math.round(itemAmount * 0.8);
     } else {
-      const textbook = await prisma.textbook.findUnique({
+      const textbook = await prisma.textbook.findFirst({
         where: { id: item.productId, isPublished: true },
         select: { id: true, title: true, price: true },
       });
       if (!textbook) return NextResponse.json({ ok: false, error: "PRODUCT_NOT_FOUND" }, { status: 404 });
       itemName = textbook.title;
-      itemAmount = textbook.price ?? 0;
+      if (!Number.isFinite(textbook.price as any) || (textbook.price ?? 0) <= 0) {
+        return NextResponse.json(
+          { ok: false, error: "PRICE_NOT_SET", details: { productType: "TEXTBOOK", productId: item.productId } },
+          { status: 400 }
+        );
+      }
+      itemAmount = textbook.price!;
     }
 
     totalAmount += itemAmount;
@@ -114,7 +145,20 @@ export async function POST(req: Request) {
   totalAmount = Math.max(0, totalAmount - totalDiscount);
 
   if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
-    return NextResponse.json({ ok: false, error: "INVALID_AMOUNT" }, { status: 400 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "INVALID_AMOUNT",
+        details: {
+          totalAmount,
+          totalDiscount,
+          additionalTextbookDiscount,
+          courseBundleDiscount,
+          cartItemsCount: cartItems.length,
+        },
+      },
+      { status: 400 }
+    );
   }
 
   // 주문명 생성 (첫 번째 상품 외 N건)
@@ -156,7 +200,11 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    clientKey: getTossClientKey(),
+    clientKey,
+    paymentClientKey,
+    // 결제위젯(customerKey)은 유추가 어려운 고유 값이어야 합니다.
+    // 이 프로젝트에서는 사용자 PK가 충분히 무작위(cuid 등)라 가정하고 그대로 사용합니다.
+    customerKey: user.id,
     order: {
       orderId,
       orderName,

@@ -7,17 +7,18 @@
 `.env.local`에 아래 값을 추가하세요.
 
 ```bash
-# 권장: 로컬 기준(이미 사용 중인 포트에 맞추세요)
-NEXT_PUBLIC_BASE_URL=http://localhost:3001
+# 권장: 로컬 기준(이미 사용 중인 포트에 맞추세요. Next dev 기본은 보통 3000)
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
 
 # Toss Payments Keys (개발자센터에서 발급)
-TOSS_CLIENT_KEY=YOUR_TOSS_CLIENT_KEY
+# ⚠️ "결제위젯 연동 키"의 클라이언트 키를 사용하세요. (API 개별 연동 키는 결제위젯 SDK에서 지원하지 않습니다)
+TOSS_CLIENT_KEY=YOUR_TOSS_WIDGET_CLIENT_KEY
 TOSS_SECRET_KEY=YOUR_TOSS_SECRET_KEY
 ```
 
 ## 1-1) 테스트/운영 키 주의
 
-- **클라이언트 키**(`TOSS_CLIENT_KEY`): 브라우저에서 결제창 호출에 사용
+- **클라이언트 키**(`TOSS_CLIENT_KEY`): 브라우저에서 결제위젯 SDK 초기화에 사용 (**결제위젯 연동 키**)
 - **시크릿 키**(`TOSS_SECRET_KEY`): 서버에서 승인(confirm)/취소(cancel)에 사용 (**절대 프론트에 노출 금지**)
 
 ## 2) 성공/실패 URL
@@ -28,6 +29,9 @@ TOSS_SECRET_KEY=YOUR_TOSS_SECRET_KEY
 - 실패: `/payments/toss/fail`
 
 `NEXT_PUBLIC_BASE_URL`이 정확해야 리다이렉트가 정상 동작합니다.
+
+> 참고: 이 프로젝트는 개발 환경(localhost)에서는 실수로 `NEXT_PUBLIC_BASE_URL`을 다른 포트로 설정해도
+> 결제 success/fail URL이 깨지지 않도록, **현재 요청의 origin(localhost:현재포트)** 을 우선하도록 방어 로직이 포함돼 있습니다.
 
 ## 3) 동작 방식
 
