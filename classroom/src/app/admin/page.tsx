@@ -3,6 +3,7 @@ import { requireAdminUser } from "@/lib/current-user";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import AdminAnalyticsPanel from "./AdminAnalyticsPanel";
+import type { AdminDailyMetrics } from "./AdminAnalyticsPanel";
 
 const adminMenus = [
   {
