@@ -32,7 +32,17 @@ export function getBaseUrl(req: Request): string {
     return origin;
   }
 
-  if (envBase) return envBase;
+  // In production, NEVER trust an env base URL that points to localhost.
+  // This prevents misconfigurations on hosting platforms (e.g. Render) from redirecting users to localhost.
+  if (envBase) {
+    const lowerEnv = envBase.toLowerCase();
+    const envIsLocalhost = lowerEnv.includes("localhost") || lowerEnv.includes("127.0.0.1");
+    if (!(process.env.NODE_ENV === "production" && envIsLocalhost && !isLocalhost)) {
+      return envBase;
+    }
+    // eslint-disable-next-line no-console
+    console.warn("[baseUrl] NEXT_PUBLIC_BASE_URL points to localhost in production. Ignoring env override:", envBase);
+  }
 
   const forwardedHost = req.headers.get("x-forwarded-host");
   const forwardedProto = req.headers.get("x-forwarded-proto") || "https";

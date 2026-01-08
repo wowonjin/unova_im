@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { getBaseUrl } from "@/lib/oauth";
 
 export const runtime = "nodejs";
 
@@ -57,7 +58,7 @@ export async function GET(req: Request) {
   const token = Buffer.from(`${email.toLowerCase()}:${timestamp}:${hash}`).toString("base64");
   
   // SSO URL 생성
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://unova-im.onrender.com";
+  const baseUrl = getBaseUrl(req);
   const ssoUrl = `${baseUrl}/api/auth/imweb-sso?token=${encodeURIComponent(token)}`;
   
   return NextResponse.json(

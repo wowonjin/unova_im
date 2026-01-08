@@ -2,28 +2,9 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
+import { getBaseUrl } from "@/lib/oauth";
 
 export const runtime = "nodejs";
-
-/**
- * 요청에서 올바른 Base URL을 추출
- */
-export function getBaseUrl(req: Request): string {
-  if (process.env.NEXT_PUBLIC_BASE_URL) {
-    return process.env.NEXT_PUBLIC_BASE_URL;
-  }
-  const forwardedHost = req.headers.get("x-forwarded-host");
-  const forwardedProto = req.headers.get("x-forwarded-proto") || "https";
-  if (forwardedHost) {
-    return `${forwardedProto}://${forwardedHost}`;
-  }
-  const host = req.headers.get("host");
-  if (host && !host.includes("localhost")) {
-    return `https://${host}`;
-  }
-  const url = new URL(req.url);
-  return url.origin;
-}
 
 /**
  * 간단한 토큰 검증 함수
