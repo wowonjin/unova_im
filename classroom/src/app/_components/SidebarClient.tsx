@@ -58,14 +58,19 @@ function ProgressRing({ percent }: { percent: number }) {
 
 function NavItem({ href, label, icon }: { href: string; label: string; icon?: string }) {
   const pathname = usePathname();
+  const isAdminArea = pathname?.startsWith("/admin");
   const activeBase = pathname === href || (href !== "/" && pathname?.startsWith(href + "/"));
   // "수강중인 강좌"는 대시보드뿐 아니라 강좌/강의(lesson) 상세로 들어가도 계속 활성화로 보이게 처리
   const active =
     activeBase ||
     (href === "/dashboard" && (pathname?.startsWith("/course/") || pathname?.startsWith("/lesson/")));
-  const cls = active
-    ? "flex items-center gap-2 rounded-lg px-3 py-2 bg-white/10 text-white"
-    : "flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-white/10 text-white/90";
+  const cls = isAdminArea
+    ? active
+      ? "flex items-center gap-2 rounded-lg px-3 py-2 bg-transparent hover:bg-transparent text-white"
+      : "flex items-center gap-2 rounded-lg px-3 py-2 bg-transparent hover:bg-transparent text-white/70 hover:text-white"
+    : active
+      ? "flex items-center gap-2 rounded-lg px-3 py-2 bg-white/10 text-white"
+      : "flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-white/10 text-white/90";
   return (
     <Link className={cls} href={href}>
       {icon ? (

@@ -28,21 +28,32 @@ export function getBaseUrl(req: Request): string {
     origin.includes("localhost") ||
     origin.includes("127.0.0.1");
 
-  if (process.env.NODE_ENV !== "production" && isLocalhost) {
-    return origin;
+  // --- Production: always prefer external host/proto, never internal localhost:PORT ---
+  if (process.env.NODE_ENV === "production") {
+    const forwardedHost = req.headers.get("x-forwarded-host");
+    const forwardedProto = req.headers.get("x-forwarded-proto") || "https";
+    if (forwardedHost) return `${forwardedProto}://${forwardedHost}`;
+
+    if (envBase) {
+      const lowerEnv = envBase.toLowerCase();
+      const envIsLocalhost = lowerEnv.includes("localhost") || lowerEnv.includes("127.0.0.1");
+      if (!envIsLocalhost) return envBase;
+      // eslint-disable-next-line no-console
+      console.warn("[baseUrl] NEXT_PUBLIC_BASE_URL points to localhost in production. Ignoring env override:", envBase);
+    }
+
+    // If host is a real public host, use it.
+    if (host && !host.includes("localhost") && !host.includes("127.0.0.1")) return `https://${host}`;
+
+    // Final safe fallback (matches metadataBase default)
+    return "https://unova-im.onrender.com";
   }
 
-  // In production, NEVER trust an env base URL that points to localhost.
-  // This prevents misconfigurations on hosting platforms (e.g. Render) from redirecting users to localhost.
-  if (envBase) {
-    const lowerEnv = envBase.toLowerCase();
-    const envIsLocalhost = lowerEnv.includes("localhost") || lowerEnv.includes("127.0.0.1");
-    if (!(process.env.NODE_ENV === "production" && envIsLocalhost && !isLocalhost)) {
-      return envBase;
-    }
-    // eslint-disable-next-line no-console
-    console.warn("[baseUrl] NEXT_PUBLIC_BASE_URL points to localhost in production. Ignoring env override:", envBase);
-  }
+  // --- Dev: prefer the actual request origin when running on localhost ---
+  if (isLocalhost) return origin;
+
+  // Non-production but non-localhost: allow NEXT_PUBLIC_BASE_URL override.
+  if (envBase) return envBase;
 
   const forwardedHost = req.headers.get("x-forwarded-host");
   const forwardedProto = req.headers.get("x-forwarded-proto") || "https";

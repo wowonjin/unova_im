@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import AnalyticsTracker from "@/app/_components/AnalyticsTracker";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +74,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <AnalyticsTracker />
       </body>
     </html>
   );

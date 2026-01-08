@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     process.env.KAKAO_CLIENT_ID ||
     process.env.KAKAO_APP_KEY;
   if (!clientId) {
-    return NextResponse.redirect(new URL("/login?error=oauth_not_configured", req.url));
+    return NextResponse.redirect(new URL("/login?error=oauth_not_configured", getBaseUrl(req)));
   }
 
   const baseUrl = getBaseUrl(req);

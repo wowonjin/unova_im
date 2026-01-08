@@ -2,12 +2,13 @@ import AppShell from "@/app/_components/AppShell";
 import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import BuyerCell from "./BuyerCell";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   COMPLETED: { label: "결제완료", color: "bg-emerald-500/20 text-emerald-400" },
-  PENDING: { label: "입금대기", color: "bg-amber-500/20 text-amber-400" },
   CANCELLED: { label: "취소", color: "bg-rose-500/20 text-rose-400" },
   REFUNDED: { label: "환불", color: "bg-slate-500/20 text-slate-400" },
+  PARTIALLY_REFUNDED: { label: "부분환불", color: "bg-slate-500/20 text-slate-300" },
 };
 
 function formatPrice(price: number): string {
@@ -24,19 +25,6 @@ function formatDate(date: Date): string {
   });
 }
 
-function maskEmail(email: string): string {
-  const [local, domain] = email.split("@");
-  if (!domain) return email;
-  const masked = local.slice(0, 3) + "***";
-  return `${masked}@${domain}`;
-}
-
-function maskName(name: string | null): string {
-  if (!name) return "회원";
-  if (name.length <= 1) return name + "**";
-  return name.slice(0, 1) + "**";
-}
-
 export default async function AdminOrdersPage() {
   const teacher = await requireAdminUser();
 
@@ -44,15 +32,15 @@ export default async function AdminOrdersPage() {
   let orders: Array<{
     id: string;
     orderNo: string;
+    userId: string;
     productName: string;
     amount: number;
     refundedAmount?: number | null;
     paymentMethod?: string | null;
     provider?: string | null;
-    providerPaymentKey?: string | null;
     status: string;
     createdAt: Date;
-    user: { email: string; name: string | null };
+    user: { id: string; email: string; name: string | null };
   }> = [];
   let dbError = false;
 
@@ -63,21 +51,24 @@ export default async function AdminOrdersPage() {
           { course: { ownerId: teacher.id } },
           { textbook: { ownerId: teacher.id } },
         ],
+        // 미결제/미확정 주문(PENDING)은 더미처럼 쌓이기 쉬워 주문관리 화면에서는 제외합니다.
+        // (결제 완료/환불/취소 등 처리된 주문만 노출)
+        NOT: { status: "PENDING" },
       },
       orderBy: { createdAt: "desc" },
       take: 100,
       select: {
         id: true,
         orderNo: true,
+        userId: true,
         productName: true,
         amount: true,
         refundedAmount: true,
         paymentMethod: true,
         provider: true,
-        providerPaymentKey: true,
         status: true,
         createdAt: true,
-        user: { select: { email: true, name: true } },
+        user: { select: { id: true, email: true, name: true } },
       },
     });
   } catch (e) {
@@ -90,6 +81,7 @@ export default async function AdminOrdersPage() {
   const totalAmount = orders
     .filter((o) => o.status === "COMPLETED")
     .reduce((sum, o) => sum + o.amount, 0);
+  const refundedCount = orders.filter((o) => o.status === "REFUNDED" || o.status === "PARTIALLY_REFUNDED").length;
 
   return (
     <AppShell>
@@ -132,10 +124,8 @@ export default async function AdminOrdersPage() {
             </p>
           </div>
           <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
-            <p className="text-[13px] text-white/40 mb-1">입금대기</p>
-            <p className="text-[24px] font-bold text-amber-400">
-              {orders.filter((o) => o.status === "PENDING").length}
-            </p>
+            <p className="text-[13px] text-white/40 mb-1">환불</p>
+            <p className="text-[24px] font-bold text-slate-300">{refundedCount}</p>
           </div>
           <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
             <p className="text-[13px] text-white/40 mb-1">총 매출</p>
@@ -171,23 +161,17 @@ export default async function AdminOrdersPage() {
                     결제사
                   </th>
                   <th className="px-5 py-4 text-left text-[13px] font-medium text-white/50">
-                    paymentKey
-                  </th>
-                  <th className="px-5 py-4 text-left text-[13px] font-medium text-white/50">
                     상태
                   </th>
                   <th className="px-5 py-4 text-left text-[13px] font-medium text-white/50">
                     주문일시
-                  </th>
-                  <th className="px-5 py-4 text-right text-[13px] font-medium text-white/50">
-                    관리
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {orders.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-5 py-12 text-center text-white/50">
+                    <td colSpan={9} className="px-5 py-12 text-center text-white/50">
                       아직 주문이 없습니다.
                     </td>
                   </tr>
@@ -203,8 +187,11 @@ export default async function AdminOrdersPage() {
                         </Link>
                       </td>
                       <td className="px-5 py-4">
-                        <p className="text-[14px] text-white/80">{maskName(order.user.name)}</p>
-                        <p className="text-[12px] text-white/40">{maskEmail(order.user.email)}</p>
+                        <BuyerCell
+                          userId={order.userId}
+                          name={order.user.name}
+                          email={order.user.email}
+                        />
                       </td>
                       <td className="px-5 py-4 text-[14px] text-white/80 max-w-[200px] truncate">
                         {order.productName}
@@ -221,9 +208,6 @@ export default async function AdminOrdersPage() {
                       <td className="px-5 py-4 text-[14px] text-white/60">
                         {order.provider || "-"}
                       </td>
-                      <td className="px-5 py-4 text-[12px] text-white/50 font-mono max-w-[220px] truncate">
-                        {order.providerPaymentKey || "-"}
-                      </td>
                       <td className="px-5 py-4">
                         <span
                           className={`px-2.5 py-1 rounded-full text-[12px] font-medium ${
@@ -235,22 +219,6 @@ export default async function AdminOrdersPage() {
                       </td>
                       <td className="px-5 py-4 text-[14px] text-white/50">
                         {formatDate(order.createdAt)}
-                      </td>
-                      <td className="px-5 py-4 text-right">
-                        {order.status === "COMPLETED" && order.provider === "toss" && order.providerPaymentKey ? (
-                          <form action="/api/admin/orders/toss-cancel" method="post" className="inline-flex items-center gap-2">
-                            <input type="hidden" name="orderNo" value={order.orderNo} />
-                            <input type="hidden" name="reason" value="고객 요청" />
-                            <button
-                              type="submit"
-                              className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-[12px] text-white/80 hover:bg-white/10"
-                            >
-                              환불
-                            </button>
-                          </form>
-                        ) : (
-                          <span className="text-[12px] text-white/30">-</span>
-                        )}
                       </td>
                     </tr>
                   ))

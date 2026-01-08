@@ -65,17 +65,18 @@ export async function GET(req: Request) {
 
   const baseUrl = getBaseUrl(req);
   const redirectUri = `${baseUrl}/api/auth/kakao/callback`;
+  const base = new URL(baseUrl);
 
   const { state: stateFromCookie, redirectTo } = await consumeOAuthState("kakao");
 
   if (error) {
-    return NextResponse.redirect(new URL(`/login?error=oauth_failed`, req.url));
+    return NextResponse.redirect(new URL(`/login?error=oauth_failed`, base));
   }
   if (!code) {
-    return NextResponse.redirect(new URL(`/login?error=oauth_missing_code`, req.url));
+    return NextResponse.redirect(new URL(`/login?error=oauth_missing_code`, base));
   }
   if (!stateFromCookie || !stateFromQuery || stateFromCookie !== stateFromQuery) {
-    return NextResponse.redirect(new URL(`/login?error=oauth_state_mismatch`, req.url));
+    return NextResponse.redirect(new URL(`/login?error=oauth_state_mismatch`, base));
   }
 
   try {
@@ -120,7 +121,7 @@ export async function GET(req: Request) {
       sp.set("redirect", redirectTo || "/");
       if (emailFromProvider) sp.set("email", emailFromProvider);
       if (nickname) sp.set("name", nickname);
-      return NextResponse.redirect(new URL(`/signup?${sp.toString()}`, req.url));
+      return NextResponse.redirect(new URL(`/signup?${sp.toString()}`, base));
     }
 
     const user = existingAccount
@@ -148,10 +149,10 @@ export async function GET(req: Request) {
     });
 
     await createSession(user.id);
-    return NextResponse.redirect(new URL(redirectTo || "/dashboard", req.url));
+    return NextResponse.redirect(new URL(redirectTo || "/dashboard", base));
   } catch (e) {
     console.error("[kakao callback] error", e);
-    return NextResponse.redirect(new URL(`/login?error=oauth_server_error`, req.url));
+    return NextResponse.redirect(new URL(`/login?error=oauth_server_error`, base));
   }
 }
 
