@@ -417,6 +417,7 @@ export default async function ProductDetailPage({
       teacherTitle: true;
       teacherDescription: true;
       thumbnailUrl: true;
+      imwebProdCode: true;
       price: true;
       originalPrice: true;
       rating: true;
@@ -441,6 +442,7 @@ export default async function ProductDetailPage({
       teacherTitle: true;
       teacherDescription: true;
       thumbnailUrl: true;
+      imwebProdCode: true;
       price: true;
       originalPrice: true;
       rating: true;
@@ -492,6 +494,7 @@ export default async function ProductDetailPage({
             teacherTitle: true,
             teacherDescription: true,
             thumbnailUrl: true,
+            imwebProdCode: true,
             price: true,
             originalPrice: true,
             rating: true,
@@ -525,6 +528,7 @@ export default async function ProductDetailPage({
             teacherTitle: true,
             teacherDescription: true,
             thumbnailUrl: true,
+            imwebProdCode: true,
             price: true,
             originalPrice: true,
             rating: true,
@@ -818,6 +822,7 @@ export default async function ProductDetailPage({
     const teacherDescription = (dbTextbook as { teacherDescription?: string | null }).teacherDescription || "";
     const thumbnailUrl = (dbTextbook as { thumbnailUrl?: string | null }).thumbnailUrl || null;
     const composition = (dbTextbook as { composition?: string | null }).composition ?? null;
+    const isbn = (dbTextbook as { imwebProdCode?: string | null }).imwebProdCode ?? null;
 
     return (
       <div className="min-h-screen bg-[#161616] text-white">
@@ -837,6 +842,7 @@ export default async function ProductDetailPage({
                 teacherTitle,
                 teacherDescription,
                 thumbnailUrl,
+                isbn,
                 price,
                 originalPrice,
                 dailyPrice,

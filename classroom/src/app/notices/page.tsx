@@ -277,7 +277,7 @@ export default async function NoticesPage({
                       <article className="py-2">
                         <header className="border-b border-white/10 pb-6">
                           <div className="flex items-center gap-3 mb-4">
-                            <span className="inline-flex items-center rounded-full bg-white/[0.08] px-3 py-1 text-xs font-medium text-white/70">
+                            <span className="inline-flex items-center rounded-full bg-[#323232] px-3 py-1 text-xs font-medium text-white/70">
                               {displayBoardName(notice.category)}
                             </span>
                             {user?.isAdmin ? (
@@ -479,7 +479,7 @@ export default async function NoticesPage({
 
                       <header className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
                         <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center rounded-full bg-white/[0.08] px-2.5 py-1 text-[12px] font-medium text-white/75">
+                          <span className="inline-flex items-center rounded-full bg-[#323232] px-2.5 py-1 text-[12px] font-medium text-white/75">
                             {displayBoardName(notice.category)}
                           </span>
                           <span className="text-[12px] text-white/45">{fmtDate(notice.createdAt)}</span>

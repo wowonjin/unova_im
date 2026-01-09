@@ -38,6 +38,7 @@ export default async function MaterialsPage() {
     id: string;
     title: string;
     sizeBytes: number;
+    pageCount: number | null;
     entitlementDays: number;
     createdAt: Date;
     imwebProdCode: string | null;
@@ -49,19 +50,39 @@ export default async function MaterialsPage() {
   if (user.isLoggedIn && user.id) {
     // 관리자(admin@gmail.com 등)는 모든 교재를 열람/다운로드 가능
     if (user.isAdmin) {
-      textbooks = await prisma.textbook.findMany({
-        where: { NOT: [{ title: { contains: TEST_TITLE_MARKER } }] },
-        orderBy: [{ createdAt: "desc" }],
-        select: {
-          id: true,
-          title: true,
-          sizeBytes: true,
-          entitlementDays: true,
-          createdAt: true,
-          imwebProdCode: true,
-          thumbnailUrl: true,
-        },
-      });
+      try {
+        textbooks = await prisma.textbook.findMany({
+          where: { NOT: [{ title: { contains: TEST_TITLE_MARKER } }] },
+          orderBy: [{ createdAt: "desc" }],
+          select: {
+            id: true,
+            title: true,
+            sizeBytes: true,
+            pageCount: true,
+            entitlementDays: true,
+            createdAt: true,
+            imwebProdCode: true,
+            thumbnailUrl: true,
+          },
+        });
+      } catch (e) {
+        // 운영/개발 환경에서 마이그레이션 미적용(컬럼 누락)일 수 있음 → pageCount 없이 재조회
+        console.warn("[MaterialsPage] textbook.findMany failed (likely migration mismatch). Falling back without pageCount.");
+        const rows = await prisma.textbook.findMany({
+          where: { NOT: [{ title: { contains: TEST_TITLE_MARKER } }] },
+          orderBy: [{ createdAt: "desc" }],
+          select: {
+            id: true,
+            title: true,
+            sizeBytes: true,
+            entitlementDays: true,
+            createdAt: true,
+            imwebProdCode: true,
+            thumbnailUrl: true,
+          },
+        });
+        textbooks = rows.map((t) => ({ ...t, pageCount: null }));
+      }
     } else {
     // 현재 사용자의 활성 권한이 있는 교재 ID 가져오기
     const entitlements = await prisma.textbookEntitlement.findMany({
@@ -72,23 +93,46 @@ export default async function MaterialsPage() {
     entitlementEndAtByTextbookId = new Map(entitlements.map((e) => [e.textbookId, e.endAt]));
 
     if (entitledIds.length > 0) {
-      textbooks = await prisma.textbook.findMany({
-        where: { 
-          isPublished: true,
-          id: { in: entitledIds },
-          NOT: [{ title: { contains: TEST_TITLE_MARKER } }],
-        },
-        orderBy: [{ createdAt: "desc" }],
-        select: {
-          id: true,
-          title: true,
-          sizeBytes: true,
-          entitlementDays: true,
-          createdAt: true,
-          imwebProdCode: true,
-          thumbnailUrl: true,
-        },
-      });
+      try {
+        textbooks = await prisma.textbook.findMany({
+          where: { 
+            isPublished: true,
+            id: { in: entitledIds },
+            NOT: [{ title: { contains: TEST_TITLE_MARKER } }],
+          },
+          orderBy: [{ createdAt: "desc" }],
+          select: {
+            id: true,
+            title: true,
+            sizeBytes: true,
+            pageCount: true,
+            entitlementDays: true,
+            createdAt: true,
+            imwebProdCode: true,
+            thumbnailUrl: true,
+          },
+        });
+      } catch (e) {
+        console.warn("[MaterialsPage] textbook.findMany failed (likely migration mismatch). Falling back without pageCount.");
+        const rows = await prisma.textbook.findMany({
+          where: { 
+            isPublished: true,
+            id: { in: entitledIds },
+            NOT: [{ title: { contains: TEST_TITLE_MARKER } }],
+          },
+          orderBy: [{ createdAt: "desc" }],
+          select: {
+            id: true,
+            title: true,
+            sizeBytes: true,
+            entitlementDays: true,
+            createdAt: true,
+            imwebProdCode: true,
+            thumbnailUrl: true,
+          },
+        });
+        textbooks = rows.map((t) => ({ ...t, pageCount: null }));
+      }
     }
     }
   }
@@ -180,20 +224,16 @@ export default async function MaterialsPage() {
                 <div className="flex gap-4 p-4">
                   {/* PDF 썸네일 - A4 비율 (1:1.414) */}
                   <div className="relative w-[68px] shrink-0 overflow-hidden rounded-lg bg-white/[0.04]" style={{ aspectRatio: '1 / 1.414' }}>
-                    {t.thumbnailUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={t.thumbnailUrl}
-                        alt={`${t.title} 미리보기`}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <PdfFirstPageThumb
-                        src={`/api/textbooks/${t.id}/view`}
-                        title={t.title}
-                        className="h-full w-full object-cover"
-                      />
-                    )}
+                    {/* 
+                      NOTE:
+                      materials(내 교재) 목록의 미리보기 썸네일은 "상세 페이지 대표 이미지"가 아니라
+                      "파일(PDF) 첫 페이지"가 나와야 합니다. (예전 동작)
+                    */}
+                    <PdfFirstPageThumb
+                      src={`/api/textbooks/${t.id}/view`}
+                      title={t.title}
+                      className="h-full w-full object-cover"
+                    />
                     <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-white/10" />
                   </div>
                   {/* 정보 */}
@@ -219,7 +259,11 @@ export default async function MaterialsPage() {
                           >
                             auto_stories
                           </span>
-                          <PdfPageCount src={`/api/textbooks/${t.id}/view`} />
+                          {t.pageCount && t.pageCount > 0 ? (
+                            <span>{`${t.pageCount}쪽`}</span>
+                          ) : (
+                            <PdfPageCount src={`/api/textbooks/${t.id}/view`} />
+                          )}
                         </div>
                         <div className="flex items-center gap-1.5">
                           <span

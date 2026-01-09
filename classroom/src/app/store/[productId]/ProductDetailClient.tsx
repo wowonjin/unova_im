@@ -36,6 +36,8 @@ type ProductData = {
   teacherTitle: string;
   teacherDescription: string;
   thumbnailUrl?: string | null;
+  // 교재의 ISBN(관리자에서 입력한 값). 현재는 Textbook.imwebProdCode를 사용합니다.
+  isbn?: string | null;
   price: number;
   originalPrice: number | null;
   dailyPrice: number;
@@ -82,8 +84,8 @@ type AddonCourse = {
   reviewCount: number;
 };
 
-const courseTabs = ["강의소개", "커리큘럼", "강의후기", "환불정책"] as const;
-const textbookTabs = ["교재소개", "교재후기", "환불정책"] as const;
+const courseTabs = ["상세 페이지", "강의소개", "커리큘럼", "강의후기", "환불정책"] as const;
+const textbookTabs = ["상세 페이지", "교재소개", "교재후기", "환불정책"] as const;
 type TabKey = (typeof courseTabs)[number] | (typeof textbookTabs)[number];
 
 export default function ProductDetailClient({ 
@@ -95,7 +97,7 @@ export default function ProductDetailClient({
   relatedProducts?: RelatedProduct[];
   addonCourses?: AddonCourse[];
 }) {
-  const [activeTab, setActiveTab] = useState<TabKey>(product.type === "textbook" ? "교재소개" : "강의소개");
+  const [activeTab, setActiveTab] = useState<TabKey>("상세 페이지");
   const [expandedChapters, setExpandedChapters] = useState<string[]>([]);
   const [expandedReviews, setExpandedReviews] = useState<string[]>([]);
   const [isLiked, setIsLiked] = useState(false);
@@ -255,6 +257,27 @@ export default function ProductDetailClient({
       return t;
     })
     .filter((x) => typeof x === "string" && /^https?:\/\//i.test(x.trim()));
+
+  const previewDownloadUrl = (product.extraOptions ?? [])
+    .map((opt) => {
+      const name = (opt?.name ?? "").trim();
+      const value = (opt?.value ?? "").trim();
+      return { name, value };
+    })
+    .map(({ name, value }) => {
+      if (!name) return null;
+      const key = name.replace(/\s+/g, "").toLowerCase();
+      const isPreviewKey =
+        key === "맛보기파일url" ||
+        key === "맛보기url" ||
+        key === "미리보기파일url" ||
+        key === "맛보기파일";
+      if (!isPreviewKey) return null;
+      if (!value) return null;
+      if (value.toLowerCase().startsWith("gs://")) return `https://storage.googleapis.com/${value.slice(5)}`;
+      return value;
+    })
+    .find((v) => typeof v === "string" && /^https?:\/\//i.test(v)) || null;
   
   // 스크롤 감지 - 탭이 sticky 상태일 때 말풍선 숨김
   const [isTabSticky, setIsTabSticky] = useState(false);
@@ -617,6 +640,7 @@ export default function ProductDetailClient({
   const tabs = product.type === "textbook" ? textbookTabs : courseTabs;
   const reviewTabKey: TabKey = product.type === "textbook" ? "교재후기" : "강의후기";
   const introTabKey: TabKey = product.type === "textbook" ? "교재소개" : "강의소개";
+  const detailPageTabKey: TabKey = "상세 페이지";
 
   return (
     <>
@@ -639,19 +663,21 @@ export default function ProductDetailClient({
 
         {/* 상단 미디어: 강좌는 비메오, 교재는 이미지 */}
         {product.type === "textbook" ? (
-          <div className="flex justify-center items-center rounded-xl overflow-hidden bg-[#1a1a1c] mb-8 py-8">
-            {product.thumbnailUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img 
-                src={product.thumbnailUrl} 
-                alt={product.title} 
-                className="max-h-[400px] w-auto object-contain rounded-lg shadow-2xl"
-              />
-            ) : (
-              <div className="h-[400px] w-[280px] flex items-center justify-center bg-gradient-to-br from-white/[0.06] to-white/[0.02] rounded-lg">
-                <span className="text-white/40 text-sm">교재 이미지 준비중</span>
-              </div>
-            )}
+          <div className="mb-8">
+            <div className="w-full max-w-[520px] lg:max-w-none aspect-square lg:aspect-video rounded-xl overflow-hidden bg-[#1a1a1c]">
+              {product.thumbnailUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={product.thumbnailUrl}
+                  alt={product.title}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-white/[0.06] to-white/[0.02]">
+                  <span className="text-white/40 text-sm">교재 이미지 준비중</span>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <div className="aspect-video rounded-xl overflow-hidden bg-black mb-8 border border-white/10">
@@ -688,7 +714,14 @@ export default function ProductDetailClient({
           )}
 
           {/* 제목 */}
-          <h1 className="text-[28px] font-bold leading-tight mb-4">{product.title}</h1>
+          <div className="flex items-start gap-3 mb-4">
+            <h1 className="text-[28px] font-bold leading-tight">{product.title}</h1>
+            {product.type === "textbook" && (product.isbn ?? "").trim().length > 0 && (
+              <span className="mt-[6px] inline-flex items-center rounded-md bg-white/10 px-2 py-1 text-[12px] font-semibold text-white/80">
+                ISBN {String(product.isbn).trim()}
+              </span>
+            )}
+          </div>
 
           {/* 평점 및 후기 */}
           <div className="flex items-center gap-3 mb-4">
@@ -715,11 +748,6 @@ export default function ProductDetailClient({
 
           {/* 강사 정보 */}
           <div className="flex items-center gap-3 mb-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${product.subjectBg}`}>
-              <span className={`text-sm font-bold ${product.subjectColor}`}>
-                {product.teacher.charAt(0)}
-              </span>
-            </div>
             <div>
               <p className="text-[15px] font-medium flex items-center gap-1.5">
                 {product.teacher} 선생님
@@ -792,6 +820,29 @@ export default function ProductDetailClient({
 
         {/* 탭 콘텐츠 영역 */}
         <div className="py-8">
+          {/* 상세 페이지 (강의/교재 공통) */}
+          {activeTab === detailPageTabKey && (
+            <section>
+              {benefitImageUrls.length > 0 ? (
+                <div className="space-y-3">
+                  {benefitImageUrls.map((url, idx) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={`${product.id}-benefit-img-${idx}`}
+                      src={url}
+                      alt=""
+                      className="w-full rounded-xl bg-white/[0.02]"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-8 text-center">
+                  <p className="text-[14px] text-white/60">상세 페이지 이미지가 준비되지 않았습니다.</p>
+                </div>
+              )}
+            </section>
+          )}
+
           {/* 소개(강좌/교재) */}
           {activeTab === introTabKey && (
             <section>
@@ -807,6 +858,26 @@ export default function ProductDetailClient({
                         {product.studyPeriod.regular + product.studyPeriod.review}일
                       </td>
                     </tr>
+                    {product.type === "textbook" && previewDownloadUrl && (
+                      <tr className="border-b border-white/10">
+                        <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium whitespace-nowrap">
+                          맛보기 파일
+                        </td>
+                        <td className="px-5 py-4 text-white/90">
+                          <a
+                            href={previewDownloadUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-[13px] font-semibold text-white/80 hover:bg-white/10"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                              download
+                            </span>
+                            다운로드
+                          </a>
+                        </td>
+                      </tr>
+                    )}
                     <tr>
                       <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">구성</td>
                       <td className="px-5 py-4 text-white/90">
@@ -815,6 +886,8 @@ export default function ProductDetailClient({
                     </tr>
                     {product.type === "textbook" &&
                       (product.extraOptions ?? []).map((opt, i) => (
+                        // NOTE: 맛보기 파일 URL은 전용 row로 노출하므로 중복 표시는 막습니다.
+                        (opt?.name ?? "").replace(/\s+/g, "").toLowerCase() === "맛보기파일url" ? null :
                         <tr key={`${opt.name}-${i}`} className="border-t border-white/10">
                           <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">{opt.name}</td>
                           <td className="px-5 py-4 text-white/90 whitespace-pre-line">{opt.value}</td>
@@ -823,20 +896,6 @@ export default function ProductDetailClient({
                   </tbody>
                 </table>
               </div>
-
-              {benefitImageUrls.length > 0 ? (
-                <div className="mb-8 space-y-3">
-                  {benefitImageUrls.map((url, idx) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        key={`${product.id}-benefit-img-${idx}`}
-                        src={url}
-                        alt=""
-                        className="w-full rounded-xl bg-white/[0.02]"
-                      />
-                    ))}
-                </div>
-              ) : null}
 
               {/* 강의 설명 */}
               {product.type !== "course" &&
@@ -1381,7 +1440,14 @@ export default function ProductDetailClient({
             </div>
 
             {/* 제목 */}
-            <h3 className="text-[18px] font-bold leading-snug mb-3">{product.title}</h3>
+            <div className="mb-3 flex items-start gap-2">
+              <h3 className="text-[18px] font-bold leading-snug">{product.title}</h3>
+              {product.type === "textbook" && (product.isbn ?? "").trim().length > 0 && (
+                <span className="mt-[4px] inline-flex items-center rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white/80">
+                  ISBN {String(product.isbn).trim()}
+                </span>
+              )}
+            </div>
 
             {/* 평점 */}
             <div className="flex items-center gap-2 mb-4">

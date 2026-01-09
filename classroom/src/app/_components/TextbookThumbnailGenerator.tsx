@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { generatePdfFirstPageThumbDataUrl } from "@/app/_components/pdfFirstPageThumbCache";
+import { useRouter } from "next/navigation";
 
 type Props = {
   textbookId: string;
@@ -10,6 +11,7 @@ type Props = {
 };
 
 export default function TextbookThumbnailGenerator({ textbookId, hasThumbnail, autoGenerate = true }: Props) {
+  const router = useRouter();
   const [status, setStatus] = useState<"idle" | "generating" | "saving" | "done" | "error">(
     hasThumbnail ? "done" : "idle"
   );
@@ -42,12 +44,13 @@ export default function TextbookThumbnailGenerator({ textbookId, hasThumbnail, a
       }
 
       setStatus("done");
+      router.refresh();
     } catch (e) {
       console.error("[TextbookThumbnailGenerator]", e);
       setErrorMsg(String((e as Error)?.message || e));
       setStatus("error");
     }
-  }, [textbookId]);
+  }, [textbookId, router]);
 
   // 자동 생성: 썸네일이 없고 autoGenerate가 true일 때
   useEffect(() => {

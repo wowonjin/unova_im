@@ -9,6 +9,9 @@ const Schema = z.object({
   textbookId: z.string().min(1),
   title: z.string().min(1).optional(),
   teacherName: z.string().optional().transform((v) => v || null),
+  // Admin UI에서 "ISBN"으로 입력받지만, 현재 DB 스키마에는 ISBN 전용 컬럼이 없어
+  // Textbook.imwebProdCode에 저장해서 사용합니다.
+  isbn: z.string().optional().transform((v) => (typeof v === "string" ? v.trim() : "") || null),
   subjectName: z.string().optional().transform((v) => v || null),
   entitlementDays: z
     .string()
@@ -42,6 +45,7 @@ export async function POST(req: Request) {
     textbookId: raw.get("textbookId"),
     title: raw.get("title"),
     teacherName: raw.get("teacherName"),
+    isbn: raw.get("isbn"),
     subjectName: raw.get("subjectName"),
     entitlementDays: raw.get("entitlementDays"),
     composition: raw.get("composition"),
@@ -54,7 +58,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "VALIDATION_ERROR" }, { status: 400 });
   }
 
-  const { textbookId, title, teacherName, subjectName, entitlementDays, composition } = parsed.data;
+  const { textbookId, title, teacherName, isbn, subjectName, entitlementDays, composition } = parsed.data;
 
   // 소유권 확인
   const existing = await prisma.textbook.findUnique({
@@ -75,6 +79,7 @@ export async function POST(req: Request) {
       data: {
         ...(title !== undefined && { title }),
         ...(teacherName !== undefined && { teacherName }),
+        ...(isbn !== undefined && { imwebProdCode: isbn }),
         ...(subjectName !== undefined && { subjectName }),
         ...(entitlementDays !== undefined && { entitlementDays }),
         ...(composition !== undefined && { composition }),
@@ -88,6 +93,7 @@ export async function POST(req: Request) {
       data: {
         ...(title !== undefined && { title }),
         ...(teacherName !== undefined && { teacherName }),
+        ...(isbn !== undefined && { imwebProdCode: isbn }),
         ...(subjectName !== undefined && { subjectName }),
         ...(entitlementDays !== undefined && { entitlementDays }),
       } as never,

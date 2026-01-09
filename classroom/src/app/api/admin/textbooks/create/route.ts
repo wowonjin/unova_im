@@ -22,19 +22,45 @@ function guessFileNameFromUrl(url: string) {
   }
 }
 
-async function getFileSizeFromUrl(url: string): Promise<number> {
+async function getUrlHeadInfo(url: string): Promise<{ sizeBytes: number; contentType: string | null }> {
   try {
     const response = await fetch(url, { method: "HEAD" });
-    if (response.ok) {
-      const contentLength = response.headers.get("content-length");
-      if (contentLength) {
-        return parseInt(contentLength, 10);
+    if (!response.ok) return { sizeBytes: 0, contentType: null };
+    const contentLength = response.headers.get("content-length");
+    const contentType = response.headers.get("content-type");
+    return {
+      sizeBytes: contentLength ? parseInt(contentLength, 10) : 0,
+      contentType: contentType || null,
+    };
+  } catch (e) {
+    console.error("[getUrlHeadInfo] Failed to read HEAD:", e);
+    return { sizeBytes: 0, contentType: null };
+  }
+}
+
+async function getPdfPageCountFromUrl(url: string): Promise<number | null> {
+  try {
+    const mod: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const lib: any = mod?.default ?? mod;
+    if (!lib?.getDocument) return null;
+
+    // Node 환경에서는 worker 없이 처리 (페이지 수만 필요)
+    const task = lib.getDocument({ url, disableWorker: true });
+    try {
+      const pdf = await task.promise;
+      const pages = Number(pdf?.numPages ?? 0);
+      return Number.isFinite(pages) && pages > 0 ? pages : null;
+    } finally {
+      try {
+        task.destroy?.();
+      } catch {
+        // ignore
       }
     }
   } catch (e) {
-    console.error("[getFileSizeFromUrl] Failed to get file size:", e);
+    console.error("[getPdfPageCountFromUrl] Failed to get PDF page count:", e);
+    return null;
   }
-  return 0;
 }
 
 async function createTextbookSafe(data: Record<string, unknown>) {
@@ -137,10 +163,15 @@ export async function POST(req: Request) {
     const inferredName = guessFileNameFromUrl(url);
     const title = typeof titleRaw === "string" && titleRaw.trim().length > 0 ? titleRaw.trim() : inferredName || "교재";
     const originalName = inferredName || title;
-    const mimeType = originalName.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/octet-stream";
+    const guessedMimeType = originalName.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/octet-stream";
 
-    // URL에서 파일 크기 가져오기
-    const sizeBytes = await getFileSizeFromUrl(url);
+    // URL HEAD에서 파일 크기/콘텐츠 타입 가져오기 (GCS URL이 .pdf로 끝나지 않는 케이스 대응)
+    const head = await getUrlHeadInfo(url);
+    const headType = head.contentType?.toLowerCase() ?? "";
+    const isPdfCandidate = headType.includes("application/pdf") || guessedMimeType === "application/pdf" || /\.pdf(\?|$)/i.test(url);
+    const mimeType = headType.includes("application/pdf") ? "application/pdf" : head.contentType || (isPdfCandidate ? "application/pdf" : guessedMimeType);
+    const sizeBytes = head.sizeBytes;
+    const pageCount = isPdfCandidate ? await getPdfPageCountFromUrl(url) : null;
 
     await createTextbookSafe({
       ownerId: teacher.id,
@@ -153,6 +184,7 @@ export async function POST(req: Request) {
       originalName,
       mimeType,
       sizeBytes,
+      pageCount,
       isPublished,
       entitlementDays,
       imwebProdCode,

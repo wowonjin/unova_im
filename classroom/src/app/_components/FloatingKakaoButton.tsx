@@ -1,13 +1,24 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 export default function FloatingKakaoButton() {
   const href = "https://pf.kakao.com/_xinPAn/chat";
+
+  // SSR/CSR 첫 렌더 결과를 동일하게 맞추기 위해(하이드레이션 mismatch 방지),
+  // 마운트 이후에만 버튼을 렌더링합니다.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
 
   return (
     <a
       href={href}
       target="_blank"
-      rel="noreferrer"
+      rel="noopener noreferrer"
       aria-label="카카오톡 질문방으로 이동"
       className="fixed bottom-4 right-4 z-[60] inline-flex h-12 items-center gap-1 rounded-full bg-[#FEE500] px-3 shadow-lg shadow-black/30 ring-1 ring-black/10 hover:brightness-95 active:brightness-90 md:bottom-5 md:right-5 md:h-14 md:px-4"
     >

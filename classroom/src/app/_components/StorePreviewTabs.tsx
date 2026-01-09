@@ -65,105 +65,126 @@ export default function StorePreviewTabs({
 
   return (
     <section className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
-      {/* 모바일: 세그먼트(교재/강의) + 가로 스크롤 과목 칩 */}
-      <div className="md:hidden">
-        {/* 타입 선택: 탭 메뉴(과목 탭과 동일한 스타일) */}
-        <div className="-mx-4 px-4">
-          <div className="flex gap-6 border-b border-white/10 pb-2" role="tablist" aria-label="교재/강의 선택">
-            {types.map((t) => {
-              const active = selectedType === t;
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => {
-                    setSelectedType(t);
-                    setSelectedSubject("전체");
-                  }}
-                  role="tab"
-                  aria-selected={active}
-                  className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold transition-colors ${
-                    active ? "text-white" : "text-white/55"
-                  }`}
-                >
-                  {t}
-                  {active ? (
-                    <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      {/* 상단 탭(교재/강의 + 과목): 스크롤 시에도 사라지지 않도록 sticky 고정 */}
+      <div className="sticky top-[70px] z-40 -mx-4 px-4 bg-[#161616]/85 backdrop-blur-xl">
+        <div className="py-3 md:py-4">
+          {/* 모바일: 세그먼트(교재/강의) + 가로 스크롤 과목 칩 */}
+          <div className="md:hidden">
+            {/* 타입 선택: 탭 메뉴(과목 탭과 동일한 스타일) */}
+            <div>
+              <div className="flex gap-6 border-b border-white/10 pb-2" role="tablist" aria-label="교재/강의 선택">
+                {types.map((t) => {
+                  const active = selectedType === t;
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => {
+                        setSelectedType(t);
+                        setSelectedSubject("전체");
+                      }}
+                      role="tab"
+                      aria-selected={active}
+                      className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold transition-colors ${
+                        active ? "text-white" : "text-white/55"
+                      }`}
+                    >
+                      {t}
+                      {active ? (
+                        <span
+                          className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white"
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-        {/* 과목 탭: 가로 스크롤 탭바(underline) */}
-        {subjects.length > 1 ? (
-          <div className="mt-4 -mx-4 px-4">
-            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
-              {subjects.map((subject) => {
-                const active = selectedSubject === subject;
+            {/* 과목 탭: 가로 스크롤 탭바(underline) */}
+            {subjects.length > 1 ? (
+              <div className="mt-4">
+                <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+                  {subjects.map((subject) => {
+                    const active = selectedSubject === subject;
+                    return (
+                      <button
+                        key={subject}
+                        type="button"
+                        onClick={() => setSelectedSubject(subject)}
+                        role="tab"
+                        aria-selected={active}
+                        className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold transition-colors ${
+                          active ? "text-white" : "text-white/55"
+                        }`}
+                      >
+                        {subject}
+                        {active ? (
+                          <span
+                            className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          {/* 데스크탑: 기존 버튼 레이아웃 유지 */}
+          <div className="hidden md:flex items-center justify-between gap-3">
+            {/* 과목 필터 */}
+            {subjects.length > 1 ? (
+              <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+                {subjects.map((subject) => {
+                  const active = selectedSubject === subject;
+                  return (
+                    <button
+                      key={subject}
+                      type="button"
+                      onClick={() => setSelectedSubject(subject)}
+                      role="tab"
+                      aria-selected={active}
+                      className={`text-[13px] font-medium transition-colors ${
+                        active ? "px-4 py-2 rounded-full bg-white text-black" : "px-2 py-2 text-white/55 hover:text-white"
+                      }`}
+                    >
+                      {subject}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex-1" />
+            )}
+
+            {/* 타입(교재/강의) 탭 */}
+            <div className="flex shrink-0 flex-wrap justify-end gap-4" role="tablist" aria-label="교재/강의 선택">
+              {types.map((t) => {
+                const active = selectedType === t;
                 return (
                   <button
-                    key={subject}
+                    key={t}
                     type="button"
-                    onClick={() => setSelectedSubject(subject)}
+                    onClick={() => {
+                      setSelectedType(t);
+                      setSelectedSubject("전체");
+                    }}
                     role="tab"
                     aria-selected={active}
-                    className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold transition-colors ${
-                      active ? "text-white" : "text-white/55"
+                    className={`text-[13px] font-medium transition-colors ${
+                      active ? "px-4 py-2 rounded-full bg-white text-black" : "px-2 py-2 text-white/55 hover:text-white"
                     }`}
                   >
-                    {subject}
-                    {active ? (
-                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                    ) : null}
+                    {t}
                   </button>
                 );
               })}
             </div>
           </div>
-        ) : null}
-      </div>
-
-      {/* 데스크탑: 기존 버튼 레이아웃 유지 */}
-      <div className="hidden md:flex items-center justify-between gap-3">
-        {/* 과목 필터 */}
-        {subjects.length > 1 ? (
-          <div className="flex min-w-0 flex-1 flex-wrap gap-2">
-            {subjects.map((subject) => (
-              <button
-                key={subject}
-                type="button"
-                onClick={() => setSelectedSubject(subject)}
-                className={`px-4 py-2 rounded-full text-[13px] font-medium transition-all ${
-                  selectedSubject === subject ? "bg-white text-black" : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"
-                }`}
-              >
-                {subject}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="flex-1" />
-        )}
-
-        {/* 타입(교재/강의) 탭 */}
-        <div className="flex shrink-0 flex-wrap justify-end gap-2">
-          {types.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => {
-                setSelectedType(t);
-                setSelectedSubject("전체");
-              }}
-              className={`px-4 py-2 rounded-full text-[13px] font-medium transition-all ${
-                selectedType === t ? "bg-white text-black" : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -174,7 +195,7 @@ export default function StorePreviewTabs({
             {filteredProducts.slice(0, 12).map((product) => (
               <Link key={product.id} href={`/store/${product.id}`} className="group">
                 <div
-                  className={`relative aspect-video overflow-hidden transition-all rounded-2xl ${
+                  className={`relative aspect-square overflow-hidden transition-all rounded-2xl ${
                     product.type === "textbook"
                       ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02]"
                       : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
@@ -196,33 +217,13 @@ export default function StorePreviewTabs({
                   ) : null}
 
                   {product.thumbnailUrl ? (
-                    product.type === "textbook" ? (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="relative h-[85%] w-auto">
-                          <div
-                            className="absolute inset-0 translate-x-2 translate-y-2 bg-black/40 blur-md rounded-sm"
-                            style={{ transform: "translate(6px, 6px) scale(0.98)" }}
-                          />
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={product.thumbnailUrl}
-                            alt={product.title}
-                            className="relative h-full w-auto object-contain"
-                            style={{
-                              filter:
-                                "drop-shadow(0 4px 8px rgba(0,0,0,0.4)) drop-shadow(0 10px 20px rgba(0,0,0,0.25))",
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={product.thumbnailUrl}
-                        alt={product.title}
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                    )
+                    // 교재/강의: 이미지 전체 커버(여백/그림자 레이어 제거)
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={product.thumbnailUrl}
+                      alt={product.title}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div

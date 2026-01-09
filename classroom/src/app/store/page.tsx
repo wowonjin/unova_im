@@ -28,7 +28,6 @@ type Product = {
 };
 
 // 화면 표시용 라벨
-const types = ["교재", "강의"];
 
 function formatPrice(price: number): string {
   return price.toLocaleString("ko-KR") + "원";
@@ -259,32 +258,13 @@ export default async function StorePage({
                       <Link
                         key={subject}
                         href={`${selectedType === "교재" ? "/books" : "/lectures"}?subject=${encodeURIComponent(subject)}`}
-                        className={`px-4 py-2 rounded-full text-[13px] font-medium transition-all ${
+                        className={`text-[13px] font-medium transition-colors ${
                           selectedSubject === subject
-                            ? "bg-white text-black"
-                            : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"
+                            ? "px-4 py-2 rounded-full bg-white text-black"
+                            : "px-2 py-2 text-white/55 hover:text-white"
                         }`}
                       >
                         {subject}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 유형 필터 */}
-                <div className="flex items-center gap-2 md:ml-auto">
-                  <div className="flex gap-2">
-                    {types.map((type) => (
-                      <Link
-                        key={type}
-                        href={`${type === "교재" ? "/books" : "/lectures"}?subject=${encodeURIComponent(selectedSubject)}`}
-                        className={`px-4 py-2 rounded-full text-[13px] font-medium transition-all ${
-                          selectedType === type
-                            ? "bg-white text-black"
-                            : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"
-                        }`}
-                      >
-                        {type}
                       </Link>
                     ))}
                   </div>
@@ -309,7 +289,7 @@ export default async function StorePage({
                   href={`/store/${product.id}`}
                   className="group"
                 >
-                  <div className={`relative aspect-video overflow-hidden transition-all rounded-2xl ${
+                  <div className={`relative aspect-square overflow-hidden transition-all rounded-2xl ${
                     product.type === "textbook" 
                       ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02]" 
                       : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
@@ -331,33 +311,12 @@ export default async function StorePage({
 
                     {/* 상품 이미지 영역 */}
                     {product.thumbnailUrl ? (
-                      product.type === "textbook" ? (
-                        // 교재: 이미지를 가운데 정렬, 입체감 있는 그림자
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="relative h-[85%] w-auto">
-                            {/* 뒤쪽 그림자 레이어 */}
-                            <div 
-                              className="absolute inset-0 translate-x-2 translate-y-2 bg-black/40 blur-md rounded-sm"
-                              style={{ transform: "translate(6px, 6px) scale(0.98)" }}
-                            />
-                            <img
-                              src={product.thumbnailUrl}
-                              alt={product.title}
-                              className="relative h-full w-auto object-contain"
-                              style={{ 
-                                filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.4)) drop-shadow(0 10px 20px rgba(0,0,0,0.25))",
-                              }}
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        // 강좌: 이미지를 전체 커버
-                        <img
-                          src={product.thumbnailUrl}
-                          alt={product.title}
-                          className="absolute inset-0 w-full h-full object-cover"
-                        />
-                      )
+                      // 교재/강의: 이미지 전체 커버(여백/그림자 레이어 제거)
+                      <img
+                        src={product.thumbnailUrl}
+                        alt={product.title}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div

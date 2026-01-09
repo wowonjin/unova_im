@@ -379,7 +379,11 @@ export default function LandingHeader({
                     style={{ minWidth: "168px" }}
                   >
                     {/* 서브 메뉴 컨테이너: 원래처럼 흰 배경 */}
-                    <div className="animate-[fadeIn_150ms_ease-out] rounded-xl border border-black/10 bg-white p-2 shadow-lg">
+                    <div
+                      className={`animate-[fadeIn_150ms_ease-out] rounded-xl p-2 shadow-lg ${
+                        isLight ? "border border-black/10 bg-white" : "border border-white/10 bg-[#1C1C1C]"
+                      }`}
+                    >
                       {item.subItems.map((subItem, idx) => (
                         <Link
                           key={subItem.label}
@@ -387,9 +391,13 @@ export default function LandingHeader({
                           target={subItem.external ? "_blank" : undefined}
                           rel={subItem.external ? "noopener noreferrer" : undefined}
                           className={`flex items-center rounded-lg px-3 py-2 text-[14px] transition-colors ${
-                            isActiveHref(subItem.href)
-                              ? "bg-[rgba(94,91,92,0.2)] text-black"
-                              : "text-black/80 hover:bg-[rgba(94,91,92,0.2)]"
+                            isLight
+                              ? isActiveHref(subItem.href)
+                                ? "bg-[rgba(94,91,92,0.2)] text-black"
+                                : "text-black/80 hover:bg-[rgba(94,91,92,0.2)]"
+                              : isActiveHref(subItem.href)
+                                ? "bg-white/[0.08] text-white"
+                                : "text-white/80 hover:bg-white/[0.06]"
                           }`}
                         >
                           <span>{subItem.label}</span>
@@ -458,23 +466,33 @@ export default function LandingHeader({
                     </span>
                   </button>
                   {/* 드롭다운 메뉴 */}
-                  <div className="absolute right-0 top-full mt-2 w-44 bg-[#FFF] rounded-xl shadow-lg border border-black/[0.08] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[1300] py-1.5">
+                  <div
+                    className={`absolute right-0 top-full mt-2 w-44 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[1300] py-1.5 ${
+                      isLight ? "bg-white border border-black/[0.08]" : "bg-[#1C1C1C] border border-white/10"
+                    }`}
+                  >
                     <Link
-                      href="/orders"
-                      className="flex items-center px-4 py-2.5 text-[14px] text-black/80 hover:bg-[rgba(94,91,92,0.2)] transition-colors"
+                      href="/mypage/orders"
+                      className={`flex items-center px-4 py-2.5 text-[14px] transition-colors ${
+                        isLight ? "text-black/80 hover:bg-[rgba(94,91,92,0.2)]" : "text-white/80 hover:bg-white/[0.06]"
+                      }`}
                     >
-                      구매내역
+                      주문내역
                     </Link>
                     <Link
-                      href="/mypage"
-                      className="flex items-center px-4 py-2.5 text-[14px] text-black/80 hover:bg-[rgba(94,91,92,0.2)] transition-colors"
+                      href="/mypage/edit"
+                      className={`flex items-center px-4 py-2.5 text-[14px] transition-colors ${
+                        isLight ? "text-black/80 hover:bg-[rgba(94,91,92,0.2)]" : "text-white/80 hover:bg-white/[0.06]"
+                      }`}
                     >
-                      마이페이지
+                      정보 수정
                     </Link>
-                    <div className="my-2 border-t border-black/[0.06]" />
+                    <div className={`my-2 border-t ${isLight ? "border-black/[0.06]" : "border-white/10"}`} />
                     <a
                       href="/api/auth/logout"
-                      className="flex items-center px-4 py-2.5 text-[14px] text-rose-600 hover:bg-[rgba(94,91,92,0.2)] transition-colors"
+                      className={`flex items-center px-4 py-2.5 text-[14px] transition-colors ${
+                        isLight ? "text-rose-600 hover:bg-[rgba(94,91,92,0.2)]" : "text-rose-300 hover:bg-white/[0.06]"
+                      }`}
                     >
                       로그아웃
                     </a>
@@ -633,31 +651,41 @@ export default function LandingHeader({
                   <div className="h-10" />
                 ) : user ? (
                   <div className="space-y-2">
-                    {/* 프로필 클릭 -> 위에 메뉴(구매내역/마이페이지/로그아웃) 토글 */}
+                    {/* 프로필 클릭 -> 위에 메뉴(주문내역/정보 수정/로그아웃) 토글 */}
                     <div
                       className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${
                         mobileProfileExpanded ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
                       }`}
                     >
-                      <div className="mb-2 rounded-xl border border-black/10 bg-white p-2 shadow-lg">
+                      <div
+                        className={`mb-2 rounded-xl p-2 shadow-lg ${
+                          isLight ? "border border-black/10 bg-white" : "border border-white/10 bg-[#1C1C1C]"
+                        }`}
+                      >
                         <div className="grid grid-cols-2 gap-2">
                           <Link
-                            href="/orders"
+                            href="/mypage/orders"
                             onClick={closeMenu}
-                            className="rounded-lg px-3 py-2 text-center text-sm text-black/80 hover:bg-[rgba(94,91,92,0.2)]"
+                            className={`rounded-lg px-3 py-2 text-center text-sm transition-colors ${
+                              isLight ? "text-black/80 hover:bg-[rgba(94,91,92,0.2)]" : "text-white/80 hover:bg-white/[0.06]"
+                            }`}
                           >
-                            구매내역
+                            주문내역
                           </Link>
                           <Link
-                            href="/mypage"
+                            href="/mypage/edit"
                             onClick={closeMenu}
-                            className="rounded-lg px-3 py-2 text-center text-sm text-black/80 hover:bg-[rgba(94,91,92,0.2)]"
+                            className={`rounded-lg px-3 py-2 text-center text-sm transition-colors ${
+                              isLight ? "text-black/80 hover:bg-[rgba(94,91,92,0.2)]" : "text-white/80 hover:bg-white/[0.06]"
+                            }`}
                           >
-                            마이페이지
+                            정보 수정
                           </Link>
                           <a
                             href="/api/auth/logout"
-                            className="col-span-2 rounded-lg px-3 py-2 text-center text-sm text-rose-600 hover:bg-[rgba(94,91,92,0.2)]"
+                            className={`col-span-2 rounded-lg px-3 py-2 text-center text-sm transition-colors ${
+                              isLight ? "text-rose-600 hover:bg-[rgba(94,91,92,0.2)]" : "text-rose-300 hover:bg-white/[0.06]"
+                            }`}
                           >
                             로그아웃
                           </a>

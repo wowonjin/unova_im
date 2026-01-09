@@ -107,7 +107,15 @@ export async function POST(req: Request) {
     },
   });
 
-  return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin/notices", req.url));
+  // fetch()로 호출되면 리다이렉트(307/308)를 따라가며 POST를 재전송할 수 있어(=페이지 라우트에 POST → 405)
+  // API 호출은 JSON으로 응답하고, 브라우저에서 직접 접근/폼 제출(HTML)일 때만 303으로 리다이렉트합니다.
+  const accept = req.headers.get("accept") || "";
+  const referer = req.headers.get("referer");
+  if (accept.includes("text/html")) {
+    return NextResponse.redirect(new URL(referer || "/notices", req.url), { status: 303 });
+  }
+
+  return NextResponse.json({ ok: true, slug });
 }
 
 

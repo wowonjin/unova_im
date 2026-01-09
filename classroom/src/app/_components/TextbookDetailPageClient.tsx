@@ -11,6 +11,65 @@ function normalizeGcsUrl(s: string): string {
   return t;
 }
 
+function parsePreviewUrlFromExtraOptionsText(extraOptionsText: string): string {
+  const lines = (extraOptionsText ?? "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  for (const line of lines) {
+    const m = line.match(/^(.+?)\s*:\s*(.+)$/);
+    if (!m) continue;
+    const key = m[1].replace(/\s+/g, "").toLowerCase();
+    const value = normalizeGcsUrl(m[2]);
+    if (!value) continue;
+    if (
+      key === "맛보기파일url" ||
+      key === "맛보기url" ||
+      key === "미리보기파일url" ||
+      key === "맛보기파일"
+    ) {
+      return value;
+    }
+  }
+  return "";
+}
+
+function upsertPreviewUrlLine(extraOptionsText: string, previewUrl: string): string {
+  const normalizedUrl = normalizeGcsUrl(previewUrl);
+  const lines = (extraOptionsText ?? "").split("\n");
+  const next: string[] = [];
+  let replaced = false;
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    const m = line.match(/^(.+?)\s*:\s*(.*)$/);
+    if (!m) {
+      next.push(raw);
+      continue;
+    }
+    const key = m[1].replace(/\s+/g, "").toLowerCase();
+    const isPreviewKey =
+      key === "맛보기파일url" || key === "맛보기url" || key === "미리보기파일url" || key === "맛보기파일";
+    if (!isPreviewKey) {
+      next.push(raw);
+      continue;
+    }
+
+    // previewUrl이 비어있으면 기존 라인은 제거(=skip)
+    if (!normalizedUrl) continue;
+    next.push(`맛보기 파일 URL: ${normalizedUrl}`);
+    replaced = true;
+  }
+
+  if (normalizedUrl && !replaced) {
+    if (next.length > 0) next.push("");
+    next.push(`맛보기 파일 URL: ${normalizedUrl}`);
+  }
+
+  return next.join("\n").trim();
+}
+
 type Props = {
   textbookId: string;
   initial: {
@@ -40,6 +99,9 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
   const [extraOptions, setExtraOptions] = useState(
     (initial.extraOptions ?? []).map((o) => `${o.name}: ${o.value}`).join("\n")
   );
+  const [previewFileUrl, setPreviewFileUrl] = useState(() => parsePreviewUrlFromExtraOptionsText(
+    (initial.extraOptions ?? []).map((o) => `${o.name}: ${o.value}`).join("\n")
+  ));
   const [description, setDescription] = useState(initial.description || "");
   const [relatedTextbookIds, setRelatedTextbookIds] = useState<string[]>(initial.relatedTextbookIds ?? []);
   
@@ -189,6 +251,24 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
         <p className="mt-1 text-xs text-white/40">교재 구매하기 리스트에서 교재 이미지 좌측 상단 배지로 표시됩니다.</p>
       </div>
 
+      {/* 맛보기 파일 URL */}
+      <div>
+        <label className={labelClass}>맛보기 파일 URL</label>
+        <input
+          type="text"
+          value={previewFileUrl}
+          onChange={(e) => {
+            const v = e.target.value;
+            setPreviewFileUrl(v);
+            // extraOptions에 자동 반영(저장은 기존 update-detail 루트에서 함께 처리)
+            setExtraOptions((prev) => upsertPreviewUrlLine(prev, v));
+          }}
+          placeholder="예: https://storage.googleapis.com/버킷/preview.pdf 또는 gs://bucket/path"
+          className={inputClass}
+        />
+        <p className="mt-1 text-xs text-white/40">스토어 교재 상세의 “교재소개” 표에 다운로드 버튼으로 노출됩니다.</p>
+      </div>
+
       {/* 수강 혜택 */}
       <div>
         <label className={labelClass}>수강 혜택 (상세페이지 이미지 URL)</label>
@@ -217,6 +297,24 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
             ))}
           </div>
         )}
+      </div>
+
+      {/* 추가 옵션 */}
+      <div>
+        <label className={labelClass}>추가 옵션</label>
+        <textarea
+          value={extraOptions}
+          onChange={(e) => {
+            const next = e.target.value;
+            setExtraOptions(next);
+            // 사용자가 직접 텍스트를 수정해도 맛보기 URL 입력 필드가 동기화되도록
+            setPreviewFileUrl(parsePreviewUrlFromExtraOptionsText(next));
+          }}
+          placeholder={"예: 구성: PDF+해설\n맛보기 파일 URL: https://.../preview.pdf"}
+          rows={5}
+          className={inputClass}
+        />
+        <p className="mt-1 text-xs text-white/40">줄바꿈으로 구분하고, “이름: 값” 형태로 입력하세요.</p>
       </div>
     </div>
   );

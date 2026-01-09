@@ -4,10 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { Badge, Button, Card, CardBody, CardHeader, HelpTip, PageHeader, Tabs } from "@/app/_components/ui";
 import TextbookPublishedSelect from "@/app/_components/TextbookPublishedSelect";
 import TextbookThumbnailGenerator from "@/app/_components/TextbookThumbnailGenerator";
+import TextbookThumbnailUploadClient from "@/app/_components/TextbookThumbnailUploadClient";
 import TextbookBasicInfoClient from "@/app/_components/TextbookBasicInfoClient";
 import TextbookDetailPageClient from "@/app/_components/TextbookDetailPageClient";
 import TextbookAddonsClient from "@/app/_components/TextbookAddonsClient";
+import TextbookStoredPathClient from "@/app/_components/TextbookStoredPathClient";
 import ConfirmDeleteButton, { ConfirmDeleteIconButton } from "@/app/_components/ConfirmDeleteButton";
+import PdfPageCount from "@/app/_components/PdfPageCount";
 
 function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
@@ -41,10 +44,13 @@ export default async function AdminTextbookPage({
             title: string;
             subjectName: string | null;
             originalName: string;
+            storedPath: string;
             sizeBytes: number;
+            pageCount?: number | null;
             createdAt: Date;
             isPublished: boolean;
             thumbnailUrl: string | null;
+            imwebProdCode?: string | null;
             // detail tab fields (may be missing if old DB/migration mismatch)
             price?: number | null;
             originalPrice?: number | null;
@@ -65,10 +71,13 @@ export default async function AdminTextbookPage({
             title: string;
             subjectName: string | null;
             originalName: string;
+            storedPath: string;
             sizeBytes: number;
+            pageCount?: number | null;
             createdAt: Date;
             isPublished: boolean;
             thumbnailUrl: string | null;
+            imwebProdCode?: string | null;
             // detail tab fields (optional)
             price?: number | null;
             originalPrice?: number | null;
@@ -104,10 +113,13 @@ export default async function AdminTextbookPage({
         title: true,
         subjectName: true,
         originalName: true,
+        storedPath: true,
         sizeBytes: true,
+        pageCount: true,
         createdAt: true,
         isPublished: true,
         thumbnailUrl: true,
+        imwebProdCode: true,
         composition: true,
         textbookType: true,
         // detail tab fields
@@ -150,10 +162,12 @@ export default async function AdminTextbookPage({
         title: true,
         subjectName: true,
         originalName: true,
+        storedPath: true,
         sizeBytes: true,
         createdAt: true,
         isPublished: true,
         thumbnailUrl: true,
+        imwebProdCode: true,
         entitlements: {
           orderBy: [{ status: "asc" }, { createdAt: "desc" }],
           select: {
@@ -241,6 +255,7 @@ export default async function AdminTextbookPage({
                   textbookId={textbook.id}
                   initialTitle={textbook.title}
                   initialTeacherName={(textbook as { teacherName?: string | null }).teacherName ?? ""}
+                  initialIsbn={(textbook as { imwebProdCode?: string | null }).imwebProdCode ?? ""}
                   initialSubjectName={textbook.subjectName || ""}
                   initialEntitlementDays={entitlementDays}
                   initialComposition={(textbook as { composition?: string | null }).composition ?? ""}
@@ -259,28 +274,40 @@ export default async function AdminTextbookPage({
                       <span className="text-white/80">{formatBytes(textbook.sizeBytes)}</span>
                     </div>
                     <div className="flex justify-between">
+                      <span className="text-white/50">페이지 수</span>
+                      <span className="text-white/80">
+                        {(textbook as { pageCount?: number | null }).pageCount && (textbook as { pageCount?: number | null }).pageCount! > 0
+                          ? `${(textbook as { pageCount?: number | null }).pageCount}쪽`
+                          : <PdfPageCount src={`/api/textbooks/${textbook.id}/view`} />}
+                      </span>
+                    </div>
+                    <div className="pt-2">
+                      <form action={`/api/admin/textbooks/${textbook.id}/update-metadata`} method="post">
+                        <Button type="submit" variant="secondary">
+                          파일 정보 다시 가져오기
+                        </Button>
+                      </form>
+                      <p className="mt-2 text-xs text-white/35">외부 URL(구글 스토리지) 교재만 페이지 수/용량을 다시 계산합니다.</p>
+                    </div>
+                    <div className="flex justify-between">
                       <span className="text-white/50">등록일</span>
                       <span className="text-white/80">{new Date(textbook.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
+
+                  <TextbookStoredPathClient
+                    textbookId={textbook.id}
+                    initialStoredPath={(textbook as { storedPath: string }).storedPath}
+                  />
                 </div>
 
                 {/* 썸네일 및 다운로드 */}
                 <div className="mt-6 pt-4 border-t border-white/10">
                   <h4 className="text-sm font-medium text-white/60 mb-3">썸네일 및 다운로드</h4>
-                  <div className="flex items-start gap-4">
-                    {textbook.thumbnailUrl ? (
-                      <div className="shrink-0 w-24 h-32 rounded-lg overflow-hidden border border-white/10 bg-white/5">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={textbook.thumbnailUrl} alt="썸네일" className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <div className="shrink-0 w-24 h-32 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-                        <span className="text-white/30 text-xs">미등록</span>
-                      </div>
-                    )}
+                  <div className="space-y-3">
+                    <TextbookThumbnailUploadClient textbookId={textbook.id} hasThumbnail={!!textbook.thumbnailUrl} />
 
-                    <div className="flex-1 space-y-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       <TextbookThumbnailGenerator textbookId={textbook.id} hasThumbnail={!!textbook.thumbnailUrl} />
 
                       <a

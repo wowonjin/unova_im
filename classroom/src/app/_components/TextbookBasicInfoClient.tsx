@@ -6,6 +6,7 @@ type Props = {
   textbookId: string;
   initialTitle: string;
   initialTeacherName: string;
+  initialIsbn: string;
   initialSubjectName: string;
   initialEntitlementDays: number;
   initialComposition: string;
@@ -15,12 +16,14 @@ export default function TextbookBasicInfoClient({
   textbookId,
   initialTitle,
   initialTeacherName,
+  initialIsbn,
   initialSubjectName,
   initialEntitlementDays,
   initialComposition,
 }: Props) {
   const [title, setTitle] = useState(initialTitle);
   const [teacherName, setTeacherName] = useState(initialTeacherName);
+  const [isbn, setIsbn] = useState(initialIsbn);
   const [subjectName, setSubjectName] = useState(initialSubjectName);
   const [entitlementDays, setEntitlementDays] = useState(initialEntitlementDays);
   const [composition, setComposition] = useState(initialComposition);
@@ -37,6 +40,7 @@ export default function TextbookBasicInfoClient({
       formData.append("textbookId", textbookId);
       formData.append("title", title);
       formData.append("teacherName", teacherName);
+      formData.append("isbn", isbn);
       formData.append("subjectName", subjectName);
       formData.append("entitlementDays", entitlementDays.toString());
       formData.append("composition", composition);
@@ -60,7 +64,7 @@ export default function TextbookBasicInfoClient({
       console.error("Save error:", error);
       setSaveStatus("error");
     }
-  }, [textbookId, title, teacherName, subjectName, entitlementDays, composition]);
+  }, [textbookId, title, teacherName, isbn, subjectName, entitlementDays, composition]);
 
   // 입력 변경 시 자동 저장 (디바운스)
   useEffect(() => {
@@ -85,7 +89,7 @@ export default function TextbookBasicInfoClient({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [title, teacherName, subjectName, entitlementDays, composition, saveData]);
+  }, [title, teacherName, isbn, subjectName, entitlementDays, composition, saveData]);
 
   return (
     <div className="space-y-4">
@@ -136,6 +140,19 @@ export default function TextbookBasicInfoClient({
           className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
         />
         <p className="mt-1 text-xs text-white/40">스토어/상세 페이지에 표시할 선생님 이름입니다. (선택)</p>
+      </div>
+
+      {/* ISBN */}
+      <div>
+        <label className="block text-sm font-medium text-white/70 mb-1.5">ISBN</label>
+        <input
+          type="text"
+          value={isbn}
+          onChange={(e) => setIsbn(e.target.value)}
+          placeholder="예: 9781234567890"
+          className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+        />
+        <p className="mt-1 text-xs text-white/40">교재 상세 페이지의 제목 오른쪽에 표시됩니다. (선택)</p>
       </div>
 
       {/* 과목 */}

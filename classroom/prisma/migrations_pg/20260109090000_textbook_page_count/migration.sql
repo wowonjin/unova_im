@@ -1,0 +1,2 @@
+ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "pageCount" INTEGER;
+
