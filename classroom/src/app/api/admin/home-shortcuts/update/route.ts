@@ -5,11 +5,14 @@ import { requireAdminUser } from "@/lib/current-user";
 
 export const runtime = "nodejs";
 
+const MAX_URL_LEN = 10000;
+
 const Schema = z.object({
   id: z.string().min(1),
   label: z.string().min(1).max(80).optional(),
-  imageUrl: z.string().min(1).max(2000).optional(),
-  linkUrl: z.string().min(1).max(2000).optional(),
+  // data URL(base64)이나 긴 CDN URL도 허용하기 위해 넉넉하게 잡음
+  imageUrl: z.string().min(1).max(MAX_URL_LEN).optional(),
+  linkUrl: z.string().min(1).max(MAX_URL_LEN).optional(),
   bgColor: z.string().optional().transform((v) => (v == null ? undefined : v.trim() || null)),
   position: z
     .string()
@@ -43,7 +46,12 @@ export async function POST(req: Request) {
     position: form.get("position"),
     isActive: form.get("isActive"),
   });
-  if (!parsed.success) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
+  if (!parsed.success) {
+    return NextResponse.json(
+      { ok: false, error: "INVALID_REQUEST", issues: parsed.error.issues },
+      { status: 400 }
+    );
+  }
 
   const data: Record<string, unknown> = {};
   if (parsed.data.label !== undefined) data.label = parsed.data.label;
@@ -62,6 +70,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, shortcut });
   } catch (e) {
     console.error("[admin/home-shortcuts/update] failed:", e);
+    const code = (e as any)?.code;
+    if (code === "P2025") {
+      // Record to update not found
+      return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    }
     return NextResponse.json({ ok: false, error: "DB_NOT_READY" }, { status: 500 });
   }
 }

@@ -102,6 +102,21 @@ export default function HomeSettingsClient() {
     refreshShortcuts();
   }, []);
 
+  const extractApiErrorMessage = async (res: Response): Promise<string> => {
+    const status = res.status;
+    const json = await res.json().catch(() => null);
+    const code = json?.error ? String(json.error) : null;
+    // zod issues가 있으면 첫 메시지라도 노출
+    const issueMsg =
+      Array.isArray(json?.issues) && json.issues.length > 0 && json.issues[0]?.message
+        ? String(json.issues[0].message)
+        : null;
+
+    if (code && issueMsg) return `${code} (${issueMsg}) [${status}]`;
+    if (code) return `${code} [${status}]`;
+    return `HTTP_${status}`;
+  };
+
   const slideFormTitle = useMemo(() => (editingSlideId ? "슬라이드 수정" : "새 슬라이드 추가"), [editingSlideId]);
   const shortcutFormTitle = useMemo(
     () => (editingShortcutId ? "아이콘 수정" : "새 아이콘 추가"),
@@ -114,7 +129,7 @@ export default function HomeSettingsClient() {
     fd.append("isActive", next ? "1" : "0");
     const res = await fetch("/api/admin/home-slides/update", { method: "POST", body: fd });
     if (!res.ok) {
-      alert("변경에 실패했습니다.");
+      alert(`변경에 실패했습니다. (${await extractApiErrorMessage(res)})`);
       return;
     }
     await refreshSlides();
@@ -126,7 +141,7 @@ export default function HomeSettingsClient() {
     fd.append("id", id);
     const res = await fetch("/api/admin/home-slides/delete", { method: "POST", body: fd });
     if (!res.ok) {
-      alert("삭제에 실패했습니다.");
+      alert(`삭제에 실패했습니다. (${await extractApiErrorMessage(res)})`);
       return;
     }
     await refreshSlides();
@@ -146,7 +161,7 @@ export default function HomeSettingsClient() {
 
     const res = await fetch(url, { method: "POST", body: fd });
     if (!res.ok) {
-      alert("저장에 실패했습니다.");
+      alert(`저장에 실패했습니다. (${await extractApiErrorMessage(res)})`);
       return;
     }
     setShowSlideForm(false);
@@ -175,7 +190,7 @@ export default function HomeSettingsClient() {
     fd.append("isActive", next ? "1" : "0");
     const res = await fetch("/api/admin/home-shortcuts/update", { method: "POST", body: fd });
     if (!res.ok) {
-      alert("변경에 실패했습니다.");
+      alert(`변경에 실패했습니다. (${await extractApiErrorMessage(res)})`);
       return;
     }
     await refreshShortcuts();
@@ -187,7 +202,7 @@ export default function HomeSettingsClient() {
     fd.append("id", id);
     const res = await fetch("/api/admin/home-shortcuts/delete", { method: "POST", body: fd });
     if (!res.ok) {
-      alert("삭제에 실패했습니다.");
+      alert(`삭제에 실패했습니다. (${await extractApiErrorMessage(res)})`);
       return;
     }
     await refreshShortcuts();
@@ -206,7 +221,7 @@ export default function HomeSettingsClient() {
 
     const res = await fetch(url, { method: "POST", body: fd });
     if (!res.ok) {
-      alert("저장에 실패했습니다.");
+      alert(`저장에 실패했습니다. (${await extractApiErrorMessage(res)})`);
       return;
     }
     setShowShortcutForm(false);

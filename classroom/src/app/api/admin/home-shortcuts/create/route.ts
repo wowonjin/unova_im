@@ -5,10 +5,13 @@ import { requireAdminUser } from "@/lib/current-user";
 
 export const runtime = "nodejs";
 
+const MAX_URL_LEN = 10000;
+
 const Schema = z.object({
   label: z.string().min(1).max(80),
-  imageUrl: z.string().min(1).max(2000),
-  linkUrl: z.string().min(1).max(2000),
+  // data URL(base64)이나 긴 CDN URL도 허용하기 위해 넉넉하게 잡음
+  imageUrl: z.string().min(1).max(MAX_URL_LEN),
+  linkUrl: z.string().min(1).max(MAX_URL_LEN),
   bgColor: z.string().optional().transform((v) => (v && v.trim().length ? v.trim() : null)),
   position: z
     .string()
@@ -30,7 +33,12 @@ export async function POST(req: Request) {
     bgColor: form.get("bgColor"),
     position: form.get("position"),
   });
-  if (!parsed.success) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
+  if (!parsed.success) {
+    return NextResponse.json(
+      { ok: false, error: "INVALID_REQUEST", issues: parsed.error.issues },
+      { status: 400 }
+    );
+  }
 
   try {
     const p = prisma as unknown as { homeShortcut: { create: Function } };
