@@ -1440,13 +1440,8 @@ export default function ProductDetailClient({
             </div>
 
             {/* 제목 */}
-            <div className="mb-3 flex items-start gap-2">
+            <div className="mb-3">
               <h3 className="text-[18px] font-bold leading-snug">{product.title}</h3>
-              {product.type === "textbook" && (product.isbn ?? "").trim().length > 0 && (
-                <span className="mt-[4px] inline-flex items-center rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white/80">
-                  ISBN {String(product.isbn).trim()}
-                </span>
-              )}
             </div>
 
             {/* 평점 */}
