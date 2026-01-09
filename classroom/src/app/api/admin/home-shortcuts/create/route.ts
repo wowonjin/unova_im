@@ -7,6 +7,12 @@ export const runtime = "nodejs";
 
 const MAX_URL_LEN = 10000;
 
+function getFormString(form: FormData, key: string): string | undefined {
+  const v = form.get(key);
+  if (typeof v === "string") return v;
+  return undefined; // null or File -> undefined (zod에서 required면 INVALID_REQUEST로 잡힘)
+}
+
 const Schema = z.object({
   label: z.string().min(1).max(80),
   // data URL(base64)이나 긴 CDN URL도 허용하기 위해 넉넉하게 잡음
@@ -27,11 +33,11 @@ export async function POST(req: Request) {
   await requireAdminUser();
   const form = await req.formData();
   const parsed = Schema.safeParse({
-    label: form.get("label"),
-    imageUrl: form.get("imageUrl"),
-    linkUrl: form.get("linkUrl"),
-    bgColor: form.get("bgColor"),
-    position: form.get("position"),
+    label: getFormString(form, "label"),
+    imageUrl: getFormString(form, "imageUrl"),
+    linkUrl: getFormString(form, "linkUrl"),
+    bgColor: getFormString(form, "bgColor"),
+    position: getFormString(form, "position"),
   });
   if (!parsed.success) {
     return NextResponse.json(

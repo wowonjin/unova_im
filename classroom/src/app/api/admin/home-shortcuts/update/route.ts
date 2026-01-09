@@ -7,6 +7,12 @@ export const runtime = "nodejs";
 
 const MAX_URL_LEN = 10000;
 
+function getFormString(form: FormData, key: string): string | undefined {
+  const v = form.get(key);
+  if (typeof v === "string") return v;
+  return undefined; // null or File -> undefined
+}
+
 const Schema = z.object({
   id: z.string().min(1),
   label: z.string().min(1).max(80).optional(),
@@ -38,13 +44,13 @@ export async function POST(req: Request) {
   await requireAdminUser();
   const form = await req.formData();
   const parsed = Schema.safeParse({
-    id: form.get("id"),
-    label: form.get("label"),
-    imageUrl: form.get("imageUrl"),
-    linkUrl: form.get("linkUrl"),
-    bgColor: form.get("bgColor"),
-    position: form.get("position"),
-    isActive: form.get("isActive"),
+    id: getFormString(form, "id"),
+    label: getFormString(form, "label"),
+    imageUrl: getFormString(form, "imageUrl"),
+    linkUrl: getFormString(form, "linkUrl"),
+    bgColor: getFormString(form, "bgColor"),
+    position: getFormString(form, "position"),
+    isActive: getFormString(form, "isActive"),
   });
   if (!parsed.success) {
     return NextResponse.json(

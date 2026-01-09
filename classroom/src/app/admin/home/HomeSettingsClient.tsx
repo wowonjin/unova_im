@@ -111,7 +111,12 @@ export default function HomeSettingsClient() {
       Array.isArray(json?.issues) && json.issues.length > 0 && json.issues[0]?.message
         ? String(json.issues[0].message)
         : null;
+    const issuePath =
+      Array.isArray(json?.issues) && json.issues.length > 0 && Array.isArray(json.issues[0]?.path)
+        ? String(json.issues[0].path.join("."))
+        : null;
 
+    if (code && issueMsg && issuePath) return `${code} (${issuePath}: ${issueMsg}) [${status}]`;
     if (code && issueMsg) return `${code} (${issueMsg}) [${status}]`;
     if (code) return `${code} [${status}]`;
     return `HTTP_${status}`;
