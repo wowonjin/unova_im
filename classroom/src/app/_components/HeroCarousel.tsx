@@ -51,6 +51,22 @@ export default function HeroCarousel({ slides }: { slides?: Slide[] }) {
   const gap = 16;
   const slideRatio = 0.9; // 슬라이드 크기 (PC 기준)
 
+  // title은 DB에 "<br>" 형태로 저장되지만, 안전/안정성을 위해 innerHTML을 쓰지 않고
+  // "<br>"만 포함된 형태로 렌더링합니다. (그 외 태그는 텍스트로 표시)
+  const renderTitle = useCallback((titleHtml: string) => {
+    const parts = String(titleHtml || "").split(/<br\s*\/?>/gi);
+    return (
+      <>
+        {parts.map((part, i) => (
+          <span key={i}>
+            {part}
+            {i < parts.length - 1 ? <br /> : null}
+          </span>
+        ))}
+      </>
+    );
+  }, []);
+
   // 클론 포함 전체 슬라이드 배열 (무한 루프용)
   const allSlides = [resolvedSlides[resolvedSlides.length - 1], ...resolvedSlides, resolvedSlides[0]];
 
@@ -231,8 +247,9 @@ export default function HeroCarousel({ slides }: { slides?: Slide[] }) {
                   <div
                     className="text-white text-[18px] md:text-[32px] font-bold leading-[1.35] mb-[6px] md:mb-[10px]"
                     style={{ textShadow: "0 4px 12px rgba(0, 0, 0, 0.32)" }}
-                    dangerouslySetInnerHTML={{ __html: slide.title }}
-                  />
+                  >
+                    {renderTitle(slide.title)}
+                  </div>
                   <div className="text-white/90 text-[12px] md:text-[14px]">
                     {slide.subtitle}
                   </div>

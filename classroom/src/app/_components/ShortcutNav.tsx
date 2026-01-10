@@ -85,6 +85,10 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
                       : "bg-white";
 
             const isOriginal = item.iconClass === "shortcut-icon--original";
+            // DB에서 관리자가 추가한 항목은 iconClass가 없으므로(=undefined) 기본을 "사각형 가득(cover)"로 보이게 한다.
+            // 하드코딩된 아이콘류(basic/special/office)는 기존처럼 contain(70%) 유지.
+            const isAdminDefined = !item.iconClass || String(item.iconClass).trim().length === 0;
+            const shouldCover = isOriginal || isAdminDefined;
             const hideLabelOnMobile = item.label.replaceAll(" ", "") === "선생님게시판";
 
             return (
@@ -113,7 +117,11 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
                   <img
                     src={item.image}
                     alt={item.label}
-                    className={isOriginal ? "h-full w-full object-cover" : "h-[70%] w-[70%] object-contain"}
+                    className={
+                      shouldCover
+                        ? "block h-full w-full object-cover"
+                        : "block h-[70%] w-[70%] object-contain"
+                    }
                   />
                 </div>
                 <div

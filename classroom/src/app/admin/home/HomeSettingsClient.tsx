@@ -30,7 +30,21 @@ type TabKey = "slides" | "shortcuts";
 
 function normalizeTitleToHtml(input: string): string {
   // 사용자가 줄바꿈으로 입력했을 때 <br>로 변환
-  return input.replace(/\r\n/g, "\n").split("\n").map((s) => s.trimEnd()).join("<br>");
+  // 보안/안정성: HTML을 그대로 저장하면 XSS 및 hydration mismatch(마크업 깨짐)가 발생할 수 있으므로
+  // 사용자가 입력한 텍스트는 HTML escape 후 <br>만 허용합니다.
+  const escapeHtml = (s: string) =>
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+  return input
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((s) => escapeHtml(s.trimEnd()))
+    .join("<br>");
 }
 
 export default function HomeSettingsClient() {
@@ -618,7 +632,7 @@ export default function HomeSettingsClient() {
                     title={s.bgColor || ""}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={s.imageUrl} alt="" className="w-[70%] h-[70%] object-contain" />
+                    <img src={s.imageUrl} alt="" className="block w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1">
