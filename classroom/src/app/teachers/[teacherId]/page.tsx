@@ -7,6 +7,10 @@ import type { TeacherDetailTeacher } from "./TeacherDetailClient";
 import { prisma } from "@/lib/prisma";
 import { getTeacherRatingSummary } from "@/lib/teacher-rating";
 
+// 공개 선생님 페이지는 유저별 데이터가 아니고(쿠키/세션 의존 X),
+// DB 조회가 많아 SSR 반복 비용이 커서 ISR 캐시로 완화합니다.
+export const revalidate = 60;
+
 function toPublicGcsUrl(input?: string | null) {
   const s = typeof input === "string" ? input.trim() : "";
   if (!s) return "";

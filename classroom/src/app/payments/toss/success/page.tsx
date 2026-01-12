@@ -1,9 +1,10 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
-export default function TossSuccessPage() {
+function TossSuccessInner() {
   const sp = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
@@ -68,6 +69,25 @@ export default function TossSuccessPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function TossSuccessPage() {
+  // `useSearchParams()`는 CSR bail-out이 발생하므로 page 레벨에서 Suspense로 감싸야 합니다.
+  // https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#161616] text-white flex items-center justify-center px-4">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-6">
+            <h1 className="text-xl font-bold">토스페이먼츠</h1>
+            <p className="mt-2 text-sm text-white/70">결제 승인 처리 중...</p>
+          </div>
+        </div>
+      }
+    >
+      <TossSuccessInner />
+    </Suspense>
   );
 }
 

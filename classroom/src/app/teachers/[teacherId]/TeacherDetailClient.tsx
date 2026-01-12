@@ -410,7 +410,8 @@ export default function TeacherDetailClient({ teacher }: Props) {
       try {
         const res = await fetch(`/api/teachers/${encodeURIComponent(teacher.slug)}/rating?name=${encodeURIComponent(teacher.name)}`, {
           signal: controller.signal,
-          cache: "no-store",
+          // 서버에서 짧은 TTL 캐시를 두고 있으므로, 클라에서도 캐시를 허용해 반복 요청 비용을 줄입니다.
+          cache: "force-cache",
         });
         const data = await res.json().catch(() => null);
         if (!isActive || !data?.ok || !data?.summary) return;
@@ -434,9 +435,9 @@ export default function TeacherDetailClient({ teacher }: Props) {
       }
     };
 
-    // 최초 1회 + 10초 폴링
+    // 최초 1회 + 60초 폴링(운영에서 "실시간"일 필요는 없고, DB 부하/체감 렉을 줄이는 게 우선)
     fetchRating();
-    const id = window.setInterval(fetchRating, 10000);
+    const id = window.setInterval(fetchRating, 60000);
     return () => {
       isActive = false;
       controller.abort();

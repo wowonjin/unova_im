@@ -25,7 +25,8 @@ export default function PopupLayerClient() {
     let cancelled = false;
     const run = async () => {
       try {
-        const res = await fetch("/api/popups/active", { cache: "no-store" });
+        // 팝업은 자주 변하지 않으므로 브라우저/서버 캐시를 허용해서 반복 로딩 비용을 줄입니다.
+        const res = await fetch("/api/popups/active", { cache: "force-cache" });
         const json = await res.json().catch(() => null);
         if (!res.ok || !json?.ok) return;
         const list: Popup[] = Array.isArray(json.popups) ? json.popups : [];

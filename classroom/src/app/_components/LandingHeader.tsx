@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 type User = {
   id: string;
@@ -101,7 +101,7 @@ export default function LandingHeader({
   const [mobileProfileExpanded, setMobileProfileExpanded] = useState(false);
   const sidebar = showMobileMenu ? useSidebarOptional() : null;
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const [rawSearch, setRawSearch] = useState<string>("");
   const [teacherSubItems, setTeacherSubItems] = useState<SubMenuItem[] | null>(null);
   const currentVariant = scrolled ? scrolledVariant ?? variant : variant;
   const isLight = currentVariant === "light";
@@ -112,6 +112,22 @@ export default function LandingHeader({
   const hoverSoftBgClass = isLight ? "hover:bg-black/[0.06]" : "hover:bg-white/[0.06]";
   // 모바일 드로어에서 hover 배경색이 "붙어 보이는" 현상 방지
   const mobileNoHoverBgClass = "hover:bg-transparent";
+
+  // `useSearchParams()`는 SSR/프리렌더 단계에서 CSR bail-out + Suspense 요구를 유발할 수 있어,
+  // 헤더에서는 window.location.search 기반으로만 사용합니다(메뉴 활성화 표시용).
+  useEffect(() => {
+    try {
+      setRawSearch(window.location.search || "");
+    } catch {
+      setRawSearch("");
+    }
+  }, [pathname]);
+
+  const searchParams = useMemo(() => {
+    const s = (rawSearch || "").trim();
+    const qs = s.startsWith("?") ? s.slice(1) : s;
+    return new URLSearchParams(qs);
+  }, [rawSearch]);
 
   const isActiveHref = (href: string) => {
     // 책/강의는 현재 구현상 /books, /lectures가 /store?type=... 로 리다이렉트되므로

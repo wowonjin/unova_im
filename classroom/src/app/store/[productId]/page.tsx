@@ -6,6 +6,10 @@ import ProductDetailClient from "./ProductDetailClient";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 
+// 상품 상세는 공개 데이터이며, DB 조회가 많아 SSR 반복 비용이 큽니다.
+// 동적 라우트지만 ISR 캐시를 두면 동일 상품 페이지 재방문/공유 시 체감이 좋아집니다.
+export const revalidate = 60;
+
 function getStoreOwnerEmail(): string {
   return (process.env.ADMIN_EMAIL || "admin@gmail.com").toLowerCase().trim();
 }
