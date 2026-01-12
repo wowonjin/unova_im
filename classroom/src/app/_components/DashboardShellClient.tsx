@@ -11,6 +11,7 @@ type Card = {
   courseId: string;
   title: string;
   thumbnail: boolean;
+  thumbnailUpdatedAtISO: string | null;
   isEnrolled: boolean;
   startAtISO: string;
   endAtISO: string;

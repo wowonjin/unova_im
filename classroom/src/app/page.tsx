@@ -87,12 +87,13 @@ export default async function HomePage() {
       tags: true;
       thumbnailUrl: true;
       thumbnailStoredPath: true;
+      updatedAt: true;
       rating: true;
       reviewCount: true;
     };
   }>;
 
-    type DbTextbookRow = Prisma.TextbookGetPayload<{
+  type DbTextbookRow = Prisma.TextbookGetPayload<{
     select: {
       id: true;
       title: true;
@@ -103,6 +104,7 @@ export default async function HomePage() {
       tags: true;
         textbookType: true;
       thumbnailUrl: true;
+      updatedAt: true;
       rating: true;
       reviewCount: true;
     };
