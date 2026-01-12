@@ -317,9 +317,26 @@ export default function ProductDetailClient({
     run();
   }, [teacherAvatarUrl, product.teacher, product.teacherId]);
   
-  // 스크롤 감지 - 탭이 sticky 상태일 때 말풍선 숨김
+  // 탭 메뉴 고정 관련 상태
   const [isTabSticky, setIsTabSticky] = useState(false);
-  const tabRef = useRef<HTMLDivElement>(null);
+  const tabPlaceholderRef = useRef<HTMLDivElement>(null);
+  const tabContentRef = useRef<HTMLDivElement>(null);
+  const [tabStyle, setTabStyle] = useState<{
+    position: "static" | "fixed";
+    top: number;
+    left: number;
+    width: number;
+  }>({ position: "static", top: 0, left: 0, width: 0 });
+  
+  // 사이드바 고정 관련 상태
+  const sidebarPlaceholderRef = useRef<HTMLDivElement>(null);
+  const sidebarContentRef = useRef<HTMLDivElement>(null);
+  const [sidebarStyle, setSidebarStyle] = useState<{
+    position: "static" | "fixed";
+    top: number;
+    left: number;
+    width: number;
+  }>({ position: "static", top: 0, left: 0, width: 340 });
   
   useEffect(() => {
     const getHeaderOffset = () => {
@@ -335,19 +352,71 @@ export default function ProductDetailClient({
     };
 
     const handleScroll = () => {
-      if (!tabRef.current) return;
-      
-      // 탭 메뉴의 원래 위치 확인
-      const tabRect = tabRef.current.getBoundingClientRect();
-      // 탭 메뉴가 헤더 아래 고정 위치(모바일 50px / 데스크탑 70px)에 도달했는지 확인
       const headerOffset = getHeaderOffset();
-      setIsTabSticky(tabRect.top <= headerOffset);
+      
+      // 탭 메뉴 고정 처리
+      if (tabPlaceholderRef.current && tabContentRef.current) {
+        const placeholder = tabPlaceholderRef.current;
+        const placeholderRect = placeholder.getBoundingClientRect();
+        
+        // 탭 메뉴가 헤더 아래로 스크롤되면 fixed로 전환
+        if (placeholderRect.top <= headerOffset) {
+          setIsTabSticky(true);
+          setTabStyle({
+            position: "fixed",
+            top: headerOffset,
+            left: placeholderRect.left,
+            width: placeholderRect.width,
+          });
+        } else {
+          setIsTabSticky(false);
+          setTabStyle({
+            position: "static",
+            top: 0,
+            left: 0,
+            width: placeholderRect.width,
+          });
+        }
+      }
+      
+      // 사이드바 고정 처리
+      if (sidebarPlaceholderRef.current && sidebarContentRef.current) {
+        const placeholder = sidebarPlaceholderRef.current;
+        const placeholderRect = placeholder.getBoundingClientRect();
+        const topOffset = headerOffset + 16; // 헤더 아래 16px 여백
+        
+        // 사이드바 placeholder가 헤더 아래로 스크롤되면 fixed로 전환
+        if (placeholderRect.top <= topOffset) {
+          setSidebarStyle({
+            position: "fixed",
+            top: topOffset,
+            left: placeholderRect.left,
+            width: placeholderRect.width,
+          });
+        } else {
+          setSidebarStyle({
+            position: "static",
+            top: 0,
+            left: 0,
+            width: placeholderRect.width,
+          });
+        }
+      }
+    };
+    
+    // resize 시에도 위치 재계산
+    const handleResize = () => {
+      handleScroll();
     };
     
     window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleResize, { passive: true });
     handleScroll(); // 초기 상태 확인
     
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleResize);
+    };
   }, []);
 
   // 평균 평점 계산 함수
@@ -850,53 +919,70 @@ export default function ProductDetailClient({
           </p>
         </section>
 
-        {/* 탭 네비게이션 */}
+        {/* 탭 네비게이션 - Placeholder */}
         <div
-          ref={tabRef}
-          style={{ top: "var(--unova-fixed-header-offset)" }}
-          className={`sticky z-30 border-b border-white/10 overflow-visible transition-all ${
-            isTabSticky
-              ? "pt-0 bg-[#161616]/70 backdrop-blur-md"
-              : "pt-3 bg-transparent"
-          }`}
+          ref={tabPlaceholderRef}
+          className="overflow-visible"
+          style={{ height: tabStyle.position === "fixed" ? "56px" : "auto" }}
         >
-          <div className="flex justify-between">
-            {tabs.map((tab) => (
-              <div key={tab} className="relative">
-                {/* FREE 말풍선 - 커리큘럼 탭 위에 (탭이 sticky 상태가 아닐 때만 표시) */}
-                {product.type === "course" && tab === "커리큘럼" && !isTabSticky && (
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-10">
-                    <div className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[11px] font-bold shadow-lg shadow-blue-500/30 animate-bounce whitespace-nowrap">
-                      <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
-                        play_circle
-                      </span>
-                      FREE
-                      {/* 말풍선 꼬리 */}
-                      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-cyan-500" />
+          {/* 탭 콘텐츠 - 스크롤 시 fixed로 전환 */}
+          <div
+            ref={tabContentRef}
+            style={
+              tabStyle.position === "fixed"
+                ? {
+                    position: "fixed",
+                    top: tabStyle.top,
+                    left: tabStyle.left,
+                    width: tabStyle.width,
+                    zIndex: 40,
+                  }
+                : { position: "static" }
+            }
+            className={`border-b border-white/10 overflow-visible transition-all ${
+              isTabSticky
+                ? "pt-0 bg-[#161616]/95 backdrop-blur-md"
+                : "pt-3 bg-transparent"
+            }`}
+          >
+            <div className="flex justify-between">
+              {tabs.map((tab) => (
+                <div key={tab} className="relative">
+                  {/* FREE 말풍선 - 커리큘럼 탭 위에 (탭이 sticky 상태가 아닐 때만 표시) */}
+                  {product.type === "course" && tab === "커리큘럼" && !isTabSticky && (
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-10">
+                      <div className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[11px] font-bold shadow-lg shadow-blue-500/30 animate-bounce whitespace-nowrap">
+                        <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
+                          play_circle
+                        </span>
+                        FREE
+                        {/* 말풍선 꼬리 */}
+                        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-cyan-500" />
+                      </div>
                     </div>
-                  </div>
-                )}
-                <button
-                  onClick={() => setActiveTab(tab)}
-                  className={`relative px-5 py-4 text-[14px] font-medium whitespace-nowrap transition-all ${
-                    activeTab === tab
-                      ? "text-white"
-                      : "text-white/40 hover:text-white/70"
-                  }`}
-                >
-                  {tab === "강의후기" || tab === "교재후기" ? (
-                    <>{tab} ({reviewCount})</>
-                  ) : tab === "커리큘럼" ? (
-                    <>커리큘럼 ({totalLessons}강)</>
-                  ) : (
-                    tab
                   )}
-                  {activeTab === tab && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-white" />
-                  )}
-                </button>
-              </div>
-            ))}
+                  <button
+                    onClick={() => setActiveTab(tab)}
+                    className={`relative px-5 py-4 text-[14px] font-medium whitespace-nowrap transition-all ${
+                      activeTab === tab
+                        ? "text-white"
+                        : "text-white/40 hover:text-white/70"
+                    }`}
+                  >
+                    {tab === "강의후기" || tab === "교재후기" ? (
+                      <>{tab} ({reviewCount})</>
+                    ) : tab === "커리큘럼" ? (
+                      <>커리큘럼 ({totalLessons}강)</>
+                    ) : (
+                      tab
+                    )}
+                    {activeTab === tab && (
+                      <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-white" />
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -1459,9 +1545,25 @@ export default function ProductDetailClient({
       </div>
 
       {/* 오른쪽 사이드바 (md 이상에서만 표시) */}
-      <aside className="hidden md:block w-[340px] shrink-0 mt-[20px]">
+      <aside 
+        ref={sidebarPlaceholderRef}
+        className="hidden md:block w-[340px] shrink-0"
+      >
+        {/* 사이드바 콘텐츠 - 스크롤 시 fixed로 전환 */}
         <div
-          className="rounded-xl overflow-hidden"
+          ref={sidebarContentRef}
+          style={
+            sidebarStyle.position === "fixed"
+              ? {
+                  position: "fixed",
+                  top: sidebarStyle.top,
+                  left: sidebarStyle.left,
+                  width: sidebarStyle.width,
+                  zIndex: 40,
+                }
+              : { position: "static" }
+          }
+          className="rounded-xl overflow-hidden overflow-y-auto max-h-[calc(100vh-var(--unova-fixed-header-offset)-32px)] scrollbar-hide bg-[#161616]"
         >
           {/* 태그 및 제목 */}
           <div className="px-5 pt-5 pb-2">
