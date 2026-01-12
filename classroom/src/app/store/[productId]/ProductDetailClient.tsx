@@ -705,7 +705,8 @@ export default function ProductDetailClient({
               {product.thumbnailUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={product.thumbnailUrl}
+                  // data URL/CSP 이슈를 피하기 위해 내부 썸네일 API로 통일
+                  src={`/api/textbooks/${product.id}/thumbnail`}
                   alt={product.title}
                   className="h-full w-full object-cover"
                 />

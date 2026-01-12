@@ -4,6 +4,8 @@ import Footer from "@/app/_components/Footer";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 function getStoreOwnerEmail(): string {
   // 이 프로젝트는 기본적으로 "고정 관리자(ADMIN_EMAIL)" 계정이 콘텐츠를 발행합니다.
   // 배포 환경에서 예전/다른 ownerId로 생성된 공개 강좌/교재가 남아있을 수 있어
@@ -23,6 +25,8 @@ type Product = {
   textbookType: string | null;
   type: "course" | "textbook";
   thumbnailUrl: string | null;
+  // course 레거시(파일 저장) 썸네일 지원용: thumbnailUrl이 비어있어도 storedPath가 있으면 API로 서빙 가능
+  thumbnailStoredPath?: string | null;
   rating: number | null;
   reviewCount: number | null;
 };
@@ -62,6 +66,7 @@ export default async function StorePage({
         originalPrice: true;
         tags: true;
         thumbnailUrl: true;
+        thumbnailStoredPath: true;
         rating: true;
         reviewCount: true;
       };
@@ -101,6 +106,7 @@ export default async function StorePage({
             originalPrice: true,
             tags: true,
             thumbnailUrl: true,
+            thumbnailStoredPath: true,
             rating: true,
             reviewCount: true,
           },
@@ -178,6 +184,7 @@ export default async function StorePage({
       textbookType: null,
       type: "course" as const,
       thumbnailUrl: c.thumbnailUrl,
+      thumbnailStoredPath: (c as any).thumbnailStoredPath ?? null,
       rating: c.rating,
       reviewCount: c.reviewCount,
     };
@@ -320,10 +327,16 @@ export default async function StorePage({
                     ) : null}
 
                     {/* 상품 이미지 영역 */}
-                    {product.thumbnailUrl ? (
-                      // 교재/강의: 이미지 전체 커버(여백/그림자 레이어 제거)
+                    {(product.thumbnailUrl || (product.type === "course" && product.thumbnailStoredPath)) ? (
+                      // 썸네일은 data URL/CSP 이슈를 피하기 위해 내부 API로 통일
+                      // - course: /api/courses/:id/thumbnail
+                      // - textbook: /api/textbooks/:id/thumbnail
                       <img
-                        src={product.thumbnailUrl}
+                        src={
+                          product.type === "course"
+                            ? `/api/courses/${product.id}/thumbnail`
+                            : `/api/textbooks/${product.id}/thumbnail`
+                        }
                         alt={product.title}
                         className="absolute inset-0 h-full w-full object-cover"
                       />

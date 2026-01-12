@@ -3,10 +3,6 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTeacherUser } from "@/lib/current-user";
 import { slugify } from "@/lib/slugify";
-import crypto from "node:crypto";
-import path from "node:path";
-import fs from "node:fs/promises";
-import { ensureDir, getStorageRoot } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
@@ -40,6 +36,9 @@ function wantsJson(req: Request) {
   const accept = req.headers.get("accept") || "";
   return req.headers.get("x-unova-client") === "1" || accept.includes("application/json");
 }
+
+// 최대 파일 크기 제한 (2MB) - Render 멀티 인스턴스/재배포 환경에서도 썸네일이 깨지지 않도록 DB(data URL) 저장 전략을 사용
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
 async function ensureUniqueSlug(base: string) {
   const cleanBase = slugify(base) || "course";
@@ -114,26 +113,32 @@ export async function POST(req: Request) {
 
   if (thumbnailFile) {
     try {
-      const bytes = Buffer.from(await thumbnailFile.arrayBuffer());
-      const ext = path.extname(thumbnailFile.name || "").slice(0, 10);
-      const storedName = `${crypto.randomUUID()}${ext || ""}`;
+      if (thumbnailFile.size > MAX_FILE_SIZE) {
+        // 강좌 생성 자체는 성공시키되, 너무 큰 썸네일은 저장하지 않음
+        console.warn("[admin/courses/create] thumbnail too large, skipped:", {
+          courseId: course.id,
+          size: thumbnailFile.size,
+          name: thumbnailFile.name,
+        });
+      } else {
+        // 이미지를 Base64 데이터 URL로 변환하여 DB에 저장 (멀티 인스턴스에서도 안정적으로 표시)
+        const bytes = Buffer.from(await thumbnailFile.arrayBuffer());
+        const mimeType = thumbnailFile.type || "image/jpeg";
+        const base64 = bytes.toString("base64");
+        const dataUrl = `data:${mimeType};base64,${base64}`;
 
-      // Store on filesystem (Render disk mount)
-      const dir = path.join(getStorageRoot(), "course-thumbnails", course.id);
-      await ensureDir(dir);
-      const relPath = path.join("course-thumbnails", course.id, storedName).replace(/\\/g, "/");
-      const fullPath = path.join(dir, storedName);
-      await fs.writeFile(fullPath, bytes);
-
-      await prisma.course.update({
-        where: { id: course.id },
-        data: {
-          thumbnailStoredPath: relPath,
-          thumbnailOriginalName: thumbnailFile.name || null,
-          thumbnailMimeType: thumbnailFile.type || "application/octet-stream",
-          thumbnailSizeBytes: bytes.length,
-        },
-      });
+        await prisma.course.update({
+          where: { id: course.id },
+          data: {
+            thumbnailUrl: dataUrl,
+            // 로컬 파일 저장 관련 필드는 사용하지 않음 (기존 값이 있더라도 정리)
+            thumbnailStoredPath: null,
+            thumbnailOriginalName: thumbnailFile.name || null,
+            thumbnailMimeType: mimeType,
+            thumbnailSizeBytes: bytes.length,
+          },
+        });
+      }
     } catch (e) {
       console.error("[admin/courses/create] failed to persist thumbnail:", e);
     }

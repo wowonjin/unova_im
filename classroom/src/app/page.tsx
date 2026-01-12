@@ -11,7 +11,9 @@ import StorePreviewTabs, { type StorePreviewProduct } from "./_components/StoreP
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 
-export const dynamic = "force-dynamic";
+// 홈은 유저별 데이터가 아니고(쿠키/세션 의존 X) 변경도 잦지 않으므로
+// ISR 캐시로 서버/DB 부하를 줄여 페이지 이동 체감 속도를 개선합니다.
+export const revalidate = 60;
 
 function getStoreOwnerEmail(): string {
   // StorePage와 동일하게 관리자 이메일 소유 상품만 홈에도 노출
@@ -84,6 +86,7 @@ export default async function HomePage() {
       originalPrice: true;
       tags: true;
       thumbnailUrl: true;
+      thumbnailStoredPath: true;
       rating: true;
       reviewCount: true;
     };
@@ -120,6 +123,7 @@ export default async function HomePage() {
           originalPrice: true,
           tags: true,
           thumbnailUrl: true,
+          thumbnailStoredPath: true,
           rating: true,
           reviewCount: true,
         },
@@ -195,6 +199,7 @@ export default async function HomePage() {
       textbookType: null,
       type: "course" as const,
       thumbnailUrl: c.thumbnailUrl,
+      thumbnailStoredPath: (c as any).thumbnailStoredPath ?? null,
       rating: c.rating,
       reviewCount: c.reviewCount,
     };

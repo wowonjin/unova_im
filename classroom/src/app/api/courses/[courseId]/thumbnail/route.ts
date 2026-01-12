@@ -11,7 +11,23 @@ export const runtime = "nodejs";
 
 const ParamsSchema = z.object({ courseId: z.string().min(1) });
 
+// 최대 파일 크기 제한 (2MB) - 로컬 파일 썸네일을 DB(data URL)로 자동 마이그레이션할 때 사용
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
+
+function wantsJson(req: Request) {
+  const accept = req.headers.get("accept") || "";
+  return req.headers.get("x-unova-client") === "1" || accept.includes("application/json");
+}
+
+function redirectPlaceholder(req: Request) {
+  // public asset
+  const res = NextResponse.redirect(new URL("/course-placeholder.svg", req.url));
+  res.headers.set("cache-control", "public, max-age=300"); // 5분
+  return res;
+}
+
 export async function GET(req: Request, ctx: { params: Promise<{ courseId: string }> }) {
+  const json = wantsJson(req);
   const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
   const { courseId } = ParamsSchema.parse(await ctx.params);
 
@@ -19,7 +35,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
     where: { id: courseId },
     select: { id: true, ownerId: true, thumbnailStoredPath: true, thumbnailMimeType: true, thumbnailUrl: true },
   });
-  if (!course) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+  if (!course) {
+    return json ? NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 }) : redirectPlaceholder(req);
+  }
 
   // thumbnailUrl이 data URL인 경우: Base64 디코딩하여 이미지 반환 (인증 불필요)
   if (course.thumbnailUrl && course.thumbnailUrl.startsWith("data:")) {
@@ -46,7 +64,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
   }
 
   // thumbnailStoredPath가 있는 경우: 로컬 파일 제공 (보호 필요)
-  if (!course.thumbnailStoredPath) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+  if (!course.thumbnailStoredPath) {
+    return json ? NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 }) : redirectPlaceholder(req);
+  }
 
   // 교사(소유자)는 수강권 없이도 썸네일 미리보기 가능
   const teacher = await getCurrentTeacherUser();
@@ -54,7 +74,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
     // ok
   } else {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    if (!user) {
+      return json ? NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 }) : redirectPlaceholder(req);
+    }
 
     if (!user.isAdmin && !bypassEnrollment) {
       const now = new Date();
@@ -62,7 +84,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
         where: { userId: user.id, courseId, status: "ACTIVE", endAt: { gt: now } },
         select: { id: true },
       });
-      if (!ok) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+      if (!ok) {
+        return json ? NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 }) : redirectPlaceholder(req);
+      }
     }
   }
 
@@ -70,16 +94,49 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
   try {
     filePath = safeJoin(getStorageRoot(), course.thumbnailStoredPath);
   } catch {
-    return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    return json ? NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 }) : redirectPlaceholder(req);
   }
-  if (!fs.existsSync(filePath)) return NextResponse.json({ ok: false, error: "FILE_MISSING" }, { status: 404 });
+  if (!fs.existsSync(filePath)) {
+    return json ? NextResponse.json({ ok: false, error: "FILE_MISSING" }, { status: 404 }) : redirectPlaceholder(req);
+  }
 
   const stat = fs.statSync(filePath);
+  const mimeType = course.thumbnailMimeType || "application/octet-stream";
+
+  // 파일이 존재하는데 thumbnailUrl이 비어있다면(과거 storedPath 방식),
+  // 멀티 인스턴스 환경에서도 깨지지 않도록 DB(data URL)로 1회 자동 마이그레이션을 시도한다.
+  if (stat.size > 0 && stat.size <= MAX_FILE_SIZE) {
+    try {
+      const buffer = fs.readFileSync(filePath);
+      const base64 = buffer.toString("base64");
+      const dataUrl = `data:${mimeType};base64,${base64}`;
+
+      await prisma.course.update({
+        where: { id: courseId },
+        data: {
+          thumbnailUrl: dataUrl,
+          thumbnailStoredPath: null,
+          thumbnailMimeType: mimeType,
+          thumbnailSizeBytes: buffer.length,
+        },
+      });
+
+      const headers = new Headers();
+      headers.set("content-type", mimeType);
+      headers.set("content-length", String(buffer.length));
+      headers.set("cache-control", "public, max-age=31536000, immutable");
+      return new NextResponse(buffer, { status: 200, headers });
+    } catch (e) {
+      // 마이그레이션 실패해도, 기존 방식(스트리밍)으로 계속 제공
+      console.error("[courses/thumbnail] migrate stored thumbnail to dataUrl failed:", e);
+    }
+  }
+
   const stream = fs.createReadStream(filePath);
   const webStream = Readable.toWeb(stream) as unknown as ReadableStream;
 
   const headers = new Headers();
-  headers.set("content-type", course.thumbnailMimeType || "application/octet-stream");
+  headers.set("content-type", mimeType);
   headers.set("content-length", String(stat.size));
   headers.set("cache-control", "private, max-age=60");
 

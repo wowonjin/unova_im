@@ -14,6 +14,8 @@ export type StorePreviewProduct = {
   textbookType: string | null;
   type: "course" | "textbook";
   thumbnailUrl: string | null;
+  // course 레거시(파일 저장) 썸네일 지원: thumbnailUrl이 비어도 storedPath가 있으면 API로 서빙 가능
+  thumbnailStoredPath?: string | null;
   rating: number | null;
   reviewCount: number | null;
 };
@@ -216,11 +218,15 @@ export default function StorePreviewTabs({
                     </div>
                   ) : null}
 
-                  {product.thumbnailUrl ? (
-                    // 교재/강의: 이미지 전체 커버(여백/그림자 레이어 제거)
+                  {(product.thumbnailUrl || (product.type === "course" && product.thumbnailStoredPath)) ? (
+                    // data URL/CSP 이슈를 피하기 위해 내부 썸네일 API로 통일
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={product.thumbnailUrl}
+                      src={
+                        product.type === "course"
+                          ? `/api/courses/${product.id}/thumbnail`
+                          : `/api/textbooks/${product.id}/thumbnail`
+                      }
                       alt={product.title}
                       className="absolute inset-0 h-full w-full object-cover"
                     />
