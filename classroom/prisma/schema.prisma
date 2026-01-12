@@ -333,6 +333,8 @@ model Textbook {
   title        String
   // 스토어/상세 페이지에 노출할 "출판한 선생님 이름"
   teacherName  String?
+  // 선생님 프로필 이미지 URL (동그란 아바타로 표시)
+  teacherImageUrl String?
   // 선생님 한 줄 소개(선택): 카드/상세 상단에 작은 텍스트로 노출
   teacherTitle String?
   // 선생님 소개(선택): 상세 페이지 소개 영역에 노출

@@ -35,6 +35,7 @@ type ProductData = {
   teacherId: string;
   teacherTitle: string;
   teacherDescription: string;
+  teacherImageUrl?: string | null;
   thumbnailUrl?: string | null;
   // 교재의 ISBN(관리자에서 입력한 값). 현재는 Textbook.imwebProdCode를 사용합니다.
   isbn?: string | null;
@@ -739,6 +740,15 @@ export default function ProductDetailClient({
 
           {/* 강사 정보 */}
           <div className="flex items-center gap-3 mb-3">
+            {product.teacherImageUrl && (
+              <div className="w-10 h-10 rounded-full overflow-hidden border border-white/20 shrink-0">
+                <img
+                  src={product.teacherImageUrl}
+                  alt={`${product.teacher} 선생님`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
             <div>
               <p className="text-[15px] font-medium flex items-center gap-1.5">
                 {product.teacher} 선생님
@@ -887,31 +897,6 @@ export default function ProductDetailClient({
                   </tbody>
                 </table>
               </div>
-
-              {/* 강의 설명 */}
-              {product.type !== "course" &&
-                (((product.description ?? "").trim().length > 0) ||
-                  ((product.teacherDescription ?? "").trim().length > 0)) && (
-                <div className="rounded-xl border border-white/10 p-6">
-                  {((product.description ?? "").trim().length > 0) && (
-                    <p className="text-[15px] text-white/80 leading-relaxed whitespace-pre-line">
-                      {product.description}
-                    </p>
-                  )}
-                
-                {/* 선생님 소개 (있을 때만) */}
-                {product.teacherDescription && product.teacherDescription.trim().length > 0 && (
-                  <div className="mt-6 pt-6 border-t border-white/10">
-                    <p className="text-[14px] font-semibold text-white/90 mb-3">선생님 소개</p>
-                    <p className="text-[14px] text-white/70 leading-relaxed whitespace-pre-line">
-                      {product.teacherDescription}
-                    </p>
-                  </div>
-                )}
-
-                {/* NOTE: 교재 상세 페이지에서는 "이런 분들께 추천합니다" 섹션을 노출하지 않습니다. */}
-                </div>
-              )}
             </section>
           )}
 

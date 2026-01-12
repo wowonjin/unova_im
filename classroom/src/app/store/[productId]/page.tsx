@@ -820,6 +820,7 @@ export default async function ProductDetailPage({
     const teacherName = (dbTextbook as { teacherName?: string | null }).teacherName || "선생님";
     const teacherTitle = (dbTextbook as { teacherTitle?: string | null }).teacherTitle || "";
     const teacherDescription = (dbTextbook as { teacherDescription?: string | null }).teacherDescription || "";
+    const teacherImageUrl = (dbTextbook as { teacherImageUrl?: string | null }).teacherImageUrl || null;
     const thumbnailUrl = (dbTextbook as { thumbnailUrl?: string | null }).thumbnailUrl || null;
     const composition = (dbTextbook as { composition?: string | null }).composition ?? null;
     const isbn = (dbTextbook as { imwebProdCode?: string | null }).imwebProdCode ?? null;
@@ -841,6 +842,7 @@ export default async function ProductDetailPage({
                 teacherId: "unova",
                 teacherTitle,
                 teacherDescription,
+                teacherImageUrl,
                 thumbnailUrl,
                 isbn,
                 price,

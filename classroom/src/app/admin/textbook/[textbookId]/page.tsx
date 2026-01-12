@@ -1,70 +1,16 @@
 import AppShell from "@/app/_components/AppShell";
 import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
-import { Badge, Button, Card, CardBody, CardHeader, Field, HelpTip, Input, PageHeader, Tabs, Textarea } from "@/app/_components/ui";
+import { Badge, Button, Card, CardBody, CardHeader, HelpTip, PageHeader, Tabs } from "@/app/_components/ui";
 import TextbookPublishedSelect from "@/app/_components/TextbookPublishedSelect";
 import TextbookThumbnailGenerator from "@/app/_components/TextbookThumbnailGenerator";
 import TextbookThumbnailUploadClient from "@/app/_components/TextbookThumbnailUploadClient";
 import TextbookBasicInfoClient from "@/app/_components/TextbookBasicInfoClient";
 import TextbookDetailPageClient from "@/app/_components/TextbookDetailPageClient";
 import TextbookAddonsClient from "@/app/_components/TextbookAddonsClient";
-import TextbookStoredPathClient from "@/app/_components/TextbookStoredPathClient";
+import TextbookFileSelectClient from "@/app/_components/TextbookFileSelectClient";
+import TextbookReviewFormClient from "@/app/_components/TextbookReviewFormClient";
 import ConfirmDeleteButton, { ConfirmDeleteIconButton } from "@/app/_components/ConfirmDeleteButton";
-import PdfPageCount from "@/app/_components/PdfPageCount";
-
-function formatBytes(bytes: number) {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
-  const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
-  const v = bytes / 1024 ** i;
-  return `${v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
-}
-
-type TextbookFileItem = {
-  storedPath: string;
-  originalName: string;
-  mimeType: string;
-  sizeBytes: number;
-  pageCount: number | null;
-};
-
-function normalizeTextbookFiles(tb: {
-  storedPath: string;
-  originalName: string;
-  mimeType: string;
-  sizeBytes: number;
-  pageCount?: number | null;
-  files?: unknown;
-}): TextbookFileItem[] {
-  const list = Array.isArray((tb as any).files) ? ((tb as any).files as any[]) : [];
-  const out: TextbookFileItem[] = [];
-  for (const f of list) {
-    if (!f || typeof f !== "object") continue;
-    const storedPath = typeof f.storedPath === "string" ? f.storedPath : "";
-    const originalName = typeof f.originalName === "string" ? f.originalName : "";
-    const mimeType = typeof f.mimeType === "string" ? f.mimeType : "application/octet-stream";
-    const sizeBytes = Number(f.sizeBytes);
-    const pageCount = Number(f.pageCount);
-    if (!storedPath || !originalName || !Number.isFinite(sizeBytes)) continue;
-    out.push({
-      storedPath,
-      originalName,
-      mimeType,
-      sizeBytes: Math.max(0, Math.floor(sizeBytes)),
-      pageCount: Number.isFinite(pageCount) && pageCount > 0 ? Math.floor(pageCount) : null,
-    });
-  }
-  if (out.length > 0) return out;
-  return [
-    {
-      storedPath: tb.storedPath,
-      originalName: tb.originalName,
-      mimeType: tb.mimeType,
-      sizeBytes: tb.sizeBytes,
-      pageCount: (tb as any).pageCount ?? null,
-    },
-  ];
-}
 
 export default async function AdminTextbookPage({
   params,
@@ -78,8 +24,8 @@ export default async function AdminTextbookPage({
   const sp = (await searchParams) ?? {};
   const entitleMsg = sp.entitle || null;
   // "detail" 탭은 기존 호환을 위해 유지하되, UI에서는 "설정"에 합쳐서 표시합니다.
-  const tab = (sp.tab || "settings") as "settings" | "detail" | "addons" | "users";
-  const activeTab = (tab === "detail" ? "settings" : tab) as "settings" | "addons" | "users";
+  const tab = (sp.tab || "settings") as "settings" | "detail" | "addons" | "users" | "reviews";
+  const activeTab = (tab === "detail" ? "settings" : tab) as "settings" | "addons" | "users" | "reviews";
 
   // NOTE: 운영에서 마이그레이션 누락 시 Prisma가 모든 컬럼을 조회하다가 크래시가 날 수 있어
   // 먼저 "사용하는 필드만" select 하고, 실패하면 최소 필드로 폴백합니다.
@@ -181,6 +127,7 @@ export default async function AdminTextbookPage({
         // optional fields (may be missing if migration not applied yet)
         entitlementDays: true,
         teacherName: true,
+        teacherImageUrl: true,
         teacherTitle: true,
         teacherDescription: true,
         relatedTextbookIds: true,
@@ -256,11 +203,71 @@ export default async function AdminTextbookPage({
         })
       : [];
 
+  // "등록된 교재"(교재 업로드 플로우) 목록 - 파일 연결용
+  const registeredTextbooks =
+    activeTab === "settings"
+      ? await prisma.textbook
+          .findMany({
+            where: {
+              ownerId: teacher.id,
+              OR: [
+                { storedPath: { contains: "storage.googleapis.com" } },
+                { storedPath: { contains: "storage.cloud.google.com" } },
+              ],
+              // 판매 설정(가격/원가)이 들어간 항목은 제외
+              price: null,
+              originalPrice: null,
+            },
+            orderBy: [{ createdAt: "desc" }],
+            select: {
+              id: true,
+              title: true,
+              originalName: true,
+              sizeBytes: true,
+              pageCount: true,
+            },
+            take: 400,
+          })
+          .catch(async () => {
+            return await prisma.textbook.findMany({
+              where: {
+                ownerId: teacher.id,
+                OR: [
+                  { storedPath: { contains: "storage.googleapis.com" } },
+                  { storedPath: { contains: "storage.cloud.google.com" } },
+                ],
+                price: null,
+                originalPrice: null,
+              },
+              orderBy: [{ createdAt: "desc" }],
+              select: { id: true, title: true, originalName: true, sizeBytes: true, pageCount: true },
+              take: 400,
+            });
+          })
+      : [];
+
   // entitlementDays 필드 안전 처리 (마이그레이션 미적용 시 기본값)
   const entitlementDays = (textbook as { entitlementDays?: number }).entitlementDays ?? 30;
 
+  // 후기 목록 조회 (reviews 탭에서만)
+  const reviews =
+    activeTab === "reviews"
+      ? await prisma.review.findMany({
+          where: { textbookId },
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            authorName: true,
+            rating: true,
+            content: true,
+            isApproved: true,
+            createdAt: true,
+            user: { select: { id: true, email: true } },
+          },
+        })
+      : [];
+
   const fmtShortDate = (d: Date) => d.toISOString().slice(2, 10).replace(/-/g, ".");
-  const files = normalizeTextbookFiles(textbook as any);
 
   return (
     <AppShell>
@@ -285,133 +292,42 @@ export default async function AdminTextbookPage({
         items={[
           { key: "settings", label: "설정", href: `/admin/textbook/${textbook.id}?tab=settings` },
           { key: "addons", label: "추가 상품", href: `/admin/textbook/${textbook.id}?tab=addons` },
+          { key: "reviews", label: "후기", href: `/admin/textbook/${textbook.id}?tab=reviews` },
           { key: "users", label: "이용자", href: `/admin/textbook/${textbook.id}?tab=users` },
         ]}
       />
 
       <div className="mt-6">
         {activeTab === "settings" ? (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-start">
             {/* 왼쪽: 기본 정보 */}
-            <Card>
+            <Card className="lg:col-span-5">
               <CardHeader
                 title="기본 정보"
                 right={<TextbookPublishedSelect textbookId={textbook.id} isPublished={textbook.isPublished} />}
               />
-              <CardBody>
+              <CardBody className="space-y-8">
                 <TextbookBasicInfoClient
                   textbookId={textbook.id}
                   initialTitle={textbook.title}
                   initialTeacherName={(textbook as { teacherName?: string | null }).teacherName ?? ""}
+                  initialTeacherImageUrl={(textbook as { teacherImageUrl?: string | null }).teacherImageUrl ?? null}
                   initialIsbn={(textbook as { imwebProdCode?: string | null }).imwebProdCode ?? ""}
                   initialSubjectName={textbook.subjectName || ""}
                   initialEntitlementDays={entitlementDays}
                   initialComposition={(textbook as { composition?: string | null }).composition ?? ""}
                 />
 
-                {/* 파일 정보 */}
-                <div className="mt-6 pt-4 border-t border-white/10">
-                  <h4 className="text-sm font-medium text-white/60 mb-3">파일 정보</h4>
-                  {files.length > 1 ? (
-                    <div className="mb-3 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/60">
-                      이 교재에 <span className="text-white/80 font-medium">{files.length}개</span> 파일(여러 권)이 등록되어 있습니다.
-                    </div>
-                  ) : null}
-
-                  <div className="space-y-2">
-                    {files.map((f, idx) => (
-                      <div key={`${idx}:${f.storedPath}`} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-medium text-white/85">
-                              {files.length > 1 ? `파일 ${idx + 1}` : "파일"}
-                            </div>
-                            <div className="mt-1 space-y-1 text-xs text-white/55">
-                              <div className="flex justify-between gap-3">
-                                <span>원본 파일명</span>
-                                <span className="truncate text-white/80" title={f.originalName}>
-                                  {f.originalName}
-                                </span>
-                              </div>
-                              <div className="flex justify-between gap-3">
-                                <span>파일 크기</span>
-                                <span className="text-white/80">{formatBytes(f.sizeBytes)}</span>
-                              </div>
-                              <div className="flex justify-between gap-3">
-                                <span>페이지 수</span>
-                                <span className="text-white/80">
-                                  {f.pageCount && f.pageCount > 0 ? `${f.pageCount}쪽` : <PdfPageCount src={`/api/textbooks/${textbook.id}/view?file=${idx}`} />}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="shrink-0 flex items-center gap-2">
-                            <a
-                              href={`/api/admin/textbooks/${textbook.id}/download?file=${idx}`}
-                              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 transition-colors hover:bg-white/10"
-                            >
-                              다운로드
-                            </a>
-                            <form action={`/api/admin/textbooks/${textbook.id}/update-metadata?file=${idx}`} method="post">
-                              <Button type="submit" variant="secondary" size="sm">
-                                정보 갱신
-                              </Button>
-                            </form>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-3 text-xs text-white/35">
-                    외부 URL(구글 스토리지) 파일만 <span className="text-white/50">정보 갱신</span> 시 용량/페이지 수를 다시 계산합니다.
-                  </div>
-
-                  <TextbookStoredPathClient
+                {/* 파일 연결 */}
+                <div className="pt-4 border-t border-white/10">
+                  <TextbookFileSelectClient
                     textbookId={textbook.id}
-                    initialStoredPath={(textbook as { storedPath: string }).storedPath}
+                    registeredTextbooks={registeredTextbooks}
                   />
-
-                  {/* 여러 권 추가 */}
-                  <div className="mt-6 pt-4 border-t border-white/10">
-                    <h4 className="text-sm font-medium text-white/60 mb-3">여러 권 추가</h4>
-                    <form
-                      className="space-y-3"
-                      action={`/api/admin/textbooks/${textbook.id}/files/add`}
-                      method="post"
-                      encType="multipart/form-data"
-                    >
-                      <Field label="교재 제목(선택)" hint="여러 권 추가 시 표시용 제목(선택)입니다.">
-                        <Input name="title" placeholder="예: 2027 수학 교재" className="bg-transparent" />
-                      </Field>
-                      <Field label="구글 업로드 URL(여러 개 가능)" hint="한 줄에 하나씩 입력하면 여러 권을 한 번에 추가할 수 있어요.">
-                        <Textarea
-                          name="url"
-                          rows={3}
-                          placeholder={"예:\nhttps://storage.googleapis.com/버킷/파일1.pdf\nhttps://storage.googleapis.com/버킷/파일2.pdf"}
-                          className="bg-transparent"
-                        />
-                      </Field>
-                      <Field label="파일 업로드(여러 개 가능)" hint="여러 파일을 선택하면 여러 권이 한 번에 업로드됩니다.">
-                        <input
-                          name="file"
-                          type="file"
-                          multiple
-                          className="block w-full rounded-xl border border-white/10 bg-[#131315] px-3 py-2 text-sm text-white file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/15"
-                        />
-                      </Field>
-                      <div className="flex justify-end">
-                        <Button type="submit" variant="secondary">
-                          추가
-                        </Button>
-                      </div>
-                    </form>
-                  </div>
                 </div>
 
                 {/* 썸네일 및 다운로드 */}
-                <div className="mt-6 pt-4 border-t border-white/10">
+                <div className="pt-4 border-t border-white/10">
                   <h4 className="text-sm font-medium text-white/60 mb-3">썸네일 및 다운로드</h4>
                   <div className="space-y-3">
                     <TextbookThumbnailUploadClient textbookId={textbook.id} hasThumbnail={!!textbook.thumbnailUrl} />
@@ -440,7 +356,7 @@ export default async function AdminTextbookPage({
             </Card>
 
             {/* 오른쪽: 상세 페이지 설정 */}
-            <Card>
+            <Card className="lg:col-span-7 min-w-0">
               <CardHeader
                 title="상세 페이지 설정"
                 description="스토어에 표시되는 교재 상세 페이지의 내용을 설정합니다."
@@ -480,7 +396,7 @@ export default async function AdminTextbookPage({
               />
             </CardBody>
           </Card>
-        ) : (
+        ) : activeTab === "users" ? (
           <Card>
             <CardHeader
               title="이용자 목록"
@@ -565,7 +481,64 @@ export default async function AdminTextbookPage({
               )}
             </CardBody>
           </Card>
-        )}
+        ) : activeTab === "reviews" ? (
+          <Card>
+            <CardHeader
+              title="후기 관리"
+              description="이 교재에 등록된 후기를 관리합니다."
+              right={<Badge tone={reviews.length ? "neutral" : "muted"}>{reviews.length}개</Badge>}
+            />
+            <CardBody>
+              {/* 후기 추가 폼 */}
+              <div className="mb-6 pb-6 border-b border-white/10">
+                <h4 className="text-sm font-medium text-white/70 mb-4">새 후기 등록</h4>
+                <TextbookReviewFormClient textbookId={textbook.id} />
+              </div>
+
+              {/* 후기 목록 */}
+              {reviews.length ? (
+                <div className="space-y-4">
+                  {reviews.map((review) => (
+                    <div
+                      key={review.id}
+                      className="rounded-xl border border-white/10 bg-white/[0.02] p-4"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="font-medium text-white">{review.authorName}</span>
+                            <span className="text-yellow-400">
+                              {"★".repeat(review.rating)}
+                              <span className="text-white/20">{"★".repeat(5 - review.rating)}</span>
+                            </span>
+                            <span className="text-xs text-white/40">
+                              {fmtShortDate(review.createdAt)}
+                            </span>
+                            {!review.isApproved && (
+                              <Badge tone="warning">미승인</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-white/70 whitespace-pre-line">{review.content}</p>
+                          {review.user && (
+                            <p className="mt-2 text-xs text-white/40">
+                              회원: {review.user.email}
+                            </p>
+                          )}
+                        </div>
+                        <ConfirmDeleteIconButton
+                          action="/api/admin/textbook-reviews/remove"
+                          hiddenInputs={[{ name: "reviewId", value: review.id }]}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-white/60">등록된 후기가 없습니다.</p>
+              )}
+            </CardBody>
+          </Card>
+        ) : null}
       </div>
     </AppShell>
   );

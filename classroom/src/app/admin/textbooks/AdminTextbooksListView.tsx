@@ -39,6 +39,7 @@ export default function AdminTextbooksListView({ items }: { items: TextbookRow[]
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">("all");
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [duplicating, setDuplicating] = useState<string | null>(null);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -66,6 +67,24 @@ export default function AdminTextbooksListView({ items }: { items: TextbookRow[]
       console.error(e);
     } finally {
       setDeleting(null);
+    }
+  }
+
+  async function handleDuplicate(id: string) {
+    setDuplicating(id);
+    try {
+      const res = await fetch(`/api/admin/textbooks/${id}/duplicate`, {
+        method: "POST",
+        headers: { accept: "application/json" },
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok || typeof json?.newId !== "string") throw new Error("DUPLICATE_FAILED");
+      router.push(`/admin/textbook/${json.newId}?tab=settings`);
+    } catch (e) {
+      console.error(e);
+      alert("복사에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setDuplicating(null);
     }
   }
 
@@ -257,6 +276,27 @@ export default function AdminTextbooksListView({ items }: { items: TextbookRow[]
                     >
                       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDuplicate(item.id)}
+                      disabled={duplicating === item.id}
+                      className="rounded-md p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white/70 disabled:opacity-50"
+                      title="복사"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M8 7a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2h-8a2 2 0 01-2-2V7z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M6 17H5a2 2 0 01-2-2V7a2 2 0 012-2h1"
+                        />
                       </svg>
                     </button>
                   </div>

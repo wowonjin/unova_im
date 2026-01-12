@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { warmupThumb } from "./pdfThumbWarmup";
-import { useSidebar } from "./SidebarContext";
+import { useSidebar } from "@/app/_components/SidebarContext";
 import { readRecentWatched } from "@/lib/recent-watch";
 import { onProgressUpdated } from "@/lib/progress-events";
 

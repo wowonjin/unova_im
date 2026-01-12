@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Badge, Field, Input, Textarea } from "@/app/_components/ui";
 
 function normalizeGcsUrl(s: string): string {
   const t = (s ?? "").trim();
@@ -165,125 +166,98 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
     };
   }, [price, originalPrice, teacherTitle, teacherDescription, tags, textbookType, benefits, features, extraOptions, description, relatedTextbookIds, saveData]);
 
-  const inputClass = "w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20";
-  const labelClass = "block text-sm font-medium text-white/70 mb-1.5";
   const benefitImageUrls = benefits
     .split("\n")
     .map((x) => normalizeGcsUrl(x))
     .filter((x) => /^https?:\/\//i.test(x));
 
+  const statusEl =
+    saveStatus === "saving" ? (
+      <span className="inline-flex items-center gap-1.5 text-xs text-white/50">
+        <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
+        </svg>
+        저장 중...
+      </span>
+    ) : saveStatus === "saved" ? (
+      <Badge tone="success">저장됨</Badge>
+    ) : saveStatus === "error" ? (
+      <Badge tone="muted">저장 실패</Badge>
+    ) : (
+      <span className="text-xs text-white/30">자동 저장</span>
+    );
+
   return (
     <div className="space-y-6">
-      {/* 저장 상태 표시 */}
-      <div className="h-5">
-        {saveStatus === "saving" && (
-          <span className="inline-flex items-center gap-1.5 text-sm text-white/50">
-            <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-            저장 중...
-          </span>
-        )}
-        {saveStatus === "saved" && (
-          <span className="inline-flex items-center gap-1.5 text-sm text-emerald-400">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-            저장되었습니다
-          </span>
-        )}
-        {saveStatus === "error" && (
-          <span className="text-sm text-red-400">저장 중 오류가 발생했습니다</span>
-        )}
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-white/80">상세 페이지 설정</h3>
+        <div className="shrink-0">{statusEl}</div>
       </div>
 
-      {/* 가격 정보 */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelClass}>판매 가격 (원)</label>
-          <input
-            type="number"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            placeholder="예: 45000"
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label className={labelClass}>
-            원래 가격 (원)
-            <span className="ml-1 text-white/40 font-normal">(할인 전)</span>
-          </label>
-          <input
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="판매 가격(원)" hint="스토어에 표시되는 가격">
+          <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="예: 45000" className="bg-transparent" />
+        </Field>
+        <Field label="원래 가격(원)" hint="할인 전 가격(선택)">
+          <Input
             type="number"
             value={originalPrice}
             onChange={(e) => setOriginalPrice(e.target.value)}
             placeholder="예: 55000"
-            className={inputClass}
+            className="bg-transparent"
           />
-        </div>
+        </Field>
       </div>
 
-      {/* 태그 */}
-      <div>
-        <label className={labelClass}>태그</label>
-        <input
-          type="text"
-          value={tags}
-          onChange={(e) => setTags(e.target.value)}
-          placeholder="예: 수학, 교재, PDF"
-          className={inputClass}
-        />
-        <p className="mt-1 text-xs text-white/40">쉼표(,)로 구분하여 입력하세요.</p>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="태그" hint="쉼표(,)로 구분하여 입력하세요.">
+          <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="예: 고3, 기본서" className="bg-transparent" />
+        </Field>
+        <Field label="교재 종류" hint="교재 구매하기 리스트에서 배지로 표시됩니다.">
+          <Input value={textbookType} onChange={(e) => setTextbookType(e.target.value)} placeholder="예: 실물책+PDF" className="bg-transparent" />
+        </Field>
       </div>
 
-      {/* 교재 종류 */}
-      <div>
-        <label className={labelClass}>교재 종류</label>
-        <input
-          type="text"
-          value={textbookType}
-          onChange={(e) => setTextbookType(e.target.value)}
-          placeholder="예: 실전서, 기출, N제"
-          className={inputClass}
-        />
-        <p className="mt-1 text-xs text-white/40">교재 구매하기 리스트에서 교재 이미지 좌측 상단 배지로 표시됩니다.</p>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="선생님 타이틀(선택)" hint="상세 페이지에서 선생님 소개 제목으로 사용됩니다.">
+          <Input value={teacherTitle} onChange={(e) => setTeacherTitle(e.target.value)} placeholder="예: 연세대학교 천문우주학과" className="bg-transparent" />
+        </Field>
       </div>
 
-      {/* 맛보기 파일 URL */}
-      <div>
-        <label className={labelClass}>맛보기 파일 URL</label>
-        <input
-          type="text"
+      <Field label="맛보기 파일 URL" hint="스토어 교재 상세의 “교재소개” 표에 다운로드 버튼으로 노출됩니다.">
+        <Input
           value={previewFileUrl}
           onChange={(e) => {
             const v = e.target.value;
             setPreviewFileUrl(v);
-            // extraOptions에 자동 반영(저장은 기존 update-detail 루트에서 함께 처리)
             setExtraOptions((prev) => upsertPreviewUrlLine(prev, v));
           }}
           placeholder="예: https://storage.googleapis.com/버킷/preview.pdf 또는 gs://bucket/path"
-          className={inputClass}
+          className="bg-transparent"
         />
-        <p className="mt-1 text-xs text-white/40">스토어 교재 상세의 “교재소개” 표에 다운로드 버튼으로 노출됩니다.</p>
-      </div>
+      </Field>
 
-      {/* 수강 혜택 */}
-      <div>
-        <label className={labelClass}>수강 혜택 (상세페이지 이미지 URL)</label>
-        <textarea
+      <Field
+        label="상세페이지 URL"
+        hint={
+          <span>
+            구글 스토리지 URL을 줄바꿈으로 구분해 입력하세요. (예: <span className="text-white/50">https://storage.googleapis.com/...</span> 또는{" "}
+            <span className="text-white/50">gs://bucket/path</span>)
+          </span>
+        }
+      >
+        <Textarea
           value={benefits}
           onChange={(e) => setBenefits(e.target.value)}
-          placeholder="https://.../detail-1.png&#10;https://.../detail-2.jpg"
+          placeholder={"https://.../detail-1.png\nhttps://.../detail-2.jpg"}
           rows={4}
-          className={inputClass}
+          className="bg-transparent"
         />
-        <p className="mt-1 text-xs text-white/40">
-          구글 스토리지 URL을 줄바꿈으로 구분하여 입력하세요. (예: <span className="text-white/50">https://storage.googleapis.com/...</span> 또는{" "}
-          <span className="text-white/50">gs://bucket/path</span>)
-        </p>
-
         {benefitImageUrls.length > 0 && (
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {benefitImageUrls.slice(0, 6).map((url, idx) => (
@@ -297,25 +271,7 @@ export default function TextbookDetailPageClient({ textbookId, initial }: Props)
             ))}
           </div>
         )}
-      </div>
-
-      {/* 추가 옵션 */}
-      <div>
-        <label className={labelClass}>추가 옵션</label>
-        <textarea
-          value={extraOptions}
-          onChange={(e) => {
-            const next = e.target.value;
-            setExtraOptions(next);
-            // 사용자가 직접 텍스트를 수정해도 맛보기 URL 입력 필드가 동기화되도록
-            setPreviewFileUrl(parsePreviewUrlFromExtraOptionsText(next));
-          }}
-          placeholder={"예: 구성: PDF+해설\n맛보기 파일 URL: https://.../preview.pdf"}
-          rows={5}
-          className={inputClass}
-        />
-        <p className="mt-1 text-xs text-white/40">줄바꿈으로 구분하고, “이름: 값” 형태로 입력하세요.</p>
-      </div>
+      </Field>
     </div>
   );
 }
