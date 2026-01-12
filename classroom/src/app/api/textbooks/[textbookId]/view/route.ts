@@ -14,24 +14,83 @@ function isHttpUrl(s: string) {
   return /^https?:\/\//i.test(s);
 }
 
+function parseFileIndex(req: Request): number | null {
+  try {
+    const u = new URL(req.url);
+    const raw = u.searchParams.get("file");
+    if (raw == null || raw.trim() === "") return null;
+    if (!/^\d+$/.test(raw.trim())) return null;
+    const n = parseInt(raw.trim(), 10);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(req: Request, ctx: { params: Promise<{ textbookId: string }> }) {
   const user = await getCurrentUser();
   const { textbookId } = ParamsSchema.parse(await ctx.params);
   const now = new Date();
 
-  const tb = await prisma.textbook.findUnique({
-    where: { id: textbookId },
-    select: {
-      id: true,
-      title: true,
-      storedPath: true,
-      originalName: true,
-      mimeType: true,
-      isPublished: true,
-      imwebProdCode: true,
-    },
-  });
+  const fileIndex = parseFileIndex(req);
+
+  // NOTE: files 컬럼이 없는 환경(마이그레이션 미적용)일 수 있어 try/catch로 폴백
+  let tb:
+    | {
+        id: string;
+        title: string;
+        storedPath: string;
+        originalName: string;
+        mimeType: string;
+        isPublished: boolean;
+        imwebProdCode: string | null;
+        files?: unknown;
+      }
+    | null = null;
+
+  try {
+    tb = await prisma.textbook.findUnique({
+      where: { id: textbookId },
+      select: {
+        id: true,
+        title: true,
+        storedPath: true,
+        originalName: true,
+        mimeType: true,
+        isPublished: true,
+        imwebProdCode: true,
+        files: true,
+      },
+    });
+  } catch {
+    tb = await prisma.textbook.findUnique({
+      where: { id: textbookId },
+      select: {
+        id: true,
+        title: true,
+        storedPath: true,
+        originalName: true,
+        mimeType: true,
+        isPublished: true,
+        imwebProdCode: true,
+      },
+    });
+  }
   if (!tb) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+
+  // 다중 파일 지원: ?file= 인덱스로 선택, 없으면 기존 단일 파일(storedPath) 사용
+  let storedPath = tb.storedPath;
+  let originalName = tb.originalName;
+  let mimeType = tb.mimeType;
+
+  const files = Array.isArray((tb as any).files) ? ((tb as any).files as any[]) : null;
+  if (fileIndex != null && files && files.length > 0) {
+    const f = files[fileIndex];
+    if (!f || typeof f !== "object") return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    if (typeof f.storedPath === "string" && f.storedPath) storedPath = f.storedPath;
+    if (typeof f.originalName === "string" && f.originalName) originalName = f.originalName;
+    if (typeof f.mimeType === "string" && f.mimeType) mimeType = f.mimeType;
+  }
 
   const isPaywalled = tb.imwebProdCode != null && tb.imwebProdCode.length > 0;
   const isAdmin = Boolean(user?.isAdmin);
@@ -54,11 +113,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
   // private: 인증 기반 콘텐츠이므로 CDN에는 캐시 안 됨, 브라우저에만 캐시
   headers.set("cache-control", isAdmin || isPaywalled ? "private, max-age=86400, stale-while-revalidate=604800" : "public, max-age=86400");
   headers.set("vary", "Cookie");
-  headers.set("content-disposition", `inline; filename="${encodeURIComponent(tb.originalName || tb.title)}"`);
+  headers.set("content-disposition", `inline; filename="${encodeURIComponent(originalName || tb.title)}"`);
 
   // 외부 URL(GCS 등): 서버가 fetch 해서 same-origin으로 전달 → pdf.js CORS 문제 회피
-  if (isHttpUrl(tb.storedPath)) {
-    const upstream = await fetch(tb.storedPath, {
+  if (isHttpUrl(storedPath)) {
+    const upstream = await fetch(storedPath, {
       // signed url 등도 따라가도록
       redirect: "follow",
       headers: {
@@ -71,7 +130,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
       return NextResponse.json({ ok: false, error: "UPSTREAM_FAILED" }, { status: 404 });
     }
 
-    headers.set("content-type", upstream.headers.get("content-type") || tb.mimeType || "application/pdf");
+    headers.set("content-type", upstream.headers.get("content-type") || mimeType || "application/pdf");
     const len = upstream.headers.get("content-length");
     if (len) headers.set("content-length", len);
 
@@ -81,7 +140,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
   // 로컬 파일
   let filePath: string;
   try {
-    filePath = safeJoin(getStorageRoot(), tb.storedPath);
+    filePath = safeJoin(getStorageRoot(), storedPath);
   } catch {
     return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
   }
@@ -91,7 +150,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
   const stream = fs.createReadStream(filePath);
   const webStream = Readable.toWeb(stream) as unknown as ReadableStream;
 
-  headers.set("content-type", tb.mimeType || "application/pdf");
+  headers.set("content-type", mimeType || "application/pdf");
   headers.set("content-length", String(stat.size));
 
   return new NextResponse(webStream, { status: 200, headers });

@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TextbookAutoThumbnail from "@/app/_components/TextbookAutoThumbnail";
+import { Badge, Button, Field, Input } from "@/app/_components/ui";
 
 type TextbookRow = {
   id: string;
@@ -53,14 +54,80 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
-  const selectedIds = useMemo(() => Array.from(selected), [selected]);
-  const allIds = useMemo(() => items.map((t) => t.id), [items]);
-  const allSelected = selected.size > 0 && selected.size === items.length;
+  // ===== Filters =====
+  const [q, setQ] = useState("");
+  const [published, setPublished] = useState<"all" | "published" | "unpublished">("all");
+  const [sale, setSale] = useState<"all" | "priced" | "no_price">("all");
+  const [thumb, setThumb] = useState<"all" | "has" | "missing">("all");
+  const [subjectFilter, setSubjectFilter] = useState<string>("all");
+  const [teacherFilter, setTeacherFilter] = useState<string>("all");
+
+  const subjectOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of items) {
+      const v = (t.subjectName || "").trim();
+      if (v) set.add(v);
+    }
+    return ["all", ...Array.from(set).sort((a, b) => a.localeCompare(b, "ko"))];
+  }, [items]);
+  const teacherOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of items) {
+      const v = (t.teacherName || "").trim();
+      if (v) set.add(v);
+    }
+    return ["all", ...Array.from(set).sort((a, b) => a.localeCompare(b, "ko"))];
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    const qq = q.trim().toLowerCase();
+    return items.filter((t) => {
+      if (qq) {
+        const hay = `${t.title} ${t.originalName}`.toLowerCase();
+        if (!hay.includes(qq)) return false;
+      }
+      if (published !== "all") {
+        if (published === "published" && !t.isPublished) return false;
+        if (published === "unpublished" && t.isPublished) return false;
+      }
+      if (sale !== "all") {
+        const hasPrice = Number.isFinite(t.price ?? NaN) && (t.price as number) > 0;
+        if (sale === "priced" && !hasPrice) return false;
+        if (sale === "no_price" && hasPrice) return false;
+      }
+      if (thumb !== "all") {
+        const hasThumb = Boolean(t.thumbnailUrl);
+        if (thumb === "has" && !hasThumb) return false;
+        if (thumb === "missing" && hasThumb) return false;
+      }
+      if (subjectFilter !== "all") {
+        if ((t.subjectName || "") !== subjectFilter) return false;
+      }
+      if (teacherFilter !== "all") {
+        if ((t.teacherName || "") !== teacherFilter) return false;
+      }
+      return true;
+    });
+  }, [items, q, published, sale, thumb, subjectFilter, teacherFilter]);
+
+  const hasActiveFilter =
+    q.trim() ||
+    published !== "all" ||
+    sale !== "all" ||
+    thumb !== "all" ||
+    subjectFilter !== "all" ||
+    teacherFilter !== "all";
+
+  const visibleIds = useMemo(() => filteredItems.map((t) => t.id), [filteredItems]);
+  const selectedIds = useMemo(() => Array.from(selected).filter((id) => visibleIds.includes(id)), [selected, visibleIds]);
+  const allSelected = selectedIds.length > 0 && selectedIds.length === visibleIds.length;
 
   const [price, setPrice] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
   const [teacherName, setTeacherName] = useState("");
   const [subjectName, setSubjectName] = useState("");
+  const [entitlementDays, setEntitlementDays] = useState("");
+  const [publishOnRegister, setPublishOnRegister] = useState(true);
   const [busy, setBusy] = useState<null | "update" | "delete">(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,7 +141,7 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
   }
 
   function selectAll() {
-    setSelected(new Set(allIds));
+    setSelected(new Set(visibleIds));
   }
 
   function clearAll() {
@@ -99,6 +166,16 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
 
     if (teacherName.trim()) update.teacherName = teacherName.trim();
     if (subjectName.trim()) update.subjectName = subjectName.trim();
+    if (entitlementDays.trim()) {
+      const n = parseInt(entitlementDays.trim(), 10);
+      if (Number.isFinite(n) && n >= 1 && n <= 3650) update.entitlementDays = n;
+      else {
+        setError("이용 기간(일)은 1~3650 사이의 숫자여야 합니다.");
+        return;
+      }
+    }
+    // 판매 등록 UX: 체크되어 있으면 공개로 전환(기본값)
+    if (publishOnRegister) update.isPublished = true;
 
     if (Object.keys(update).length === 0) {
       setError("변경할 값이 없습니다. (빈 값은 '변경 없음'으로 처리됩니다)");
@@ -120,6 +197,7 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
       setOriginalPrice("");
       setTeacherName("");
       setSubjectName("");
+      setEntitlementDays("");
       router.refresh();
     } catch (e) {
       console.error(e);
@@ -189,99 +267,127 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
 
   return (
     <div className="space-y-3">
-      {/* Bulk actions */}
-      <div className="rounded-xl border border-white/10 bg-[#1a1a1c] p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={allSelected ? clearAll : selectAll}
-              className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70 hover:bg-white/10"
-            >
-              {allSelected ? "전체 선택 해제" : "전체 선택"}
-            </button>
-            <span className="text-sm text-white/50">
-              선택: <span className="text-white/80 font-medium">{selectedIds.length}</span>개
-            </span>
+      {/* Filters */}
+      <div className="rounded-2xl border border-white/10 bg-[#1a1a1c] p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <div className="w-full lg:w-[360px]">
+              <Field label="검색" hint="제목/파일명/상품코드 기준">
+                <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="예: CONNECT / 2027 / 코드" className="bg-transparent" />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+              <div className="md:col-span-1">
+                <Field label="공개">
+                  <select
+                    value={published}
+                    onChange={(e) => setPublished(e.target.value as any)}
+                    className="h-10 w-full rounded-xl border border-white/10 bg-[#131315] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
+                  >
+                    <option value="all">전체</option>
+                    <option value="published">공개</option>
+                    <option value="unpublished">비공개</option>
+                  </select>
+                </Field>
+              </div>
+              <div className="md:col-span-1">
+                <Field label="가격">
+                  <select
+                    value={sale}
+                    onChange={(e) => setSale(e.target.value as any)}
+                    className="h-10 w-full rounded-xl border border-white/10 bg-[#131315] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
+                  >
+                    <option value="all">전체</option>
+                    <option value="priced">가격 있음</option>
+                    <option value="no_price">가격 없음</option>
+                  </select>
+                </Field>
+              </div>
+              <div className="md:col-span-1">
+                {/* 접근/상품코드 기반 필터는 제거(요청사항) */}
+                <Field label="썸네일">
+                  <select
+                    value={thumb}
+                    onChange={(e) => setThumb(e.target.value as any)}
+                    className="h-10 w-full rounded-xl border border-white/10 bg-[#131315] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
+                  >
+                    <option value="all">전체</option>
+                    <option value="has">있음</option>
+                    <option value="missing">없음</option>
+                  </select>
+                </Field>
+              </div>
+              <div className="md:col-span-1">
+                <Field label="과목">
+                  <select
+                    value={subjectFilter}
+                    onChange={(e) => setSubjectFilter(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-white/10 bg-[#131315] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
+                  >
+                    {subjectOptions.map((s) => (
+                      <option key={s} value={s}>
+                        {s === "all" ? "전체" : s}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <div className="md:col-span-1">
+                <Field label="선생님">
+                  <select
+                    value={teacherFilter}
+                    onChange={(e) => setTeacherFilter(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-white/10 bg-[#131315] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
+                  >
+                    {teacherOptions.map((s) => (
+                      <option key={s} value={s}>
+                        {s === "all" ? "전체" : s}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm text-white/50">
+              표시: <span className="text-white/85 font-medium">{filteredItems.length}</span> / {items.length}
+            </div>
+            <Button
               type="button"
-              onClick={bulkDelete}
-              disabled={!selectedIds.length || busy != null}
-              className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300 disabled:opacity-50"
+              variant="secondary"
+              onClick={() => {
+                setQ("");
+                setPublished("all");
+                setSale("all");
+                setThumb("all");
+                setSubjectFilter("all");
+                setTeacherFilter("all");
+                clearAll();
+              }}
             >
-              {busy === "delete" ? "삭제 중..." : "선택 삭제"}
-            </button>
+              필터 초기화
+            </Button>
           </div>
         </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-12">
-          <div className="md:col-span-3">
-            <label className="block text-xs text-white/50 mb-1">할인 가격(원)</label>
-            <input
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="예: 49000"
-              className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30"
-            />
+        {hasActiveFilter ? (
+          <div className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/60">
+            필터가 적용된 상태에서는 정렬(드래그)이 꺼집니다. (전체 보기로 돌리면 다시 사용 가능)
           </div>
-          <div className="md:col-span-3">
-            <label className="block text-xs text-white/50 mb-1">원래 가격(원)</label>
-            <input
-              value={originalPrice}
-              onChange={(e) => setOriginalPrice(e.target.value)}
-              placeholder="예: 99000"
-              className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30"
-            />
-          </div>
-          <div className="md:col-span-3">
-            <label className="block text-xs text-white/50 mb-1">선생님 이름</label>
-            <input
-              value={teacherName}
-              onChange={(e) => setTeacherName(e.target.value)}
-              placeholder="예: 홍길동"
-              className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30"
-            />
-          </div>
-          <div className="md:col-span-3">
-            <label className="block text-xs text-white/50 mb-1">과목명</label>
-            <input
-              value={subjectName}
-              onChange={(e) => setSubjectName(e.target.value)}
-              placeholder="예: 수학"
-              className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30"
-            />
-          </div>
-          <div className="md:col-span-12 flex items-center justify-between gap-3">
-            <p className="text-xs text-white/35">
-              빈 값은 <span className="text-white/60">변경 없음</span>으로 처리됩니다.
-            </p>
-            <button
-              type="button"
-              onClick={bulkUpdate}
-              disabled={!selectedIds.length || busy != null}
-              className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 hover:bg-white/10 disabled:opacity-50"
-            >
-              {busy === "update" ? "적용 중..." : "선택 항목에 적용"}
-            </button>
-          </div>
-          {error && (
-            <div className="md:col-span-12 text-sm text-red-400">{error}</div>
-          )}
-        </div>
+        ) : null}
       </div>
 
       {/* List */}
       <div className="grid grid-cols-1 gap-3">
-        {items.map((t) => {
+        {filteredItems.map((t) => {
           const checked = selected.has(t.id);
           return (
             <div
               key={t.id}
               onDragOver={(e) => {
                 if (!draggingId) return;
+                if (hasActiveFilter) return;
                 e.preventDefault();
                 setDragOverId(t.id);
               }}
@@ -290,6 +396,7 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
               }}
               onDrop={(e) => {
                 if (!draggingId) return;
+                if (hasActiveFilter) return;
                 e.preventDefault();
                 setDragOverId(null);
                 moveItem(draggingId, t.id);
@@ -310,6 +417,7 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
                     draggable
                     onDragStart={(e) => {
                       setError(null);
+                      if (hasActiveFilter) return;
                       setDraggingId(t.id);
                       e.dataTransfer.effectAllowed = "move";
                       e.dataTransfer.setData("text/plain", t.id);
@@ -318,7 +426,9 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
                       setDraggingId(null);
                       setDragOverId(null);
                     }}
-                    className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white/40 hover:bg-white/10 cursor-grab active:cursor-grabbing"
+                    className={`mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white/40 hover:bg-white/10 ${
+                      hasActiveFilter ? "cursor-not-allowed opacity-40" : "cursor-grab active:cursor-grabbing"
+                    }`}
                     title="드래그하여 순서 변경"
                     aria-label="드래그하여 순서 변경"
                     onClick={(e) => e.preventDefault()}
@@ -351,11 +461,7 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
                       </div>
 
                       <div className="mt-2 flex items-center gap-2 text-xs">
-                        {t.imwebProdCode ? (
-                          <span className="rounded-md bg-white/10 px-2 py-0.5 text-white/70">코드: {t.imwebProdCode}</span>
-                        ) : (
-                          <span className="rounded-md bg-white/5 px-2 py-0.5 text-white/40">전체 공개</span>
-                        )}
+                        <Badge tone="muted">교재</Badge>
                         <span className="text-white/40">{t.entitlementDays ?? 30}일</span>
                       </div>
 
@@ -382,6 +488,18 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
                   >
                     {t.isPublished ? "공개" : "비공개"}
                   </span>
+                  <Link
+                    href={`/store/${t.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/10"
+                    title="스토어에서 보기(구매 테스트)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
+                      shopping_bag
+                    </span>
+                    스토어
+                  </Link>
                   {/* per-item delete still available */}
                   <form action={`/api/admin/textbooks/${t.id}/delete`} method="post" onSubmit={(e) => {
                     if (!confirm("정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) e.preventDefault();

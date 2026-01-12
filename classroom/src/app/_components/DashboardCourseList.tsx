@@ -168,7 +168,7 @@ export default function DashboardCourseList({
               }`}
             >
               {/* 썸네일 */}
-              <div className="relative aspect-video w-full overflow-hidden bg-gradient-to-br from-white/5 to-white/[0.02]">
+              <div className="relative aspect-square w-full overflow-hidden bg-gradient-to-br from-white/5 to-white/[0.02]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={thumbSrc}

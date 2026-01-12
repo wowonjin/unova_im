@@ -169,6 +169,16 @@ export default function DashboardCourseSidePanel({
               <p className="text-sm text-white/70">노출된 강의가 없습니다.</p>
             ) : null}
 
+            {!loading && !error && list.length > 0 ? (
+              <div className="mb-3 flex items-center gap-2 px-1">
+                <span className="material-symbols-outlined text-[18px] text-white/40">smart_display</span>
+                <p className="text-sm font-medium text-white/60">강의</p>
+                <span className="rounded-full bg-white/[0.08] px-2 py-0.5 text-xs font-medium text-white/50">
+                  {list.length}
+                </span>
+              </div>
+            ) : null}
+
             <ul className="space-y-2">
               {list.map((l) => (
                 <li key={l.id}>

@@ -80,6 +80,13 @@ export default function DashboardShellClient({
   return (
     <div className="mt-2">
       <div className="min-w-0 flex-1">
+        <div className="mb-4 flex items-center gap-2">
+          <span className="material-symbols-outlined text-[18px] text-white/40">menu_book</span>
+          <h2 className="text-sm font-medium text-white/60">강의</h2>
+          <span className="rounded-full bg-white/[0.08] px-2 py-0.5 text-xs font-medium text-white/50">
+            {cards.length}
+          </span>
+        </div>
         <DashboardCourseList
           cards={cards}
           query={query}

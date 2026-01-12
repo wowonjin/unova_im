@@ -109,7 +109,12 @@ export default async function StorePage({
         (async () => {
           try {
             return await prisma.textbook.findMany({
-              where: { isPublished: true, owner: { email: storeOwnerEmail } },
+              where: {
+                isPublished: true,
+                owner: { email: storeOwnerEmail },
+                // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
+                OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+              },
               select: {
                 id: true,
                 title: true,
@@ -128,7 +133,12 @@ export default async function StorePage({
           } catch (e) {
             console.error("[store] textbooks query failed with position order, fallback to createdAt:", e);
             return await prisma.textbook.findMany({
-              where: { isPublished: true, owner: { email: storeOwnerEmail } },
+              where: {
+                isPublished: true,
+                owner: { email: storeOwnerEmail },
+                // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
+                OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+              },
               select: {
                 id: true,
                 title: true,

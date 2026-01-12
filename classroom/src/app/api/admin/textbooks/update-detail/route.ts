@@ -5,6 +5,10 @@ import { getCurrentTeacherUser } from "@/lib/current-user";
 
 export const runtime = "nodejs";
 
+function isMissingColumnError(e: unknown): boolean {
+  return Boolean((e as any)?.code === "P2022");
+}
+
 const Schema = z.object({
   textbookId: z.string().min(1),
   price: z.string().transform((s) => (s ? parseInt(s) : null)),
@@ -91,39 +95,77 @@ export async function POST(req: Request) {
   }
 
   try {
-    await prisma.textbook.update({
-      where: { id: textbookId },
-      data: {
-        price,
-        originalPrice,
-        teacherTitle,
-        teacherDescription,
-        tags,
-        textbookType,
-        benefits,
-        features,
-        extraOptions: extraOptionsJson,
-        description,
-        relatedTextbookIds,
-      } as never,
-    });
+    const attempts: Array<{ label: string; data: Record<string, unknown> }> = [
+      {
+        label: "full",
+        data: {
+          price,
+          originalPrice,
+          teacherTitle,
+          teacherDescription,
+          tags,
+          textbookType,
+          benefits,
+          features,
+          extraOptions: extraOptionsJson,
+          description,
+          relatedTextbookIds,
+        },
+      },
+      {
+        label: "no-extraOptions-related",
+        data: {
+          price,
+          originalPrice,
+          teacherTitle,
+          teacherDescription,
+          tags,
+          textbookType,
+          benefits,
+          features,
+          description,
+        },
+      },
+      // 더 강한 폴백(컬럼 누락 환경): 가격/태그 정도만
+      {
+        label: "minimal",
+        data: {
+          price,
+          originalPrice,
+          tags,
+        },
+      },
+      // 최후 폴백: 가격만이라도
+      {
+        label: "price-only",
+        data: {
+          price,
+          originalPrice,
+        },
+      },
+    ];
+
+    let lastErr: unknown = null;
+    for (const a of attempts) {
+      try {
+        await prisma.textbook.update({
+          where: { id: textbookId },
+          data: a.data as never,
+          select: { id: true },
+        });
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e;
+        if (!isMissingColumnError(e)) throw e;
+        console.error(`[admin/textbooks/update-detail] textbook.update failed (${a.label}). Trying smaller payload...`, e);
+      }
+    }
+
+    if (lastErr) throw lastErr;
   } catch (e) {
-    // 배포 환경에서 컬럼이 아직 없을 수 있음(마이그레이션 누락). 일부 필드 없이 재시도.
-    console.error("[admin/textbooks/update-detail] textbook.update failed, retrying without extraOptions:", e);
-    await prisma.textbook.update({
-      where: { id: textbookId },
-      data: {
-        price,
-        originalPrice,
-        teacherTitle,
-        teacherDescription,
-        tags,
-        textbookType,
-        benefits,
-        features,
-        description,
-      } as never,
-    });
+    console.error("[admin/textbooks/update-detail] textbook.update failed:", e);
+    return NextResponse.json({ ok: false, error: "UPDATE_FAILED" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

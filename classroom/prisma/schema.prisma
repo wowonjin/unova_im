@@ -382,6 +382,9 @@ model Textbook {
   description    String?
   // 추가 교재 구매에 표시할 교재 ID 목록 (JSON 배열)
   relatedTextbookIds Json?
+  // 한 교재에 여러 파일(여러 권) 등록 지원 (예: PDF 1권+해설 1권)
+  // [{"storedPath": "...", "originalName": "...", "mimeType": "...", "sizeBytes": 123, "pageCount": 200}]
+  files         Json?
 
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   entitlements TextbookEntitlement[]

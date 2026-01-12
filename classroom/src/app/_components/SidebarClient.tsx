@@ -388,8 +388,9 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
           <p className="px-3 text-xs font-semibold text-white/60">관리</p>
           <div className="mt-2 space-y-1">
               <NavItem href="/admin/home" label="메인페이지 설정" icon="tune" />
-              <NavItem href="/admin/textbooks" label="교재 관리" icon="menu_book" />
-              <NavItem href="/admin/courses" label="강좌 관리" icon="video_library" />
+              <NavItem href="/admin/textbooks/register" label="교재 등록" icon="add_circle" />
+              <NavItem href="/admin/textbooks" label="교재 판매하기" icon="menu_book" />
+              <NavItem href="/admin/courses" label="강좌 판매하기" icon="video_library" />
               <NavItem href="/admin/members" label="회원 관리" icon="group" />
               <NavItem href="/admin/orders" label="주문 관리" icon="receipt_long" />
               <NavItem href="/admin/popups" label="팝업 관리" icon="web_asset" />

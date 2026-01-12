@@ -106,7 +106,6 @@ export default function ProductDetailClient({
   const [isPaying, setIsPaying] = useState(false);
   const [selectedRelatedIds, setSelectedRelatedIds] = useState<Set<string>>(new Set());
   const [selectedAddonCourseIds, setSelectedAddonCourseIds] = useState<Set<string>>(new Set());
-  const [isSidebarRaised, setIsSidebarRaised] = useState(false);
 
   const ADDITIONAL_TEXTBOOK_DISCOUNT_PER = 5000;
   const ADDITIONAL_TEXTBOOK_DISCOUNT_MAX = 10000;
@@ -191,15 +190,7 @@ export default function ProductDetailClient({
     fetchLikeStatus();
   }, [product.id, product.type]);
 
-  // 오른쪽 사이드바: 처음 위치는 유지하되, 스크롤 시 더 위로 붙도록(top 값 감소)
-  useEffect(() => {
-    const onScroll = () => {
-      setIsSidebarRaised(window.scrollY > 80);
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  // NOTE: 우측 구매 메뉴는 데스크톱에서 페이지 흐름대로 스크롤되도록(고정/스티키/스크롤 추적 제거) 동작합니다.
 
   // 좋아요 토글
   const handleToggleLike = async () => {
@@ -644,7 +635,7 @@ export default function ProductDetailClient({
 
   return (
     <>
-    <div className="flex flex-col lg:flex-row gap-10 py-8">
+    <div className="flex flex-col md:flex-row gap-10 py-8">
       {/* 왼쪽 메인 콘텐츠 */}
       <div className="flex-1 min-w-0">
         {/* 브레드크럼 네비게이션 */}
@@ -1401,12 +1392,10 @@ export default function ProductDetailClient({
         </div>
       </div>
 
-      {/* 오른쪽 사이드바 (lg 이상에서만 표시) - 스크롤 시 상단 고정 */}
-      <aside className="hidden lg:block w-[340px] shrink-0 mt-[20px]">
+      {/* 오른쪽 사이드바 (md 이상에서만 표시) */}
+      <aside className="hidden md:block w-[340px] shrink-0 mt-[20px]">
         <div
-          className={`sticky rounded-xl overflow-hidden transition-[top] duration-200 ${
-            isSidebarRaised ? "top-[70px]" : "top-[101px]"
-          }`}
+          className="rounded-xl overflow-hidden"
         >
           {/* 태그 및 제목 */}
           <div className="px-5 pt-5 pb-2">
@@ -1756,11 +1745,11 @@ export default function ProductDetailClient({
       </aside>
 
       {/* 모바일 하단 결제 영역용 여백 */}
-      <div className="h-24 lg:hidden" />
+      <div className="h-24 md:hidden" />
     </div>
 
     {/* 모바일 하단 결제 영역 (화면 하단 고정) */}
-    <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-[#1a1a1c] border-t border-white/10 px-4 py-3 safe-area-bottom">
+    <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[#1a1a1c] border-t border-white/10 px-4 py-3 safe-area-bottom">
       <div className="flex items-center gap-3 max-w-6xl mx-auto">
         <button 
           onClick={handleToggleLike}

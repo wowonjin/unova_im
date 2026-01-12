@@ -5,6 +5,11 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
+function isMissingColumnError(e: unknown): boolean {
+  // Prisma P2022: column does not exist
+  return Boolean((e as any)?.code === "P2022");
+}
+
 const Schema = z.object({
   textbookId: z.string().min(1),
   title: z.string().min(1).optional(),
@@ -61,7 +66,7 @@ export async function POST(req: Request) {
   const { textbookId, title, teacherName, isbn, subjectName, entitlementDays, composition } = parsed.data;
 
   // 소유권 확인
-  const existing = await prisma.textbook.findUnique({
+  const existing = await prisma.textbook.findFirst({
     where: { id: textbookId, ownerId: teacher.id },
     select: { id: true },
   });
@@ -74,30 +79,67 @@ export async function POST(req: Request) {
   }
 
   try {
-    await prisma.textbook.update({
-      where: { id: textbookId },
-      data: {
-        ...(title !== undefined && { title }),
-        ...(teacherName !== undefined && { teacherName }),
-        ...(isbn !== undefined && { imwebProdCode: isbn }),
-        ...(subjectName !== undefined && { subjectName }),
-        ...(entitlementDays !== undefined && { entitlementDays }),
-        ...(composition !== undefined && { composition }),
-      } as never,
-    });
+    const dataFull: Record<string, unknown> = {
+      ...(title !== undefined && { title }),
+      ...(teacherName !== undefined && { teacherName }),
+      ...(isbn !== undefined && { imwebProdCode: isbn }),
+      ...(subjectName !== undefined && { subjectName }),
+      ...(entitlementDays !== undefined && { entitlementDays }),
+      ...(composition !== undefined && { composition }),
+    };
+
+    const attempts: Array<{ label: string; data: Record<string, unknown> }> = [
+      { label: "full", data: dataFull },
+      // composition 컬럼이 없을 수 있음
+      {
+        label: "no-composition",
+        data: {
+          ...(title !== undefined && { title }),
+          ...(teacherName !== undefined && { teacherName }),
+          ...(isbn !== undefined && { imwebProdCode: isbn }),
+          ...(subjectName !== undefined && { subjectName }),
+          ...(entitlementDays !== undefined && { entitlementDays }),
+        },
+      },
+      // 운영/로컬에서 teacherName/subjectName/entitlementDays 컬럼이 없을 수 있음 → 핵심만
+      {
+        label: "minimal",
+        data: {
+          ...(title !== undefined && { title }),
+          ...(isbn !== undefined && { imwebProdCode: isbn }),
+        },
+      },
+      // 최후 폴백: title만이라도 저장
+      { label: "title-only", data: { ...(title !== undefined && { title }) } },
+    ];
+
+    let lastErr: unknown = null;
+    for (const a of attempts) {
+      // 변경할 값이 하나도 없으면 업데이트 스킵
+      if (!a.data || Object.keys(a.data).length === 0) continue;
+      try {
+        await prisma.textbook.update({
+          where: { id: textbookId },
+          data: a.data as never,
+          select: { id: true },
+        });
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e;
+        // 컬럼 누락이면 더 작은 시도로 진행, 그 외는 즉시 throw
+        if (!isMissingColumnError(e)) throw e;
+        console.error(`[admin/textbooks/update] textbook.update failed (${a.label}). Trying smaller payload...`, e);
+      }
+    }
+
+    if (lastErr) throw lastErr;
   } catch (e) {
-    // 배포 환경에서 컬럼이 아직 없을 수 있음(마이그레이션 누락). composition 없이 재시도.
-    console.error("[admin/textbooks/update] textbook.update failed, retrying without composition:", e);
-    await prisma.textbook.update({
-      where: { id: textbookId },
-      data: {
-        ...(title !== undefined && { title }),
-        ...(teacherName !== undefined && { teacherName }),
-        ...(isbn !== undefined && { imwebProdCode: isbn }),
-        ...(subjectName !== undefined && { subjectName }),
-        ...(entitlementDays !== undefined && { entitlementDays }),
-      } as never,
-    });
+    console.error("[admin/textbooks/update] textbook.update failed:", e);
+    if (isFormData) {
+      return NextResponse.redirect(new URL(`${referer}?saved=error`, req.url));
+    }
+    return NextResponse.json({ ok: false, error: "UPDATE_FAILED" }, { status: 500 });
   }
 
   // JSON 요청이면 JSON 응답, 아니면 redirect

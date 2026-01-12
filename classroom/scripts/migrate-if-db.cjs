@@ -90,6 +90,7 @@ async function ensureStoreSchema(connectionString) {
       ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "originalPrice" INTEGER;
       ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "teacherName" TEXT;
       ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "subjectName" TEXT;
+      ALTER TABLE "Textbook" ADD COLUMN IF NOT EXISTS "files" JSONB;
     `;
   }
 

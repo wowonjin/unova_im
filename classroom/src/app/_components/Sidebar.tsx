@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUserOrGuest } from "@/lib/current-user";
 import { getImwebProfile } from "@/lib/imweb-profile";
 import SidebarClient from "@/app/_components/SidebarClient";
-import { Suspense } from "react";
 import { isAllCoursesTestModeFromAllParam } from "@/lib/test-mode";
 
 export default async function Sidebar() {
@@ -89,24 +88,16 @@ export default async function Sidebar() {
         });
 
   return (
-    <Suspense
-      fallback={
-        <div className="hidden w-72 shrink-0 border-r border-white/10 bg-[#1d1d1f] p-5 md:block">
-          <div className="text-sm text-white/60">로딩중…</div>
-        </div>
-      }
-    >
-      <SidebarClient
-        email={email}
-        userId={user.id}
-        displayName={displayName}
-        avatarUrl={avatarUrl}
-        isAdmin={user.isAdmin}
-        isLoggedIn={isLoggedIn}
-        showAllCourses={showAllCourses}
-        enrolledCourses={recentEnrolledCourses}
-      />
-    </Suspense>
+    <SidebarClient
+      email={email}
+      userId={user.id}
+      displayName={displayName}
+      avatarUrl={avatarUrl}
+      isAdmin={user.isAdmin}
+      isLoggedIn={isLoggedIn}
+      showAllCourses={showAllCourses}
+      enrolledCourses={recentEnrolledCourses}
+    />
   );
 }
 

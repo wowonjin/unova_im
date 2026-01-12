@@ -109,7 +109,8 @@ export async function POST(req: Request) {
     }
   }
 
-  const tb = await prisma.textbook.findUnique({
+  // findUnique는 unique 필드만 허용 → ownerId 조건은 findFirst로
+  const tb = await prisma.textbook.findFirst({
     where: { id: parsed.data.textbookId, ownerId: teacher.id },
     select: { id: true, storedPath: true, mimeType: true, sizeBytes: true, pageCount: true },
   });
@@ -146,15 +147,45 @@ export async function POST(req: Request) {
   }
 
   try {
-    await prisma.textbook.update({
-      where: { id: tb.id },
-      data: updateData as never,
-    });
+    // files 컬럼이 있으면 0번(대표) 파일도 함께 동기화
+    try {
+      const withFiles = await prisma.textbook.findUnique({ where: { id: tb.id }, select: { id: true, files: true } });
+      const list = Array.isArray((withFiles as any)?.files) ? (((withFiles as any).files) as any[]) : null;
+      if (list && list.length > 0 && list[0] && typeof list[0] === "object") {
+        const next = list.slice();
+        next[0] = {
+          ...next[0],
+          storedPath: updateData.storedPath,
+          ...(typeof updateData.mimeType === "string" ? { mimeType: updateData.mimeType } : null),
+          ...(typeof updateData.sizeBytes === "number" ? { sizeBytes: updateData.sizeBytes } : null),
+          ...(updateData.pageCount !== undefined ? { pageCount: updateData.pageCount } : null),
+        };
+        await prisma.textbook.update({
+          where: { id: tb.id },
+          data: { ...(updateData as never), files: next as any },
+          select: { id: true },
+        });
+      } else {
+        await prisma.textbook.update({
+          where: { id: tb.id },
+          data: updateData as never,
+          select: { id: true },
+        });
+      }
+    } catch {
+      // files 컬럼이 없거나 select 실패 → 기존 업데이트만 수행
+      await prisma.textbook.update({
+        where: { id: tb.id },
+        data: updateData as never,
+        select: { id: true },
+      });
+    }
   } catch (e) {
     // 운영/배포에서 컬럼 누락 등으로 실패할 수 있어 최소 업데이트로 재시도
     await prisma.textbook.update({
       where: { id: tb.id },
       data: { storedPath: nextStoredPath } as never,
+      select: { id: true },
     });
   }
 

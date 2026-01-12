@@ -7,6 +7,14 @@ import type { AdminDailyMetrics } from "./AdminAnalyticsPanel";
 
 const adminMenus = [
   {
+    title: "교재 등록",
+    description: "구글 업로드 URL로 교재 등록",
+    href: "/admin/textbooks/register",
+    icon: "add_circle",
+    color: "from-sky-500/20 to-sky-600/20",
+    iconColor: "text-sky-300",
+  },
+  {
     title: "메인페이지 설정",
     description: "메인 슬라이드/바로가기 아이콘 관리",
     href: "/admin/home",
@@ -15,16 +23,16 @@ const adminMenus = [
     iconColor: "text-fuchsia-300",
   },
   {
-    title: "교재 관리",
-    description: "교재 업로드, 공개 설정, 다운로드 관리",
+    title: "교재 판매하기",
+    description: "교재 등록/가격/공개 설정 및 판매 관리",
     href: "/admin/textbooks",
     icon: "menu_book",
     color: "from-blue-500/20 to-blue-600/20",
     iconColor: "text-blue-400",
   },
   {
-    title: "강좌 관리",
-    description: "강좌 생성, 차시 관리, 공개 설정",
+    title: "강좌 판매하기",
+    description: "강좌 생성/가격/공개 설정 및 판매 관리",
     href: "/admin/courses",
     icon: "video_library",
     color: "from-purple-500/20 to-purple-600/20",

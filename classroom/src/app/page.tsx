@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import LandingHeader from "./_components/LandingHeader";
+import { Suspense } from "react";
+import HomeLandingHeaderClient from "./_components/HomeLandingHeaderClient";
 import HeroCarousel, { type HeroCarouselSlide } from "./_components/HeroCarousel";
 import ShortcutNav, { type ShortcutNavItem } from "./_components/ShortcutNav";
 import ScrollProgress from "./_components/ScrollProgress";
@@ -127,7 +128,12 @@ export default async function HomePage() {
       (async () => {
         try {
           return await prisma.textbook.findMany({
-            where: { isPublished: true, owner: { email: storeOwnerEmail } },
+            where: {
+              isPublished: true,
+              owner: { email: storeOwnerEmail },
+              // /store(책 구매 페이지)와 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
+              OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+            },
             select: {
               id: true,
               title: true,
@@ -146,7 +152,12 @@ export default async function HomePage() {
         } catch (e) {
           console.error("[home] store textbooks query failed with position order, fallback to createdAt:", e);
           return await prisma.textbook.findMany({
-            where: { isPublished: true, owner: { email: storeOwnerEmail } },
+            where: {
+              isPublished: true,
+              owner: { email: storeOwnerEmail },
+              // /store(책 구매 페이지)와 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
+              OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+            },
             select: {
               id: true,
               title: true,
@@ -208,32 +219,37 @@ export default async function HomePage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#161616] text-white overflow-x-hidden">
-      {/* Scroll Progress Bar */}
-      <ScrollProgress />
+    <Suspense
+      // NOTE: Next(app router)에서 스트리밍/리로드 타이밍에 따라 최상단이 Suspense로 잡히는 경우가 있어,
+      // 서버/클라이언트의 루트 트리를 안정적으로 맞추기 위해 명시적으로 감쌉니다.
+      fallback={<div className="min-h-screen bg-[#161616] text-white overflow-x-hidden" />}
+    >
+      <div className="min-h-screen bg-[#161616] text-white overflow-x-hidden">
+        {/* Scroll Progress Bar */}
+        <ScrollProgress />
 
-      {/* Floating Kakao Button */}
-      <FloatingKakaoButton />
+        {/* Floating Kakao Button */}
+        <FloatingKakaoButton />
 
-      {/* Navigation */}
-      <LandingHeader />
+        {/* Navigation */}
+        <HomeLandingHeaderClient />
 
-      {/* Admin-managed popups */}
-      <PopupLayerClient />
+        {/* Admin-managed popups */}
+        <PopupLayerClient />
 
-      {/* Hero Carousel */}
-      <HeroCarousel slides={heroSlides} />
+        {/* Hero Carousel */}
+        <HeroCarousel slides={heroSlides} />
 
-      {/* Shortcut Navigation */}
-      <ShortcutNav items={shortcutItems} />
+        {/* Shortcut Navigation */}
+        <ShortcutNav items={shortcutItems} />
 
-      {/* 교재 및 강의 구매(스토어) - 바로가기 아래 배치 */}
-      <div className="pb-20">
-        <StorePreviewTabs courses={coursePreview} textbooks={textbookPreview} />
-      </div>
+        {/* 교재 및 강의 구매(스토어) - 바로가기 아래 배치 */}
+        <div className="pb-20">
+          <StorePreviewTabs courses={coursePreview} textbooks={textbookPreview} />
+        </div>
 
-      {/* Footer */}
-      <footer className="bg-[#131313] pt-16 pb-12">
+        {/* Footer */}
+        <footer className="bg-[#131313] pt-16 pb-12">
         <div className="mx-auto max-w-6xl px-4">
           {/* 모바일 푸터 (PC는 기존 그대로 유지) */}
           <div className="md:hidden">
@@ -483,7 +499,8 @@ export default async function HomePage() {
             </p>
           </div>
         </div>
-      </footer>
-    </div>
+        </footer>
+      </div>
+    </Suspense>
   );
 }

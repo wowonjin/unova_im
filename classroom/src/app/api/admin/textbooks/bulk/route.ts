@@ -17,10 +17,15 @@ const Schema = z.discriminatedUnion("action", [
     textbookIds: z.array(z.string().min(1)).min(1),
     update: z
       .object({
+        title: z.string().min(1).optional(),
         price: z.number().int().min(0).nullable().optional(),
         originalPrice: z.number().int().min(0).nullable().optional(),
         teacherName: z.string().min(1).nullable().optional(),
         subjectName: z.string().min(1).nullable().optional(),
+        // 판매 등록용(옵션): 전달된 경우에만 갱신
+        isPublished: z.boolean().optional(),
+        imwebProdCode: z.string().min(1).nullable().optional(),
+        entitlementDays: z.number().int().min(1).max(3650).optional(),
       })
       .strict(),
   }),
@@ -76,10 +81,14 @@ export async function POST(req: Request) {
 
   // Prisma updateMany does not allow undefined keys; build data dynamically.
   const data: Record<string, unknown> = {};
+  if ("title" in update) data.title = update.title;
   if ("price" in update) data.price = update.price;
   if ("originalPrice" in update) data.originalPrice = update.originalPrice;
   if ("teacherName" in update) data.teacherName = update.teacherName;
   if ("subjectName" in update) data.subjectName = update.subjectName;
+  if ("isPublished" in update) data.isPublished = update.isPublished;
+  if ("imwebProdCode" in update) data.imwebProdCode = update.imwebProdCode;
+  if ("entitlementDays" in update) data.entitlementDays = update.entitlementDays;
 
   const res = await prisma.textbook.updateMany({
     where: { id: { in: ids }, ownerId: teacher.id },

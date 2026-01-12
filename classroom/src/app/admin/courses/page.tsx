@@ -77,11 +77,11 @@ export default async function AdminCoursesPage({
   return (
     <AppShell>
       <PageHeader
-        title="강좌 관리하기"
+        title="강좌 판매하기"
         right={
           <div className="flex items-center gap-2">
             <Button href="/admin/textbooks" variant="secondary">
-              교재 관리하기
+              교재 판매하기
             </Button>
           </div>
         }
@@ -89,7 +89,7 @@ export default async function AdminCoursesPage({
 
       <div className="mt-6 space-y-4">
         <Card className="bg-[#1a1a1c]">
-          <CardHeader title="강좌 관리하기" description="강좌를 생성하고 기본 정보를 설정합니다." />
+          <CardHeader title="강좌 판매하기" description="강좌를 생성하고 기본 정보를 설정합니다." />
           <CardBody>
             <CreateCourseFormClient />
           </CardBody>

@@ -1,7 +1,7 @@
 import AppShell from "@/app/_components/AppShell";
 import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
-import { Badge, Button, Card, CardBody, CardHeader, HelpTip, PageHeader, Tabs } from "@/app/_components/ui";
+import { Badge, Button, Card, CardBody, CardHeader, Field, HelpTip, Input, PageHeader, Tabs, Textarea } from "@/app/_components/ui";
 import TextbookPublishedSelect from "@/app/_components/TextbookPublishedSelect";
 import TextbookThumbnailGenerator from "@/app/_components/TextbookThumbnailGenerator";
 import TextbookThumbnailUploadClient from "@/app/_components/TextbookThumbnailUploadClient";
@@ -18,6 +18,52 @@ function formatBytes(bytes: number) {
   const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
   const v = bytes / 1024 ** i;
   return `${v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
+}
+
+type TextbookFileItem = {
+  storedPath: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  pageCount: number | null;
+};
+
+function normalizeTextbookFiles(tb: {
+  storedPath: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  pageCount?: number | null;
+  files?: unknown;
+}): TextbookFileItem[] {
+  const list = Array.isArray((tb as any).files) ? ((tb as any).files as any[]) : [];
+  const out: TextbookFileItem[] = [];
+  for (const f of list) {
+    if (!f || typeof f !== "object") continue;
+    const storedPath = typeof f.storedPath === "string" ? f.storedPath : "";
+    const originalName = typeof f.originalName === "string" ? f.originalName : "";
+    const mimeType = typeof f.mimeType === "string" ? f.mimeType : "application/octet-stream";
+    const sizeBytes = Number(f.sizeBytes);
+    const pageCount = Number(f.pageCount);
+    if (!storedPath || !originalName || !Number.isFinite(sizeBytes)) continue;
+    out.push({
+      storedPath,
+      originalName,
+      mimeType,
+      sizeBytes: Math.max(0, Math.floor(sizeBytes)),
+      pageCount: Number.isFinite(pageCount) && pageCount > 0 ? Math.floor(pageCount) : null,
+    });
+  }
+  if (out.length > 0) return out;
+  return [
+    {
+      storedPath: tb.storedPath,
+      originalName: tb.originalName,
+      mimeType: tb.mimeType,
+      sizeBytes: tb.sizeBytes,
+      pageCount: (tb as any).pageCount ?? null,
+    },
+  ];
 }
 
 export default async function AdminTextbookPage({
@@ -138,6 +184,7 @@ export default async function AdminTextbookPage({
         teacherTitle: true,
         teacherDescription: true,
         relatedTextbookIds: true,
+        files: true,
         entitlements: {
           orderBy: [{ status: "asc" }, { createdAt: "desc" }],
           select: {
@@ -213,6 +260,7 @@ export default async function AdminTextbookPage({
   const entitlementDays = (textbook as { entitlementDays?: number }).entitlementDays ?? 30;
 
   const fmtShortDate = (d: Date) => d.toISOString().slice(2, 10).replace(/-/g, ".");
+  const files = normalizeTextbookFiles(textbook as any);
 
   return (
     <AppShell>
@@ -264,41 +312,102 @@ export default async function AdminTextbookPage({
                 {/* 파일 정보 */}
                 <div className="mt-6 pt-4 border-t border-white/10">
                   <h4 className="text-sm font-medium text-white/60 mb-3">파일 정보</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-white/50">원본 파일명</span>
-                      <span className="text-white/80">{textbook.originalName}</span>
+                  {files.length > 1 ? (
+                    <div className="mb-3 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/60">
+                      이 교재에 <span className="text-white/80 font-medium">{files.length}개</span> 파일(여러 권)이 등록되어 있습니다.
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-white/50">파일 크기</span>
-                      <span className="text-white/80">{formatBytes(textbook.sizeBytes)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-white/50">페이지 수</span>
-                      <span className="text-white/80">
-                        {(textbook as { pageCount?: number | null }).pageCount && (textbook as { pageCount?: number | null }).pageCount! > 0
-                          ? `${(textbook as { pageCount?: number | null }).pageCount}쪽`
-                          : <PdfPageCount src={`/api/textbooks/${textbook.id}/view`} />}
-                      </span>
-                    </div>
-                    <div className="pt-2">
-                      <form action={`/api/admin/textbooks/${textbook.id}/update-metadata`} method="post">
-                        <Button type="submit" variant="secondary">
-                          파일 정보 다시 가져오기
-                        </Button>
-                      </form>
-                      <p className="mt-2 text-xs text-white/35">외부 URL(구글 스토리지) 교재만 페이지 수/용량을 다시 계산합니다.</p>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-white/50">등록일</span>
-                      <span className="text-white/80">{new Date(textbook.createdAt).toLocaleDateString()}</span>
-                    </div>
+                  ) : null}
+
+                  <div className="space-y-2">
+                    {files.map((f, idx) => (
+                      <div key={`${idx}:${f.storedPath}`} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium text-white/85">
+                              {files.length > 1 ? `파일 ${idx + 1}` : "파일"}
+                            </div>
+                            <div className="mt-1 space-y-1 text-xs text-white/55">
+                              <div className="flex justify-between gap-3">
+                                <span>원본 파일명</span>
+                                <span className="truncate text-white/80" title={f.originalName}>
+                                  {f.originalName}
+                                </span>
+                              </div>
+                              <div className="flex justify-between gap-3">
+                                <span>파일 크기</span>
+                                <span className="text-white/80">{formatBytes(f.sizeBytes)}</span>
+                              </div>
+                              <div className="flex justify-between gap-3">
+                                <span>페이지 수</span>
+                                <span className="text-white/80">
+                                  {f.pageCount && f.pageCount > 0 ? `${f.pageCount}쪽` : <PdfPageCount src={`/api/textbooks/${textbook.id}/view?file=${idx}`} />}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0 flex items-center gap-2">
+                            <a
+                              href={`/api/admin/textbooks/${textbook.id}/download?file=${idx}`}
+                              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 transition-colors hover:bg-white/10"
+                            >
+                              다운로드
+                            </a>
+                            <form action={`/api/admin/textbooks/${textbook.id}/update-metadata?file=${idx}`} method="post">
+                              <Button type="submit" variant="secondary" size="sm">
+                                정보 갱신
+                              </Button>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-3 text-xs text-white/35">
+                    외부 URL(구글 스토리지) 파일만 <span className="text-white/50">정보 갱신</span> 시 용량/페이지 수를 다시 계산합니다.
                   </div>
 
                   <TextbookStoredPathClient
                     textbookId={textbook.id}
                     initialStoredPath={(textbook as { storedPath: string }).storedPath}
                   />
+
+                  {/* 여러 권 추가 */}
+                  <div className="mt-6 pt-4 border-t border-white/10">
+                    <h4 className="text-sm font-medium text-white/60 mb-3">여러 권 추가</h4>
+                    <form
+                      className="space-y-3"
+                      action={`/api/admin/textbooks/${textbook.id}/files/add`}
+                      method="post"
+                      encType="multipart/form-data"
+                    >
+                      <Field label="교재 제목(선택)" hint="여러 권 추가 시 표시용 제목(선택)입니다.">
+                        <Input name="title" placeholder="예: 2027 수학 교재" className="bg-transparent" />
+                      </Field>
+                      <Field label="구글 업로드 URL(여러 개 가능)" hint="한 줄에 하나씩 입력하면 여러 권을 한 번에 추가할 수 있어요.">
+                        <Textarea
+                          name="url"
+                          rows={3}
+                          placeholder={"예:\nhttps://storage.googleapis.com/버킷/파일1.pdf\nhttps://storage.googleapis.com/버킷/파일2.pdf"}
+                          className="bg-transparent"
+                        />
+                      </Field>
+                      <Field label="파일 업로드(여러 개 가능)" hint="여러 파일을 선택하면 여러 권이 한 번에 업로드됩니다.">
+                        <input
+                          name="file"
+                          type="file"
+                          multiple
+                          className="block w-full rounded-xl border border-white/10 bg-[#131315] px-3 py-2 text-sm text-white file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/15"
+                        />
+                      </Field>
+                      <div className="flex justify-end">
+                        <Button type="submit" variant="secondary">
+                          추가
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
                 </div>
 
                 {/* 썸네일 및 다운로드 */}

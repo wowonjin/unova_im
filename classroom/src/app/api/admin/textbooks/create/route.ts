@@ -109,10 +109,9 @@ export async function POST(req: Request) {
       select: { position: true },
     })
     .catch(() => null);
-  const position = Math.max(0, (last as { position?: number } | null)?.position ?? 0) + 1;
+  const basePosition = Math.max(0, (last as { position?: number } | null)?.position ?? 0) + 1;
 
   const form = await req.formData();
-  const file = form.get("file");
   const urlRaw = form.get("url");
   const titleRaw = form.get("title");
   const teacherNameRaw = form.get("teacherName");
@@ -149,86 +148,124 @@ export async function POST(req: Request) {
   // 원가가 판매가보다 낮게 들어오면 원가를 무시(할인율 UI가 깨지는 것 방지)
   const safeOriginalPrice = originalPrice != null && price != null && originalPrice < price ? null : originalPrice;
 
-  // URL 방식(구글 콘솔/GCS 등)
-  if (typeof urlRaw === "string" && urlRaw.trim().length > 0) {
-    const url = urlRaw.trim();
-    if (!isHttpUrl(url)) return NextResponse.json({ ok: false, error: "INVALID_URL" }, { status: 400 });
-    // URL 자체가 유효한 형태인지 확인
-    try {
-      new URL(url);
-    } catch {
-      return NextResponse.json({ ok: false, error: "INVALID_URL" }, { status: 400 });
+  const titleBase = typeof titleRaw === "string" && titleRaw.trim().length > 0 ? titleRaw.trim() : null;
+
+  // 1) URL 방식(구글 콘솔/GCS 등) - 여러 줄 입력 지원
+  const urls =
+    typeof urlRaw === "string" && urlRaw.trim().length > 0
+      ? urlRaw
+          .split(/\r?\n|,/g)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+
+  // 2) 파일 업로드 방식 - 다중 업로드 지원
+  const files = form
+    .getAll("file")
+    .filter((v): v is File => v instanceof File && (v.size ?? 0) > 0);
+
+  // URL이 있으면 URL이 우선 (UI 힌트와 동일)
+  if (urls.length > 0) {
+    const MAX_BULK = 50;
+    const normalized = urls.slice(0, MAX_BULK);
+
+    let pos = basePosition;
+    for (let i = 0; i < normalized.length; i += 1) {
+      const url = normalized[i];
+      if (!isHttpUrl(url)) return NextResponse.json({ ok: false, error: "INVALID_URL" }, { status: 400 });
+      // URL 자체가 유효한 형태인지 확인
+      try {
+        new URL(url);
+      } catch {
+        return NextResponse.json({ ok: false, error: "INVALID_URL" }, { status: 400 });
+      }
+
+      const inferredName = guessFileNameFromUrl(url);
+      const title =
+        titleBase != null
+          ? normalized.length === 1
+            ? titleBase
+            : `${titleBase} ${i + 1}`
+          : inferredName || "교재";
+      const originalName = inferredName || title;
+      const guessedMimeType = originalName.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/octet-stream";
+
+      // URL HEAD에서 파일 크기/콘텐츠 타입 가져오기 (GCS URL이 .pdf로 끝나지 않는 케이스 대응)
+      const head = await getUrlHeadInfo(url);
+      const headType = head.contentType?.toLowerCase() ?? "";
+      const isPdfCandidate = headType.includes("application/pdf") || guessedMimeType === "application/pdf" || /\.pdf(\?|$)/i.test(url);
+      const mimeType = headType.includes("application/pdf") ? "application/pdf" : head.contentType || (isPdfCandidate ? "application/pdf" : guessedMimeType);
+      const sizeBytes = head.sizeBytes;
+      const pageCount = isPdfCandidate ? await getPdfPageCountFromUrl(url) : null;
+
+      await createTextbookSafe({
+        ownerId: teacher.id,
+        position: pos,
+        title,
+        teacherName,
+        subjectName,
+        // storedPath 컬럼을 외부 URL 저장용으로도 재사용(다운로드 라우트에서 http(s)면 redirect 처리)
+        storedPath: url,
+        originalName,
+        mimeType,
+        sizeBytes,
+        pageCount,
+        isPublished,
+        entitlementDays,
+        imwebProdCode,
+        price,
+        originalPrice: safeOriginalPrice,
+      });
+      pos += 1;
     }
 
-    const inferredName = guessFileNameFromUrl(url);
-    const title = typeof titleRaw === "string" && titleRaw.trim().length > 0 ? titleRaw.trim() : inferredName || "교재";
-    const originalName = inferredName || title;
-    const guessedMimeType = originalName.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/octet-stream";
+    return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin/textbooks", req.url));
+  }
 
-    // URL HEAD에서 파일 크기/콘텐츠 타입 가져오기 (GCS URL이 .pdf로 끝나지 않는 케이스 대응)
-    const head = await getUrlHeadInfo(url);
-    const headType = head.contentType?.toLowerCase() ?? "";
-    const isPdfCandidate = headType.includes("application/pdf") || guessedMimeType === "application/pdf" || /\.pdf(\?|$)/i.test(url);
-    const mimeType = headType.includes("application/pdf") ? "application/pdf" : head.contentType || (isPdfCandidate ? "application/pdf" : guessedMimeType);
-    const sizeBytes = head.sizeBytes;
-    const pageCount = isPdfCandidate ? await getPdfPageCountFromUrl(url) : null;
+  if (files.length === 0) {
+    return NextResponse.json({ ok: false, error: "NO_URL_OR_FILE" }, { status: 400 });
+  }
+
+  const dir = path.join(getStorageRoot(), "textbooks", teacher.id);
+  await ensureDir(dir);
+
+  let pos = basePosition;
+  for (let i = 0; i < files.length; i += 1) {
+    const file = files[i];
+    const ext = path.extname(file.name || "").slice(0, 12);
+    const baseName = file.name ? path.basename(file.name, ext) : "";
+    const title =
+      titleBase != null
+        ? files.length === 1
+          ? titleBase
+          : `${titleBase} ${i + 1}`
+        : (baseName || file.name || "교재");
+
+    const bytes = Buffer.from(await file.arrayBuffer());
+
+    const storedName = `${crypto.randomUUID()}${ext || ""}`;
+    const storedPath = path.join("textbooks", teacher.id, storedName).replace(/\\/g, "/");
+    const fullPath = path.join(dir, storedName);
+    await fs.writeFile(fullPath, bytes);
 
     await createTextbookSafe({
       ownerId: teacher.id,
-      position,
+      position: pos,
       title,
       teacherName,
       subjectName,
-      // storedPath 컬럼을 외부 URL 저장용으로도 재사용(다운로드 라우트에서 http(s)면 redirect 처리)
-      storedPath: url,
-      originalName,
-      mimeType,
-      sizeBytes,
-      pageCount,
+      storedPath,
+      originalName: file.name || title,
+      mimeType: file.type || "application/octet-stream",
+      sizeBytes: bytes.length,
       isPublished,
       entitlementDays,
       imwebProdCode,
       price,
       originalPrice: safeOriginalPrice,
     });
-
-    return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin/textbooks", req.url));
+    pos += 1;
   }
-
-  // 기존 파일 업로드 방식(호환 유지)
-  if (!(file instanceof File)) {
-    return NextResponse.json({ ok: false, error: "NO_URL_OR_FILE" }, { status: 400 });
-  }
-
-  const title = typeof titleRaw === "string" && titleRaw.trim().length > 0 ? titleRaw.trim() : file.name || "교재";
-
-  const bytes = Buffer.from(await file.arrayBuffer());
-  const ext = path.extname(file.name || "").slice(0, 12);
-
-  const dir = path.join(getStorageRoot(), "textbooks", teacher.id);
-  await ensureDir(dir);
-
-  const storedName = `${crypto.randomUUID()}${ext || ""}`;
-  const storedPath = path.join("textbooks", teacher.id, storedName).replace(/\\/g, "/");
-  const fullPath = path.join(dir, storedName);
-  await fs.writeFile(fullPath, bytes);
-
-  await createTextbookSafe({
-    ownerId: teacher.id,
-      position,
-    title,
-    teacherName,
-    subjectName,
-    storedPath,
-    originalName: file.name || title,
-    mimeType: file.type || "application/octet-stream",
-    sizeBytes: bytes.length,
-    isPublished,
-    entitlementDays,
-    imwebProdCode,
-    price,
-    originalPrice: safeOriginalPrice,
-  });
 
   return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin/textbooks", req.url));
 }
