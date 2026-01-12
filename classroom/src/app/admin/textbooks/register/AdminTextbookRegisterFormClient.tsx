@@ -114,9 +114,9 @@ export default function AdminTextbookRegisterFormClient() {
           | { ok: true; sizeBytes: number; pageCount: number | null; proxyUrl: string }
           | { ok: false; error?: string };
         if (!alive) return;
-        if (!res.ok || !data || (data as any).ok !== true) {
+        if (!res.ok || !data || data.ok !== true) {
           setMetaStatus("error");
-          setMetaError((data as any)?.error || "META_FAILED");
+          setMetaError((data && data.ok === false ? data.error : null) || "META_FAILED");
           setSizeBytes(null);
           setPageCount(null);
           setProxyUrl(null);
@@ -166,7 +166,7 @@ export default function AdminTextbookRegisterFormClient() {
         | { ok: true; textbookId?: string | null }
         | { ok: false; error?: string };
 
-      if (!res.ok || !data || (data as any).ok !== true) {
+      if (!res.ok || !data || data.ok !== true) {
         // Handle error
       } else {
         // 등록 기록은 DB 기준으로 노출하므로(router.refresh로 갱신), 별도의 sessionStorage 로그는 남기지 않습니다.

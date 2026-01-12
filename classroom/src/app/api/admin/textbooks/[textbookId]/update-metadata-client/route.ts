@@ -56,7 +56,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ textbookId: st
       };
       await prisma.textbook.update({
         where: { id: tb.id },
-        data: { ...(updateData as never), files: next as any },
+        data: ({ ...updateData, files: next as any } as any),
       });
       return NextResponse.json({ ok: true, updated: true });
     }
@@ -66,7 +66,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ textbookId: st
 
   // 폴백: 대표 컬럼만 업데이트
   try {
-    await prisma.textbook.update({ where: { id: tb.id }, data: updateData as never });
+    await prisma.textbook.update({ where: { id: tb.id }, data: updateData as any });
   } catch (e) {
     console.error("[update-metadata-client] textbook.update failed:", e);
     return NextResponse.json({ ok: false, error: "UPDATE_FAILED" }, { status: 500 });

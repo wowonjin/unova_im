@@ -162,13 +162,13 @@ export async function POST(req: Request) {
         };
         await prisma.textbook.update({
           where: { id: tb.id },
-          data: { ...(updateData as never), files: next as any },
+          data: ({ ...updateData, files: next as any } as any),
           select: { id: true },
         });
       } else {
         await prisma.textbook.update({
           where: { id: tb.id },
-          data: updateData as never,
+          data: updateData as any,
           select: { id: true },
         });
       }
@@ -176,7 +176,7 @@ export async function POST(req: Request) {
       // files 컬럼이 없거나 select 실패 → 기존 업데이트만 수행
       await prisma.textbook.update({
         where: { id: tb.id },
-        data: updateData as never,
+        data: updateData as any,
         select: { id: true },
       });
     }

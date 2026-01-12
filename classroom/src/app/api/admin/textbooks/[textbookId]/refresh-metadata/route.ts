@@ -121,9 +121,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ textbookId: st
         ...(typeof next.mimeType === "string" ? { mimeType: next.mimeType } : null),
         ...(next.pageCount !== undefined ? { pageCount: next.pageCount } : null),
       };
-      await prisma.textbook.update({ where: { id: tb.id }, data: { ...(next as never), files: updatedFiles as any } });
+      const updateData: any = { ...next, files: updatedFiles as any };
+      await prisma.textbook.update({ where: { id: tb.id }, data: updateData });
     } else {
-      await prisma.textbook.update({ where: { id: tb.id }, data: next as never });
+      await prisma.textbook.update({ where: { id: tb.id }, data: next as any });
     }
   } catch (e) {
     console.error("[refresh-metadata] textbook.update failed:", e);

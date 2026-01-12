@@ -143,12 +143,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ textboo
 
         // 대표 파일(0번)인 경우: 기존 컬럼도 함께 갱신
         if (fileIndex === 0) {
-          await prisma.textbook.update({ where: { id: tb.id }, data: { ...(next as never), files: updatedFiles as any } });
+          const updateData: any = { ...next, files: updatedFiles as any };
+          await prisma.textbook.update({ where: { id: tb.id }, data: updateData });
         } else {
           await prisma.textbook.update({ where: { id: tb.id }, data: { files: updatedFiles as any } });
         }
       } else {
-      await prisma.textbook.update({ where: { id: tb.id }, data: next as never });
+      await prisma.textbook.update({ where: { id: tb.id }, data: next as any });
       }
     } catch (e) {
       // 마이그레이션 미적용 등으로 컬럼이 없을 수 있음 → sizeBytes만이라도 시도
