@@ -31,6 +31,14 @@ export default function MaterialsTextbooksSectionClient({
 
   return (
     <div className="mb-8">
+      <div className="mb-4 flex items-center gap-2">
+        <span className="material-symbols-outlined text-[18px] text-white/40" aria-hidden="true">
+          menu_book
+        </span>
+        <h2 className="text-sm font-medium text-white/60">교재 자료</h2>
+        <span className="rounded-full bg-white/[0.08] px-2 py-0.5 text-xs font-medium text-white/50">{list.length}</span>
+      </div>
+
       {/* 카드 클릭 시: 해당 교재 1개의 파일 목록만 팝업으로 노출 */}
       {selected ? (
         <MaterialsTextbookFilesPopupClient

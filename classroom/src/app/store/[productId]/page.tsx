@@ -414,6 +414,7 @@ export default async function ProductDetailPage({
       title: true;
       subjectName: true;
       teacherName: true;
+      teacherImageUrl: true;
       teacherTitle: true;
       teacherDescription: true;
       thumbnailUrl: true;
@@ -439,6 +440,7 @@ export default async function ProductDetailPage({
       title: true;
       subjectName: true;
       teacherName: true;
+      teacherImageUrl: true;
       teacherTitle: true;
       teacherDescription: true;
       thumbnailUrl: true;
@@ -491,6 +493,7 @@ export default async function ProductDetailPage({
             title: true,
             subjectName: true,
             teacherName: true,
+            teacherImageUrl: true,
             teacherTitle: true,
             teacherDescription: true,
             thumbnailUrl: true,
@@ -514,32 +517,63 @@ export default async function ProductDetailPage({
         // NOTE: Next dev(Turbopack)에서 server console.error가 소스맵 오버레이 이슈를 유발하는 경우가 있어
         // 여기서는 에러 객체를 그대로 찍지 않고 warn으로 낮춰 노이즈/오버레이를 줄입니다.
         console.warn("[store/product] textbook query failed with full select. Falling back to minimal select.");
-        dbTextbook = await prisma.textbook.findFirst({
-          where: {
-            OR: [{ id: productId }],
-            isPublished: true,
-            owner: { email: storeOwnerEmail },
-          },
-          select: {
-            id: true,
-            title: true,
-            subjectName: true,
-            teacherName: true,
-            teacherTitle: true,
-            teacherDescription: true,
-            thumbnailUrl: true,
-            imwebProdCode: true,
-            price: true,
-            originalPrice: true,
-            rating: true,
-            reviewCount: true,
-            tags: true,
-            benefits: true,
-            features: true,
-            description: true,
-            entitlementDays: true,
-          },
-        });
+        // 최소 select에서도 teacherImageUrl은 가져오되, (운영 환경 등) 컬럼이 없는 경우에는 한 번 더 폴백합니다.
+        try {
+          dbTextbook = await prisma.textbook.findFirst({
+            where: {
+              OR: [{ id: productId }],
+              isPublished: true,
+              owner: { email: storeOwnerEmail },
+            },
+            select: {
+              id: true,
+              title: true,
+              subjectName: true,
+              teacherName: true,
+              teacherImageUrl: true,
+              teacherTitle: true,
+              teacherDescription: true,
+              thumbnailUrl: true,
+              imwebProdCode: true,
+              price: true,
+              originalPrice: true,
+              rating: true,
+              reviewCount: true,
+              tags: true,
+              benefits: true,
+              features: true,
+              description: true,
+              entitlementDays: true,
+            },
+          });
+        } catch {
+          dbTextbook = await prisma.textbook.findFirst({
+            where: {
+              OR: [{ id: productId }],
+              isPublished: true,
+              owner: { email: storeOwnerEmail },
+            },
+            select: {
+              id: true,
+              title: true,
+              subjectName: true,
+              teacherName: true,
+              teacherTitle: true,
+              teacherDescription: true,
+              thumbnailUrl: true,
+              imwebProdCode: true,
+              price: true,
+              originalPrice: true,
+              rating: true,
+              reviewCount: true,
+              tags: true,
+              benefits: true,
+              features: true,
+              description: true,
+              entitlementDays: true,
+            },
+          });
+        }
       }
     } else {
       dbTextbook = null;
@@ -820,7 +854,35 @@ export default async function ProductDetailPage({
     const teacherName = (dbTextbook as { teacherName?: string | null }).teacherName || "선생님";
     const teacherTitle = (dbTextbook as { teacherTitle?: string | null }).teacherTitle || "";
     const teacherDescription = (dbTextbook as { teacherDescription?: string | null }).teacherDescription || "";
-    const teacherImageUrl = (dbTextbook as { teacherImageUrl?: string | null }).teacherImageUrl || null;
+    const normalizeImageUrl = (u: string | null | undefined): string | null => {
+      const v = (u ?? "").trim();
+      if (!v) return null;
+      if (v.toLowerCase().startsWith("gs://")) return `https://storage.googleapis.com/${v.slice(5)}`;
+      return v;
+    };
+
+    // 교재의 teacherImageUrl이 없으면, Teachers 테이블(유노바 선생님)에서 이름으로 매칭해 폴백합니다.
+    let teacherImageUrl = normalizeImageUrl((dbTextbook as { teacherImageUrl?: string | null }).teacherImageUrl);
+    let teacherId = "unova";
+    const teacherNameKey = teacherName.replace(/선생님/g, "").trim();
+    if (teacherNameKey && teacherNameKey !== "선생님") {
+      try {
+        const t = await prisma.teacher.findFirst({
+          where: {
+            isActive: true,
+            OR: [
+              { name: { equals: teacherNameKey, mode: "insensitive" } },
+              { name: { contains: teacherNameKey, mode: "insensitive" } },
+            ],
+          },
+          select: { slug: true, imageUrl: true, mainImageUrl: true },
+        });
+        teacherId = t?.slug || teacherId;
+        if (!teacherImageUrl) teacherImageUrl = normalizeImageUrl(t?.imageUrl || t?.mainImageUrl);
+      } catch {
+        // ignore
+      }
+    }
     const thumbnailUrl = (dbTextbook as { thumbnailUrl?: string | null }).thumbnailUrl || null;
     const composition = (dbTextbook as { composition?: string | null }).composition ?? null;
     const isbn = (dbTextbook as { imwebProdCode?: string | null }).imwebProdCode ?? null;
@@ -839,7 +901,7 @@ export default async function ProductDetailPage({
                 subjectColor: "text-amber-400",
                 subjectBg: "bg-amber-500/20",
                 teacher: teacherName,
-                teacherId: "unova",
+                teacherId,
                 teacherTitle,
                 teacherDescription,
                 teacherImageUrl,

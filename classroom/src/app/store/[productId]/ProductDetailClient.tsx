@@ -270,6 +270,51 @@ export default function ProductDetailClient({
       return value;
     })
     .find((v) => typeof v === "string" && /^https?:\/\//i.test(v)) || null;
+
+  // 선생님 이미지: (1) 상품 데이터에 있으면 사용, (2) 없으면 /api/teachers/list에서 선생님 slug/이름으로 매칭해 폴백
+  const [teacherAvatarUrl, setTeacherAvatarUrl] = useState<string | null>(product.teacherImageUrl ?? null);
+  useEffect(() => {
+    setTeacherAvatarUrl(product.teacherImageUrl ?? null);
+  }, [product.teacherImageUrl]);
+
+  useEffect(() => {
+    if (teacherAvatarUrl) return;
+    const teacherNameKey = (product.teacher || "").replace(/선생님/g, "").trim();
+    const teacherSlugKey = (product.teacherId || "").trim();
+    if (!teacherNameKey && !teacherSlugKey) return;
+
+    const normalize = (u: unknown): string | null => {
+      const v = (typeof u === "string" ? u : "").trim();
+      if (!v) return null;
+      if (v.toLowerCase().startsWith("gs://")) return `https://storage.googleapis.com/${v.slice(5)}`;
+      return v;
+    };
+
+    const run = async () => {
+      try {
+        const res = await fetch("/api/teachers/list", { cache: "force-cache" });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.ok) return;
+        const list = Array.isArray(json.teachers) ? json.teachers : [];
+
+        const matched =
+          list.find((t: any) => typeof t?.slug === "string" && t.slug.trim() === teacherSlugKey) ||
+          list.find((t: any) => typeof t?.name === "string" && t.name.trim() === teacherNameKey) ||
+          list.find(
+            (t: any) =>
+              typeof t?.name === "string" &&
+              (t.name.includes(teacherNameKey) || teacherNameKey.includes(t.name.trim()))
+          );
+
+        const url = normalize(matched?.imageUrl);
+        if (url) setTeacherAvatarUrl(url);
+      } catch {
+        // ignore
+      }
+    };
+
+    run();
+  }, [teacherAvatarUrl, product.teacher, product.teacherId]);
   
   // 스크롤 감지 - 탭이 sticky 상태일 때 말풍선 숨김
   const [isTabSticky, setIsTabSticky] = useState(false);
@@ -740,15 +785,20 @@ export default function ProductDetailClient({
 
           {/* 강사 정보 */}
           <div className="flex items-center gap-3 mb-3">
-            {product.teacherImageUrl && (
-              <div className="w-10 h-10 rounded-full overflow-hidden border border-white/20 shrink-0">
+            <div className="w-10 h-10 rounded-full overflow-hidden border border-white/20 shrink-0 bg-white/[0.06] flex items-center justify-center">
+              {teacherAvatarUrl ? (
                 <img
-                  src={product.teacherImageUrl}
+                  src={teacherAvatarUrl}
                   alt={`${product.teacher} 선생님`}
                   className="w-full h-full object-cover"
+                  onError={() => setTeacherAvatarUrl(null)}
                 />
-              </div>
-            )}
+              ) : (
+                <span className="text-white/70 text-sm font-semibold">
+                  {(product.teacher || "U").trim().charAt(0) || "U"}
+                </span>
+              )}
+            </div>
             <div>
               <p className="text-[15px] font-medium flex items-center gap-1.5">
                 {product.teacher} 선생님
