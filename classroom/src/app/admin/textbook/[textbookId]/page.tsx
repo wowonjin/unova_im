@@ -192,6 +192,8 @@ export default async function AdminTextbookPage({
           where: {
             ownerId: teacher.id,
             id: { not: textbookId },
+            // "상품 등록(판매 물품)" 페이지에 노출되는 교재만 (판매 설정된 교재)
+            OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
           },
           select: {
             id: true,
@@ -199,7 +201,18 @@ export default async function AdminTextbookPage({
             subjectName: true,
             thumbnailUrl: true,
           },
-          orderBy: { createdAt: "desc" },
+          // 판매 목록과 동일한 정렬(관리용 position 우선, 없으면 최신순)
+          orderBy: [{ position: "desc" }, { createdAt: "desc" }],
+        }).catch(async () => {
+          return await prisma.textbook.findMany({
+            where: {
+              ownerId: teacher.id,
+              id: { not: textbookId },
+              OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+            },
+            select: { id: true, title: true, subjectName: true, thumbnailUrl: true },
+            orderBy: [{ createdAt: "desc" }],
+          });
         })
       : [];
 
