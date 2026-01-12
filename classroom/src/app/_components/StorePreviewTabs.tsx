@@ -194,7 +194,7 @@ export default function StorePreviewTabs({
       {/* 상품 그리드 */}
       <div className="mt-6">
         {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-5 sm:gap-y-10">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-x-4 gap-y-8 sm:gap-x-5 sm:gap-y-10">
             {filteredProducts.slice(0, 12).map((product) => (
               <Link key={product.id} href={`/store/${product.id}`} className="group">
                 <div
@@ -256,25 +256,25 @@ export default function StorePreviewTabs({
                   )}
                 </div>
 
-                <div className="mt-4 px-1">
-                  <h3 className="text-[15px] font-medium text-white leading-snug line-clamp-2 group-hover:text-white/90">
+                <div className="mt-3 px-0.5">
+                  <h3 className="text-[14px] font-medium text-white leading-snug line-clamp-2 group-hover:text-white/90">
                     {product.title}
                   </h3>
-                  <div className="mt-1.5 flex items-baseline gap-2">
-                    <span className="text-[14px] font-semibold text-white">{formatPrice(product.price)}</span>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <span className="text-[13px] font-semibold text-white">{formatPrice(product.price)}</span>
                     {product.originalPrice ? (
                       <>
-                        <span className="text-[12px] text-white/30 line-through">
+                        <span className="text-[11px] text-white/30 line-through">
                           {formatPrice(product.originalPrice)}
                         </span>
-                        <span className="text-[12px] font-semibold text-rose-400">
+                        <span className="text-[11px] font-semibold text-rose-400">
                           {getDiscount(product.originalPrice, product.price)}%
                         </span>
                       </>
                     ) : null}
                   </div>
 
-                  <div className="mt-2 flex items-center gap-2 text-[12px] text-white">
+                  <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-white">
                     <span className="flex items-center gap-0.5">
                       <span className="text-yellow-400">⭐</span>
                       <span>{(product.rating ?? 0).toFixed(1)}</span>
@@ -289,14 +289,14 @@ export default function StorePreviewTabs({
                   </div>
 
                   {product.tags.length > 0 ? (
-                    <div className="mt-2 flex flex-wrap gap-2">
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {product.tags
                         .filter((t) => t.trim().toUpperCase() !== "ORIGINAL")
                         .slice(0, 6)
                         .map((t, idx) => (
                           <span
                             key={`${product.id}-tag-${t}`}
-                            className={`rounded-md px-2.5 py-1 text-[11px] font-medium ${
+                            className={`rounded-md px-2 py-0.5 text-[10px] font-medium ${
                               idx === 0
                                 ? "bg-white text-black"
                                 : idx === 1

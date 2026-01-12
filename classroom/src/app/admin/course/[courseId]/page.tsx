@@ -89,9 +89,16 @@ export default async function AdminCoursePage({
     console.error("[AdminCoursePage] failed to load saved addons columns:", e);
   }
 
-  // "교재 함께 구매"에 표시할 교재 선택을 위해, 동일 소유자의 공개 교재 목록을 불러옵니다.
+  // "교재 함께 구매"에 표시할 교재 선택을 위해, 동일 소유자의 "판매 물품(상품 등록된 교재)"만 불러옵니다.
+  // 스토어(/store) 및 /admin/textbooks(교재 판매하기) 기준과 동일:
+  // - 공개(isPublished)
+  // - 판매가/정가 중 하나라도 설정된 항목만
   const otherTextbooks = await prisma.textbook.findMany({
-    where: { ownerId: teacher.id, isPublished: true },
+    where: {
+      ownerId: teacher.id,
+      isPublished: true,
+      OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+    },
     select: {
       id: true,
       title: true,
@@ -206,6 +213,8 @@ export default async function AdminCoursePage({
                   initial={{
                     price: course.price ?? null,
                     originalPrice: course.originalPrice ?? null,
+                    teacherTitle: course.teacherTitle ?? null,
+                    teacherDescription: course.teacherDescription ?? null,
                     tags: (course.tags as string[] | null) ?? [],
                     benefits: (course.benefits as string[] | null) ?? [],
                   }}

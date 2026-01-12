@@ -16,6 +16,8 @@ type Props = {
   initial: {
     price: number | null;
     originalPrice: number | null;
+    teacherTitle: string | null;
+    teacherDescription: string | null;
     tags: string[];
     benefits: string[];
   };
@@ -24,6 +26,8 @@ type Props = {
 export default function CourseDetailPageClient({ courseId, initial }: Props) {
   const [price, setPrice] = useState(initial.price?.toString() || "");
   const [originalPrice, setOriginalPrice] = useState(initial.originalPrice?.toString() || "");
+  const [teacherTitle, setTeacherTitle] = useState(initial.teacherTitle || "");
+  const [teacherDescription, setTeacherDescription] = useState(initial.teacherDescription || "");
   const [tags, setTags] = useState((initial.tags ?? []).join(", "));
   const [benefits, setBenefits] = useState((initial.benefits ?? []).join("\n"));
   
@@ -39,6 +43,8 @@ export default function CourseDetailPageClient({ courseId, initial }: Props) {
       formData.append("courseId", courseId);
       formData.append("price", price);
       formData.append("originalPrice", originalPrice);
+      formData.append("teacherTitle", teacherTitle);
+      formData.append("teacherDescription", teacherDescription);
       formData.append("tags", tags);
       formData.append("benefits", benefits);
 
@@ -57,7 +63,7 @@ export default function CourseDetailPageClient({ courseId, initial }: Props) {
       console.error("Save error:", error);
       setSaveStatus("error");
     }
-  }, [courseId, price, originalPrice, tags, benefits]);
+  }, [courseId, price, originalPrice, teacherTitle, teacherDescription, tags, benefits]);
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -78,7 +84,7 @@ export default function CourseDetailPageClient({ courseId, initial }: Props) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [price, originalPrice, tags, benefits, saveData]);
+  }, [price, originalPrice, teacherTitle, teacherDescription, tags, benefits, saveData]);
 
   const inputClass = "w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20";
   const labelClass = "block text-sm font-medium text-white/70 mb-1.5";
@@ -138,6 +144,37 @@ export default function CourseDetailPageClient({ courseId, initial }: Props) {
             className={inputClass}
           />
         </div>
+      </div>
+
+      {/* 선생님 정보 */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label className={labelClass}>
+            선생님 대학교(선택)
+            <span className="ml-1 text-white/40 font-normal">(상세 상단에 노출)</span>
+          </label>
+          <input
+            type="text"
+            value={teacherTitle}
+            onChange={(e) => setTeacherTitle(e.target.value)}
+            placeholder="예: 연세대학교 의과대학 졸업"
+            className={inputClass}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>
+          선생님 소개(선택)
+          <span className="ml-1 text-white/40 font-normal">(상세 페이지 소개 탭에 사용)</span>
+        </label>
+        <textarea
+          value={teacherDescription}
+          onChange={(e) => setTeacherDescription(e.target.value)}
+          placeholder="선생님 소개 문장을 입력하세요."
+          rows={4}
+          className={inputClass}
+        />
       </div>
 
       {/* 태그 */}

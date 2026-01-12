@@ -9,6 +9,8 @@ const Schema = z.object({
   courseId: z.string().min(1),
   price: z.string().transform((s) => (s ? parseInt(s) : null)),
   originalPrice: z.string().transform((s) => (s ? parseInt(s) : null)),
+  teacherTitle: z.string().optional().transform((s) => (s ? s.trim() : "")),
+  teacherDescription: z.string().optional().transform((s) => (s ? s.trim() : "")),
   tags: z.string().transform((s) => 
     s.split(",").map((t) => t.trim()).filter(Boolean)
   ),
@@ -46,7 +48,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "INVALID_REQUEST", details: parsed.error }, { status: 400 });
   }
 
-  const { courseId, price, originalPrice, tags, benefits } = parsed.data;
+  const { courseId, price, originalPrice, teacherTitle, teacherDescription, tags, benefits } = parsed.data;
 
   // Verify ownership
   const course = await prisma.course.findUnique({
@@ -69,6 +71,8 @@ export async function POST(req: Request) {
       price,
       originalPrice,
       dailyPrice,
+      teacherTitle: teacherTitle?.length ? teacherTitle : null,
+      teacherDescription: teacherDescription?.length ? teacherDescription : null,
       tags,
       benefits,
     } as never,

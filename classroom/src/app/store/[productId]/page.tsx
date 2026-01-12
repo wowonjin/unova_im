@@ -14,6 +14,18 @@ function getStoreOwnerEmail(): string {
   return (process.env.ADMIN_EMAIL || "admin@gmail.com").toLowerCase().trim();
 }
 
+let _ensuredCourseAddonsColumns = false;
+async function ensureCourseAddonsColumnsOnce() {
+  if (_ensuredCourseAddonsColumns) return;
+  _ensuredCourseAddonsColumns = true;
+  try {
+    await prisma.$executeRawUnsafe('ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "relatedTextbookIds" JSONB;');
+    await prisma.$executeRawUnsafe('ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "relatedCourseIds" JSONB;');
+  } catch {
+    // ignore (older DBs or restricted DB users). We will fallback gracefully.
+  }
+}
+
 // 더미 상품 데이터
 const productsData: Record<
   string,
@@ -667,6 +679,38 @@ export default async function ProductDetailPage({
     const dailyPrice = dbCourse.dailyPrice || Math.round(price / 30);
     const discount = originalPrice ? getDiscount(originalPrice, price) : null;
 
+    const normalizeImageUrl = (u: string | null | undefined): string | null => {
+      const v = (u ?? "").trim();
+      if (!v) return null;
+      if (v.toLowerCase().startsWith("gs://")) return `https://storage.googleapis.com/${v.slice(5)}`;
+      return v;
+    };
+
+    // 강좌의 teacherName이 Teachers 테이블(어드민 선생님 관리)에 존재하면,
+    // 선생님 페이지 링크/프로필 이미지(썸네일)를 자동으로 매칭합니다.
+    const teacherName = dbCourse.teacherName || "선생님";
+    let teacherId = "unova";
+    let teacherImageUrl: string | null = null;
+    const teacherNameKey = teacherName.replace(/선생님/g, "").trim();
+    if (teacherNameKey && teacherNameKey !== "선생님") {
+      try {
+        const t = await prisma.teacher.findFirst({
+          where: {
+            isActive: true,
+            OR: [
+              { name: { equals: teacherNameKey, mode: "insensitive" } },
+              { name: { contains: teacherNameKey, mode: "insensitive" } },
+            ],
+          },
+          select: { slug: true, imageUrl: true, mainImageUrl: true },
+        });
+        teacherId = t?.slug || teacherId;
+        teacherImageUrl = normalizeImageUrl(t?.imageUrl || t?.mainImageUrl);
+      } catch {
+        // ignore
+      }
+    }
+
     // 강의 상세에서 "교재 함께 구매" 옵션으로 보여줄 교재
     // - 강좌 관리에서 선택한 relatedTextbookIds가 있으면 그것만 노출
     // - 없으면 최근 교재 6개로 폴백
@@ -697,6 +741,7 @@ export default async function ProductDetailPage({
       let selectedTextbookIds: string[] | null = null;
       let selectedCourseIds: string[] | null = null;
       try {
+        await ensureCourseAddonsColumnsOnce();
         const rows = (await prisma.$queryRawUnsafe(
           'SELECT "relatedTextbookIds", "relatedCourseIds" FROM "Course" WHERE "id" = $1',
           dbCourse.id
@@ -788,7 +833,7 @@ export default async function ProductDetailPage({
       <div className="min-h-screen bg-[#161616] text-white">
         <LandingHeader />
 
-        <main className="pt-[70px]">
+        <main className="pt-[var(--unova-fixed-header-offset)]">
           <div className="mx-auto max-w-6xl px-4">
             <ProductDetailClient
               product={{
@@ -797,11 +842,14 @@ export default async function ProductDetailPage({
                 subject: dbCourse.subjectName || "강좌",
                 subjectColor: "text-blue-400",
                 subjectBg: "bg-blue-500/20",
-                teacher: dbCourse.teacherName || "선생님",
-                teacherId: dbCourse.slug,
+                teacher: teacherName,
+                teacherId,
                 teacherTitle: dbCourse.teacherTitle || "",
                 teacherDescription: dbCourse.teacherDescription || "",
-                thumbnailUrl: dbCourse.thumbnailUrl,
+                teacherImageUrl,
+                // course 썸네일은 /api/courses/:id/thumbnail 로 통일해서 보여줍니다.
+                // storedPath 기반 썸네일(레거시)도 UI에서 "있음"으로 인식하도록 값 보정.
+                thumbnailUrl: dbCourse.thumbnailUrl || ((dbCourse as any).thumbnailStoredPath ? "__stored__" : null),
                 price,
                 originalPrice,
                 dailyPrice,
@@ -898,7 +946,7 @@ export default async function ProductDetailPage({
       <div className="min-h-screen bg-[#161616] text-white">
         <LandingHeader />
 
-        <main className="pt-[70px]">
+        <main className="pt-[var(--unova-fixed-header-offset)]">
           <div className="mx-auto max-w-6xl px-4">
             <ProductDetailClient
               product={{
@@ -973,7 +1021,7 @@ export default async function ProductDetailPage({
     <div className="min-h-screen bg-[#161616] text-white">
       <LandingHeader />
 
-      <main className="pt-[70px]">
+      <main className="pt-[var(--unova-fixed-header-offset)]">
         <div className="mx-auto max-w-6xl px-4">
           {/* 상품 상세 클라이언트 컴포넌트 */}
           <ProductDetailClient
@@ -999,7 +1047,7 @@ export default async function ProductDetailPage({
     return (
       <div className="min-h-screen bg-[#161616] text-white">
         <LandingHeader />
-        <main className="pt-[70px]">
+        <main className="pt-[var(--unova-fixed-header-offset)]">
           <div className="mx-auto max-w-3xl px-6 py-16">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
               <h1 className="text-xl font-semibold text-white">상품 상세</h1>

@@ -232,6 +232,7 @@ export default function ProductDetailClient({
   // 공유 모달 상태
   const [showShareModal, setShowShareModal] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [shareUrlPreview, setShareUrlPreview] = useState("");
   
   // 무료 강의 미리보기 상태
   const [expandedLessonIdx, setExpandedLessonIdx] = useState<number | null>(null);
@@ -321,13 +322,26 @@ export default function ProductDetailClient({
   const tabRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
+    const getHeaderOffset = () => {
+      try {
+        const raw = getComputedStyle(document.documentElement)
+          .getPropertyValue("--unova-fixed-header-offset")
+          .trim();
+        const n = Number.parseFloat(raw.replace("px", ""));
+        return Number.isFinite(n) ? n : 70;
+      } catch {
+        return 70;
+      }
+    };
+
     const handleScroll = () => {
       if (!tabRef.current) return;
       
       // 탭 메뉴의 원래 위치 확인
       const tabRect = tabRef.current.getBoundingClientRect();
-      // 탭 메뉴가 top-[70px]에 도달했는지 확인 (헤더 높이 70px)
-      setIsTabSticky(tabRect.top <= 70);
+      // 탭 메뉴가 헤더 아래 고정 위치(모바일 50px / 데스크탑 70px)에 도달했는지 확인
+      const headerOffset = getHeaderOffset();
+      setIsTabSticky(tabRect.top <= headerOffset);
     };
     
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -514,6 +528,11 @@ export default function ProductDetailClient({
     return "";
   };
 
+  // SSR/CSR hydration mismatch 방지: window 기반 값은 마운트 후에만 채웁니다.
+  useEffect(() => {
+    setShareUrlPreview(getShareUrl());
+  }, []);
+
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(getShareUrl());
@@ -686,8 +705,6 @@ export default function ProductDetailClient({
       <div className="flex-1 min-w-0">
         {/* 브레드크럼 네비게이션 */}
         <nav className="flex items-center gap-2 text-[13px] text-white/50 mb-6">
-          <Link href="/" className="hover:text-white transition-colors">홈</Link>
-          <span className="text-white/30">›</span>
           <Link
             href={`/store?type=${encodeURIComponent(product.type === "textbook" ? "교재" : "강좌")}`}
             className="hover:text-white transition-colors"
@@ -698,7 +715,7 @@ export default function ProductDetailClient({
           <span className="text-white/70">{product.subject}</span>
         </nav>
 
-        {/* 상단 미디어: 강좌는 비메오, 교재는 이미지 */}
+        {/* 상단 미디어: 교재는 이미지, 강좌는 (썸네일이 있으면 이미지) 없으면 비메오 */}
         {product.type === "textbook" ? (
           <div className="mb-8">
             <div className="w-full max-w-[520px] lg:max-w-none aspect-square lg:aspect-video rounded-xl overflow-hidden bg-[#1a1a1c]">
@@ -718,15 +735,28 @@ export default function ProductDetailClient({
             </div>
           </div>
         ) : (
-          <div className="aspect-video rounded-xl overflow-hidden bg-black mb-8 border border-white/10">
-            <iframe
-              src={`https://player.vimeo.com/video/${product.previewVimeoId || "1121398945"}?badge=0&autopause=0&player_id=0&app_id=58479`}
-              className="w-full h-full"
-              frameBorder="0"
-              allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
-              title="맛보기 영상"
-            />
-          </div>
+          product.thumbnailUrl ? (
+            <div className="mb-8">
+              <div className="w-full max-w-[520px] lg:max-w-none aspect-square lg:aspect-video rounded-xl overflow-hidden bg-[#1a1a1c] border border-white/10">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/api/courses/${product.id}/thumbnail`}
+                  alt={product.title}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="aspect-video rounded-xl overflow-hidden bg-black mb-8 border border-white/10">
+              <iframe
+                src={`https://player.vimeo.com/video/${product.previewVimeoId || "1121398945"}?badge=0&autopause=0&player_id=0&app_id=58479`}
+                className="w-full h-full"
+                frameBorder="0"
+                allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+                title="맛보기 영상"
+              />
+            </div>
+          )
         )}
 
         {/* 강의 정보 섹션 */}
@@ -780,7 +810,7 @@ export default function ProductDetailClient({
               onClick={() => setActiveTab(reviewTabKey)}
               className="text-[14px] text-white/50 underline hover:text-white/70"
             >
-              {reviewCount.toLocaleString()}개 후기
+              {reviewCount.toLocaleString("ko-KR")}개 후기
             </button>
           </div>
 
@@ -802,13 +832,12 @@ export default function ProductDetailClient({
             </div>
             <div>
               <p className="text-[15px] font-medium flex items-center gap-1.5">
-                {product.teacher} 선생님
-                <Link 
+                <Link
                   href={`/teachers/${product.teacherId}`}
-                  className="inline-flex items-center justify-center text-white/50 hover:text-white transition-colors"
+                  className="inline-flex items-center text-white/90 hover:text-white transition-colors"
                   title={`${product.teacher} 선생님 페이지로 이동`}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>home</span>
+                  {product.teacher} 선생님
                 </Link>
               </p>
               <p className="text-[13px] text-white/50">{product.teacherTitle}</p>
@@ -824,7 +853,8 @@ export default function ProductDetailClient({
         {/* 탭 네비게이션 */}
         <div
           ref={tabRef}
-          className={`sticky top-[70px] z-30 border-b border-white/10 overflow-visible transition-all ${
+          style={{ top: "var(--unova-fixed-header-offset)" }}
+          className={`sticky z-30 border-b border-white/10 overflow-visible transition-all ${
             isTabSticky
               ? "pt-0 bg-[#161616]/70 backdrop-blur-md"
               : "pt-3 bg-transparent"
@@ -1488,7 +1518,7 @@ export default function ProductDetailClient({
                 onClick={() => setActiveTab(reviewTabKey)}
                 className="text-[13px] text-white/50 underline hover:text-white/70"
               >
-                {reviewCount.toLocaleString()}개 후기
+                {reviewCount.toLocaleString("ko-KR")}개 후기
               </button>
             </div>
 
@@ -1561,11 +1591,11 @@ export default function ProductDetailClient({
                           </div>
                           <div className="mt-0.5 flex items-center gap-2">
                             <span className={`text-[15px] font-bold ${isSelected ? "text-white" : "text-white/70"}`}>
-                              {c.price.toLocaleString()}원
+                              {c.price.toLocaleString("ko-KR")}원
                             </span>
                             {c.originalPrice && (
                               <span className={`text-[12px] line-through ${isSelected ? "text-white/40" : "text-white/30"}`}>
-                                {c.originalPrice.toLocaleString()}원
+                                {c.originalPrice.toLocaleString("ko-KR")}원
                               </span>
                             )}
                             {discount && (
@@ -1578,7 +1608,7 @@ export default function ProductDetailClient({
                               </span>
                             )}
                             <span className="ml-auto text-[11px] text-white/50 underline underline-offset-2">
-                              {Number(c.reviewCount || 0).toLocaleString()}개 후기
+                              {Number(c.reviewCount || 0).toLocaleString("ko-KR")}개 후기
                             </span>
                           </div>
                         </div>
@@ -1635,11 +1665,11 @@ export default function ProductDetailClient({
                           </div>
                           <div className="mt-0.5 flex items-center gap-2">
                             <span className={`text-[15px] font-bold ${isSelected ? "text-white" : "text-white/70"}`}>
-                              {related.price.toLocaleString()}원
+                              {related.price.toLocaleString("ko-KR")}원
                             </span>
                             {related.originalPrice && (
                               <span className={`text-[12px] line-through ${isSelected ? "text-white/40" : "text-white/30"}`}>
-                                {related.originalPrice.toLocaleString()}원
+                                {related.originalPrice.toLocaleString("ko-KR")}원
                               </span>
                             )}
                             {discount && (
@@ -1652,7 +1682,7 @@ export default function ProductDetailClient({
                               </span>
                             )}
                             <span className="ml-auto text-[11px] text-white/50 underline underline-offset-2">
-                              {Number(related.reviewCount || 0).toLocaleString()}개 후기
+                              {Number(related.reviewCount || 0).toLocaleString("ko-KR")}개 후기
                             </span>
                           </div>
                         </div>
@@ -1687,7 +1717,7 @@ export default function ProductDetailClient({
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[12px] font-medium text-white/90">추가 교재 {selectedRelatedIds.size}개</span>
                     <span className="text-[13px] font-medium text-white">
-                      +{additionalAmount.toLocaleString()}원
+                      +{additionalAmount.toLocaleString("ko-KR")}원
                     </span>
                   </div>
                 )}
@@ -1697,7 +1727,7 @@ export default function ProductDetailClient({
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[12px] font-medium text-white/90">추가 강의 {selectedAddonCourseIds.size}개</span>
                     <span className="text-[13px] font-medium text-white">
-                      +{additionalCourseAmount.toLocaleString()}원
+                      +{additionalCourseAmount.toLocaleString("ko-KR")}원
                     </span>
                   </div>
                 )}
@@ -1712,7 +1742,7 @@ export default function ProductDetailClient({
                       </span>
                     </span>
                     <span className="text-[13px] font-medium text-white">
-                      -{additionalTextbookDiscount.toLocaleString()}원
+                      -{additionalTextbookDiscount.toLocaleString("ko-KR")}원
                     </span>
                   </div>
                 )}
@@ -1727,7 +1757,7 @@ export default function ProductDetailClient({
                       </span>
                     </span>
                     <span className="text-[13px] font-medium text-white">
-                      -{courseBundleDiscount.toLocaleString()}원
+                      -{courseBundleDiscount.toLocaleString("ko-KR")}원
                     </span>
                   </div>
                 )}
@@ -1739,7 +1769,7 @@ export default function ProductDetailClient({
                   }`}
                 >
                   <span className="text-[12px] font-bold">총 결제 금액</span>
-                  <span className="text-[18px] font-bold">{totalAmount.toLocaleString()}원</span>
+                  <span className="text-[18px] font-bold">{totalAmount.toLocaleString("ko-KR")}원</span>
                 </div>
               </div>
             </>
@@ -1763,7 +1793,7 @@ export default function ProductDetailClient({
                 >
                   <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                 </svg>
-                <span className="text-[11px] text-white/50 mt-1">{likeCount >= 10000 ? `${(likeCount / 10000).toFixed(1)}만` : likeCount.toLocaleString()}</span>
+                <span className="text-[11px] text-white/50 mt-1">{likeCount >= 10000 ? `${(likeCount / 10000).toFixed(1)}만` : likeCount.toLocaleString("ko-KR")}</span>
               </button>
               <a
                 onClick={(e) => {
@@ -1802,7 +1832,7 @@ export default function ProductDetailClient({
           >
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
-            <span className="text-[10px] text-white/50 mt-0.5">{likeCount >= 10000 ? `${(likeCount / 10000).toFixed(1)}만` : likeCount.toLocaleString()}</span>
+            <span className="text-[10px] text-white/50 mt-0.5">{likeCount >= 10000 ? `${(likeCount / 10000).toFixed(1)}만` : likeCount.toLocaleString("ko-KR")}</span>
           </button>
           <div className="flex-1">
             {hasBaseProduct ? (
@@ -1928,7 +1958,7 @@ export default function ProductDetailClient({
           <div className="px-5 pb-5">
             <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10">
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] text-white/60 truncate">{typeof window !== "undefined" ? window.location.href : ""}</p>
+                <p className="text-[13px] text-white/60 truncate">{shareUrlPreview}</p>
               </div>
               <button 
                 onClick={handleCopyLink}

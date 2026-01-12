@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTeacherUser } from "@/lib/current-user";
@@ -38,7 +39,10 @@ export async function POST(req: Request) {
 
   const { courseId, relatedTextbookIds, relatedCourseIds } = parsed.data;
 
-  const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, ownerId: true } });
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: { id: true, ownerId: true, slug: true },
+  });
   if (!course || (!teacher.isAdmin && course.ownerId !== teacher.id)) {
     return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
   }
@@ -77,6 +81,14 @@ export async function POST(req: Request) {
       },
       { status: 500 }
     );
+  }
+
+  // Store product pages are ISR cached (see `store/[productId]`), so invalidate immediately.
+  try {
+    revalidatePath(`/store/${course.id}`);
+    if (course.slug) revalidatePath(`/store/${course.slug}`);
+  } catch {
+    // ignore cache invalidation errors; saving succeeded
   }
 
   return NextResponse.json({ ok: true });

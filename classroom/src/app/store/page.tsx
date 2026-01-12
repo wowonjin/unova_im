@@ -1,6 +1,7 @@
 import Link from "next/link";
 import LandingHeader from "@/app/_components/LandingHeader";
 import Footer from "@/app/_components/Footer";
+import StoreFilterClient from "@/app/store/StoreFilterClient";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 
@@ -32,24 +33,15 @@ type Product = {
   reviewCount: number | null;
 };
 
-// 화면 표시용 라벨
-
-function formatPrice(price: number): string {
-  return price.toLocaleString("ko-KR") + "원";
-}
-
-function getDiscount(original: number, current: number): number {
-  return Math.round(((original - current) / original) * 100);
-}
-
 export default async function StorePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ subject?: string; type?: string }>;
+  searchParams?: Promise<{ subject?: string; type?: string; exam?: string }>;
 }) {
   try {
     const sp = await searchParams;
     const selectedSubject = sp?.subject || "전체";
+    const selectedExamType = sp?.exam || "전체";
     const rawType = sp?.type || "교재";
     // 표기 통일: 레거시 "강좌" -> "강의"
     const selectedType = rawType === "강좌" ? "강의" : rawType;
@@ -232,20 +224,6 @@ export default async function StorePage({
   // 현재 선택된 유형에 해당하는 상품들만 필터
   const productsOfCurrentType = products.filter((p) => p.type === currentType);
 
-  // 과목 목록 (고정 순서: 전체, 수학, 물리학I, 물리학II) - 현재 유형에 있는 과목만 표시
-  const subjectOrder = ["전체", "수학", "물리학I", "물리학II"];
-  const subjectSet = new Set(productsOfCurrentType.map((p) => p.subject));
-  // 지정된 순서에 있는 과목만 표시, 그 외 과목은 마지막에 추가
-  const orderedSubjects = subjectOrder.filter((s) => s === "전체" || subjectSet.has(s));
-  const otherSubjects = Array.from(subjectSet).filter((s) => !subjectOrder.includes(s));
-  const subjects = [...orderedSubjects, ...otherSubjects];
-
-  // 필터링
-  let filteredProducts = productsOfCurrentType;
-  if (selectedSubject !== "전체") {
-    filteredProducts = filteredProducts.filter((p) => p.subject === selectedSubject);
-  }
-
     const pageCopy =
       selectedType === "강의"
         ? {
@@ -272,180 +250,13 @@ export default async function StorePage({
             </p>
           </section>
 
-          {/* 필터 섹션 */}
-          <section className="sticky top-[70px] z-40 bg-[#161616]/80 backdrop-blur-xl">
-            <div className="mx-auto max-w-6xl px-4 py-4">
-              <div className="flex flex-col md:flex-row md:items-center gap-4">
-                {/* 과목 필터 */}
-                <div className="flex items-center gap-2">
-                  <div className="flex flex-wrap gap-2">
-                    {subjects.map((subject) => (
-                      <Link
-                        key={subject}
-                        href={`${selectedType === "교재" ? "/books" : "/lectures"}?subject=${encodeURIComponent(subject)}`}
-                        className={`text-[13px] font-medium transition-colors ${
-                          selectedSubject === subject
-                            ? "px-4 py-2 rounded-full bg-white text-black"
-                            : "px-2 py-2 text-white/55 hover:text-white"
-                        }`}
-                      >
-                        {subject}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-        {/* 상품 목록 */}
-        <section className="mx-auto max-w-6xl px-4 pt-6 pb-24">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-[14px] text-white/50">
-              총 <span className="text-white font-medium">{filteredProducts.length}</span>개의 상품
-            </p>
-          </div>
-
-          {filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-5 sm:gap-y-10">
-              {filteredProducts.map((product) => (
-                <Link
-                  key={product.id}
-                  href={`/store/${product.id}`}
-                  className="group"
-                >
-                  <div className={`relative aspect-square overflow-hidden transition-all rounded-2xl ${
-                    product.type === "textbook" 
-                      ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02]" 
-                      : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
-                  }`}>
-                    {/* 교재 종류 배지 (교재만) */}
-                    {product.type === "textbook" && product.textbookType ? (
-                      <div className="absolute left-3 top-3 z-10">
-                        <span
-                          className={`rounded-lg font-semibold text-white backdrop-blur ${
-                            String(product.textbookType).trim().toUpperCase() === "PDF"
-                              ? "bg-gradient-to-r from-blue-500 to-purple-500 px-2 py-0.5 text-[10px] sm:px-2.5 sm:py-1 sm:text-[11px]"
-                              : "bg-black/70 px-2.5 py-1 text-[11px]"
-                          }`}
-                        >
-                          {product.textbookType}
-                        </span>
-                      </div>
-                    ) : null}
-
-                    {/* 상품 이미지 영역 */}
-                    {(product.thumbnailUrl || (product.type === "course" && product.thumbnailStoredPath)) ? (
-                      // 썸네일은 data URL/CSP 이슈를 피하기 위해 내부 API로 통일
-                      // - course: /api/courses/:id/thumbnail
-                      // - textbook: /api/textbooks/:id/thumbnail
-                      <img
-                        src={
-                          product.type === "course"
-                            ? `/api/courses/${product.id}/thumbnail${product.thumbnailUpdatedAtISO ? `?v=${encodeURIComponent(product.thumbnailUpdatedAtISO)}` : ""}`
-                            : `/api/textbooks/${product.id}/thumbnail${product.thumbnailUpdatedAtISO ? `?v=${encodeURIComponent(product.thumbnailUpdatedAtISO)}` : ""}`
-                        }
-                        alt={product.title}
-                        className="absolute inset-0 h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div
-                          className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
-                            product.type === "course"
-                              ? "bg-gradient-to-br from-blue-500/30 to-purple-500/30"
-                              : "bg-gradient-to-br from-amber-500/30 to-orange-500/30"
-                          }`}
-                        >
-                          <span
-                            className="material-symbols-outlined text-white/80"
-                            style={{ fontSize: "28px" }}
-                          >
-                            {product.type === "course" ? "play_circle" : "auto_stories"}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                  </div>
-
-                  {/* 상품 정보 */}
-                  <div className="mt-4 px-1">
-                    <h3 className="text-[15px] font-medium text-white leading-snug line-clamp-2 group-hover:text-white/90">
-                      {product.title}
-                    </h3>
-                    <div className="mt-1.5 flex items-baseline gap-2">
-                      <span className="text-[14px] font-semibold text-white">
-                        {formatPrice(product.price)}
-                      </span>
-                      {product.originalPrice && (
-                        <>
-                          <span className="text-[12px] text-white/30 line-through">
-                            {formatPrice(product.originalPrice)}
-                          </span>
-                          <span className="text-[12px] font-semibold text-rose-400">
-                            {getDiscount(product.originalPrice, product.price)}%
-                          </span>
-                        </>
-                      )}
-                    </div>
-                    {/* 평점, 강사, 과목 */}
-                    <div className="mt-2 flex items-center gap-2 text-[12px] text-white">
-                      <span className="flex items-center gap-0.5">
-                        <span className="text-yellow-400">⭐</span>
-                        <span>{(product.rating ?? 0).toFixed(1)}</span>
-                        <span>({product.reviewCount ?? 0})</span>
-                      </span>
-                      {product.teacher && (
-                        <>
-                          <span className="text-white/70">·</span>
-                          <span>{product.teacher}T</span>
-                        </>
-                      )}
-                    </div>
-                    {/* 태그 (관리자 상세 탭에서 입력한 쉼표 구분 태그들) */}
-                    {product.tags.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {product.tags
-                          .filter((t) => t.trim().toUpperCase() !== "ORIGINAL")
-                          .slice(0, 6)
-                          .map((t, idx) => (
-                          <span
-                            key={`${product.id}-tag-${t}`}
-                            className={`rounded-md px-2.5 py-1 text-[11px] font-medium ${
-                              idx === 0
-                                ? "bg-white text-black"
-                                : idx === 1
-                                  ? "bg-[#6376EC] text-white"
-                                  : "bg-white/[0.06] text-white/70"
-                            }`}
-                          >
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-24">
-              <span
-                className="material-symbols-outlined text-white/20"
-                style={{ fontSize: "64px" }}
-              >
-                search_off
-              </span>
-              <p className="mt-4 text-[18px] font-medium text-white/60">
-                해당 조건의 상품이 없습니다
-              </p>
-              <p className="mt-2 text-[14px] text-white/40">
-                다른 필터를 선택해보세요
-              </p>
-            </div>
-          )}
-        </section>
+          {/* 필터 및 상품 목록 (클라이언트 컴포넌트) */}
+          <StoreFilterClient
+            products={productsOfCurrentType}
+            selectedType={selectedType}
+            initialSubject={selectedSubject}
+            initialExamType={selectedExamType}
+          />
 
       </main>
 
