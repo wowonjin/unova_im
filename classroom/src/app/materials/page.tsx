@@ -79,7 +79,7 @@ export default async function MaterialsPage() {
             // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만
             OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
           },
-          orderBy: [{ createdAt: "desc" }],
+          orderBy: [{ position: "desc" }, { createdAt: "desc" }],
           select: {
             id: true,
             title: true,
@@ -104,6 +104,7 @@ export default async function MaterialsPage() {
             // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만
             OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
           },
+          // position 컬럼이 없거나(레거시) orderBy 오류가 나면 createdAt desc로 폴백
           orderBy: [{ createdAt: "desc" }],
           select: {
             id: true,
@@ -139,7 +140,7 @@ export default async function MaterialsPage() {
             // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만
             OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
           },
-          orderBy: [{ createdAt: "desc" }],
+          orderBy: [{ position: "desc" }, { createdAt: "desc" }],
           select: {
             id: true,
             title: true,
@@ -165,6 +166,7 @@ export default async function MaterialsPage() {
             // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만
             OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
           },
+          // position 컬럼이 없거나(레거시) orderBy 오류가 나면 createdAt desc로 폴백
           orderBy: [{ createdAt: "desc" }],
           select: {
             id: true,

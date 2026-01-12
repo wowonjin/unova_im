@@ -61,7 +61,10 @@ export async function POST(req: Request) {
     await prisma.$transaction(
       finalOrder.map((id, idx) =>
         prisma.textbook.update({
-          where: { id, ownerId: teacher.id },
+          // NOTE: Prisma update(where) must target a unique selector. `id` is unique.
+          // Security: `finalOrder` is built only from `existing` rows filtered by ownerId=teacher.id,
+          // so this cannot update rows owned by someone else.
+          where: { id },
           data: { position: finalOrder.length - idx },
         })
       )

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TextbookAutoThumbnail from "@/app/_components/TextbookAutoThumbnail";
@@ -34,12 +34,26 @@ function formatPrice(amount: number | null | undefined) {
   return new Intl.NumberFormat("ko-KR").format(amount as number) + "원";
 }
 
-export default function AdminTextbooksListView({ items }: { items: TextbookRow[] }) {
+export default function AdminTextbooksListView({ items: initialItems }: { items: TextbookRow[] }) {
   const router = useRouter();
+  const [items, setItems] = useState<TextbookRow[]>(() => initialItems);
+  const lastItemsRef = useRef<TextbookRow[]>(initialItems);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [orderError, setOrderError] = useState<string | null>(null);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">("all");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState<string | null>(null);
+
+  useEffect(() => {
+    setItems(initialItems);
+    lastItemsRef.current = initialItems;
+  }, [initialItems]);
+
+  const hasActiveFilter = Boolean(searchQuery.trim()) || statusFilter !== "all";
+  const canReorder = !hasActiveFilter;
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -55,6 +69,55 @@ export default function AdminTextbooksListView({ items }: { items: TextbookRow[]
       return true;
     });
   }, [items, searchQuery, statusFilter]);
+
+  async function persistOrder(next: TextbookRow[]) {
+    setOrderError(null);
+    const ids = next.map((t) => t.id);
+    try {
+      const res = await fetch("/api/admin/textbooks/reorder", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ textbookIds: ids }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const err = typeof body?.error === "string" ? body.error : `HTTP_${res.status}`;
+        throw new Error(err);
+      }
+      router.refresh();
+    } catch (e) {
+      console.error(e);
+      const msg = String((e as any)?.message || "");
+      if (msg === "FORBIDDEN" || msg === "HTTP_401" || msg === "HTTP_403") {
+        setOrderError("권한이 없거나 로그인 정보가 만료되었습니다. 새로고침 후 다시 시도해주세요.");
+      } else {
+        setOrderError("순서 저장에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      }
+      setItems(lastItemsRef.current);
+    }
+  }
+
+  function moveItem(fromId: string, toId: string) {
+    if (fromId === toId) return;
+    const fromIndex = items.findIndex((t) => t.id === fromId);
+    const toIndex = items.findIndex((t) => t.id === toId);
+    if (fromIndex < 0 || toIndex < 0) return;
+
+    const next = items.slice();
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+
+    lastItemsRef.current = items;
+    setItems(next);
+    void persistOrder(next);
+  }
+
+  function readDraggingIdFromEvent(e: React.DragEvent): string | null {
+    const fromState = draggingId;
+    if (fromState) return fromState;
+    const fromTransfer = e.dataTransfer?.getData?.("text/plain");
+    return typeof fromTransfer === "string" && fromTransfer ? fromTransfer : null;
+  }
 
   async function handleDelete(id: string) {
     if (!confirm("정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) return;
@@ -154,6 +217,18 @@ export default function AdminTextbooksListView({ items }: { items: TextbookRow[]
           : `${filteredItems.length}개 검색됨 / 총 ${items.length}개`}
       </div>
 
+      {hasActiveFilter ? (
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-white/60">
+          검색/필터 상태에서는 정렬(드래그)이 꺼집니다. (전체 보기로 되돌리면 다시 사용 가능)
+        </div>
+      ) : null}
+
+      {orderError ? (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-200">
+          {orderError}
+        </div>
+      ) : null}
+
       {/* Table */}
       <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
         <table className="w-full">
@@ -180,10 +255,70 @@ export default function AdminTextbooksListView({ items }: { items: TextbookRow[]
             {filteredItems.map((item) => (
               <tr
                 key={item.id}
-                className="group transition-colors hover:bg-white/[0.02]"
+                draggable={canReorder}
+                onDragStart={(e) => {
+                  // 테이블 환경에서 handle 버튼 dragstart가 안 잡히는 브라우저가 있어, row에서도 받습니다.
+                  // (사용자가 행 아무 곳에서나 드래그해도 되도록)
+                  setOrderError(null);
+                  if (!canReorder) return;
+                  setDraggingId(item.id);
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", item.id);
+                }}
+                onDragOver={(e) => {
+                  const fromId = readDraggingIdFromEvent(e);
+                  if (!fromId) return;
+                  if (!canReorder) return;
+                  e.preventDefault();
+                  setDragOverId(item.id);
+                }}
+                onDragLeave={() => {
+                  if (dragOverId === item.id) setDragOverId(null);
+                }}
+                onDrop={(e) => {
+                  const fromId = readDraggingIdFromEvent(e);
+                  if (!fromId) return;
+                  if (!canReorder) return;
+                  e.preventDefault();
+                  setDragOverId(null);
+                  moveItem(fromId, item.id);
+                }}
+                onDragEnd={() => {
+                  setDraggingId(null);
+                  setDragOverId(null);
+                }}
+                className={`group transition-colors hover:bg-white/[0.02] ${
+                  dragOverId === item.id && draggingId !== item.id ? "bg-white/[0.04]" : ""
+                }`}
               >
                 <td className="px-4 py-4">
                   <div className="flex items-center gap-4">
+                    {/* Drag handle */}
+                    <button
+                      type="button"
+                      draggable={canReorder}
+                      onDragStart={(e) => {
+                        setOrderError(null);
+                        if (!canReorder) return;
+                        setDraggingId(item.id);
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", item.id);
+                      }}
+                      onDragEnd={() => {
+                        setDraggingId(null);
+                        setDragOverId(null);
+                      }}
+                      className={`inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white/40 hover:bg-white/10 ${
+                        canReorder ? "cursor-grab active:cursor-grabbing" : "cursor-not-allowed opacity-40"
+                      }`}
+                      title={canReorder ? "드래그하여 순서 변경" : "전체 보기에서만 정렬할 수 있습니다"}
+                      aria-label="드래그하여 순서 변경"
+                      onClick={(e) => e.preventDefault()}
+                    >
+                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                        <path d="M7 4a1 1 0 102 0 1 1 0 00-2 0zM7 10a1 1 0 102 0 1 1 0 00-2 0zM7 16a1 1 0 102 0 1 1 0 00-2 0zM11 4a1 1 0 102 0 1 1 0 00-2 0zM11 10a1 1 0 102 0 1 1 0 00-2 0zM11 16a1 1 0 102 0 1 1 0 00-2 0z" />
+                      </svg>
+                    </button>
                     <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-white/5">
                       <TextbookAutoThumbnail
                         textbookId={item.id}
