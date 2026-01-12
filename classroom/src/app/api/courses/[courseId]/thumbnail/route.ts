@@ -50,7 +50,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
       const headers = new Headers();
       headers.set("content-type", mimeType);
       headers.set("content-length", String(buffer.length));
-      headers.set("cache-control", "public, max-age=31536000, immutable"); // 1년 캐시
+      // NOTE:
+      // data URL 기반 썸네일은 교체(재업로드)될 수 있는데,
+      // URL(/api/courses/:id/thumbnail)이 고정이면 immutable 캐시 때문에 갱신이 영구적으로 안 될 수 있음.
+      // 페이지(스토어/대시보드 등)에서 ?v=... 캐시 버스팅을 붙이더라도,
+      // 여기서는 과도한 immutable 캐시를 피한다.
+      headers.set("cache-control", "public, max-age=300"); // 5분
 
       return new NextResponse(buffer, { status: 200, headers });
     }
@@ -124,7 +129,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
       const headers = new Headers();
       headers.set("content-type", mimeType);
       headers.set("content-length", String(buffer.length));
-      headers.set("cache-control", "public, max-age=31536000, immutable");
+      headers.set("cache-control", "public, max-age=300");
       return new NextResponse(buffer, { status: 200, headers });
     } catch (e) {
       // 마이그레이션 실패해도, 기존 방식(스트리밍)으로 계속 제공

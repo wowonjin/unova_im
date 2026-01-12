@@ -27,6 +27,7 @@ type Product = {
   thumbnailUrl: string | null;
   // course 레거시(파일 저장) 썸네일 지원용: thumbnailUrl이 비어있어도 storedPath가 있으면 API로 서빙 가능
   thumbnailStoredPath?: string | null;
+  thumbnailUpdatedAtISO?: string | null;
   rating: number | null;
   reviewCount: number | null;
 };
@@ -67,6 +68,7 @@ export default async function StorePage({
         tags: true;
         thumbnailUrl: true;
         thumbnailStoredPath: true;
+        updatedAt: true;
         rating: true;
         reviewCount: true;
       };
@@ -83,6 +85,7 @@ export default async function StorePage({
         tags: true;
         textbookType: true;
         thumbnailUrl: true;
+        updatedAt: true;
         rating: true;
         reviewCount: true;
       };
@@ -107,6 +110,7 @@ export default async function StorePage({
             tags: true,
             thumbnailUrl: true,
             thumbnailStoredPath: true,
+            updatedAt: true,
             rating: true,
             reviewCount: true,
           },
@@ -131,6 +135,7 @@ export default async function StorePage({
                 tags: true,
                 textbookType: true,
                 thumbnailUrl: true,
+                updatedAt: true,
                 rating: true,
                 reviewCount: true,
               },
@@ -155,6 +160,7 @@ export default async function StorePage({
                 tags: true,
                 textbookType: true,
                 thumbnailUrl: true,
+                updatedAt: true,
                 rating: true,
                 reviewCount: true,
               },
@@ -184,7 +190,8 @@ export default async function StorePage({
       textbookType: null,
       type: "course" as const,
       thumbnailUrl: c.thumbnailUrl,
-      thumbnailStoredPath: (c as any).thumbnailStoredPath ?? null,
+      thumbnailStoredPath: c.thumbnailStoredPath,
+      thumbnailUpdatedAtISO: c.updatedAt.toISOString(),
       rating: c.rating,
       reviewCount: c.reviewCount,
     };
@@ -205,6 +212,7 @@ export default async function StorePage({
       textbookType: (t as { textbookType?: string | null }).textbookType ?? null,
       type: "textbook" as const,
       thumbnailUrl: t.thumbnailUrl,
+      thumbnailUpdatedAtISO: t.updatedAt.toISOString(),
       rating: t.rating,
       reviewCount: t.reviewCount,
     };
@@ -334,8 +342,8 @@ export default async function StorePage({
                       <img
                         src={
                           product.type === "course"
-                            ? `/api/courses/${product.id}/thumbnail`
-                            : `/api/textbooks/${product.id}/thumbnail`
+                            ? `/api/courses/${product.id}/thumbnail${product.thumbnailUpdatedAtISO ? `?v=${encodeURIComponent(product.thumbnailUpdatedAtISO)}` : ""}`
+                            : `/api/textbooks/${product.id}/thumbnail${product.thumbnailUpdatedAtISO ? `?v=${encodeURIComponent(product.thumbnailUpdatedAtISO)}` : ""}`
                         }
                         alt={product.title}
                         className="absolute inset-0 h-full w-full object-cover"

@@ -10,6 +10,7 @@ type Card = {
   courseId: string;
   title: string;
   thumbnail: boolean;
+  thumbnailUpdatedAtISO: string | null;
   isEnrolled: boolean;
   startAtISO: string;
   endAtISO: string;
@@ -140,7 +141,12 @@ export default function DashboardCourseList({
           const recentISO = en.lastProgressAtISO ?? en.startAtISO;
           const selected = Boolean(selectedCourseId && selectedCourseId === en.courseId);
           const thumbSrc = en.thumbnail
-            ? withAllParamIfNeeded(`/api/courses/${en.courseId}/thumbnail`, allowAll)
+            ? withAllParamIfNeeded(
+                `/api/courses/${en.courseId}/thumbnail${
+                  en.thumbnailUpdatedAtISO ? `?v=${encodeURIComponent(en.thumbnailUpdatedAtISO)}` : ""
+                }`,
+                allowAll
+              )
             : "/course-placeholder.svg";
           const teacherLabel = meta.teacher?.trim() || "";
           const subjectLabel = meta.subject?.trim() || "";

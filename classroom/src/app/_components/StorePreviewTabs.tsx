@@ -16,6 +16,7 @@ export type StorePreviewProduct = {
   thumbnailUrl: string | null;
   // course 레거시(파일 저장) 썸네일 지원: thumbnailUrl이 비어도 storedPath가 있으면 API로 서빙 가능
   thumbnailStoredPath?: string | null;
+  thumbnailUpdatedAtISO?: string | null;
   rating: number | null;
   reviewCount: number | null;
 };
@@ -224,8 +225,12 @@ export default function StorePreviewTabs({
                     <img
                       src={
                         product.type === "course"
-                          ? `/api/courses/${product.id}/thumbnail`
-                          : `/api/textbooks/${product.id}/thumbnail`
+                          ? `/api/courses/${product.id}/thumbnail${
+                              product.thumbnailUpdatedAtISO ? `?v=${encodeURIComponent(product.thumbnailUpdatedAtISO)}` : ""
+                            }`
+                          : `/api/textbooks/${product.id}/thumbnail${
+                              product.thumbnailUpdatedAtISO ? `?v=${encodeURIComponent(product.thumbnailUpdatedAtISO)}` : ""
+                            }`
                       }
                       alt={product.title}
                       className="absolute inset-0 h-full w-full object-cover"

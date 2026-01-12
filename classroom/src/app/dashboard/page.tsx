@@ -45,6 +45,7 @@ export default async function DashboardPage({
           title: true,
           thumbnailStoredPath: true,
           thumbnailUrl: true,
+          updatedAt: true,
           lessons: {
             where: { isPublished: true },
             select: { id: true, durationSeconds: true },
@@ -65,6 +66,7 @@ export default async function DashboardPage({
           title: true,
           thumbnailStoredPath: true,
           thumbnailUrl: true,
+          updatedAt: true,
           lessons: { where: { isPublished: true }, select: { id: true, durationSeconds: true } },
         },
       })
@@ -178,6 +180,7 @@ export default async function DashboardPage({
       courseId: c.id,
       title: c.title,
       thumbnail: Boolean(c.thumbnailStoredPath || c.thumbnailUrl),
+      thumbnailUpdatedAtISO: c.updatedAt ? c.updatedAt.toISOString() : null,
       isEnrolled: Boolean(en),
       startAtISO: startAt.toISOString(),
       endAtISO: endAt.toISOString(),
@@ -195,6 +198,7 @@ export default async function DashboardPage({
       courseId: en.courseId,
       title: en.course.title,
       thumbnail: Boolean(en.course.thumbnailStoredPath || en.course.thumbnailUrl),
+      thumbnailUpdatedAtISO: en.course.updatedAt ? en.course.updatedAt.toISOString() : null,
       isEnrolled: true,
       startAtISO: en.startAt.toISOString(),
       endAtISO: en.endAt.toISOString(),

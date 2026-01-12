@@ -26,7 +26,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
       const headers = new Headers();
       headers.set("content-type", mimeType);
       headers.set("content-length", String(buffer.length));
-      headers.set("cache-control", "public, max-age=31536000, immutable");
+      // NOTE: 썸네일은 재업로드로 변경될 수 있으므로 immutable 캐시는 피한다.
+      headers.set("cache-control", "public, max-age=300");
 
       return new NextResponse(buffer, { status: 200, headers });
     }

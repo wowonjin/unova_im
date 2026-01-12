@@ -10,6 +10,7 @@ type Course = {
   teacherName: string | null;
   subjectName: string | null;
   isPublished: boolean;
+  updatedAtISO: string;
   thumbnailStoredPath: string | null;
   thumbnailUrl: string | null;
   price: number | null;
@@ -170,7 +171,10 @@ export default function CourseListClient({
             const teacherLabel = c.teacherName?.trim() || inferTeacherFromTitle(c.title) || "";
             const subjectLabel = c.subjectName?.trim() || inferSubjectFromTitle(c.title) || "";
             const hasThumbnail = Boolean(c.thumbnailStoredPath || c.thumbnailUrl);
-            const thumbSrc = hasThumbnail ? `/api/courses/${c.id}/thumbnail` : "/course-placeholder.svg";
+            // NOTE: 썸네일은 재업로드 시 변경될 수 있으므로, 목록에서도 캐시 버스팅 파라미터를 붙인다.
+            const thumbSrc = hasThumbnail
+              ? `/api/courses/${c.id}/thumbnail?v=${encodeURIComponent(c.updatedAtISO)}`
+              : "/course-placeholder.svg";
             const isSelected = selected.has(c.id);
 
             const cardContent = (
