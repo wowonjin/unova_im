@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdminUser } from "@/lib/current-user";
 
@@ -58,6 +59,8 @@ export async function POST(req: Request) {
         isActive: true,
       },
     });
+    // 홈은 ISR 캐시를 사용하므로, 관리자 변경 사항을 즉시 반영하기 위해 캐시를 무효화한다.
+    revalidatePath("/");
     return NextResponse.json({ ok: true, shortcut });
   } catch (e) {
     console.error("[admin/home-shortcuts/create] failed:", e);
