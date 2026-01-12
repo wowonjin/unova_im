@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
 export async function POST(
-  _req: Request,
-  ctx: { params: { textbookId: string } }
+  _req: NextRequest,
+  ctx: { params: Promise<{ textbookId: string }> }
 ) {
   const teacher = await requireAdminUser();
-  const { textbookId } = ctx.params;
+  const { textbookId } = await ctx.params;
 
   let source:
     | {

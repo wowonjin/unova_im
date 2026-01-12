@@ -515,7 +515,7 @@ export default async function AdminTextbookPage({
                               {fmtShortDate(review.createdAt)}
                             </span>
                             {!review.isApproved && (
-                              <Badge tone="warning">미승인</Badge>
+                              <Badge tone="muted">미승인</Badge>
                             )}
                           </div>
                           <p className="text-sm text-white/70 whitespace-pre-line">{review.content}</p>
