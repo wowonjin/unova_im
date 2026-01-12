@@ -547,7 +547,9 @@ export default async function ProductDetailPage({
             },
           });
         } catch {
-          dbTextbook = await prisma.textbook.findFirst({
+          // teacherImageUrl 컬럼이 없는 환경(레거시/마이그레이션 누락)에서는
+          // select에서 teacherImageUrl을 뺀 뒤, 결과에 null을 보정해서 타입을 맞춥니다.
+          const minimal = await prisma.textbook.findFirst({
             where: {
               OR: [{ id: productId }],
               isPublished: true,
@@ -573,6 +575,7 @@ export default async function ProductDetailPage({
               entitlementDays: true,
             },
           });
+          dbTextbook = minimal ? ({ ...minimal, teacherImageUrl: null } as any) : null;
         }
       }
     } else {
