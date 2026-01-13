@@ -108,9 +108,6 @@ export default function ProductDetailClient({
   const [selectedRelatedIds, setSelectedRelatedIds] = useState<Set<string>>(new Set());
   const [selectedAddonCourseIds, setSelectedAddonCourseIds] = useState<Set<string>>(new Set());
 
-  const ADDITIONAL_TEXTBOOK_DISCOUNT_PER = 5000;
-  const ADDITIONAL_TEXTBOOK_DISCOUNT_MAX = 10000;
-
   // 선택한 추가 교재 금액 (강좌/교재 상세 모두에서 사용)
   const additionalAmount = Array.from(selectedRelatedIds).reduce((sum, id) => {
     const p = relatedProducts.find((r) => r.id === id);
@@ -123,14 +120,6 @@ export default function ProductDetailClient({
     return sum + (p?.price || 0);
   }, 0);
 
-  // 교재 할인: 선택 교재 1권당 5,000원, 최대 10,000원
-  const additionalTextbookDiscount = Math.min(
-    selectedRelatedIds.size * ADDITIONAL_TEXTBOOK_DISCOUNT_PER,
-    ADDITIONAL_TEXTBOOK_DISCOUNT_MAX
-  );
-
-  // 강의 할인: "강의 + 교재"를 함께 선택한 경우에만 10,000원 적용
-  const courseBundleDiscount = product.type === "course" && selectedRelatedIds.size > 0 ? 10000 : 0;
 
   // 강좌 상세: "수강 옵션"을 제거하고 기본 강의 가격만 사용합니다.
   const baseAmount = product.type === "course" ? product.price : product.price;
@@ -153,16 +142,12 @@ export default function ProductDetailClient({
   const hasSummaryLinesAboveTotal =
     showBaseRow ||
     hasAdditionalSelection ||
-    hasAddonCourseSelection ||
-    additionalTextbookDiscount > 0 ||
-    courseBundleDiscount > 0;
+    hasAddonCourseSelection;
   const totalAmount = Math.max(
     0,
     (hasBaseProduct ? baseAmount : 0) +
       additionalAmount +
-      additionalCourseAmount -
-      additionalTextbookDiscount -
-      courseBundleDiscount
+      additionalCourseAmount
   );
   
   // 좋아요 상태 불러오기
@@ -1657,7 +1642,6 @@ export default function ProductDetailClient({
               <div className={`px-5 ${selectedAddonCourseIds.size > 0 ? "pb-3 pt-4" : "pb-2 pt-3"}`}>
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <p className="text-[14px] font-bold">추가 강의</p>
-                  <span className="text-[12px] font-medium text-white/60">강의 10,000원 할인</span>
                 </div>
 
                 {addonCourses.map((c) => {
@@ -1729,7 +1713,6 @@ export default function ProductDetailClient({
               <div className={`px-5 ${selectedRelatedIds.size > 0 ? "pb-3 pt-4" : "pb-2 pt-3"}`}>
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <p className="text-[14px] font-bold">{product.type === "course" ? "교재 함께 구매" : "추가 교재 구매"}</p>
-                  <span className="text-[12px] font-medium text-white/60">교재 5,000원 할인</span>
                 </div>
 
                 {relatedProducts.map((related) => {
@@ -1834,36 +1817,6 @@ export default function ProductDetailClient({
                   </div>
                 )}
 
-                {/* 교재 할인 (선택한 경우에만) */}
-                {selectedRelatedIds.size > 0 && additionalTextbookDiscount > 0 && (
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="flex items-center gap-2 text-[12px] font-medium text-white/90">
-                      교재 할인
-                      <span className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-1.5 py-0.5 text-[8px] font-bold leading-none text-white">
-                        SALE
-                      </span>
-                    </span>
-                    <span className="text-[13px] font-medium text-white">
-                      -{additionalTextbookDiscount.toLocaleString("ko-KR")}원
-                    </span>
-                  </div>
-                )}
-
-                {/* 강의 할인 (강좌 + 교재 선택한 경우에만) */}
-                {product.type === "course" && courseBundleDiscount > 0 && (
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="flex items-center gap-2 text-[12px] font-medium text-white/90">
-                      강의 할인
-                      <span className="inline-flex items-center justify-center rounded-full bg-rose-500/90 px-1.5 py-0.5 text-[8px] font-bold leading-none text-white">
-                        SALE
-                      </span>
-                    </span>
-                    <span className="text-[13px] font-medium text-white">
-                      -{courseBundleDiscount.toLocaleString("ko-KR")}원
-                    </span>
-                  </div>
-                )}
-                
                 {/* 총 결제 금액 */}
                 <div
                   className={`flex items-center justify-between pt-2 border-t border-white/10 ${
