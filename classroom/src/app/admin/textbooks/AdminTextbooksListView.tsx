@@ -120,11 +120,14 @@ export default function AdminTextbooksListView({ items: initialItems }: { items:
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) return;
+    if (!confirm("판매 목록에서 제거하시겠습니까?\n(교재 DB는 삭제되지 않고, 판매 설정만 해제됩니다.)")) return;
     
     setDeleting(id);
     try {
-      const res = await fetch(`/api/admin/textbooks/${id}/delete`, { method: "POST" });
+      const res = await fetch(`/api/admin/textbooks/${id}/unsell`, {
+        method: "POST",
+        headers: { accept: "application/json", "x-unova-client": "1" },
+      });
       if (res.ok) router.refresh();
     } catch (e) {
       console.error(e);
