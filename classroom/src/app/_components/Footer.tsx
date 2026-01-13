@@ -73,7 +73,7 @@ export default function Footer() {
               <ul className="space-y-2 text-[12px] text-white/50">
                 <li>
                   <a
-                    href="https://www.instagram.com/unova_edu"
+                    href="https://www.instagram.com/unova_study/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:text-white transition-colors"
@@ -93,7 +93,7 @@ export default function Footer() {
                 </li>
                 <li>
                   <Link href="/teachers" className="hover:text-white transition-colors">
-                    유노바 소개
+                    유노바 선생님
                   </Link>
                 </li>
               </ul>
@@ -168,7 +168,7 @@ export default function Footer() {
             <ul className="space-y-2.5 text-[14px] text-white/50">
               <li>
                 <a
-                  href="https://www.instagram.com/unova_edu"
+                  href="https://www.instagram.com/unova_study/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-white transition-colors"
@@ -188,7 +188,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/teachers" className="hover:text-white transition-colors">
-                  유노바 소개
+                  유노바 선생님
                 </Link>
               </li>
             </ul>
