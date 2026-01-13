@@ -128,7 +128,13 @@ export default function AdminTextbooksListView({ items: initialItems }: { items:
         method: "POST",
         headers: { accept: "application/json", "x-unova-client": "1" },
       });
-      if (res.ok) router.refresh();
+      if (!res.ok) throw new Error("UNSELL_FAILED");
+
+      // UX: 성공 시 즉시 화면에서 제거(서버 refresh가 늦게 반영되는 경우 대비)
+      setItems((prev) => prev.filter((x) => x.id !== id));
+      lastItemsRef.current = lastItemsRef.current.filter((x) => x.id !== id);
+
+      router.refresh();
     } catch (e) {
       console.error(e);
     } finally {

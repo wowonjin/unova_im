@@ -3,6 +3,8 @@ import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import AdminTextbooksClient from "./AdminTextbooksClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminTextbooksPage() {
   const teacher = await requireAdminUser();
 
