@@ -89,7 +89,6 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
             // 하드코딩된 아이콘류(basic/special/office)는 기존처럼 contain(70%) 유지.
             const isAdminDefined = !item.iconClass || String(item.iconClass).trim().length === 0;
             const shouldCover = isOriginal || isAdminDefined;
-            const hideLabelOnMobile = item.label.replaceAll(" ", "") === "선생님게시판";
 
             return (
               <a
@@ -124,11 +123,7 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
                     }
                   />
                 </div>
-                <div
-                  className={`text-[11px] font-normal tracking-[-0.02em] text-white sm:text-[14px] ${
-                    hideLabelOnMobile ? "hidden sm:block" : ""
-                  }`}
-                >
+                <div className="text-[11px] font-normal tracking-[-0.02em] text-white sm:text-[14px]">
                   {item.label}
                 </div>
               </a>
