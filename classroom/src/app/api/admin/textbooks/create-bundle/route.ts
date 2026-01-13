@@ -78,24 +78,12 @@ export async function POST(req: Request) {
   const basePosition = Math.max(0, (last as { position?: number } | null)?.position ?? 0) + 1;
 
   // 소스 교재 로드(소유권 확인)
-  let sources:
-    | Array<{
-        id: string;
-        ownerId: string;
-        storedPath: string;
-        originalName: string;
-        mimeType: string;
-        sizeBytes: number;
-        pageCount: number | null;
-        files?: unknown;
-        thumbnailUrl: string | null;
-        teacherName: string | null;
-        subjectName: string | null;
-      }>
-    | null = null;
+  // NOTE: 환경에 따라 files 컬럼 유무가 달라 Prisma 타입 추론이 꼬일 수 있어,
+  // 이 라우트에서는 필요한 필드만 런타임에서 안전하게 다루도록 any로 받습니다. (빌드 실패 방지)
+  let sources: any[] = [];
 
   try {
-    sources = await prisma.textbook.findMany({
+    sources = (await prisma.textbook.findMany({
       where: { id: { in: sourceTextbookIds }, ownerId: teacher.id },
       select: {
         id: true,
@@ -110,10 +98,10 @@ export async function POST(req: Request) {
         teacherName: true,
         subjectName: true,
       },
-    });
+    })) as any[];
   } catch {
     // files 컬럼이 없는 환경 폴백
-    sources = await prisma.textbook.findMany({
+    sources = (await prisma.textbook.findMany({
       where: { id: { in: sourceTextbookIds }, ownerId: teacher.id },
       select: {
         id: true,
@@ -126,11 +114,11 @@ export async function POST(req: Request) {
         thumbnailUrl: true,
         teacherName: true,
         subjectName: true,
-      } as any,
-    });
+      },
+    } as any)) as any[];
   }
 
-  if (!sources || sources.length === 0) {
+  if (!Array.isArray(sources) || sources.length === 0) {
     return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
   }
 
