@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 const LS_KEY = "unova_favorite_courses_v1";
 const FAVORITES_CHANGED_EVENT = "unova-favorites-changed";
@@ -28,8 +28,12 @@ function writeFavorites(next: Set<string>) {
 }
 
 export default function FavoriteStarButton({ courseId }: { courseId: string }) {
-  const initial = useMemo(() => readFavorites().has(courseId), [courseId]);
-  const [active, setActive] = useState<boolean>(initial);
+  const [active, setActive] = useState<boolean>(false);
+
+  // 마운트 후 클라이언트에서만 localStorage 값 읽기 (hydration 불일치 방지)
+  useEffect(() => {
+    setActive(readFavorites().has(courseId));
+  }, [courseId]);
 
   return (
     <button

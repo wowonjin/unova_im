@@ -68,7 +68,7 @@ export default function DashboardCourseList({
   selectedCourseId?: string | null;
   onSelectCourse?: (courseId: string) => void;
 }) {
-  const [fav, setFav] = useState<Set<string>>(() => readFavorites());
+  const [fav, setFav] = useState<Set<string>>(new Set());
   const router = useRouter();
   const searchParams = useSearchParams();
   const allowAll = isAllCoursesTestModeFromAllParam(searchParams.get("all"));
@@ -79,7 +79,9 @@ export default function DashboardCourseList({
     return window.matchMedia?.("(min-width: 1024px)")?.matches ?? window.innerWidth >= 1024;
   };
 
+  // 마운트 후 클라이언트에서만 localStorage 값 읽기 (hydration 불일치 방지)
   useEffect(() => {
+    setFav(readFavorites());
     const onChange = () => setFav(readFavorites());
     window.addEventListener(FAVORITES_CHANGED_EVENT, onChange as EventListener);
     window.addEventListener("storage", onChange);

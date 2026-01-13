@@ -65,6 +65,9 @@ function shouldUsePgSsl(dbUrl: string): boolean {
     if (ssl === "true" || ssl === "1") return true;
     // Render external Postgres hostnames end with ".render.com" (internal hostnames often don't).
     if (u.hostname.endsWith(".render.com")) return true;
+    // 일부 환경에서 Render Postgres 호스트가 "dpg-xxxx-a" 형태로 축약돼 들어오는 경우가 있습니다.
+    // Render Postgres는 보통 SSL이 필요하므로 이런 케이스는 SSL을 강제합니다.
+    if (u.hostname.startsWith("dpg-")) return true;
   } catch {
     // ignore
   }
@@ -99,6 +102,10 @@ function createPrismaClient(): PrismaClient {
     const pool = new Pool({
       connectionString: dbUrl,
       ssl: shouldUsePgSsl(dbUrl) ? { rejectUnauthorized: false } : undefined,
+      // DB가 죽어있거나 네트워크가 불안정할 때 "페이지 전환이 10초씩 멈춤"을 유발하는 경우가 있어
+      // 연결 시도는 짧게 실패하도록(빠른 폴백/UI 노출) 타임아웃을 둡니다.
+      // (단위: ms)
+      connectionTimeoutMillis: 3000,
     });
     const adapter = new PrismaPg(pool);
     return new PrismaClient({ adapter });
