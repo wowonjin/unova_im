@@ -66,7 +66,6 @@ function formatBytes(bytes: number): string {
 export default function AdminTextbookRegisterFormClient() {
   const router = useRouter();
   const [title, setTitle] = useState("");
-  const [entitlementDays, setEntitlementDays] = useState("30");
   const [url, setUrl] = useState("");
   const titleTouched = useRef(false);
   const [submitting, setSubmitting] = useState(false);
@@ -311,23 +310,6 @@ export default function AdminTextbookRegisterFormClient() {
                   className="w-full h-11 rounded-xl border border-white/10 bg-white/[0.03] px-4 text-sm text-white placeholder-white/25 outline-none transition-all focus:border-white/20 focus:bg-white/[0.05]"
                 />
                 <p className="mt-1.5 text-xs text-white/30">파일명에서 자동 추출되며 수정 가능합니다</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-white/70 mb-2">이용 기간</label>
-                <div className="relative">
-                  <input
-                    name="entitlementDays"
-                    type="number"
-                    min={1}
-                    max={3650}
-                    value={entitlementDays}
-                    onChange={(e) => setEntitlementDays(e.target.value)}
-                    className="w-full h-11 rounded-xl border border-white/10 bg-white/[0.03] px-4 pr-12 text-sm text-white placeholder-white/25 outline-none transition-all focus:border-white/20 focus:bg-white/[0.05]"
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-white/30">일</span>
-                </div>
-                <p className="mt-1.5 text-xs text-white/30">구매 후 다운로드 가능 기간</p>
               </div>
             </div>
 

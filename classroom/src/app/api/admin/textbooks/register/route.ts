@@ -74,7 +74,6 @@ export async function POST(req: Request) {
   const urlRaw = form.get("url");
   const thumbnailDataUrlRaw = form.get("thumbnailDataUrl");
   const pageCountRaw = form.get("pageCount");
-  const entitlementDaysRaw = form.get("entitlementDays");
   const isPublishedRaw = form.get("isPublished");
 
   let title = typeof titleRaw === "string" ? titleRaw.trim() : "";
@@ -126,11 +125,6 @@ export async function POST(req: Request) {
         : NextResponse.redirect(new URL("/admin/textbooks/register?error=invalid_url", req.url));
     }
   }
-
-  const entitlementDays =
-    typeof entitlementDaysRaw === "string" && /^\d+$/.test(entitlementDaysRaw.trim())
-      ? Math.max(1, Math.min(3650, parseInt(entitlementDaysRaw.trim(), 10)))
-      : 30;
 
   const isPublished =
     typeof isPublishedRaw === "string" ? isPublishedRaw === "1" || isPublishedRaw === "true" || isPublishedRaw === "on" : true;
@@ -186,7 +180,6 @@ export async function POST(req: Request) {
         sizeBytes: primary.sizeBytes,
         pageCount: primary.pageCount,
         thumbnailUrl: safeThumbnailDataUrl,
-        entitlementDays,
         isPublished,
         files,
       } as any,
@@ -206,7 +199,6 @@ export async function POST(req: Request) {
         sizeBytes: primary.sizeBytes,
         pageCount: primary.pageCount,
         thumbnailUrl: safeThumbnailDataUrl,
-        entitlementDays,
         isPublished,
       } as any,
       select: { id: true },

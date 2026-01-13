@@ -106,7 +106,40 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
       where: { userId: user.id, textbookId: tb.id, status: "ACTIVE", endAt: { gt: now } },
       select: { id: true },
     });
-    if (!ok) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    if (!ok) {
+      // 강좌 구매로 포함된 교재(relatedTextbookIds)인 경우에도 접근 허용
+      const enrollments = await prisma.enrollment.findMany({
+        where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
+        select: { courseId: true },
+      });
+      if (!enrollments.length) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+
+      try {
+        await prisma.$executeRawUnsafe('ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "relatedTextbookIds" JSONB;');
+      } catch {
+        // ignore
+      }
+
+      let hasIncludedAccess = false;
+      for (const e of enrollments) {
+        try {
+          const rows = (await prisma.$queryRawUnsafe(
+            'SELECT "relatedTextbookIds" FROM "Course" WHERE "id" = $1',
+            e.courseId
+          )) as any[];
+          const raw = rows?.[0]?.relatedTextbookIds;
+          const ids = Array.isArray(raw) ? raw : null;
+          if (ids && ids.includes(tb.id)) {
+            hasIncludedAccess = true;
+            break;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!hasIncludedAccess) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    }
   }
 
   const headers = new Headers();

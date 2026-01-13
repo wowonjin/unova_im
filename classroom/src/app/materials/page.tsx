@@ -68,6 +68,7 @@ export default async function MaterialsPage() {
   }[] = [];
 
   let entitlementEndAtByTextbookId = new Map<string, Date>();
+  let enrollments: { courseId: string; endAt: Date; course: { id: string; title: string } }[] = [];
 
   if (user.isLoggedIn && user.id) {
     // 관리자(admin@gmail.com 등)는 모든 교재를 열람/다운로드 가능
@@ -130,12 +131,55 @@ export default async function MaterialsPage() {
     const entitledIds = entitlements.map((e) => e.textbookId);
     entitlementEndAtByTextbookId = new Map(entitlements.map((e) => [e.textbookId, e.endAt]));
 
-    if (entitledIds.length > 0) {
+    // 활성 수강권(강좌 구매)이 있는 경우, 강좌에 포함된 교재(relatedTextbookIds)도 자료실에 노출
+    enrollments = await prisma.enrollment.findMany({
+      where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
+      select: { courseId: true, endAt: true, course: { select: { id: true, title: true } } },
+      orderBy: { endAt: "asc" },
+    });
+
+    // NOTE: relatedTextbookIds 컬럼/Prisma 타입 불일치 대비(운영 마이그레이션 누락 등)
+    const includedTextbookEndAt = new Map<string, Date>();
+    if (enrollments.length > 0) {
+      try {
+        await prisma.$executeRawUnsafe('ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "relatedTextbookIds" JSONB;');
+      } catch {
+        // ignore
+      }
+
+      for (const e of enrollments) {
+        let ids: string[] = [];
+        try {
+          const rows = (await prisma.$queryRawUnsafe(
+            'SELECT "relatedTextbookIds" FROM "Course" WHERE "id" = $1',
+            e.courseId
+          )) as any[];
+          const raw = rows?.[0]?.relatedTextbookIds;
+          ids = Array.isArray(raw) ? raw.filter((x) => typeof x === "string" && x) : [];
+        } catch {
+          ids = [];
+        }
+        for (const tid of ids) {
+          const prev = includedTextbookEndAt.get(tid);
+          if (!prev || prev < e.endAt) includedTextbookEndAt.set(tid, e.endAt);
+        }
+      }
+    }
+
+    // entitlement 기간(endAt)도 교재별로 최대값을 유지
+    for (const [tid, endAt] of includedTextbookEndAt.entries()) {
+      const prev = entitlementEndAtByTextbookId.get(tid);
+      if (!prev || prev < endAt) entitlementEndAtByTextbookId.set(tid, endAt);
+    }
+
+    const mergedEntitledIds = Array.from(new Set([...entitledIds, ...Array.from(includedTextbookEndAt.keys())]));
+
+    if (mergedEntitledIds.length > 0) {
       try {
         textbooks = await prisma.textbook.findMany({
           where: { 
             isPublished: true,
-            id: { in: entitledIds },
+            id: { in: mergedEntitledIds },
             NOT: [{ title: { contains: TEST_TITLE_MARKER } }],
             // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만
             OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
@@ -161,7 +205,7 @@ export default async function MaterialsPage() {
         const rows = await prisma.textbook.findMany({
           where: { 
             isPublished: true,
-            id: { in: entitledIds },
+            id: { in: mergedEntitledIds },
             NOT: [{ title: { contains: TEST_TITLE_MARKER } }],
             // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만
             OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
@@ -187,10 +231,11 @@ export default async function MaterialsPage() {
     }
   }
 
-  // "구글 업로드 URL"로 등록된 교재만 노출 (GCS URL만)
-  const googleTextbooks = textbooks.filter((t) => isGoogleStorageUrl(t.storedPath));
+  // 자료실에서는 스토리지 유형과 무관하게 "접근 가능한 교재"를 노출합니다.
+  // (과거에는 GCS URL만 노출했지만, 로컬 스토리지/프록시(view/download)도 지원하므로 제한하지 않습니다.)
+  const visibleTextbooks = textbooks.filter((t) => (t.storedPath || "").trim().length > 0);
 
-  const normalizeFiles = (t: (typeof googleTextbooks)[number]) => {
+  const normalizeFiles = (t: (typeof visibleTextbooks)[number]) => {
     const raw = Array.isArray((t as any).files) ? ((t as any).files as any[]) : null;
     const out: { label: string; sizeBytes: number | null; pageCount: number | null; fileIndex: number }[] = [];
     if (raw && raw.length > 0) {
@@ -220,21 +265,13 @@ export default async function MaterialsPage() {
     ];
   };
 
-  const searchItems = googleTextbooks.map((t) => ({
+  const searchItems = visibleTextbooks.map((t) => ({
     id: t.id,
     type: "textbook" as const,
     title: t.title,
     href: `/materials#textbook-${t.id}`,
     subtitle: null,
   }));
-
-  const enrollments = user.id && !user.isAdmin
-    ? await prisma.enrollment.findMany({
-        where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
-        select: { courseId: true, course: { select: { id: true, title: true } } },
-        orderBy: { endAt: "asc" },
-      })
-    : [];
 
   const allCoursesForTitle = user.isAdmin
     ? await prisma.course.findMany({ select: { id: true, title: true } })
@@ -276,15 +313,15 @@ export default async function MaterialsPage() {
     ? new Map((allCoursesForTitle ?? []).map((c) => [c.id, c.title]))
     : new Map(enrollments.map((e) => [e.course.id, e.course.title]));
 
-  const totalMaterials = googleTextbooks.length + attachments.length;
+  const totalMaterials = visibleTextbooks.length + attachments.length;
 
   return (
     <AppShell>
       <MaterialsSearchRegistrar items={combinedSearchItems} />
       {/* 교재 섹션: 클릭 시 다운로드가 아니라 팝업(리스트)로 */}
-      {googleTextbooks.length > 0 ? (
+      {visibleTextbooks.length > 0 ? (
         <MaterialsTextbooksSectionClient
-          textbooks={googleTextbooks.map((t) => ({
+          textbooks={visibleTextbooks.map((t) => ({
             id: t.id,
             title: t.title,
             sizeBytes: t.sizeBytes,

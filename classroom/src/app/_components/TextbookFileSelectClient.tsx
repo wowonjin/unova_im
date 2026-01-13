@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Field } from "@/app/_components/ui";
 
@@ -8,6 +8,8 @@ type Option = {
   id: string;
   title: string;
   originalName: string;
+  storedPath?: string;
+  files?: unknown;
   sizeBytes?: number | null;
   pageCount?: number | null;
 };
@@ -29,13 +31,21 @@ function formatBytes(bytes: number | null | undefined): string {
 export default function TextbookFileSelectClient({
   textbookId,
   registeredTextbooks,
+  initialSelectedIds,
 }: {
   textbookId: string;
   registeredTextbooks: Option[];
+  initialSelectedIds: string[];
 }) {
   const router = useRouter();
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  // 수정 화면 재진입(router.refresh 포함) 시 서버에서 내려주는 초기값을 기준으로 복원
+  useEffect(() => {
+    setSelectedIds(initialSelectedIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSelectedIds.join(",")]);
 
   const options = useMemo(() => {
     return registeredTextbooks.map((t) => ({

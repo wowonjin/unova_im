@@ -236,6 +236,8 @@ export default async function AdminTextbookPage({
               id: true,
               title: true,
               originalName: true,
+              storedPath: true,
+              files: true,
               sizeBytes: true,
               pageCount: true,
             },
@@ -253,11 +255,64 @@ export default async function AdminTextbookPage({
                 originalPrice: null,
               },
               orderBy: [{ createdAt: "desc" }],
-              select: { id: true, title: true, originalName: true, sizeBytes: true, pageCount: true },
+              // NOTE: files 컬럼 마이그레이션 누락 등으로 크래시날 수 있어 폴백에서는 files 제외
+              select: { id: true, title: true, originalName: true, storedPath: true, sizeBytes: true, pageCount: true },
               take: 400,
             });
           })
       : [];
+
+  // 파일 연결 UI의 "선택된 등록 교재"를 수정 화면에서 복원하기 위한 initialSelectedIds 계산
+  const initialSelectedSourceTextbookIds =
+    activeTab !== "settings"
+      ? []
+      : (() => {
+          const currentFilePaths = new Set<string>();
+
+          const textbookFiles = Array.isArray((textbook as any)?.files) ? ((textbook as any).files as any[]) : null;
+          if (textbookFiles && textbookFiles.length > 0) {
+            for (const f of textbookFiles) {
+              const p = typeof f?.storedPath === "string" ? f.storedPath : null;
+              if (p) currentFilePaths.add(p);
+            }
+          }
+
+          if (typeof (textbook as any)?.storedPath === "string" && (textbook as any).storedPath) {
+            currentFilePaths.add((textbook as any).storedPath);
+          }
+
+          if (currentFilePaths.size === 0) return [];
+
+          const matched: string[] = [];
+
+          for (const src of registeredTextbooks as any[]) {
+            const srcPaths = new Set<string>();
+            if (typeof src?.storedPath === "string" && src.storedPath) srcPaths.add(src.storedPath);
+
+            const srcFiles = Array.isArray(src?.files) ? (src.files as any[]) : null;
+            if (srcFiles && srcFiles.length > 0) {
+              for (const f of srcFiles) {
+                const p = typeof f?.storedPath === "string" ? f.storedPath : null;
+                if (p) srcPaths.add(p);
+              }
+            }
+
+            if (srcPaths.size === 0) continue;
+
+            let hit = false;
+            for (const p of srcPaths) {
+              if (currentFilePaths.has(p)) {
+                hit = true;
+                break;
+              }
+            }
+            if (hit) matched.push(src.id);
+          }
+
+          // select value 안정성을 위해 options에 존재하는 id만 유지
+          const optionIdSet = new Set(registeredTextbooks.map((t) => t.id));
+          return matched.filter((id) => optionIdSet.has(id));
+        })();
 
   // entitlementDays 필드 안전 처리 (마이그레이션 미적용 시 기본값)
   const entitlementDays = (textbook as { entitlementDays?: number }).entitlementDays ?? 30;
@@ -336,6 +391,7 @@ export default async function AdminTextbookPage({
                   <TextbookFileSelectClient
                     textbookId={textbook.id}
                     registeredTextbooks={registeredTextbooks}
+                    initialSelectedIds={initialSelectedSourceTextbookIds}
                   />
                 </div>
 

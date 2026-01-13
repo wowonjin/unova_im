@@ -37,6 +37,60 @@ async function fulfillOne(orderNo: string, userId: string, item: LineItem) {
       update: { status: "ACTIVE", startAt, endAt },
       create: { userId, courseId: item.productId, status: "ACTIVE", startAt, endAt },
     });
+
+    // 강좌 상품에 "포함된 교재"가 설정된 경우(relatedTextbookIds),
+    // 강좌 구매(수강권)와 함께 해당 교재도 자료실에서 바로 보이도록 권한을 부여합니다.
+    // NOTE: 운영 환경에서 relatedTextbookIds 컬럼/Prisma 타입 불일치가 있을 수 있어 raw SQL로 안전 처리합니다.
+    try {
+      await prisma.$executeRawUnsafe('ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "relatedTextbookIds" JSONB;');
+    } catch {
+      // ignore
+    }
+
+    let includedTextbookIds: string[] = [];
+    try {
+      const rows = (await prisma.$queryRawUnsafe(
+        'SELECT "relatedTextbookIds" FROM "Course" WHERE "id" = $1',
+        item.productId
+      )) as any[];
+      const raw = rows?.[0]?.relatedTextbookIds;
+      includedTextbookIds = Array.isArray(raw) ? raw.filter((x) => typeof x === "string" && x) : [];
+    } catch {
+      includedTextbookIds = [];
+    }
+
+    if (includedTextbookIds.length > 0) {
+      for (const textbookId of includedTextbookIds) {
+        try {
+          const existing = await prisma.textbookEntitlement.findUnique({
+            where: { userId_textbookId: { userId, textbookId } },
+            select: { id: true, endAt: true },
+          });
+          if (!existing) {
+            await prisma.textbookEntitlement.create({
+              data: { userId, textbookId, status: "ACTIVE", startAt, endAt, orderNo },
+              select: { id: true },
+            });
+          } else if (existing.endAt < endAt) {
+            await prisma.textbookEntitlement.update({
+              where: { userId_textbookId: { userId, textbookId } },
+              data: { status: "ACTIVE", startAt, endAt, orderNo },
+              select: { id: true },
+            });
+          } else {
+            // 기존 권한이 더 길면 유지하되, status/orderNo만 보정
+            await prisma.textbookEntitlement.update({
+              where: { userId_textbookId: { userId, textbookId } },
+              data: { status: "ACTIVE", orderNo },
+              select: { id: true },
+            });
+          }
+        } catch {
+          // 일부 교재가 삭제/미존재/권한 테이블 제약 등으로 실패해도 전체 결제 확정은 막지 않음
+          continue;
+        }
+      }
+    }
     return;
   }
 
