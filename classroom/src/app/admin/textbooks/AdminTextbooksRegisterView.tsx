@@ -120,6 +120,12 @@ export default function AdminTextbooksRegisterView({
       return;
     }
 
+    // 다중 선택은 "묶음 상품 1개"를 생성합니다. (기존 교재들을 개별 상품으로 만들지 않음)
+    if (ids.length > 1 && !productName.trim()) {
+      setError("여러 교재를 묶음 상품으로 등록하려면 상품명을 입력해주세요.");
+      return;
+    }
+
     setBusy(true);
     try {
       // Upload image first if exists
@@ -150,12 +156,50 @@ export default function AdminTextbooksRegisterView({
       if (subjectName.trim()) update.subjectName = subjectName.trim();
       if (thumbnailUrl) update.thumbnailUrl = thumbnailUrl;
 
-      const res = await fetch("/api/admin/textbooks/bulk", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "update", textbookIds: ids, update }),
-      });
-      if (!res.ok) throw new Error("SAVE_FAILED");
+      if (ids.length > 1) {
+        const res = await fetch("/api/admin/textbooks/create-bundle", {
+          method: "POST",
+          headers: { "content-type": "application/json", accept: "application/json" },
+          body: JSON.stringify({
+            sourceTextbookIds: ids,
+            title: productName.trim(),
+            price: p,
+            originalPrice: op === undefined ? null : op,
+            teacherName: teacherName.trim() ? teacherName.trim() : null,
+            subjectName: subjectName.trim() ? subjectName.trim() : null,
+            entitlementDays: days,
+            isPublished,
+          }),
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.ok || typeof json?.textbookId !== "string") throw new Error("BUNDLE_CREATE_FAILED");
+
+        // Reset form
+        setSelectedIds(new Set());
+        setProductName("");
+        setPrice("");
+        setOriginalPrice("");
+        setTeacherName("");
+        setSubjectName("");
+        setEntitlementDays("30");
+        setIsPublished(true);
+        setSearchQuery("");
+        setImageFile(null);
+        setImagePreview(null);
+
+        router.refresh();
+        // 생성된 묶음 상품으로 이동 (필요 시 상세 설정에서 썸네일/상세 등을 조정)
+        router.push(`/admin/textbook/${json.textbookId}`);
+        onComplete?.();
+        return;
+      } else {
+        const res = await fetch("/api/admin/textbooks/bulk", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: "update", textbookIds: ids, update }),
+        });
+        if (!res.ok) throw new Error("SAVE_FAILED");
+      }
 
       // Reset form
       setSelectedIds(new Set());
@@ -302,10 +346,9 @@ export default function AdminTextbooksRegisterView({
           <div className="border-b border-white/[0.06] px-5 py-4">
             <h3 className="text-sm font-medium text-white">판매 정보</h3>
             <p className="mt-1 text-xs text-white/40">
-              {selectedIds.size > 1 
-                ? `선택한 ${selectedIds.size}개 교재에 동일하게 적용됩니다`
-                : "상품 정보를 입력하세요"
-              }
+              {selectedIds.size > 1
+                ? `선택한 ${selectedIds.size}개 교재로 묶음 상품 1개를 생성합니다`
+                : "상품 정보를 입력하세요"}
             </p>
           </div>
 
@@ -530,7 +573,7 @@ export default function AdminTextbooksRegisterView({
                   저장 중...
                 </span>
               ) : (
-                `${selectedIds.size}개 상품 등록하기`
+                selectedIds.size > 1 ? "묶음 상품 1개 등록하기" : "상품 등록하기"
               )}
             </button>
           </div>
