@@ -107,6 +107,54 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
       select: { id: true },
     });
     if (!ok) {
+      // 번들(상품) 구매로 포함된 교재(relatedTextbookIds)인 경우에도 접근 허용
+      let hasBundleIncludedAccess = false;
+      try {
+        const parents = await prisma.textbookEntitlement.findMany({
+          where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
+          select: { textbookId: true },
+        });
+        const parentIds = parents.map((p) => p.textbookId);
+        if (parentIds.length > 0) {
+          try {
+            const rows = await prisma.textbook.findMany({
+              where: { id: { in: parentIds } },
+              select: { relatedTextbookIds: true },
+            });
+            for (const r of rows as any[]) {
+              const raw = r?.relatedTextbookIds;
+              const ids = Array.isArray(raw) ? raw : null;
+              if (ids && ids.includes(tb.id)) {
+                hasBundleIncludedAccess = true;
+                break;
+              }
+            }
+          } catch {
+            // 배포 환경에서 relatedTextbookIds 컬럼이 없을 수 있음 → 폴백: 부모별 raw 조회
+            for (const pid of parentIds) {
+              try {
+                const rows = (await prisma.$queryRawUnsafe(
+                  'SELECT "relatedTextbookIds" FROM "Textbook" WHERE "id" = $1',
+                  pid
+                )) as any[];
+                const raw = rows?.[0]?.relatedTextbookIds;
+                const ids = Array.isArray(raw) ? raw : null;
+                if (ids && ids.includes(tb.id)) {
+                  hasBundleIncludedAccess = true;
+                  break;
+                }
+              } catch {
+                // ignore
+              }
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
+      if (hasBundleIncludedAccess) {
+        // ok
+      } else {
       // 강좌 구매로 포함된 교재(relatedTextbookIds)인 경우에도 접근 허용
       const enrollments = await prisma.enrollment.findMany({
         where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
@@ -139,6 +187,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
       }
 
       if (!hasIncludedAccess) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+      }
     }
   }
 

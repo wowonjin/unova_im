@@ -48,6 +48,51 @@ export async function GET() {
         )
       : new Set<string>();
 
+  // 번들(상품) entitlement로 포함되는 교재(relatedTextbookIds)도 접근 가능한 교재로 간주
+  try {
+    const activeParents = await prisma.textbookEntitlement.findMany({
+      where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
+      select: { textbookId: true },
+    });
+    const parentIds = activeParents.map((p) => p.textbookId);
+    if (parentIds.length > 0) {
+      try {
+        const parents = await prisma.textbook.findMany({
+          where: { id: { in: parentIds } },
+          select: { relatedTextbookIds: true },
+        });
+        for (const p of parents as any[]) {
+          const raw = p?.relatedTextbookIds;
+          const ids = Array.isArray(raw) ? raw : null;
+          if (!ids) continue;
+          for (const tid of ids) {
+            if (typeof tid === "string" && tid) entitledIdSet.add(tid);
+          }
+        }
+      } catch {
+        // relatedTextbookIds 컬럼이 없을 수 있음 → 폴백: 부모별 raw 조회
+        for (const pid of parentIds) {
+          try {
+            const rows = (await prisma.$queryRawUnsafe(
+              'SELECT "relatedTextbookIds" FROM "Textbook" WHERE "id" = $1',
+              pid
+            )) as any[];
+            const raw = rows?.[0]?.relatedTextbookIds;
+            const ids = Array.isArray(raw) ? raw : null;
+            if (!ids) continue;
+            for (const tid of ids) {
+              if (typeof tid === "string" && tid) entitledIdSet.add(tid);
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+
   const textbooks = textbooksRaw
     .filter((t) => {
       const isPaywalled = t.imwebProdCode != null && t.imwebProdCode.length > 0;

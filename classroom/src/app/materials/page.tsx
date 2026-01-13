@@ -1,5 +1,4 @@
 import AppShell from "@/app/_components/AppShell";
-import PdfPageCount from "@/app/_components/PdfPageCount";
 import DashboardEmptyState from "@/app/_components/DashboardEmptyState";
 import MaterialsSearchRegistrar from "@/app/materials/MaterialsSearchRegistrar";
 import MaterialsTextbooksSectionClient from "@/app/materials/MaterialsTextbooksSectionClient";
@@ -11,49 +10,15 @@ export default async function MaterialsPage() {
   const now = new Date();
   const TEST_TITLE_MARKER = "T 교재";
 
-  const isGoogleStorageUrl = (s: string) => {
-    const raw = (s || "").trim();
-    if (!/^https?:\/\//i.test(raw)) return false;
-    try {
-      const u = new URL(raw);
-      const h = (u.hostname || "").toLowerCase();
-      // 대표적인 GCS 도메인들만 허용
-      return (
-        h === "storage.googleapis.com" ||
-        h.endsWith(".storage.googleapis.com") ||
-        h === "storage.cloud.google.com" ||
-        h.endsWith(".storage.cloud.google.com")
-      );
-    } catch {
-      return false;
-    }
-  };
+  // ====== NEW IMPLEMENTATION (요청사항: "상품 등록"의 교재 목록 기준으로 노출) ======
+  // - "상품 등록"(/admin/textbooks → 새 물품 등록)에서 선택되는 교재 옵션과 동일한 기준:
+  //   ownerId + storedPath가 GCS(외부 URL) + price/originalPrice가 null(=업로드 교재)
+  // - 구매(Entitlement)로 접근 가능한 판매 상품의 files(storedPath)들을,
+  //   위 "업로드 교재" 목록의 storedPath와 매칭해서 title로 표시합니다.
 
-  const formatBytes = (bytes: number) => {
-    if (!Number.isFinite(bytes) || bytes <= 0) return "-";
-    const units = ["B", "KB", "MB", "GB"];
-    let v = bytes;
-    let i = 0;
-    while (v >= 1024 && i < units.length - 1) {
-      v /= 1024;
-      i += 1;
-    }
-    const digits = i === 0 ? 0 : i === 1 ? 0 : 1;
-    return `${v.toFixed(digits)}${units[i]}`;
-  };
-
-  const formatKoreanDate = (d: Date) => {
-    // 2026.01.08 형태
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}.${mm}.${dd}`;
-  };
-
-  // 교재: 이용자 목록(Entitlement)에 있는 사용자만 볼 수 있음
-  // 로그인하지 않으면 교재 목록 비움
-  let textbooks: {
+  type SaleTextbookRow = {
     id: string;
+    ownerId: string;
     title: string;
     storedPath: string;
     originalName: string;
@@ -62,182 +27,15 @@ export default async function MaterialsPage() {
     pageCount: number | null;
     entitlementDays: number;
     createdAt: Date;
-    imwebProdCode: string | null;
     thumbnailUrl: string | null;
     files?: unknown;
-  }[] = [];
+  };
 
-  let entitlementEndAtByTextbookId = new Map<string, Date>();
-  let enrollments: { courseId: string; endAt: Date; course: { id: string; title: string } }[] = [];
+  type NormalizedFile = { label: string; storedPath: string | null; sizeBytes: number | null; pageCount: number | null; fileIndex: number };
 
-  if (user.isLoggedIn && user.id) {
-    // 관리자(admin@gmail.com 등)는 모든 교재를 열람/다운로드 가능
-    if (user.isAdmin) {
-      try {
-        textbooks = await prisma.textbook.findMany({
-          where: {
-            NOT: [{ title: { contains: TEST_TITLE_MARKER } }],
-            // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만
-            OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-          },
-          orderBy: [{ position: "desc" }, { createdAt: "desc" }],
-          select: {
-            id: true,
-            title: true,
-            storedPath: true,
-            originalName: true,
-            mimeType: true,
-            sizeBytes: true,
-            pageCount: true,
-            entitlementDays: true,
-            createdAt: true,
-            imwebProdCode: true,
-            thumbnailUrl: true,
-            files: true,
-          },
-        });
-      } catch (e) {
-        // 운영/개발 환경에서 마이그레이션 미적용(컬럼 누락)일 수 있음 → pageCount 없이 재조회
-        console.warn("[MaterialsPage] textbook.findMany failed (likely migration mismatch). Falling back without pageCount.");
-        const rows = await prisma.textbook.findMany({
-          where: {
-            NOT: [{ title: { contains: TEST_TITLE_MARKER } }],
-            // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만
-            OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-          },
-          // position 컬럼이 없거나(레거시) orderBy 오류가 나면 createdAt desc로 폴백
-          orderBy: [{ createdAt: "desc" }],
-          select: {
-            id: true,
-            title: true,
-            storedPath: true,
-            originalName: true,
-            mimeType: true,
-            sizeBytes: true,
-            entitlementDays: true,
-            createdAt: true,
-            imwebProdCode: true,
-            thumbnailUrl: true,
-          },
-        });
-        textbooks = rows.map((t) => ({ ...t, pageCount: null }));
-      }
-    } else {
-    // 현재 사용자의 활성 권한이 있는 교재 ID 가져오기
-    const entitlements = await prisma.textbookEntitlement.findMany({
-      where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
-      select: { textbookId: true, endAt: true },
-    });
-    const entitledIds = entitlements.map((e) => e.textbookId);
-    entitlementEndAtByTextbookId = new Map(entitlements.map((e) => [e.textbookId, e.endAt]));
-
-    // 활성 수강권(강좌 구매)이 있는 경우, 강좌에 포함된 교재(relatedTextbookIds)도 자료실에 노출
-    enrollments = await prisma.enrollment.findMany({
-      where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
-      select: { courseId: true, endAt: true, course: { select: { id: true, title: true } } },
-      orderBy: { endAt: "asc" },
-    });
-
-    // NOTE: relatedTextbookIds 컬럼/Prisma 타입 불일치 대비(운영 마이그레이션 누락 등)
-    const includedTextbookEndAt = new Map<string, Date>();
-    if (enrollments.length > 0) {
-      try {
-        await prisma.$executeRawUnsafe('ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "relatedTextbookIds" JSONB;');
-      } catch {
-        // ignore
-      }
-
-      for (const e of enrollments) {
-        let ids: string[] = [];
-        try {
-          const rows = (await prisma.$queryRawUnsafe(
-            'SELECT "relatedTextbookIds" FROM "Course" WHERE "id" = $1',
-            e.courseId
-          )) as any[];
-          const raw = rows?.[0]?.relatedTextbookIds;
-          ids = Array.isArray(raw) ? raw.filter((x) => typeof x === "string" && x) : [];
-        } catch {
-          ids = [];
-        }
-        for (const tid of ids) {
-          const prev = includedTextbookEndAt.get(tid);
-          if (!prev || prev < e.endAt) includedTextbookEndAt.set(tid, e.endAt);
-        }
-      }
-    }
-
-    // entitlement 기간(endAt)도 교재별로 최대값을 유지
-    for (const [tid, endAt] of includedTextbookEndAt.entries()) {
-      const prev = entitlementEndAtByTextbookId.get(tid);
-      if (!prev || prev < endAt) entitlementEndAtByTextbookId.set(tid, endAt);
-    }
-
-    const mergedEntitledIds = Array.from(new Set([...entitledIds, ...Array.from(includedTextbookEndAt.keys())]));
-
-    if (mergedEntitledIds.length > 0) {
-      try {
-        textbooks = await prisma.textbook.findMany({
-          where: { 
-            isPublished: true,
-            id: { in: mergedEntitledIds },
-            NOT: [{ title: { contains: TEST_TITLE_MARKER } }],
-            // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만
-            OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-          },
-          orderBy: [{ position: "desc" }, { createdAt: "desc" }],
-          select: {
-            id: true,
-            title: true,
-            storedPath: true,
-            originalName: true,
-            mimeType: true,
-            sizeBytes: true,
-            pageCount: true,
-            entitlementDays: true,
-            createdAt: true,
-            imwebProdCode: true,
-            thumbnailUrl: true,
-            files: true,
-          },
-        });
-      } catch (e) {
-        console.warn("[MaterialsPage] textbook.findMany failed (likely migration mismatch). Falling back without pageCount.");
-        const rows = await prisma.textbook.findMany({
-          where: { 
-            isPublished: true,
-            id: { in: mergedEntitledIds },
-            NOT: [{ title: { contains: TEST_TITLE_MARKER } }],
-            // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만
-            OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-          },
-          // position 컬럼이 없거나(레거시) orderBy 오류가 나면 createdAt desc로 폴백
-          orderBy: [{ createdAt: "desc" }],
-          select: {
-            id: true,
-            title: true,
-            storedPath: true,
-            originalName: true,
-            mimeType: true,
-            sizeBytes: true,
-            entitlementDays: true,
-            createdAt: true,
-            imwebProdCode: true,
-            thumbnailUrl: true,
-          },
-        });
-        textbooks = rows.map((t) => ({ ...t, pageCount: null }));
-      }
-    }
-    }
-  }
-
-  // 자료실에서는 스토리지 유형과 무관하게 "접근 가능한 교재"를 노출합니다.
-  // (과거에는 GCS URL만 노출했지만, 로컬 스토리지/프록시(view/download)도 지원하므로 제한하지 않습니다.)
-  const visibleTextbooks = textbooks.filter((t) => (t.storedPath || "").trim().length > 0);
-
-  const normalizeFiles = (t: (typeof visibleTextbooks)[number]) => {
+  const normalizeFiles = (t: SaleTextbookRow): NormalizedFile[] => {
     const raw = Array.isArray((t as any).files) ? ((t as any).files as any[]) : null;
-    const out: { label: string; sizeBytes: number | null; pageCount: number | null; fileIndex: number }[] = [];
+    const out: NormalizedFile[] = [];
     if (raw && raw.length > 0) {
       for (let i = 0; i < raw.length; i += 1) {
         const f = raw[i];
@@ -245,8 +43,10 @@ export default async function MaterialsPage() {
         const originalName = typeof f.originalName === "string" && f.originalName ? f.originalName : `파일 ${i + 1}`;
         const sizeBytes = Number(f.sizeBytes);
         const pageCount = Number(f.pageCount);
+        const storedPath = typeof f.storedPath === "string" && f.storedPath ? f.storedPath : null;
         out.push({
           label: originalName,
+          storedPath,
           sizeBytes: Number.isFinite(sizeBytes) ? sizeBytes : null,
           pageCount: Number.isFinite(pageCount) && pageCount > 0 ? pageCount : null,
           fileIndex: i,
@@ -258,6 +58,7 @@ export default async function MaterialsPage() {
     return [
       {
         label: t.originalName || t.title,
+        storedPath: (t.storedPath || "").trim() ? t.storedPath : null,
         sizeBytes: Number.isFinite(t.sizeBytes) ? t.sizeBytes : null,
         pageCount: t.pageCount && t.pageCount > 0 ? t.pageCount : null,
         fileIndex: 0,
@@ -265,22 +66,204 @@ export default async function MaterialsPage() {
     ];
   };
 
-  const searchItems = visibleTextbooks.map((t) => ({
+  const isRegisteredExternalUrl = (url: string) => {
+    const u = (url || "").toLowerCase();
+    return u.includes("storage.googleapis.com") || u.includes("storage.cloud.google.com") || u.startsWith("gs://") || u.startsWith("https://") || u.startsWith("http://");
+  };
+
+  // 로그인하지 않으면 교재 목록 비움
+  let saleTextbooks: SaleTextbookRow[] = [];
+  let enrollments: { courseId: string; endAt: Date; course: { id: string; title: string } }[] = [];
+
+  if (user.isLoggedIn && user.id) {
+    // 강좌 첨부파일(기존 기능 유지): 수강중인 강좌 범위
+    enrollments = await prisma.enrollment.findMany({
+      where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
+      select: { courseId: true, endAt: true, course: { select: { id: true, title: true } } },
+      orderBy: { endAt: "asc" },
+    });
+
+    if (user.isAdmin) {
+      // 관리자는 판매 상품 전체를 볼 수 있음
+      saleTextbooks = await prisma.textbook.findMany({
+        where: {
+          NOT: [{ title: { contains: TEST_TITLE_MARKER } }],
+          OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+        },
+        orderBy: [{ position: "desc" }, { createdAt: "desc" }],
+        select: {
+          id: true,
+          ownerId: true,
+          title: true,
+          storedPath: true,
+          originalName: true,
+          mimeType: true,
+          sizeBytes: true,
+          pageCount: true,
+          entitlementDays: true,
+          createdAt: true,
+          thumbnailUrl: true,
+          files: true,
+        },
+      }).catch(async () => {
+        const rows = await prisma.textbook.findMany({
+          where: {
+            NOT: [{ title: { contains: TEST_TITLE_MARKER } }],
+            OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+          },
+          orderBy: [{ createdAt: "desc" }],
+          select: {
+            id: true,
+            ownerId: true,
+            title: true,
+            storedPath: true,
+            originalName: true,
+            mimeType: true,
+            sizeBytes: true,
+            entitlementDays: true,
+            createdAt: true,
+            thumbnailUrl: true,
+            files: true,
+          },
+        });
+        return rows.map((t) => ({ ...t, pageCount: null })) as any;
+      });
+    } else {
+      // 구매(Entitlement)된 판매 상품만
+      const entitlements = await prisma.textbookEntitlement.findMany({
+        where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
+        select: { textbookId: true },
+      });
+      const entitledIds = entitlements.map((e) => e.textbookId);
+      if (entitledIds.length > 0) {
+        saleTextbooks = await prisma.textbook.findMany({
+          where: {
+            isPublished: true,
+            id: { in: entitledIds },
+            NOT: [{ title: { contains: TEST_TITLE_MARKER } }],
+          },
+          orderBy: [{ createdAt: "desc" }],
+          select: {
+            id: true,
+            ownerId: true,
+            title: true,
+            storedPath: true,
+            originalName: true,
+            mimeType: true,
+            sizeBytes: true,
+            pageCount: true,
+            entitlementDays: true,
+            createdAt: true,
+            thumbnailUrl: true,
+            files: true,
+          },
+        }).catch(async () => {
+          const rows = await prisma.textbook.findMany({
+            where: {
+              isPublished: true,
+              id: { in: entitledIds },
+              NOT: [{ title: { contains: TEST_TITLE_MARKER } }],
+            },
+            orderBy: [{ createdAt: "desc" }],
+            select: {
+              id: true,
+              ownerId: true,
+              title: true,
+              storedPath: true,
+              originalName: true,
+              mimeType: true,
+              sizeBytes: true,
+              entitlementDays: true,
+              createdAt: true,
+              thumbnailUrl: true,
+              files: true,
+            },
+          });
+          return rows.map((t) => ({ ...t, pageCount: null })) as any;
+        });
+      }
+    }
+  }
+
+  // 판매상품에서 실제 다운로드 가능한 파일(외부 URL/로컬 포함)만
+  const visibleSaleTextbooks = saleTextbooks.filter((t) => (t.storedPath || "").trim().length > 0);
+
+  // "상품 등록"의 교재 옵션(title) 매칭: 판매상품의 파일 storedPath -> 업로드 교재 title
+  const ownerIds = Array.from(new Set(visibleSaleTextbooks.map((t) => t.ownerId).filter(Boolean)));
+  const titleByStoredPath = new Map<string, string>();
+
+  for (const ownerId of ownerIds) {
+    // 상품 등록의 textbookOptions와 동일: 업로드 교재(가격/원가 없음) + GCS/외부 URL
+    const registered = await prisma.textbook.findMany({
+      where: {
+        ownerId,
+        OR: [
+          { storedPath: { contains: "storage.googleapis.com" } },
+          { storedPath: { contains: "storage.cloud.google.com" } },
+        ],
+        price: null,
+        originalPrice: null,
+        NOT: [{ title: { contains: TEST_TITLE_MARKER } }],
+      },
+      select: { title: true, storedPath: true, files: true },
+      take: 500,
+      orderBy: [{ createdAt: "desc" }],
+    }).catch(async () => {
+      // files 컬럼 누락 등 폴백
+      return await prisma.textbook.findMany({
+        where: {
+          ownerId,
+          OR: [
+            { storedPath: { contains: "storage.googleapis.com" } },
+            { storedPath: { contains: "storage.cloud.google.com" } },
+          ],
+          price: null,
+          originalPrice: null,
+          NOT: [{ title: { contains: TEST_TITLE_MARKER } }],
+        },
+        select: { title: true, storedPath: true },
+        take: 500,
+        orderBy: [{ createdAt: "desc" }],
+      });
+    });
+
+    for (const t of registered as any[]) {
+      if (typeof t?.storedPath === "string" && t.storedPath && isRegisteredExternalUrl(t.storedPath)) {
+        titleByStoredPath.set(t.storedPath, t.title);
+      }
+      const fs = Array.isArray(t?.files) ? (t.files as any[]) : null;
+      if (fs && fs.length > 0) {
+        for (const f of fs) {
+          const p = typeof f?.storedPath === "string" ? f.storedPath : "";
+          if (p && isRegisteredExternalUrl(p)) titleByStoredPath.set(p, t.title);
+        }
+      }
+    }
+  }
+
+  const textbookDownloadItems = visibleSaleTextbooks.flatMap((t) => {
+    const files = normalizeFiles(t);
+    return files.map((f) => {
+      const mappedTitle = f.storedPath ? titleByStoredPath.get(f.storedPath) : null;
+      return {
+        id: `${t.id}:${f.fileIndex}`,
+        title: mappedTitle || f.label || t.title,
+        thumbnailUrl: t.thumbnailUrl,
+        downloadHref: `/api/textbooks/${t.id}/download?file=${f.fileIndex}`,
+      };
+    });
+  });
+
+  const searchItems = textbookDownloadItems.map((t) => ({
     id: t.id,
     type: "textbook" as const,
     title: t.title,
-    href: `/materials#textbook-${t.id}`,
+    href: "/materials",
     subtitle: null,
   }));
 
-  const allCoursesForTitle = user.isAdmin
-    ? await prisma.course.findMany({ select: { id: true, title: true } })
-    : null;
-
-  const courseIds = user.isAdmin
-    ? (allCoursesForTitle ?? []).map((c) => c.id)
-    : enrollments.map((e) => e.courseId);
-
+  const allCoursesForTitle = user.isAdmin ? await prisma.course.findMany({ select: { id: true, title: true } }) : null;
+  const courseIds = user.isAdmin ? (allCoursesForTitle ?? []).map((c) => c.id) : enrollments.map((e) => e.courseId);
   const courseSearchItems = (user.isAdmin ? (allCoursesForTitle ?? []) : enrollments.map((e) => e.course)).map((c) => ({
     id: c.id,
     type: "course" as const,
@@ -313,30 +296,13 @@ export default async function MaterialsPage() {
     ? new Map((allCoursesForTitle ?? []).map((c) => [c.id, c.title]))
     : new Map(enrollments.map((e) => [e.course.id, e.course.title]));
 
-  const totalMaterials = visibleTextbooks.length + attachments.length;
+  const totalMaterials = textbookDownloadItems.length + attachments.length;
 
   return (
     <AppShell>
       <MaterialsSearchRegistrar items={combinedSearchItems} />
       {/* 교재 섹션: 클릭 시 다운로드가 아니라 팝업(리스트)로 */}
-      {visibleTextbooks.length > 0 ? (
-        <MaterialsTextbooksSectionClient
-          textbooks={visibleTextbooks.map((t) => ({
-            id: t.id,
-            title: t.title,
-            sizeBytes: t.sizeBytes,
-            pageCount: t.pageCount,
-            entitlementDays: t.entitlementDays,
-            createdAtISO: t.createdAt.toISOString(),
-            thumbnailUrl: t.thumbnailUrl,
-            files: normalizeFiles(t),
-          }))}
-          isAdmin={user.isAdmin}
-          entitlementEndAtByTextbookId={Object.fromEntries(
-            Array.from(entitlementEndAtByTextbookId.entries()).map(([id, d]) => [id, d.toISOString()])
-          )}
-        />
-      ) : null}
+      {textbookDownloadItems.length > 0 ? <MaterialsTextbooksSectionClient items={textbookDownloadItems} /> : null}
 
       {/* 강좌 첨부파일 섹션 */}
       {attachments.length > 0 && (
