@@ -50,12 +50,41 @@ function runMigrateDeploy() {
   return runCmd("npx prisma migrate deploy");
 }
 
+function shouldUsePgSsl(connectionString) {
+  try {
+    const u = new URL(connectionString);
+    const sslmode = (u.searchParams.get("sslmode") || "").toLowerCase();
+    const ssl = (u.searchParams.get("ssl") || "").toLowerCase();
+    if (sslmode === "require") return true;
+    if (ssl === "true" || ssl === "1") return true;
+
+    // Render Postgres hostnames
+    if (u.hostname && (u.hostname.endsWith(".render.com") || u.hostname.startsWith("dpg-"))) {
+      return true;
+    }
+  } catch {
+    // ignore
+  }
+  return false;
+}
+
+function createPgClient(connectionString) {
+  // eslint-disable-next-line global-require
+  const { Client } = require("pg");
+
+  const useSsl = shouldUsePgSsl(connectionString);
+  return new Client({
+    connectionString,
+    // Render Postgres 등 self-signed/managed TLS 환경에서 DEPTH_ZERO_SELF_SIGNED_CERT로 배포가 깨지는 것을 방지
+    ssl: useSsl ? { rejectUnauthorized: false } : undefined,
+    connectionTimeoutMillis: 3000,
+  });
+}
+
 async function ensureStoreSchema(connectionString) {
   // Safety net: even if migrate deploy doesn't apply the latest migrations (e.g. path/provider mismatch),
   // ensure critical store/admin columns exist to prevent Prisma P2022 at runtime.
-  // eslint-disable-next-line global-require
-  const { Client } = require("pg");
-  const client = new Client({ connectionString });
+  const client = createPgClient(connectionString);
   await client.connect();
 
   const sqlPath = path.join(
@@ -120,9 +149,7 @@ async function fetchFailedMigrationsFromDb(connectionString) {
   try {
     // Only attempt DB query if pg is installed (it is in this repo).
     // If this fails, we still proceed with output parsing.
-    // eslint-disable-next-line global-require
-    const { Client } = require("pg");
-    const client = new Client({ connectionString });
+    const client = createPgClient(connectionString);
     await client.connect();
     const { rows } = await client.query(`
       SELECT
