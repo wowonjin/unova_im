@@ -73,6 +73,13 @@ function createPgClient(connectionString) {
   const { Client } = require("pg");
 
   const useSsl = shouldUsePgSsl(connectionString);
+
+  // Some managed DBs (incl. Render Postgres in certain network paths) can surface a self-signed chain to Node.
+  // As a deploy-time "safety net" script, prefer availability over strict TLS verification.
+  if (useSsl) {
+    // eslint-disable-next-line no-process-env
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+  }
   return new Client({
     connectionString,
     // Render Postgres 등 self-signed/managed TLS 환경에서 DEPTH_ZERO_SELF_SIGNED_CERT로 배포가 깨지는 것을 방지
@@ -237,6 +244,14 @@ async function main() {
   try {
     await ensureStoreSchema(dbUrl);
   } catch (e) {
+    // Safety net should never take down a deploy if migrations already succeeded.
+    // If TLS verification is the only blocker, log and continue.
+    const code = e?.code || e?.cause?.code;
+    if (code === "DEPTH_ZERO_SELF_SIGNED_CERT") {
+      console.warn("⚠️  스키마 동기화(안전망) 단계에서 self-signed certificate로 접속 실패했습니다.");
+      console.warn("   마이그레이션은 이미 성공했으므로 배포를 계속 진행합니다.");
+      return;
+    }
     console.error("❌ 스키마 동기화(안전망) 실패:", e);
     process.exit(1);
   }
