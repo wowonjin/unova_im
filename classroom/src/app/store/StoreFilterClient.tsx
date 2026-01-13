@@ -182,7 +182,7 @@ export default function StoreFilterClient({
                   <button
                     key={examType}
                     onClick={() => handleExamTypeChange(examType)}
-                    className={`text-[12px] font-medium transition-all rounded-md w-16 py-1.5 text-center ${
+                    className={`text-[12px] font-medium rounded-md w-16 py-1.5 text-center ${
                       selectedExamType === examType
                         ? "bg-white text-black"
                         : "bg-white/[0.08] text-white/70 hover:bg-white/[0.12] hover:text-white"
@@ -202,7 +202,7 @@ export default function StoreFilterClient({
                   <button
                     key={subject}
                     onClick={() => handleSubjectChange(subject)}
-                    className={`text-[12px] font-medium transition-all rounded-md min-w-16 px-3 py-1.5 text-center ${
+                    className={`text-[12px] font-medium rounded-md min-w-16 px-3 py-1.5 text-center ${
                       selectedSubject === subject
                         ? "bg-white text-black"
                         : "bg-white/[0.08] text-white/70 hover:bg-white/[0.12] hover:text-white"

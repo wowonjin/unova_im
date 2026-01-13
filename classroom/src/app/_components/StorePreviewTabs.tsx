@@ -88,7 +88,7 @@ export default function StorePreviewTabs({
                       }}
                       role="tab"
                       aria-selected={active}
-                      className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold transition-colors ${
+                      className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
                         active ? "text-white" : "text-white/55"
                       }`}
                     >
@@ -118,7 +118,7 @@ export default function StorePreviewTabs({
                         onClick={() => setSelectedSubject(subject)}
                         role="tab"
                         aria-selected={active}
-                        className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold transition-colors ${
+                        className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
                           active ? "text-white" : "text-white/55"
                         }`}
                       >
@@ -151,7 +151,7 @@ export default function StorePreviewTabs({
                       onClick={() => setSelectedSubject(subject)}
                       role="tab"
                       aria-selected={active}
-                      className={`text-[13px] font-medium transition-colors ${
+                      className={`text-[13px] font-medium ${
                         active ? "px-4 py-2 rounded-full bg-white text-black" : "px-2 py-2 text-white/55 hover:text-white"
                       }`}
                     >
@@ -178,7 +178,7 @@ export default function StorePreviewTabs({
                     }}
                     role="tab"
                     aria-selected={active}
-                    className={`text-[13px] font-medium transition-colors ${
+                    className={`text-[13px] font-medium ${
                       active ? "px-4 py-2 rounded-full bg-white text-black" : "px-2 py-2 text-white/55 hover:text-white"
                     }`}
                   >

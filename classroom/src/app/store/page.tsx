@@ -228,11 +228,11 @@ export default async function StorePage({
       selectedType === "강의"
         ? {
             title: "강의 구매하기",
-            subtitle: "강의와 함께 수능을 정복해보세요.",
+            subtitle: "지금 바로 강의를 듣고 성적을 올려보세요",
           }
         : {
             title: "교재 구매하기",
-            subtitle: "검증된 선생님들의 최고의 실전 교재를 만나보세요.",
+            subtitle: "지금 바로 교재를 구매하고 성적을 올려보세요",
           };
 
     return (

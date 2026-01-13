@@ -22,18 +22,18 @@ export default function Footer() {
               <p className="font-bold text-white mb-3 text-[13px]">서비스</p>
               <ul className="space-y-2 text-[12px] text-white/50">
                 <li>
-                  <Link href="/store" className="hover:text-white transition-colors">
-                    구매하기
+                  <Link href="/books" className="hover:text-white transition-colors">
+                    책 구매
                   </Link>
                 </li>
                 <li>
-                  <Link href="/notices?cat=이벤트" className="hover:text-white transition-colors">
-                    이벤트
+                  <Link href="/lectures" className="hover:text-white transition-colors">
+                    강의 구매
                   </Link>
                 </li>
                 <li>
                   <Link href="/dashboard" className="hover:text-white transition-colors">
-                    나의 컨텐츠
+                    나의 강의실
                   </Link>
                 </li>
               </ul>
@@ -47,24 +47,14 @@ export default function Footer() {
                   </Link>
                 </li>
                 <li>
-                  <a
-                    href="https://unova.co.kr"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-white transition-colors"
-                  >
+                  <Link href="/terms" className="hover:text-white transition-colors">
                     이용약관
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a
-                    href="https://unova.co.kr"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-white transition-colors"
-                  >
+                  <Link href="/privacy" className="hover:text-white transition-colors">
                     개인정보처리방침
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -123,18 +113,18 @@ export default function Footer() {
             <p className="font-bold text-white mb-4">서비스</p>
             <ul className="space-y-2.5 text-[14px] text-white/50">
               <li>
-                <Link href="/store" className="hover:text-white transition-colors">
-                  구매하기
+                <Link href="/books" className="hover:text-white transition-colors">
+                  책 구매
                 </Link>
               </li>
               <li>
-                <Link href="/notices?cat=이벤트" className="hover:text-white transition-colors">
-                  이벤트
+                <Link href="/lectures" className="hover:text-white transition-colors">
+                  강의 구매
                 </Link>
               </li>
               <li>
                 <Link href="/dashboard" className="hover:text-white transition-colors">
-                  나의 컨텐츠
+                  나의 강의실
                 </Link>
               </li>
             </ul>
@@ -150,14 +140,14 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <a href="https://unova.co.kr" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+                <Link href="/terms" className="hover:text-white transition-colors">
                   이용약관
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="https://unova.co.kr" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+                <Link href="/privacy" className="hover:text-white transition-colors">
                   개인정보처리방침
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
