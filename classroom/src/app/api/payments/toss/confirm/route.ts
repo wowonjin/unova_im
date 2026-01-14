@@ -14,6 +14,28 @@ const Schema = z.object({
 
 type LineItem = { productType: "COURSE" | "TEXTBOOK"; productId: string; amount?: number };
 
+function pickNonEmptyString(...vals: unknown[]): string | null {
+  for (const v of vals) {
+    if (typeof v === "string") {
+      const s = v.trim();
+      if (s) return s;
+    }
+  }
+  return null;
+}
+
+function normalizePhone(input: string): string {
+  const digits = input.replace(/[^\d]/g, "");
+  // KR 휴대폰(10~11자리) 정도만 보기 좋게 하이픈 처리
+  if (digits.length === 11 && digits.startsWith("010")) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10 && digits.startsWith("01")) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return input.trim();
+}
+
 function getRedirectTo(order: { productType: "COURSE" | "TEXTBOOK"; providerPayload: unknown | null }): "/dashboard" | "/materials" {
   const raw = order.providerPayload as any;
   const items: LineItem[] | null = Array.isArray(raw?.lineItems?.items) ? raw.lineItems.items : null;
@@ -210,6 +232,48 @@ export async function POST(req: Request) {
       },
     });
     return NextResponse.json({ ok: false, error: "TOSS_CONFIRM_FAILED", details: json }, { status: 400 });
+  }
+
+  // 결제 성공 시: 토스 응답에서 구매자 정보를 추출하여(User 테이블) 보정합니다.
+  // - 관리자 '회원 목록'은 User.name/phone을 보여주므로, 결제 이후에도 비어있지 않게 유지
+  try {
+    const buyerName = pickNonEmptyString(
+      (json as any)?.customerName,
+      (json as any)?.customer?.name,
+      (json as any)?.buyerName,
+      (json as any)?.card?.ownerName,
+    );
+    const buyerPhoneRaw = pickNonEmptyString(
+      (json as any)?.customerMobilePhone,
+      (json as any)?.mobilePhone,
+      (json as any)?.customer?.mobilePhone,
+      (json as any)?.buyerPhone,
+    );
+    const buyerPhone = buyerPhoneRaw ? normalizePhone(buyerPhoneRaw) : null;
+
+    if (buyerName || buyerPhone) {
+      const existing = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { name: true, phone: true },
+      });
+
+      const nextName = (!existing?.name || !existing.name.trim()) ? buyerName : null;
+      const nextPhone = (!existing?.phone || !existing.phone.trim()) ? buyerPhone : null;
+
+      if (nextName || nextPhone) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            ...(nextName ? { name: nextName } : {}),
+            ...(nextPhone ? { phone: nextPhone } : {}),
+          },
+          select: { id: true },
+        });
+      }
+    }
+  } catch (e) {
+    // 구매자 정보 보정 실패는 결제 확정을 막지 않음
+    console.warn("[toss confirm] failed to sync buyer info to user:", e);
   }
 
   const prev = (order as any).providerPayload ?? null;
