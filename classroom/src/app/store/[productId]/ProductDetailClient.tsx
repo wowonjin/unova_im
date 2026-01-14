@@ -999,6 +999,22 @@ export default function ProductDetailClient({
           {/* 소개(강좌/교재) */}
           {activeTab === introTabKey && (
             <section>
+              {/* 강의 소개 영상 (관리자에서 설정한 Vimeo) */}
+              {product.type === "course" && (product.previewVimeoId ?? "").trim().length > 0 && (
+                <div className="mb-8">
+                  <div className="aspect-video rounded-xl overflow-hidden bg-black border border-white/10">
+                    <iframe
+                      src={`https://player.vimeo.com/video/${encodeURIComponent(String(product.previewVimeoId).trim())}?title=0&byline=0&portrait=0`}
+                      className="w-full h-full"
+                      frameBorder="0"
+                      allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+                      allowFullScreen
+                      title="강의 소개 영상"
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* 수강기간/구성 컨테이너는 강좌/교재 모두 유지 */}
               <div className="rounded-xl border border-white/10 overflow-hidden mb-8">
                 <table className="w-full text-[14px]">

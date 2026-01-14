@@ -712,8 +712,8 @@ export default async function ProductDetailPage({
     }
 
     // 강의 상세에서 "교재 함께 구매" 옵션으로 보여줄 교재
-    // - 강좌 관리에서 선택한 relatedTextbookIds가 있으면 그것만 노출
-    // - 없으면 최근 교재 6개로 폴백
+    // - 강좌 관리(addons)에서 선택한 relatedTextbookIds가 있으면 그것만 노출
+    // - 선택이 없으면(미설정) 스토어에서는 노출하지 않음(빈 배열)
     let bundleTextbooks: Array<{
       id: string;
       title: string;
@@ -756,8 +756,9 @@ export default async function ProductDetailPage({
         selectedCourseIds = null;
       }
 
-      bundleTextbooks =
-        selectedTextbookIds !== null
+      // 추가 교재(교재 함께 구매): 관리자가 선택한 경우에만 노출 (선택이 없으면 빈 배열)
+      if (selectedTextbookIds !== null) {
+        bundleTextbooks = selectedTextbookIds.length
           ? await prisma.textbook.findMany({
               where: { isPublished: true, owner: { email: storeOwnerEmail }, id: { in: selectedTextbookIds } },
               orderBy: { createdAt: "desc" },
@@ -773,22 +774,10 @@ export default async function ProductDetailPage({
                 reviewCount: true,
               },
             })
-          : await prisma.textbook.findMany({
-              where: { isPublished: true, owner: { email: storeOwnerEmail } },
-              orderBy: { createdAt: "desc" },
-              take: 6,
-              select: {
-                id: true,
-                title: true,
-                price: true,
-                originalPrice: true,
-                thumbnailUrl: true,
-                teacherName: true,
-                subjectName: true,
-                rating: true,
-                reviewCount: true,
-              },
-            });
+          : [];
+      } else {
+        bundleTextbooks = [];
+      }
 
       // 추가 상품(강의): 관리자가 선택한 경우에만 노출 (선택이 없으면 빈 배열)
       if (selectedCourseIds !== null) {
