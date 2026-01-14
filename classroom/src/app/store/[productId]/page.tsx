@@ -416,14 +416,15 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { productId } = await params;
   const storeOwnerEmail = getStoreOwnerEmail();
+  const DEFAULT_DESC = "최상위권의 모든 지식을 담은 실전 독학서";
 
   // 기본값(폴백)
   const base: Metadata = {
     title: "유노바",
-    description: "최상위권의 모든 지식을 담은 실전 독학서",
+    description: DEFAULT_DESC,
     openGraph: {
       title: "유노바",
-      description: "최상위권의 모든 지식을 담은 실전 독학서",
+      description: DEFAULT_DESC,
       images: [{ url: "/unova_main.png", width: 1024, height: 1024, alt: "유노바" }],
       type: "website",
       siteName: "유노바",
@@ -431,7 +432,7 @@ export async function generateMetadata({
     twitter: {
       card: "summary_large_image",
       title: "유노바",
-      description: "최상위권의 모든 지식을 담은 실전 독학서",
+      description: DEFAULT_DESC,
       images: ["/unova_main.png"],
     },
     alternates: { canonical: `/store/${productId}` },
@@ -453,7 +454,7 @@ export async function generateMetadata({
       const description =
         toSafeOgDescription(course.description) ||
         toSafeOgDescription(course.teacherName ? `${course.teacherName} 선생님 강의` : null) ||
-        base.description;
+        DEFAULT_DESC;
       const imageUrl = buildOgImageUrl(
         `/api/courses/${course.id}/thumbnail?v=${course.updatedAt.getTime()}`,
       );
@@ -493,7 +494,7 @@ export async function generateMetadata({
       const description =
         toSafeOgDescription(textbook.description) ||
         toSafeOgDescription(textbook.teacherName ? `${textbook.teacherName} 선생님 교재` : null) ||
-        base.description;
+        DEFAULT_DESC;
       const imageUrl = buildOgImageUrl(
         `/api/textbooks/${textbook.id}/thumbnail?v=${textbook.updatedAt.getTime()}`,
       );
@@ -522,7 +523,7 @@ export async function generateMetadata({
     const dummy = productsData[productId];
     if (dummy) {
       const title = `${dummy.title} | 유노바`;
-      const description = toSafeOgDescription(dummy.description) || base.description;
+      const description = toSafeOgDescription(dummy.description) || DEFAULT_DESC;
       return {
         title,
         description,
