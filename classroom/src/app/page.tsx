@@ -295,7 +295,7 @@ export default async function HomePage() {
               </p>
             </div>
 
-            <div className="mt-8 grid grid-cols-3 gap-8">
+            <div className="mt-8 grid grid-cols-3 gap-x-5 gap-y-8">
               <div>
                 <p className="font-bold text-white mb-3 text-[13px]">서비스</p>
                 <ul className="space-y-2 text-[12px] text-white/50">
@@ -318,21 +318,21 @@ export default async function HomePage() {
               </div>
               <div>
                 <p className="font-bold text-white mb-3 text-[13px]">고객지원</p>
-                <ul className="space-y-2 text-[12px] text-white/50">
+                <ul className="space-y-2 text-[11px] text-white/50">
                   <li>
-                    <Link href="/notices" className="hover:text-white transition-colors">
-                      강의 / 결제 공지사항
+                    <Link href="/notices" className="hover:text-white transition-colors whitespace-nowrap tracking-tight">
+                      강의/결제 공지사항
                     </Link>
                   </li>
                   <li>
-                    <a href="https://unova.co.kr" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+                    <Link href="/terms" className="hover:text-white transition-colors">
                       이용약관
-                    </a>
+                    </Link>
                   </li>
                   <li>
-                    <a href="https://unova.co.kr" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+                    <Link href="/privacy" className="hover:text-white transition-colors whitespace-nowrap tracking-tight">
                       개인정보처리방침
-                    </a>
+                    </Link>
                   </li>
                 </ul>
               </div>
