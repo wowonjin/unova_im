@@ -232,7 +232,7 @@ export default function StoreFilterClient({
 
           {/* 상품 그리드 */}
           {filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-5 sm:gap-y-10">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-9 sm:gap-x-6 sm:gap-y-12">
               {filteredProducts.map((product) => (
                 <Link key={product.id} href={`/store/${product.id}`} className="group">
                   <div
@@ -248,8 +248,8 @@ export default function StoreFilterClient({
                         <span
                           className={`rounded-lg font-semibold text-white backdrop-blur ${
                             String(product.textbookType).trim().toUpperCase() === "PDF"
-                              ? "bg-gradient-to-r from-blue-500 to-purple-500 px-2 py-0.5 text-[10px] sm:px-2.5 sm:py-1 sm:text-[11px]"
-                              : "bg-black/70 px-2.5 py-1 text-[11px]"
+                              ? "bg-gradient-to-r from-blue-500 to-purple-500 px-2.5 py-1 text-[11px] sm:px-3 sm:py-1.5 sm:text-[12px]"
+                              : "bg-black/70 px-3 py-1.5 text-[12px]"
                           }`}
                         >
                           {product.textbookType}
@@ -291,26 +291,26 @@ export default function StoreFilterClient({
 
                   {/* 상품 정보 */}
                   <div className="mt-3 px-0.5">
-                    <h3 className="text-[14px] font-medium text-white leading-snug line-clamp-2 group-hover:text-white/90">
+                    <h3 className="text-[15px] font-medium text-white leading-snug line-clamp-2 group-hover:text-white/90">
                       {product.title}
                     </h3>
                     <div className="mt-1 flex items-baseline gap-1.5">
-                      <span className="text-[13px] font-semibold text-white">
+                      <span className="text-[14px] font-semibold text-white">
                         {formatPrice(product.price)}
                       </span>
                       {product.originalPrice && (
                         <>
-                          <span className="text-[11px] text-white/30 line-through">
+                          <span className="text-[12px] text-white/30 line-through">
                             {formatPrice(product.originalPrice)}
                           </span>
-                          <span className="text-[11px] font-semibold text-rose-400">
+                          <span className="text-[12px] font-semibold text-rose-400">
                             {getDiscount(product.originalPrice, product.price)}%
                           </span>
                         </>
                       )}
                     </div>
                     {/* 평점, 강사, 과목 */}
-                    <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-white">
+                    <div className="mt-2 flex items-center gap-1.5 text-[12px] text-white">
                       <span className="flex items-center gap-0.5">
                         <span className="text-yellow-400">⭐</span>
                         <span>{(product.rating ?? 0).toFixed(1)}</span>
@@ -332,7 +332,7 @@ export default function StoreFilterClient({
                           .map((t, idx) => (
                             <span
                               key={`${product.id}-tag-${t}`}
-                              className={`rounded-md px-2 py-0.5 text-[10px] font-medium ${
+                              className={`rounded-md px-2.5 py-1 text-[11px] font-medium ${
                                 idx === 0
                                   ? "bg-white text-black"
                                   : idx === 1
