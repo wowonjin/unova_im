@@ -150,6 +150,20 @@ body {
   }
 }
 
+/* 모바일 바텀시트 슬라이드업 애니메이션 */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
 /* Hide scrollbar while allowing scroll */
 .scrollbar-hide {
   -ms-overflow-style: none;

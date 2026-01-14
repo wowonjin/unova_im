@@ -107,6 +107,8 @@ export default function ProductDetailClient({
   const [isPaying, setIsPaying] = useState(false);
   const [selectedRelatedIds, setSelectedRelatedIds] = useState<Set<string>>(new Set());
   const [selectedAddonCourseIds, setSelectedAddonCourseIds] = useState<Set<string>>(new Set());
+  // 모바일 추가 상품 바텀시트 상태
+  const [showMobileAddonSheet, setShowMobileAddonSheet] = useState(false);
 
   // 선택한 추가 교재 금액 (강좌/교재 상세 모두에서 사용)
   const additionalAmount = Array.from(selectedRelatedIds).reduce((sum, id) => {
@@ -1876,52 +1878,304 @@ export default function ProductDetailClient({
       <div className="h-24 md:hidden" />
     </div>
 
-    {/* 모바일 하단 결제 영역 (화면 하단 고정) */}
-    <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[#1a1a1c] border-t border-white/10 px-4 py-3 safe-area-bottom">
-      <div className="flex items-center gap-3 max-w-6xl mx-auto">
-        <button 
-          onClick={handleToggleLike}
-          className="flex flex-col items-center justify-center px-3 py-2 rounded-lg border border-white/10"
-        >
-          <svg 
-            width="20" 
-            height="20" 
-            viewBox="0 0 24 24" 
-            fill={isLiked ? "currentColor" : "none"} 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            className={isLiked ? "text-red-500" : "text-white/60"}
+    {/* 모바일 하단 결제 영역 (화면 하단 고정) - 새로운 디자인 */}
+    <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[#1a1a1c] border-t border-white/10 safe-area-bottom">
+      {/* 선택된 추가 상품 요약 (선택한 게 있을 때만) */}
+      {hasAnyAddonSelection && (
+        <div className="px-4 py-2 border-b border-white/10 bg-white/[0.02]">
+          <div className="flex items-center justify-between text-[12px]">
+            <span className="text-white/60">
+              추가 상품 {selectedRelatedIds.size + selectedAddonCourseIds.size}개 선택
+            </span>
+            <span className="text-white/80 font-medium">
+              +{(additionalAmount + additionalCourseAmount).toLocaleString("ko-KR")}원
+            </span>
+          </div>
+        </div>
+      )}
+      
+      <div className="px-4 py-3">
+        <div className="flex items-center gap-2 max-w-6xl mx-auto">
+          {/* 좋아요 버튼 */}
+          <button 
+            onClick={handleToggleLike}
+            className="flex flex-col items-center justify-center w-12 h-12 rounded-xl border border-white/10 bg-white/[0.03] shrink-0"
           >
+            <svg 
+              width="18" 
+              height="18" 
+              viewBox="0 0 24 24" 
+              fill={isLiked ? "currentColor" : "none"} 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              className={isLiked ? "text-red-500" : "text-white/60"}
+            >
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
-            <span className="text-[10px] text-white/50 mt-0.5">{likeCount >= 10000 ? `${(likeCount / 10000).toFixed(1)}만` : likeCount.toLocaleString("ko-KR")}</span>
+            <span className="text-[9px] text-white/50 mt-0.5">{likeCount >= 10000 ? `${(likeCount / 10000).toFixed(1)}만` : likeCount.toLocaleString("ko-KR")}</span>
           </button>
-          <div className="flex-1">
-            {hasBaseProduct ? (
-              <div className="flex items-center gap-2">
-                <span className="text-[18px] font-bold">{product.formattedPrice}</span>
-                {product.discount && (
-                  <span className="inline-flex items-center justify-center rounded-full bg-rose-400 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                    {product.discount}%
-                  </span>
-                )}
-              </div>
-            ) : (
-              <div className="text-[13px] text-white/50">가격 정보 준비중</div>
-            )}
+          
+          {/* 추가 상품 버튼 (추가 상품이 있을 때만) */}
+          {(relatedProducts.length > 0 || addonCourses.length > 0) && (
+            <button 
+              onClick={() => setShowMobileAddonSheet(true)}
+              className="flex flex-col items-center justify-center w-12 h-12 rounded-xl border border-white/10 bg-white/[0.03] shrink-0 relative"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/60">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              <span className="text-[9px] text-white/50 mt-0.5">추가</span>
+              {hasAnyAddonSelection && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {selectedRelatedIds.size + selectedAddonCourseIds.size}
+                </span>
+              )}
+            </button>
+          )}
+          
+          {/* 가격 및 구매 버튼 영역 */}
+          <div className="flex-1 flex items-center justify-end gap-3">
+            <div className="text-right">
+              {hasAnyAddonSelection ? (
+                <>
+                  <div className="text-[11px] text-white/40 line-through">{product.formattedPrice}</div>
+                  <div className="text-[17px] font-bold text-white">{totalAmount.toLocaleString("ko-KR")}원</div>
+                </>
+              ) : hasBaseProduct ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-[17px] font-bold text-white">{product.formattedPrice}</span>
+                  {product.discount && (
+                    <span className="inline-flex items-center justify-center rounded-full bg-rose-400 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {product.discount}%
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="text-[12px] text-white/50">가격 준비중</div>
+              )}
+            </div>
+            
+            <button
+              onClick={handleCheckout}
+              disabled={isPaying}
+              className={`px-5 py-3 rounded-xl bg-white text-black text-[14px] font-bold transition-all hover:bg-white/90 ${isPaying ? "opacity-60" : ""}`}
+            >
+              {isPaying ? "준비중..." : (hasAnyAddonSelection ? "함께 구매" : (product.type === "course" ? "수강신청" : "구매하기"))}
+            </button>
           </div>
-          <a
-          onClick={(e) => {
-            e.preventDefault();
-            handleCheckout();
-          }}
-          href="#"
-          className={`px-6 py-2.5 rounded-lg bg-white text-black text-[15px] font-bold transition-all hover:bg-white/90 ${isPaying ? "opacity-60 pointer-events-none" : ""}`}
-          >
-          {isPaying ? "결제 준비중..." : checkoutCtaText}
-          </a>
+        </div>
       </div>
     </div>
+
+    {/* 모바일 추가 상품 바텀시트 */}
+    {showMobileAddonSheet && (
+      <div className="fixed inset-0 z-[60] md:hidden">
+        {/* 배경 오버레이 */}
+        <div 
+          className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+          onClick={() => setShowMobileAddonSheet(false)}
+        />
+        
+        {/* 바텀시트 컨테이너 */}
+        <div className="absolute bottom-0 left-0 right-0 bg-[#1c1c1e] rounded-t-3xl max-h-[85vh] flex flex-col animate-slide-up safe-area-bottom">
+          {/* 핸들 바 */}
+          <div className="flex justify-center py-3">
+            <div className="w-10 h-1 rounded-full bg-white/20" />
+          </div>
+          
+          {/* 헤더 */}
+          <div className="flex items-center justify-between px-5 pb-3 border-b border-white/10">
+            <h3 className="text-[17px] font-bold">추가 상품 선택</h3>
+            <button 
+              onClick={() => setShowMobileAddonSheet(false)}
+              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* 컨텐츠 영역 (스크롤) */}
+          <div className="flex-1 overflow-y-auto px-5 py-4">
+            {/* 추가 교재 섹션 */}
+            {relatedProducts.length > 0 && (
+              <div className="mb-6">
+                <p className="text-[13px] font-semibold text-white/60 mb-3">
+                  {product.type === "course" ? "📚 교재 함께 구매" : "📚 추가 교재"}
+                </p>
+                <div className="space-y-2">
+                  {relatedProducts.map((related) => {
+                    const isSelected = selectedRelatedIds.has(related.id);
+                    return (
+                      <button
+                        key={related.id}
+                        onClick={() => {
+                          const newSet = new Set(selectedRelatedIds);
+                          if (isSelected) newSet.delete(related.id);
+                          else newSet.add(related.id);
+                          setSelectedRelatedIds(newSet);
+                        }}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                          isSelected 
+                            ? "border-blue-500 bg-blue-500/10" 
+                            : "border-white/10 bg-white/[0.02] active:bg-white/[0.05]"
+                        }`}
+                      >
+                        {/* 체크박스 */}
+                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${
+                          isSelected ? "border-blue-500 bg-blue-500" : "border-white/30"
+                        }`}>
+                          {isSelected && (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                              <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                          )}
+                        </div>
+                        
+                        {/* 썸네일 */}
+                        <div className="w-12 h-12 rounded-lg bg-white/5 overflow-hidden shrink-0">
+                          {related.thumbnailUrl ? (
+                            <img
+                              src={`/api/textbooks/${related.id}/thumbnail`}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-white/30">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* 상품 정보 */}
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className="text-[13px] font-medium text-white truncate">{related.title}</p>
+                          <p className="text-[12px] text-white/50">{related.teacher}T</p>
+                        </div>
+                        
+                        {/* 가격 */}
+                        <div className="text-right shrink-0">
+                          <p className="text-[13px] font-semibold text-white">
+                            {related.price.toLocaleString("ko-KR")}원
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {/* 추가 강의 섹션 */}
+            {addonCourses.length > 0 && (
+              <div className="mb-6">
+                <p className="text-[13px] font-semibold text-white/60 mb-3">🎬 추가 강의</p>
+                <div className="space-y-2">
+                  {addonCourses.map((course) => {
+                    const isSelected = selectedAddonCourseIds.has(course.id);
+                    return (
+                      <button
+                        key={course.id}
+                        onClick={() => {
+                          const newSet = new Set(selectedAddonCourseIds);
+                          if (isSelected) newSet.delete(course.id);
+                          else newSet.add(course.id);
+                          setSelectedAddonCourseIds(newSet);
+                        }}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                          isSelected 
+                            ? "border-purple-500 bg-purple-500/10" 
+                            : "border-white/10 bg-white/[0.02] active:bg-white/[0.05]"
+                        }`}
+                      >
+                        {/* 체크박스 */}
+                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${
+                          isSelected ? "border-purple-500 bg-purple-500" : "border-white/30"
+                        }`}>
+                          {isSelected && (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                              <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                          )}
+                        </div>
+                        
+                        {/* 썸네일 */}
+                        <div className="w-12 h-12 rounded-lg bg-white/5 overflow-hidden shrink-0">
+                          {course.thumbnailUrl ? (
+                            <img
+                              src={`/api/courses/${course.id}/thumbnail`}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-white/30">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8 5v14l11-7z"/>
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* 상품 정보 */}
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className="text-[13px] font-medium text-white truncate">{course.title}</p>
+                          <p className="text-[12px] text-white/50">{course.teacher}T</p>
+                        </div>
+                        
+                        {/* 가격 */}
+                        <div className="text-right shrink-0">
+                          <p className="text-[13px] font-semibold text-white">
+                            {course.price.toLocaleString("ko-KR")}원
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* 하단 고정 영역 */}
+          <div className="border-t border-white/10 px-5 py-4 bg-[#1c1c1e]">
+            {/* 선택 요약 */}
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <span className="text-[12px] text-white/50">기본 상품</span>
+                <span className="text-[13px] text-white ml-2">{hasBaseProduct ? product.formattedPrice : "0원"}</span>
+              </div>
+              {hasAnyAddonSelection && (
+                <div>
+                  <span className="text-[12px] text-white/50">추가 상품</span>
+                  <span className="text-[13px] text-blue-400 ml-2">
+                    +{(additionalAmount + additionalCourseAmount).toLocaleString("ko-KR")}원
+                  </span>
+                </div>
+              )}
+            </div>
+            
+            {/* 총 금액 및 버튼 */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <p className="text-[11px] text-white/50">총 결제 금액</p>
+                <p className="text-[20px] font-bold text-white">{totalAmount.toLocaleString("ko-KR")}원</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowMobileAddonSheet(false);
+                }}
+                className="px-6 py-3 rounded-xl bg-white text-black text-[15px] font-bold"
+              >
+                선택 완료
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* 토스 기본 결제창(standard) 호출로 변경되어, 내부 위젯 모달은 사용하지 않습니다. */}
 
