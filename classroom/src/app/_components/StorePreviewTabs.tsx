@@ -194,11 +194,11 @@ export default function StorePreviewTabs({
       {/* 상품 그리드 */}
       <div className="mt-6">
         {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-x-4 gap-y-8 sm:gap-x-5 sm:gap-y-10">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-5 sm:gap-y-10">
             {filteredProducts.slice(0, 12).map((product) => (
               <Link key={product.id} href={`/store/${product.id}`} className="group">
                 <div
-                  className={`relative aspect-video overflow-hidden transition-all rounded-2xl ${
+                  className={`relative aspect-video overflow-hidden transition-all rounded-xl ${
                     product.type === "textbook"
                       ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02]"
                       : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
@@ -206,12 +206,12 @@ export default function StorePreviewTabs({
                 >
                   {/* 교재 종류 배지 (교재만) */}
                   {product.type === "textbook" && product.textbookType ? (
-                    <div className="absolute left-3 top-3 z-10">
+                    <div className="absolute left-2 top-2 z-10">
                       <span
-                        className={`rounded-lg font-semibold text-white backdrop-blur ${
+                        className={`rounded-md font-semibold text-white backdrop-blur ${
                           String(product.textbookType).trim().toUpperCase() === "PDF"
-                            ? "bg-gradient-to-r from-blue-500 to-purple-500 px-2 py-0.5 text-[10px] sm:px-2.5 sm:py-1 sm:text-[11px]"
-                            : "bg-black/70 px-2.5 py-1 text-[11px]"
+                            ? "bg-gradient-to-r from-blue-500 to-purple-500 px-1.5 py-0.5 text-[9px] sm:px-2 sm:py-0.5 sm:text-[10px]"
+                            : "bg-black/70 px-2 py-0.5 text-[10px]"
                         }`}
                       >
                         {product.textbookType}

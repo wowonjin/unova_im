@@ -365,7 +365,7 @@ export default function LandingHeader({
               width={120}
               height={24}
               priority
-              className="h-6 w-auto"
+              className="h-5 sm:h-6 w-auto"
               style={isLight ? { filter: "brightness(0)" } : undefined}
             />
           </Link>
@@ -566,7 +566,7 @@ export default function LandingHeader({
                     width={140}
                     height={24}
                     priority
-                    className="h-6 w-auto"
+                    className="h-5 sm:h-6 w-auto"
                     style={isLight ? { filter: "brightness(0)" } : undefined}
                   />
                 </Link>

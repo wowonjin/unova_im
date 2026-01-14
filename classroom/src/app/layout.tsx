@@ -20,9 +20,14 @@ export const metadata: Metadata = {
   title: "유노바",
   description: "최상위권의 모든 지식을 담은 실전 독학서",
   icons: {
-    icon: "/favicon.png",
-    shortcut: "/favicon.png",
-    apple: "/favicon.png",
+    // PC(데스크탑) 브라우저는 /favicon.ico 를 우선적으로 쓰는 경우가 많아
+    // ico를 먼저 제공하고, png는 보조로 명시합니다.
+    icon: [
+      { url: "/favicon.ico", type: "image/x-icon" },
+      { url: "/favicon.png", type: "image/png", sizes: "32x32" },
+    ],
+    shortcut: [{ url: "/favicon.ico", type: "image/x-icon" }],
+    apple: [{ url: "/favicon.png", type: "image/png", sizes: "180x180" }],
   },
   openGraph: {
     title: "유노바",
