@@ -236,7 +236,7 @@ export default function StoreFilterClient({
               {filteredProducts.map((product) => (
                 <Link key={product.id} href={`/store/${product.id}`} className="group">
                   <div
-                    className={`relative aspect-square overflow-hidden transition-all rounded-2xl ${
+                    className={`relative aspect-video overflow-hidden transition-all rounded-2xl ${
                       product.type === "textbook"
                         ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02]"
                         : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
