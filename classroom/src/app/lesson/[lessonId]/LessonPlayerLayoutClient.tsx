@@ -1,11 +1,21 @@
 "use client";
 
+import { useEffect } from "react";
+import { useSidebar } from "@/app/_components/SidebarContext";
+
 type Props = {
   left: React.ReactNode;
   right: React.ReactNode;
 };
 
 export default function LessonPlayerLayoutClient({ left, right }: Props) {
+  const { setIsOpen } = useSidebar();
+
+  // 강의 페이지 진입 시 왼쪽 사이드바 닫기
+  useEffect(() => {
+    setIsOpen(false);
+  }, [setIsOpen]);
+
   return (
     <div className="mt-0 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="min-w-0">{left}</div>
