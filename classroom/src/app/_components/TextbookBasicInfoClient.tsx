@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Badge, Field, Input } from "@/app/_components/ui";
 import TextbookTeacherImageUpload from "./TextbookTeacherImageUpload";
 
@@ -25,8 +26,10 @@ export default function TextbookBasicInfoClient({
   initialEntitlementDays,
   initialComposition,
 }: Props) {
+  const router = useRouter();
   const [title, setTitle] = useState(initialTitle);
   const [teacherName, setTeacherName] = useState(initialTeacherName);
+  const [teacherImageUrl, setTeacherImageUrl] = useState<string | null>(initialTeacherImageUrl);
   const [isbn, setIsbn] = useState(initialIsbn);
   const [subjectName, setSubjectName] = useState(initialSubjectName);
   const [entitlementDays, setEntitlementDays] = useState(initialEntitlementDays);
@@ -35,6 +38,7 @@ export default function TextbookBasicInfoClient({
   
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isFirstRender = useRef(true);
+  const resolveTeacherImageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const saveData = useCallback(async () => {
     setSaveStatus("saving");
@@ -95,6 +99,43 @@ export default function TextbookBasicInfoClient({
     };
   }, [title, teacherName, isbn, subjectName, entitlementDays, composition, saveData]);
 
+  // 선생님 이름이 있고(입력됨), 이미지가 비어있으면 Teachers 테이블에서 자동 매칭해서 채움
+  useEffect(() => {
+    // 첫 렌더에서는 자동 매칭 호출 스킵 (서버에서 이미 내려줄 수 있음)
+    if (isFirstRender.current) return;
+    if ((teacherImageUrl ?? "").trim().length > 0) return;
+    const key = (teacherName ?? "").trim();
+    if (!key) return;
+
+    if (resolveTeacherImageTimeoutRef.current) clearTimeout(resolveTeacherImageTimeoutRef.current);
+    resolveTeacherImageTimeoutRef.current = setTimeout(async () => {
+      try {
+        const fd = new FormData();
+        fd.set("textbookId", textbookId);
+        fd.set("teacherName", key);
+        const res = await fetch("/api/admin/textbooks/resolve-teacher-image", {
+          method: "POST",
+          body: fd,
+          headers: { accept: "application/json" },
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) return;
+        const nextUrl = (data?.teacherImageUrl as string | null | undefined) ?? null;
+        if (nextUrl && nextUrl !== teacherImageUrl) {
+          setTeacherImageUrl(nextUrl);
+          // 업로드 컴포넌트/서버 props 동기화를 위해 refresh (가벼운 수준)
+          router.refresh();
+        }
+      } catch {
+        // ignore (best-effort)
+      }
+    }, 700);
+
+    return () => {
+      if (resolveTeacherImageTimeoutRef.current) clearTimeout(resolveTeacherImageTimeoutRef.current);
+    };
+  }, [teacherName, teacherImageUrl, textbookId, router]);
+
   const statusEl =
     saveStatus === "saving" ? (
       <span className="inline-flex items-center gap-1.5 text-xs text-white/50">
@@ -133,7 +174,7 @@ export default function TextbookBasicInfoClient({
             <div className="flex-1">
               <Input value={teacherName} onChange={(e) => setTeacherName(e.target.value)} placeholder="예: 홍길동" className="bg-transparent" />
             </div>
-            <TextbookTeacherImageUpload textbookId={textbookId} currentImageUrl={initialTeacherImageUrl} />
+            <TextbookTeacherImageUpload textbookId={textbookId} currentImageUrl={teacherImageUrl} />
           </div>
         </Field>
         <Field label="과목" hint="스토어에서 과목별 필터링에 사용됩니다.">

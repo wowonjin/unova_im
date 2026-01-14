@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function TextbookTeacherImageUpload({
@@ -14,6 +14,13 @@ export default function TextbookTeacherImageUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(currentImageUrl);
   const [status, setStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
+
+  // 부모에서 currentImageUrl이 갱신되면(자동 매칭/저장 등) 버튼 미리보기도 동기화
+  useEffect(() => {
+    if (status === "uploading") return;
+    setPreview(currentImageUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentImageUrl]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
