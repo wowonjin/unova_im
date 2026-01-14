@@ -3,6 +3,13 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+  async redirects() {
+    return [
+      // 레거시/오타 경로 호환: /notice -> /notices
+      { source: "/notice", destination: "/notices", permanent: true },
+      { source: "/notice/:path*", destination: "/notices/:path*", permanent: true },
+    ];
+  },
   // NOTE: Next.js 16.0.10의 `devIndicators` 옵션은 위치(position)만 지원합니다.
   // (이전 버전/문서에서 보이는 buildActivity 같은 플래그는 타입 에러로 빌드가 실패할 수 있어 제거)
   // Turbopack이 워크스페이스 루트를 잘못 추론(상위 lockfile 선택)하면
