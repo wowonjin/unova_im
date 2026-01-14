@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_BASE_URL ?? "https://unova-im.onrender.com",
+    process.env.NEXT_PUBLIC_BASE_URL ?? "https://unova.co.kr",
   ),
   title: "유노바",
   description: "최상위권의 모든 지식을 담은 실전 독학서",
