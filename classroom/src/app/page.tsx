@@ -43,7 +43,12 @@ export default async function HomePage() {
           })
         : Promise.resolve([]);
 
-    const [dbSlides, dbShortcuts] = await Promise.all([slidePromise, shortcutPromise]);
+    // NOTE: DB 연결이 불안정한 환경(배포/빌드/콜드스타트 등)에서
+    // `Promise.all()`은 하나만 실패해도 throw 되며, Next dev overlay가 "Console Error"로 크게 띄울 수 있습니다.
+    // 홈은 설정을 못 불러와도 동작해야 하므로 allSettled로 안전하게 폴백합니다.
+    const [slidesRes, shortcutsRes] = await Promise.allSettled([slidePromise, shortcutPromise]);
+    const dbSlides = slidesRes.status === "fulfilled" ? slidesRes.value : [];
+    const dbShortcuts = shortcutsRes.status === "fulfilled" ? shortcutsRes.value : [];
 
     if (Array.isArray(dbSlides) && dbSlides.length > 0) {
       heroSlides = dbSlides
@@ -70,7 +75,10 @@ export default async function HomePage() {
       if (!shortcutItems.length) shortcutItems = undefined;
     }
   } catch (e) {
-    console.error("[home] failed to load hero/shortcut settings (fallback to defaults):", e);
+    // server component에서 console.error는 dev overlay를 크게 띄울 수 있어 warn으로 낮춤(개발에서만)
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[home] failed to load hero/shortcut settings (fallback to defaults):", e);
+    }
     heroSlides = undefined;
     shortcutItems = undefined;
   }
@@ -113,80 +121,87 @@ export default async function HomePage() {
   let storeCourses: DbCourseRow[] = [];
   let storeTextbooks: DbTextbookRow[] = [];
   try {
-    [storeCourses, storeTextbooks] = await Promise.all([
-      prisma.course.findMany({
-        where: { isPublished: true, owner: { email: storeOwnerEmail } },
-        select: {
-          id: true,
-          title: true,
-          subjectName: true,
-          teacherName: true,
-          price: true,
-          originalPrice: true,
-          tags: true,
-          thumbnailUrl: true,
-          thumbnailStoredPath: true,
-          updatedAt: true,
-          rating: true,
-          reviewCount: true,
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-      (async () => {
-        try {
-          return await prisma.textbook.findMany({
-            where: {
-              isPublished: true,
-              owner: { email: storeOwnerEmail },
-              // /store(책 구매 페이지)와 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
-              OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-            },
-            select: {
-              id: true,
-              title: true,
-              subjectName: true,
-              teacherName: true,
-              price: true,
-              originalPrice: true,
-              tags: true,
-                textbookType: true,
-              thumbnailUrl: true,
-                updatedAt: true,
-              rating: true,
-              reviewCount: true,
-            },
-            orderBy: [{ position: "desc" }, { createdAt: "desc" }],
-          });
-        } catch (e) {
-          console.error("[home] store textbooks query failed with position order, fallback to createdAt:", e);
-          return await prisma.textbook.findMany({
-            where: {
-              isPublished: true,
-              owner: { email: storeOwnerEmail },
-              // /store(책 구매 페이지)와 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
-              OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-            },
-            select: {
-              id: true,
-              title: true,
-              subjectName: true,
-              teacherName: true,
-              price: true,
-              originalPrice: true,
-              tags: true,
-                textbookType: true,
-              thumbnailUrl: true,
-                updatedAt: true,
-              rating: true,
-              reviewCount: true,
-            },
-            orderBy: [{ createdAt: "desc" }],
-          });
+    const coursesPromise = prisma.course.findMany({
+      where: { isPublished: true, owner: { email: storeOwnerEmail } },
+      select: {
+        id: true,
+        title: true,
+        subjectName: true,
+        teacherName: true,
+        price: true,
+        originalPrice: true,
+        tags: true,
+        thumbnailUrl: true,
+        thumbnailStoredPath: true,
+        updatedAt: true,
+        rating: true,
+        reviewCount: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const textbooksPromise = (async () => {
+      try {
+        return await prisma.textbook.findMany({
+          where: {
+            isPublished: true,
+            owner: { email: storeOwnerEmail },
+            // /store(책 구매 페이지)와 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
+            OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+          },
+          select: {
+            id: true,
+            title: true,
+            subjectName: true,
+            teacherName: true,
+            price: true,
+            originalPrice: true,
+            tags: true,
+            textbookType: true,
+            thumbnailUrl: true,
+            updatedAt: true,
+            rating: true,
+            reviewCount: true,
+          },
+          orderBy: [{ position: "desc" }, { createdAt: "desc" }],
+        });
+      } catch (e) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[home] store textbooks query failed with position order, fallback to createdAt:", e);
         }
-      })(),
-    ]);
+        return await prisma.textbook.findMany({
+          where: {
+            isPublished: true,
+            owner: { email: storeOwnerEmail },
+            // /store(책 구매 페이지)와 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
+            OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+          },
+          select: {
+            id: true,
+            title: true,
+            subjectName: true,
+            teacherName: true,
+            price: true,
+            originalPrice: true,
+            tags: true,
+            textbookType: true,
+            thumbnailUrl: true,
+            updatedAt: true,
+            rating: true,
+            reviewCount: true,
+          },
+          orderBy: [{ createdAt: "desc" }],
+        });
+      }
+    })();
+
+    const [coursesRes, textbooksRes] = await Promise.allSettled([coursesPromise, textbooksPromise]);
+    storeCourses = coursesRes.status === "fulfilled" ? coursesRes.value : [];
+    storeTextbooks = textbooksRes.status === "fulfilled" ? textbooksRes.value : [];
   } catch (e) {
-    console.error("[home] failed to load store products:", e);
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[home] failed to load store products:", e);
+    }
     storeCourses = [];
     storeTextbooks = [];
   }
