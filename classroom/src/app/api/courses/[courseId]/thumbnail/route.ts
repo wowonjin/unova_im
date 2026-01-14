@@ -33,7 +33,14 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
 
   const course = await prisma.course.findUnique({
     where: { id: courseId },
-    select: { id: true, ownerId: true, thumbnailStoredPath: true, thumbnailMimeType: true, thumbnailUrl: true },
+    select: {
+      id: true,
+      ownerId: true,
+      isPublished: true,
+      thumbnailStoredPath: true,
+      thumbnailMimeType: true,
+      thumbnailUrl: true,
+    },
   });
   if (!course) {
     return json ? NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 }) : redirectPlaceholder(req);
@@ -73,6 +80,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
     return json ? NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 }) : redirectPlaceholder(req);
   }
 
+  // 공개 판매(스토어 노출)된 강의의 썸네일은 마케팅/공유 목적상 인증 없이도 접근 가능해야 합니다.
+  // (카카오톡/검색엔진 등의 OG 크롤러는 로그인 상태가 아니므로)
+  const allowPublic = !!course.isPublished;
+
   // 교사(소유자)는 수강권 없이도 썸네일 미리보기 가능
   const teacher = await getCurrentTeacherUser();
   if (teacher && course.ownerId && teacher.id === course.ownerId) {
@@ -80,17 +91,23 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
   } else {
     const user = await getCurrentUser();
     if (!user) {
-      return json ? NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 }) : redirectPlaceholder(req);
+      if (!allowPublic) {
+        return json
+          ? NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 })
+          : redirectPlaceholder(req);
+      }
     }
 
-    if (!user.isAdmin && !bypassEnrollment) {
+    if (user && !user.isAdmin && !bypassEnrollment && !allowPublic) {
       const now = new Date();
       const ok = await prisma.enrollment.findFirst({
         where: { userId: user.id, courseId, status: "ACTIVE", endAt: { gt: now } },
         select: { id: true },
       });
       if (!ok) {
-        return json ? NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 }) : redirectPlaceholder(req);
+        return json
+          ? NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 })
+          : redirectPlaceholder(req);
       }
     }
   }
@@ -143,7 +160,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
   const headers = new Headers();
   headers.set("content-type", mimeType);
   headers.set("content-length", String(stat.size));
-  headers.set("cache-control", "private, max-age=60");
+  headers.set("cache-control", allowPublic ? "public, max-age=300" : "private, max-age=60");
 
   return new NextResponse(webStream, { status: 200, headers });
 }

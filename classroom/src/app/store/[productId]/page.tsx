@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import LandingHeader from "@/app/_components/LandingHeader";
 import Footer from "@/app/_components/Footer";
 import { notFound } from "next/navigation";
@@ -395,6 +396,159 @@ const productsData: Record<
     ],
   },
 };
+
+function toSafeOgDescription(input: string | null | undefined): string | undefined {
+  const v = (input ?? "").trim();
+  if (!v) return undefined;
+  // OG description은 너무 길면 잘릴 수 있어 적당히 제한
+  return v.length > 160 ? v.slice(0, 157) + "..." : v;
+}
+
+function buildOgImageUrl(path: string): string {
+  // metadataBase는 layout.tsx에서 설정되어 있으므로, 여기서는 path(상대경로)만 반환해도 절대 URL로 확장됩니다.
+  return path.startsWith("/") ? path : `/${path}`;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ productId: string }>;
+}): Promise<Metadata> {
+  const { productId } = await params;
+  const storeOwnerEmail = getStoreOwnerEmail();
+
+  // 기본값(폴백)
+  const base: Metadata = {
+    title: "유노바",
+    description: "최상위권의 모든 지식을 담은 실전 독학서",
+    openGraph: {
+      title: "유노바",
+      description: "최상위권의 모든 지식을 담은 실전 독학서",
+      images: [{ url: "/unova_main.png", width: 1024, height: 1024, alt: "유노바" }],
+      type: "website",
+      siteName: "유노바",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "유노바",
+      description: "최상위권의 모든 지식을 담은 실전 독학서",
+      images: ["/unova_main.png"],
+    },
+    alternates: { canonical: `/store/${productId}` },
+  };
+
+  try {
+    // 1) 강의 먼저 탐색 (slug 또는 id)
+    const course = await prisma.course.findFirst({
+      where: {
+        OR: [{ slug: productId }, { id: productId }],
+        isPublished: true,
+        owner: { email: storeOwnerEmail },
+      },
+      select: { id: true, title: true, description: true, teacherName: true, updatedAt: true },
+    });
+
+    if (course) {
+      const title = `${course.title} | 유노바`;
+      const description =
+        toSafeOgDescription(course.description) ||
+        toSafeOgDescription(course.teacherName ? `${course.teacherName} 선생님 강의` : null) ||
+        base.description;
+      const imageUrl = buildOgImageUrl(
+        `/api/courses/${course.id}/thumbnail?v=${course.updatedAt.getTime()}`,
+      );
+
+      return {
+        title,
+        description,
+        openGraph: {
+          title,
+          description,
+          images: [{ url: imageUrl, width: 1200, height: 630, alt: course.title }],
+          type: "website",
+          siteName: "유노바",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title,
+          description,
+          images: [imageUrl],
+        },
+        alternates: { canonical: `/store/${productId}` },
+      };
+    }
+
+    // 2) 교재 탐색
+    const textbook = await prisma.textbook.findFirst({
+      where: {
+        OR: [{ id: productId }],
+        isPublished: true,
+        owner: { email: storeOwnerEmail },
+      },
+      select: { id: true, title: true, description: true, teacherName: true, updatedAt: true },
+    });
+
+    if (textbook) {
+      const title = `${textbook.title} | 유노바`;
+      const description =
+        toSafeOgDescription(textbook.description) ||
+        toSafeOgDescription(textbook.teacherName ? `${textbook.teacherName} 선생님 교재` : null) ||
+        base.description;
+      const imageUrl = buildOgImageUrl(
+        `/api/textbooks/${textbook.id}/thumbnail?v=${textbook.updatedAt.getTime()}`,
+      );
+
+      return {
+        title,
+        description,
+        openGraph: {
+          title,
+          description,
+          images: [{ url: imageUrl, width: 1200, height: 630, alt: textbook.title }],
+          type: "website",
+          siteName: "유노바",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title,
+          description,
+          images: [imageUrl],
+        },
+        alternates: { canonical: `/store/${productId}` },
+      };
+    }
+
+    // 3) 더미 데이터 폴백(로컬/샘플용)
+    const dummy = productsData[productId];
+    if (dummy) {
+      const title = `${dummy.title} | 유노바`;
+      const description = toSafeOgDescription(dummy.description) || base.description;
+      return {
+        title,
+        description,
+        openGraph: {
+          title,
+          description,
+          images: [{ url: "/unova_main.png", width: 1024, height: 1024, alt: dummy.title }],
+          type: "website",
+          siteName: "유노바",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title,
+          description,
+          images: ["/unova_main.png"],
+        },
+        alternates: { canonical: `/store/${productId}` },
+      };
+    }
+  } catch {
+    // 메타데이터 생성 실패 시에도 페이지가 깨지지 않게 기본값 유지
+    return base;
+  }
+
+  return base;
+}
 
 function formatPrice(price: number): string {
   return price.toLocaleString("ko-KR") + "원";

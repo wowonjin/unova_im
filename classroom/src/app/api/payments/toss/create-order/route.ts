@@ -141,7 +141,18 @@ export async function POST(req: Request) {
 
   const courseBundleDiscount = hasCourse && textbookCount > 0 ? 10000 : 0;
 
-  const totalDiscount = additionalTextbookDiscount + courseBundleDiscount;
+  // 할인 합이 결제 금액을 초과하면(특히 테스트/저가 상품) 총액이 0원이 되어 결제가 불가능해집니다.
+  // 이 경우에는 할인 적용을 건너뛰어 결제 금액이 0원이 되지 않게 합니다.
+  let cappedAdditionalTextbookDiscount = additionalTextbookDiscount;
+  let cappedCourseBundleDiscount = courseBundleDiscount;
+
+  let totalDiscount = cappedAdditionalTextbookDiscount + cappedCourseBundleDiscount;
+  if (totalDiscount >= totalAmount) {
+    cappedAdditionalTextbookDiscount = 0;
+    cappedCourseBundleDiscount = 0;
+    totalDiscount = 0;
+  }
+
   totalAmount = Math.max(0, totalAmount - totalDiscount);
 
   if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
@@ -152,8 +163,8 @@ export async function POST(req: Request) {
         details: {
           totalAmount,
           totalDiscount,
-          additionalTextbookDiscount,
-          courseBundleDiscount,
+          additionalTextbookDiscount: cappedAdditionalTextbookDiscount,
+          courseBundleDiscount: cappedCourseBundleDiscount,
           cartItemsCount: cartItems.length,
         },
       },
