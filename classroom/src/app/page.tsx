@@ -272,7 +272,7 @@ export default async function HomePage() {
 
         {/* 교재 및 강의 구매(스토어) - 바로가기 아래 배치 */}
         <div className="pb-20">
-          <StorePreviewTabs courses={coursePreview} textbooks={textbookPreview} />
+          <StorePreviewTabs courses={coursePreview} textbooks={textbookPreview} variant="sections" />
         </div>
 
         {/* Footer */}

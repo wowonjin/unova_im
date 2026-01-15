@@ -150,6 +150,17 @@ body {
   }
 }
 
+/* 더보기 버튼 '둥둥' 플로팅 애니메이션 */
+@keyframes unovaFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
 /* 모바일 바텀시트 슬라이드업 애니메이션 */
 @keyframes slideUp {
   from {
