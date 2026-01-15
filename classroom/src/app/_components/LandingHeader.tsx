@@ -568,7 +568,7 @@ export default function LandingHeader({
                     height={24}
                     priority
                     className="h-5 sm:h-6 w-auto"
-                    style={isLight ? { filter: "brightness(0)" } : undefined}
+                    style={{ width: "auto", ...(isLight ? { filter: "brightness(0)" } : {}) }}
                   />
                 </Link>
               </div>

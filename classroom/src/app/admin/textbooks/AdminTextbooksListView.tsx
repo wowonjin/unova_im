@@ -151,7 +151,22 @@ export default function AdminTextbooksListView({ items: initialItems }: { items:
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok || typeof json?.newId !== "string") throw new Error("DUPLICATE_FAILED");
-      router.push(`/admin/textbook/${json.newId}?tab=settings`);
+
+      // 복사본을 즉시 "목록 맨 위"에 prepend (새로고침 없이 즉시 반영)
+      const newItem = json?.newItem as Partial<TextbookRow> | null;
+      if (newItem && typeof newItem.id === "string" && typeof newItem.title === "string") {
+        setItems((prev) => {
+          const without = prev.filter((x) => x.id !== newItem.id);
+          return [newItem as TextbookRow, ...without];
+        });
+        lastItemsRef.current = [
+          (newItem as TextbookRow),
+          ...lastItemsRef.current.filter((x) => x.id !== newItem.id),
+        ];
+      }
+
+      // NOTE: 기존에는 복사 후 곧바로 편집 화면으로 이동했지만,
+      //       요구사항에 따라 목록 화면에 그대로 머무릅니다.
     } catch (e) {
       console.error(e);
       alert("복사에 실패했습니다. 다시 시도해주세요.");

@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { cookies } from "next/headers";
 
-type Provider = "kakao" | "naver";
+type Provider = "kakao";
 
 const COOKIE_STATE_PREFIX = "oauth_state_";
 const COOKIE_REDIRECT_PREFIX = "oauth_redirect_";
@@ -180,7 +180,7 @@ export async function consumePendingOAuthAccount(): Promise<{
   cookieStore.delete(`${COOKIE_PENDING_PREFIX}name`);
   cookieStore.delete(`${COOKIE_PENDING_PREFIX}profileImageUrl`);
 
-  if ((provider !== "kakao" && provider !== "naver") || !providerUserId) return null;
+  if (provider !== "kakao" || !providerUserId) return null;
   return { provider, providerUserId, redirectTo, email, name, profileImageUrl };
 }
 

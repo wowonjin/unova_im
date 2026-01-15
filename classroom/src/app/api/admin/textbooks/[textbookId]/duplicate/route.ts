@@ -11,6 +11,24 @@ export async function POST(
   const teacher = await requireAdminUser();
   const { textbookId } = await ctx.params;
 
+  // position: admin 목록에서 드래그&드롭 정렬을 위한 값 (내림차순 정렬)
+  // - 복사본도 "목록 맨 위"에 오도록 가장 큰 position + 1로 생성합니다.
+  let basePosition = 0;
+  try {
+    const last = await prisma.textbook.findFirst({
+      where: { ownerId: teacher.id },
+      orderBy: { position: "desc" },
+      select: { position: true },
+    });
+    basePosition = Math.max(0, (last as { position?: number } | null)?.position ?? 0) + 1;
+  } catch {
+    // migration mismatch 등으로 position 컬럼/정렬이 실패할 수 있음
+    // - 이 경우 admin page가 createdAt desc fallback을 사용하므로 position 없이도 최신이 위로 올라갑니다.
+    // 또한 position 정렬을 쓰는 환경에서도 "맨 위"가 되도록 충분히 큰 값으로 fallback합니다.
+    // (Int32 범위 안전: seconds since epoch는 ~1.7e9)
+    basePosition = Math.floor(Date.now() / 1000);
+  }
+
   let source:
     | {
         id: string;
@@ -120,7 +138,7 @@ export async function POST(
   const created = await prisma.textbook.create({
     data: {
       ownerId: teacher.id,
-      position: 0,
+      position: basePosition,
       title: newTitle,
       teacherName: source.teacherName,
       teacherImageUrl: source.teacherImageUrl,
@@ -155,6 +173,37 @@ export async function POST(
     select: { id: true },
   });
 
-  return NextResponse.json({ ok: true, newId: created.id });
+  // 목록 UI에서 새로고침 없이 바로 prepend하기 위해 필요한 정보만 함께 내려줍니다.
+  let newItem: any = null;
+  try {
+    newItem = await prisma.textbook.findFirst({
+      where: { id: created.id, ownerId: teacher.id },
+      select: {
+        id: true,
+        position: true,
+        title: true,
+        originalName: true,
+        sizeBytes: true,
+        createdAt: true,
+        isPublished: true,
+        thumbnailUrl: true,
+        entitlementDays: true,
+        teacherName: true,
+        subjectName: true,
+        price: true,
+        originalPrice: true,
+      },
+    });
+  } catch {
+    newItem = null;
+  }
+
+  return NextResponse.json({
+    ok: true,
+    newId: created.id,
+    newItem: newItem
+      ? { ...newItem, createdAt: (newItem.createdAt as Date).toISOString() }
+      : null,
+  });
 }
 

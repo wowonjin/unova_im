@@ -64,25 +64,6 @@ export default async function LoginPage({
               </svg>
               카카오 로그인
             </a>
-
-            {/* 네이버 회원가입 */}
-            <a
-              href={`/api/auth/naver/start?redirect=${encodeURIComponent(redirect)}`}
-              className="relative flex items-center justify-center w-full rounded-xl bg-[#03C75A] px-4 py-3 text-[14px] font-semibold text-white transition-all hover:brightness-95"
-            >
-              <svg 
-                width="18" 
-                height="18" 
-                viewBox="0 0 20 20" 
-                className="absolute left-4"
-              >
-                <path 
-                  fill="#FFFFFF" 
-                  d="M13.5 10.5L6.2 0H0v20h6.5V9.5L13.8 20H20V0h-6.5v10.5z"
-                />
-              </svg>
-              네이버 로그인
-            </a>
           </div>
 
           {/* 구분선 */}

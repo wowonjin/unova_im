@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -156,6 +156,74 @@ export default function MembersClient({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 페이지 이동(쿼리스트링 변경) 시에도 서버에서 내려온 members로 테이블을 동기화해야 함
+  // (현재 파일은 Client Component라서 useState 초기값만으로는 페이지 전환 때 리스트가 안 바뀔 수 있음)
+  useEffect(() => {
+    setMembers(initialMembers);
+  }, [initialMembers]);
+
+  useEffect(() => {
+    setSearchValue(query);
+  }, [query]);
+
+  const paginationHref = useMemo(() => {
+    return (page: number) => {
+      const sp = new URLSearchParams();
+      sp.set("page", String(page));
+      if (query.trim()) sp.set("q", query.trim());
+      return `/admin/members?${sp.toString()}`;
+    };
+  }, [query]);
+
+  const Pagination = useMemo(() => {
+    if (totalPages <= 1) return null;
+
+    const pageNums = Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+      if (totalPages <= 5) return i + 1;
+      if (currentPage <= 3) return i + 1;
+      if (currentPage >= totalPages - 2) return totalPages - 4 + i;
+      return currentPage - 2 + i;
+    });
+
+    return (
+      <div className="flex items-center justify-center gap-2 sm:justify-end">
+        <Link
+          href={paginationHref(Math.max(1, currentPage - 1))}
+          className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+            currentPage === 1 ? "pointer-events-none text-white/30" : "text-white/70 hover:bg-white/10 hover:text-white"
+          }`}
+        >
+          ← 이전
+        </Link>
+
+        <div className="flex items-center gap-1">
+          {pageNums.map((pageNum) => (
+            <Link
+              key={pageNum}
+              href={paginationHref(pageNum)}
+              className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm transition-colors ${
+                currentPage === pageNum ? "bg-white text-black font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {pageNum}
+            </Link>
+          ))}
+        </div>
+
+        <Link
+          href={paginationHref(Math.min(totalPages, currentPage + 1))}
+          className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+            currentPage === totalPages
+              ? "pointer-events-none text-white/30"
+              : "text-white/70 hover:bg-white/10 hover:text-white"
+          }`}
+        >
+          다음 →
+        </Link>
+      </div>
+    );
+  }, [currentPage, paginationHref, totalPages]);
+
   // 회원 정보 업데이트
   const updateMember = async (memberId: string, field: string, value: string) => {
     const res = await fetch("/api/admin/members/update", {
@@ -300,29 +368,33 @@ export default function MembersClient({
         </div>
       )}
 
-      {/* 검색 */}
-      <form onSubmit={handleSearch} className="relative max-w-md">
-        <input
-          type="text"
-          value={searchValue}
-          onChange={(e) => setSearchValue(e.target.value)}
-          placeholder="이메일, 이름, 전화번호로 검색..."
-          className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-11 pr-4 text-sm text-white placeholder:text-white/40 focus:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/10"
-        />
-        <svg
-          className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+      {/* 검색 + 페이지네이션(상단 우측) */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <form onSubmit={handleSearch} className="relative w-full max-w-md">
+          <input
+            type="text"
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            placeholder="이메일, 이름, 전화번호로 검색..."
+            className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-11 pr-4 text-sm text-white placeholder:text-white/40 focus:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/10"
           />
-        </svg>
-      </form>
+          <svg
+            className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+        </form>
+
+        {Pagination}
+      </div>
 
       {/* 회원 목록 */}
       <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#1c1c1e]">
@@ -498,62 +570,6 @@ export default function MembersClient({
           </div>
         )}
       </div>
-
-      {/* 페이지네이션 */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Link
-            href={`/admin/members?page=${Math.max(1, currentPage - 1)}${query ? `&q=${query}` : ""}`}
-            className={`rounded-lg px-3 py-2 text-sm transition-colors ${
-              currentPage === 1
-                ? "pointer-events-none text-white/30"
-                : "text-white/70 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            ← 이전
-          </Link>
-          
-          <div className="flex items-center gap-1">
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum: number;
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (currentPage <= 3) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
-              } else {
-                pageNum = currentPage - 2 + i;
-              }
-              
-              return (
-                <Link
-                  key={pageNum}
-                  href={`/admin/members?page=${pageNum}${query ? `&q=${query}` : ""}`}
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm transition-colors ${
-                    currentPage === pageNum
-                      ? "bg-white text-black font-medium"
-                      : "text-white/70 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  {pageNum}
-                </Link>
-              );
-            })}
-          </div>
-          
-          <Link
-            href={`/admin/members?page=${Math.min(totalPages, currentPage + 1)}${query ? `&q=${query}` : ""}`}
-            className={`rounded-lg px-3 py-2 text-sm transition-colors ${
-              currentPage === totalPages
-                ? "pointer-events-none text-white/30"
-                : "text-white/70 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            다음 →
-          </Link>
-        </div>
-      )}
 
       {/* 안내 문구 */}
       <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
