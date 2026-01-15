@@ -1,7 +1,6 @@
 import Link from "next/link";
 import SignupFormClient from "./SignupFormClient";
 import LandingHeader from "../_components/LandingHeader";
-import FloatingKakaoButton from "../_components/FloatingKakaoButton";
 export default async function SignupPage({
   searchParams,
 }: {
@@ -13,9 +12,6 @@ export default async function SignupPage({
     <div className="min-h-screen bg-[#161616] text-white">
       {/* 헤더 */}
       <LandingHeader />
-
-      {/* 카카오 문의 버튼 */}
-      <FloatingKakaoButton />
 
       {/* 메인 컨텐츠 - 가운데 정렬 */}
       <div className="flex min-h-screen items-center justify-center pt-[70px] px-4 py-12">

@@ -1,8 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import LoginFormClient from "./LoginFormClient";
 import LandingHeader from "../_components/LandingHeader";
-import FloatingKakaoButton from "../_components/FloatingKakaoButton";
 
 export default async function LoginPage({
   searchParams,
@@ -28,9 +26,6 @@ export default async function LoginPage({
       {/* 헤더 */}
       <LandingHeader />
 
-      {/* 카카오 문의 버튼 */}
-      <FloatingKakaoButton />
-
       {/* 메인 컨텐츠 - 가운데 정렬 */}
       <div className="flex min-h-screen items-center justify-center pt-[70px] px-4">
         <div className="w-full max-w-[340px]">
@@ -43,35 +38,6 @@ export default async function LoginPage({
             {errorMessages[error] || "오류가 발생했습니다."}
           </div>
         )}
-
-          {/* 소셜 로그인 버튼 */}
-          <div className="space-y-2.5 mb-6">
-            {/* 카카오 회원가입 */}
-            <a
-              href={`/api/auth/kakao/start?redirect=${encodeURIComponent(redirect)}`}
-              className="relative flex items-center justify-center w-full rounded-xl bg-[#FEE500] px-4 py-3 text-[14px] font-semibold text-black transition-all hover:brightness-95"
-            >
-              <svg 
-                width="20" 
-                height="20" 
-                viewBox="0 0 256 256" 
-                className="absolute left-4"
-              >
-                <path 
-                  fill="#000000" 
-                  d="M128 36C70.562 36 24 72.713 24 118c0 29.279 19.466 54.97 48.748 69.477-1.593 5.494-10.237 35.344-10.581 37.689 0 0-.207 1.762.934 2.434s2.483.15 2.483.15c3.272-.457 37.943-24.811 43.944-29.03 5.995.849 12.168 1.28 18.472 1.28 57.438 0 104-36.712 104-82 0-45.287-46.562-82-104-82z"
-                />
-              </svg>
-              카카오 로그인
-            </a>
-          </div>
-
-          {/* 구분선 */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 h-px bg-white/20"></div>
-            <span className="text-[13px] text-white">또는</span>
-            <div className="flex-1 h-px bg-white/20"></div>
-          </div>
 
           {/* 이메일 로그인 폼 */}
           <LoginFormClient redirectTo={redirect} />
