@@ -6,6 +6,7 @@ import Image from 'next/image';
 import CurriculumCarousel, { CurriculumSlide } from './CurriculumCarousel';
 import BookCoverFlow, { BookSet } from './BookCoverFlow';
 import LectureRail, { LectureSet } from './LectureRail';
+import StorePreviewTabs, { type StorePreviewProduct } from "@/app/_components/StorePreviewTabs";
 import type { YoutubeVideo } from './YoutubeMarquee';
 import type { FAQItem } from './FAQSection';
 
@@ -68,6 +69,9 @@ export type TeacherDetailTeacher = {
   curriculum?: CurriculumSlide[];
   bookSets?: BookSet[];
   lectureSets?: LectureSet[];
+  // 메인페이지(스토어 프리뷰)와 동일한 카드 UI를 쓰기 위한 데이터
+  storeCourses?: StorePreviewProduct[];
+  storeTextbooks?: StorePreviewProduct[];
   curriculumLink?: string;
   youtubeVideos?: YoutubeVideo[];
   faqItems?: FAQItem[];
@@ -118,66 +122,14 @@ const LECTURE_SUBTAB_LABEL: Record<LectureSubTab, string> = {
 };
 
 export default function TeacherDetailClient({ teacher }: Props) {
-  const mobileTabsSentinelRef = useRef<HTMLDivElement | null>(null);
-  const mobileTabsBarRef = useRef<HTMLDivElement | null>(null);
-  const pcTabsSentinelRef = useRef<HTMLDivElement | null>(null);
-  const pcTabsBarRef = useRef<HTMLDivElement | null>(null);
-  const [isMobileTabsPinned, setIsMobileTabsPinned] = useState(false);
-  const [isPcTabsPinned, setIsPcTabsPinned] = useState(false);
-  const [mobileTabsBarHeight, setMobileTabsBarHeight] = useState(0);
-  const [pcTabsBarHeight, setPcTabsBarHeight] = useState(0);
+  // 모바일 탭 UI 제거(요청사항): 강의/교재를 바로 노출
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<MobileTab>('intro');
-  const [pcActiveTab, setPcActiveTab] = useState<MobileTab>('intro');
-  const [lectureSubTab, setLectureSubTab] = useState<LectureSubTab>('single');
   const [isTeacherLiked, setIsTeacherLiked] = useState(false);
   const [shareToast, setShareToast] = useState<string | null>(null);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
 
-  // 탭 메뉴: 헤더 아래에 고정(fixed)되도록 핀 처리 (sticky가 overflow/레이아웃에 의해 깨지는 케이스 방지)
-  useEffect(() => {
-    const getHeaderOffset = () => {
-      const raw = getComputedStyle(document.documentElement).getPropertyValue("--unova-fixed-header-offset").trim();
-      const n = Number.parseFloat(raw.replace("px", ""));
-      return Number.isFinite(n) ? n : 70;
-    };
-
-    const measure = () => {
-      if (mobileTabsBarRef.current) setMobileTabsBarHeight(mobileTabsBarRef.current.getBoundingClientRect().height);
-      if (pcTabsBarRef.current) setPcTabsBarHeight(pcTabsBarRef.current.getBoundingClientRect().height);
-    };
-
-    const onScroll = () => {
-      const headerOffset = getHeaderOffset();
-      const w = window.innerWidth;
-      const isMobile = w <= 768;
-
-      if (isMobile) {
-        const top = mobileTabsSentinelRef.current?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
-        setIsMobileTabsPinned(top <= headerOffset);
-        setIsPcTabsPinned(false);
-      } else {
-        const top = pcTabsSentinelRef.current?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
-        setIsPcTabsPinned(top <= headerOffset);
-        setIsMobileTabsPinned(false);
-      }
-    };
-
-    const onResize = () => {
-      measure();
-      onScroll();
-    };
-
-    measure();
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onResize);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onResize);
-    };
-  }, []);
+  // (모바일 탭 핀 로직 제거됨)
   const containerRef = useRef<HTMLDivElement>(null);
   const isLsy = teacher.slug === "lsy" || teacher.slug === "lee-sangyeob";
 
@@ -471,34 +423,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
   const mainYoutube = youtubeVideos[0]?.url;
   const mainYoutubeId = typeof mainYoutube === "string" ? getYoutubeId(mainYoutube) : null;
   const embedSrc = mainYoutubeId ? `https://www.youtube-nocookie.com/embed/${mainYoutubeId}` : null;
-  const hasPcBoard = notices.length > 0;
-  // PC "새소식" 탭은 유튜브(커리큘럼 소개) 유무로 활성화
-  const hasPcNews = Boolean(embedSrc);
-
-  const handlePcTabClick = (tab: MobileTab) => {
-    setPcActiveTab(tab);
-    // "진짜 탭" 동작: 패널 전환 + 검정 섹션(탭 영역)으로 스크롤
-    window.setTimeout(() => handleNavClick("#teacher-tabs"), 0);
-  };
-
-  // PC: 초기 해시가 있으면 탭 상태를 맞춤(하이라이트용)
-  useEffect(() => {
-    try {
-      const hash = (typeof window !== "undefined" ? window.location.hash : "") || "";
-      // 커리큘럼 탭 제거: 레거시 해시는 새소식 탭으로 매핑
-      if (hash === "#teacher-curriculum") setPcActiveTab("news");
-      else if (hash === "#teacher-lectures" || hash === "#teacher-books") setPcActiveTab("lecture");
-      else if (hash === "#teacher-board") setPcActiveTab("board");
-      else if (hash === "#teacher-review") setPcActiveTab("review");
-      else if (hash === "#teacher-news") setPcActiveTab("news");
-      else if (hash === "#teacher-tabs") {
-        // 유지
-      }
-    } catch {
-      // ignore
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const showYoutube = false; // 요청사항: 선생님 페이지에서 유튜브 영상 숨김
 
   // 모달 열릴 때 body 스크롤 방지
   useEffect(() => {
@@ -786,7 +711,9 @@ export default function TeacherDetailClient({ teacher }: Props) {
           <div className="mega-mobile-hero__content">
             <div className="mega-mobile-hero__info">
               {teacher.headerSub ? (
-                <p className="mega-mobile-hero__catchphrase">{teacher.headerSub}</p>
+                <p className="mega-mobile-hero__catchphrase" style={{ fontWeight: 600 }}>
+                  {teacher.headerSub}
+                </p>
               ) : null}
               <h1 className="mega-mobile-hero__name">
                 <span className="mega-mobile-hero__subject">{effectiveSubject}</span> {teacher.name} 선생님
@@ -849,332 +776,35 @@ export default function TeacherDetailClient({ teacher }: Props) {
                 className="mega-mobile-hero__img"
                 priority
               />
-              {isLsy && (
-                <div className="mega-mobile-hero__slogan" aria-hidden="true">
-                  막연한 국어의 끝,
-                  <br />
-                  알고리즘 국어
-                </div>
-              )}
             </div>
           </div>
         </div>
 
-        {/* 메인 탭 메뉴 (메가스터디 스타일) - 스크롤 시 헤더 아래 고정 */}
-        <div ref={mobileTabsSentinelRef} aria-hidden="true" />
-        <div ref={mobileTabsBarRef} className={`mega-mobile-tabs-bar ${isMobileTabsPinned ? "is-fixed" : ""}`}>
-          <nav className="mega-mobile-tabs" aria-label="선생님 정보 탭 메뉴">
-            <div className="mega-mobile-tabs__scroll">
-            <button
-              type="button"
-              className={`mega-mobile-tab ${activeTab === 'intro' ? 'is-active' : ''}`}
-              onClick={() => setActiveTab('intro')}
-            >
-              {TAB_LABEL.intro}
-            </button>
-            <button
-              type="button"
-              className={`mega-mobile-tab ${activeTab === 'lecture' ? 'is-active' : ''}`}
-              onClick={() => setActiveTab('lecture')}
-            >
-              {TAB_LABEL.lecture}
-            </button>
-            <button
-              type="button"
-              className={`mega-mobile-tab ${activeTab === 'board' ? 'is-active' : ''}`}
-              onClick={() => setActiveTab('board')}
-            >
-              {TAB_LABEL.board}
-            </button>
-            <button
-              type="button"
-              className={`mega-mobile-tab ${activeTab === 'review' ? 'is-active' : ''}`}
-              onClick={() => setActiveTab('review')}
-            >
-              {TAB_LABEL.review}
-            </button>
-            <button
-              type="button"
-              className={`mega-mobile-tab ${activeTab === 'news' ? 'is-active' : ''}`}
-              onClick={() => setActiveTab('news')}
-            >
-              {TAB_LABEL.news}
-            </button>
+        {/* 모바일: 탭 메뉴 제거 → 강의/교재를 바로 노출 (메인페이지 카드 UI 재사용) */}
+        <div id="teacher-tabs" className="mega-mobile-content">
+          {/* 상단 소개 이미지(있으면) */}
+          {typeof teacher.promoImageUrl === "string" && teacher.promoImageUrl.trim() ? (
+            <div className="mega-mobile-section">
+              <div className="mt-4 overflow-hidden rounded-xl bg-white/[0.02]">
+                <Image
+                  src={teacher.promoImageUrl.trim()}
+                  alt={`${teacher.name} 선생님 상세페이지 이미지`}
+                  width={1200}
+                  height={900}
+                  className="w-full h-auto"
+                />
+              </div>
             </div>
-          </nav>
-        </div>
-        {isMobileTabsPinned ? <div style={{ height: mobileTabsBarHeight }} aria-hidden="true" /> : null}
+          ) : null}
 
-        {/* 강좌 및 교재 탭 - 서브탭 */}
-        {activeTab === 'lecture' && (
-          <div className="mega-mobile-subtabs">
-            <button
-              type="button"
-              className={`mega-mobile-subtab ${lectureSubTab === 'single' ? 'is-active' : ''}`}
-              onClick={() => setLectureSubTab('single')}
-            >
-              {LECTURE_SUBTAB_LABEL.single}
-            </button>
-            <button
-              type="button"
-              className={`mega-mobile-subtab ${lectureSubTab === 'package' ? 'is-active' : ''}`}
-              onClick={() => setLectureSubTab('package')}
-            >
-              {LECTURE_SUBTAB_LABEL.package}
-            </button>
-            <button
-              type="button"
-              className={`mega-mobile-subtab ${lectureSubTab === 'book' ? 'is-active' : ''}`}
-              onClick={() => setLectureSubTab('book')}
-            >
-              {LECTURE_SUBTAB_LABEL.book}
-            </button>
+          {/* 강의/교재 */}
+          <div className="mega-mobile-section">
+            <StorePreviewTabs
+              courses={Array.isArray(teacher.storeCourses) ? teacher.storeCourses : []}
+              textbooks={Array.isArray(teacher.storeTextbooks) ? teacher.storeTextbooks : []}
+              variant="sections"
+            />
           </div>
-        )}
-
-        {/* 탭 콘텐츠 영역 */}
-        <div className="mega-mobile-content">
-          {/* 선생님 소개 탭 (상세페이지 이미지) */}
-          {activeTab === 'intro' && (
-            <div className="mega-mobile-section">
-              {typeof teacher.promoImageUrl === "string" && teacher.promoImageUrl.trim() ? (
-                <div className="mt-4 overflow-hidden rounded-xl bg-white/[0.02]">
-                  <Image
-                    src={teacher.promoImageUrl.trim()}
-                    alt={`${teacher.name} 선생님 상세페이지 이미지`}
-                    width={1200}
-                    height={900}
-                    className="w-full h-auto"
-                  />
-                </div>
-              ) : (
-                <div className="py-10 text-center text-white/45 text-[13px]">소개가 준비중입니다.</div>
-              )}
-            </div>
-          )}
-
-          {/* 강좌 및 교재 탭 */}
-          {activeTab === 'lecture' && (
-            <div className="mega-mobile-section">
-              {/* 단과강좌 */}
-              {lectureSubTab === 'single' && teacher.lectureSets && (
-                teacher.lectureSets.length > 0 ? (
-                  <div className="mega-mobile-lecture-list">
-                    {(singleLectures.length > 0 ? singleLectures : teacher.lectureSets).map((lectureSet) => (
-                      <div key={lectureSet.id}>
-                        {lectureSet.lectures.map((lecture, idx) => (
-                          <div key={idx} className="mega-mobile-lecture-card">
-                            <div className="mega-mobile-lecture-card__thumb">
-                              <Image
-                                src={lecture.thumbnail}
-                                alt={lecture.title}
-                                width={96}
-                                height={54}
-                                className="mega-mobile-lecture-card__img"
-                              />
-                            </div>
-                            <div className="mega-mobile-lecture-card__content">
-                              <h3 className="mega-mobile-lecture-card__title">{lecture.title}</h3>
-                              <div className="mega-mobile-lecture-card__rating">
-                                <span className="mega-mobile-lecture-card__stars">
-                                  {Array.from({ length: 5 }).map((_, i) => (
-                                    <span key={i} className={i < filledStars ? "is-on" : "is-off"}>★</span>
-                                  ))}
-                                </span>
-                                <span className="mega-mobile-lecture-card__score">{avgRatingText}</span>
-                                <span className="mega-mobile-lecture-card__review-count">({reviewCount})</span>
-                              </div>
-                            </div>
-                            <a href={lecture.href} className="mega-mobile-lecture-card__link">강좌 보기</a>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="mega-mobile-empty">단과 강좌가 없습니다.</div>
-                )
-              )}
-
-              {/* 패키지강좌 */}
-              {lectureSubTab === 'package' && (
-                <div className="mega-mobile-lecture-list">
-                  {packageLectures.length > 0 ? (
-                    packageLectures.map((lectureSet) => (
-                      <div key={lectureSet.id}>
-                        {lectureSet.lectures.map((lecture, idx) => (
-                          <div key={idx} className="mega-mobile-lecture-card">
-                            <div className="mega-mobile-lecture-card__thumb">
-                              <Image
-                                src={lecture.thumbnail}
-                                alt={lecture.title}
-                                width={96}
-                                height={54}
-                                className="mega-mobile-lecture-card__img"
-                              />
-                            </div>
-                            <div className="mega-mobile-lecture-card__content">
-                              <h3 className="mega-mobile-lecture-card__title">{lecture.title}</h3>
-                              <div className="mega-mobile-lecture-card__rating">
-                                <span className="mega-mobile-lecture-card__stars">
-                                  {Array.from({ length: 5 }).map((_, i) => (
-                                    <span key={i} className={i < filledStars ? "is-on" : "is-off"}>★</span>
-                                  ))}
-                                </span>
-                                <span className="mega-mobile-lecture-card__score">{avgRatingText}</span>
-                                <span className="mega-mobile-lecture-card__review-count">({reviewCount})</span>
-                              </div>
-                            </div>
-                            <a href={lecture.href} className="mega-mobile-lecture-card__link">강좌 보기</a>
-                          </div>
-                        ))}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="mega-mobile-empty">패키지 강좌가 없습니다.</div>
-                  )}
-                </div>
-              )}
-
-              {/* 교재 */}
-              {lectureSubTab === 'book' && teacher.bookSets && (
-                teacher.bookSets.length > 0 ? (
-                  <div className="mega-mobile-book-list">
-                    {teacher.bookSets.map((bookSet) => (
-                      <div key={bookSet.id}>
-                        {bookSet.books.map((book, idx) => (
-                          <a key={idx} href={book.href} className="mega-mobile-book-card">
-                            <div className="mega-mobile-book-card__image">
-                              <Image
-                                src={book.cover}
-                                alt={book.title}
-                                width={80}
-                                height={110}
-                                className="mega-mobile-book-card__img"
-                              />
-                            </div>
-                            <div className="mega-mobile-book-card__info">
-                              <h3 className="mega-mobile-book-card__title">{book.title}</h3>
-                              <span className="mega-mobile-book-card__sub">{book.sub}</span>
-                            </div>
-                          </a>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="mega-mobile-empty">교재가 없습니다.</div>
-                )
-              )}
-            </div>
-          )}
-
-          {/* 게시판 탭 */}
-          {activeTab === 'board' && (
-            <div className="mega-mobile-section">
-              {notices.length > 0 ? (
-                <div className="mega-mobile-board-list">
-                  {notices.map((n, idx) => (
-                    <div key={idx} className="mega-mobile-board-item">
-                      {/* 모바일 게시판 탭: '공지' 태그는 숨김 */}
-                      {n.tag !== 'notice' ? (
-                        <span className="mega-mobile-board-item__tag">
-                          {n.tag === 'event' ? '이벤트' : '교재'}
-                        </span>
-                      ) : null}
-                      {typeof n.href === "string" && n.href.length > 0 ? (
-                        <Link href={n.href} className="mega-mobile-board-item__title">
-                          {n.text}
-                        </Link>
-                      ) : (
-                        <span className="mega-mobile-board-item__title">{n.text}</span>
-                      )}
-                      {n.createdAt && (
-                        <span className="mega-mobile-board-item__date">{relTimeFromIso(n.createdAt)}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mega-mobile-empty">게시글이 없습니다.</div>
-              )}
-            </div>
-          )}
-
-          {/* Q&A 탭 */}
-          {/* 실시간 리뷰 탭 */}
-          {activeTab === 'review' && (
-            <div className="mega-mobile-section">
-              {/* 평점 요약 (PC 실시간 리뷰 카드와 동일한 집계값 사용) */}
-              {reviewCount > 0 ? (
-                <div className="mega-mobile-rating-summary">
-                  <div className="mega-mobile-rating-summary__stars">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <span key={i} className={i < filledStars ? "is-on" : "is-off"}>★</span>
-                    ))}
-                  </div>
-                  <span className="mega-mobile-rating-summary__score">{avgRatingText}</span>
-                  <span className="mega-mobile-rating-summary__count">({reviewCount})</span>
-                </div>
-              ) : (
-                <div className="py-10 text-center text-white/45 text-[13px]">아직 리뷰가 없습니다.</div>
-              )}
-
-              {/* 최근 후기 리스트 */}
-              {reviews.length > 0 ? (
-                <div className="mega-mobile-review-list">
-                  <h3 className="mega-mobile-review-list__title">최근 리뷰</h3>
-                  <div className="space-y-4">
-                    {reviews.slice(0, 5).map((r, idx) => {
-                      const author = maskAuthorName(r.authorName);
-                      const initial = (author || "U").trim()[0] || "U";
-                      return (
-                        <div key={idx} className="p-5 rounded-xl border border-white/10 bg-white/[0.02]">
-                          <div className="flex items-start gap-3 mb-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500/30 to-purple-500/30 flex items-center justify-center shrink-0">
-                              <span className="text-[14px] font-medium text-white/80">{initial}</span>
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[14px] font-medium text-white/90">{author || "익명"}</span>
-                                {renderStars(Number(r.rating), "text-[12px]")}
-                              </div>
-                              {r.createdAt ? (
-                                <p className="text-[12px] text-white/40 mt-0.5">{relTimeFromIso(r.createdAt)}</p>
-                              ) : null}
-                            </div>
-                          </div>
-                          <p className="text-[14px] text-white/70 leading-relaxed">
-                            {stripLeadingScore(r.text)}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          )}
-
-          {/* 새소식 탭 */}
-          {activeTab === 'news' && (
-            <div className="mega-mobile-section">
-              {teacher.curriculum && teacher.curriculum.length > 0 ? (
-                <CurriculumCarousel slides={teacher.curriculum} />
-              ) : embedSrc ? (
-                <div className="mega-mobile-video">
-                  <iframe
-                    src={embedSrc}
-                    title={`${teacher.name} 선생님 커리큘럼 소개`}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
-                </div>
-              ) : (
-                <div className="py-10 text-center text-white/45 text-[13px]">새소식이 없습니다.</div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
@@ -1316,7 +946,11 @@ export default function TeacherDetailClient({ teacher }: Props) {
               {teacher.headerSub ? (
                 <div
                   className={`unova-header-sub ${isLsy ? "unova-header-sub--accent" : ""}`}
-                  style={isLsy ? { color: "#fff", fontWeight: 400 } : undefined}
+                  style={{
+                    ...(isLsy ? { color: "#fff", fontWeight: 400 } : null),
+                    // 요청사항: '문장 구조를 읽는 알고리즘 독해' 등 headerSub 문구를 살짝만 굵게
+                    fontWeight: 600,
+                  }}
                 >
                   {teacher.headerSub}
                 </div>
@@ -1329,7 +963,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
               {menu}
 
               {/* 커리큘럼 소개 유튜브 */}
-              {embedSrc ? (
+              {showYoutube && embedSrc ? (
                 <section
                   id="teacher-curriculum"
                   className="unova-youtube unova-youtube--below-menu unova-scroll-target"
@@ -1346,85 +980,6 @@ export default function TeacherDetailClient({ teacher }: Props) {
                   </div>
                 </section>
               ) : null}
-
-              {/* PC: 관리자에서 선택한 강좌/교재 노출 (더미 데이터 제거) */}
-              {Array.isArray(teacher.lectureSets) && teacher.lectureSets.length > 0 ? (
-                <section id="teacher-lectures" className="mt-8 unova-scroll-target" aria-label="선생님 강좌">
-                  <div className="unova-panel-title">선생님 강좌</div>
-                  <div className="grid gap-3">
-                    {teacher.lectureSets.map((set) => (
-                      <div key={set.id} className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4">
-                        <div className="text-[13px] font-semibold text-white/80 mb-3">{set.label}</div>
-                        <div className="grid gap-2">
-                          {set.lectures.map((lec, idx) => (
-                            <Link
-                              key={`${set.id}-${idx}`}
-                              href={lec.href}
-                              className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 hover:bg-white/[0.05] transition"
-                            >
-                              <Image
-                                src={lec.thumbnail}
-                                alt={lec.title}
-                                width={64}
-                                height={40}
-                                className="h-10 w-16 rounded-md object-cover bg-white/5"
-                                sizes="64px"
-                                loading="lazy"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-[13px] font-medium text-white/90 truncate">{lec.title}</div>
-                                <div className="text-[12px] text-white/40">상품 보기</div>
-                              </div>
-                              <span className="material-symbols-outlined text-white/50" style={{ fontSize: "18px" }} aria-hidden="true">
-                                chevron_right
-                              </span>
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-
-              {Array.isArray(teacher.bookSets) && teacher.bookSets.length > 0 ? (
-                <section id="teacher-books" className="mt-8 unova-scroll-target" aria-label="선생님 교재">
-                  <div className="unova-panel-title">선생님 교재</div>
-                  <div className="grid gap-3">
-                    {teacher.bookSets.map((set) => (
-                      <div key={set.id} className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4">
-                        <div className="text-[13px] font-semibold text-white/80 mb-3">{set.label}</div>
-                        <div className="grid gap-2">
-                          {set.books.map((b, idx) => (
-                            <Link
-                              key={`${set.id}-${idx}`}
-                              href={b.href}
-                              className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 hover:bg-white/[0.05] transition"
-                            >
-                              <Image
-                                src={b.cover}
-                                alt={b.title}
-                                width={40}
-                                height={48}
-                                className="h-12 w-10 rounded-md object-cover bg-white/5"
-                                sizes="40px"
-                                loading="lazy"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-[13px] font-medium text-white/90 truncate">{b.title}</div>
-                                <div className="text-[12px] text-white/40 truncate">{b.sub}</div>
-                              </div>
-                              <span className="material-symbols-outlined text-white/50" style={{ fontSize: "18px" }} aria-hidden="true">
-                                chevron_right
-                              </span>
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ) : null}
             </div>
 
             {/* 가운데 선생님 이미지 */}
@@ -1437,107 +992,100 @@ export default function TeacherDetailClient({ teacher }: Props) {
                 className="unova-teacher-img"
                 priority
               />
-
-              {typeof effectiveSubject === "string" && effectiveSubject.includes("국어") ? (
-                <div className="unova-teacher-slogan" aria-label="선생님 슬로건">
-                  <div className="unova-teacher-slogan__line1">막연한 국어의 끝,</div>
-                  <div className="unova-teacher-slogan__line2">알고리즘 국어</div>
-                </div>
-              ) : null}
             </div>
 
             {/* 오른쪽 패널 */}
             <aside className="unova-right-panel" aria-label="커리큘럼 소개 및 선생님 게시글">
-              {notices.length > 0 ? (
-                <>
-                  {/* PC: 게시글 카드 위 액션 바(요청사항: 게시글 아래로, 그 위에 하트/공유) */}
-                  <div className="hidden md:flex items-center justify-end gap-2" style={{ marginBottom: 10 }}>
-                    {shareToast ? (
-                      <span className="text-[12px] px-2 py-1 rounded-md bg-white/10 whitespace-nowrap">
-                        {shareToast}
-                      </span>
-                    ) : null}
+              {/* PC: 게시글 카드 위 액션 바(요청사항: 게시글 아래로, 그 위에 하트/공유) */}
+              <div className="hidden md:flex items-center justify-end gap-2" style={{ marginBottom: 10 }}>
+                {shareToast ? (
+                  <span className="text-[12px] px-2 py-1 rounded-md bg-white/10 whitespace-nowrap">
+                    {shareToast}
+                  </span>
+                ) : null}
 
-                    <button
-                      type="button"
-                      onClick={toggleTeacherLike}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/10 transition"
-                      style={{
-                        background: isTeacherLiked ? "rgba(244, 63, 94, 0.22)" : "rgba(255,255,255,0.06)",
-                        borderColor: isTeacherLiked ? "rgba(244, 63, 94, 0.35)" : "rgba(255,255,255,0.10)",
-                      }}
-                      aria-label={isTeacherLiked ? "좋아요 취소" : "좋아요"}
-                      title={isTeacherLiked ? "좋아요 취소" : "좋아요"}
+                <button
+                  type="button"
+                  onClick={toggleTeacherLike}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/10 transition"
+                  style={{
+                    background: isTeacherLiked ? "rgba(244, 63, 94, 0.22)" : "rgba(255,255,255,0.06)",
+                    borderColor: isTeacherLiked ? "rgba(244, 63, 94, 0.35)" : "rgba(255,255,255,0.10)",
+                  }}
+                  aria-label={isTeacherLiked ? "좋아요 취소" : "좋아요"}
+                  title={isTeacherLiked ? "좋아요 취소" : "좋아요"}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{
+                      fontSize: "20px",
+                      color: isTeacherLiked ? "rgb(244, 63, 94)" : "rgba(255,255,255,0.70)",
+                      fontVariationSettings: isTeacherLiked
+                        ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 20"
+                        : "'FILL' 0, 'wght' 600, 'GRAD' 0, 'opsz' 20",
+                    }}
+                    aria-hidden="true"
+                  >
+                    favorite
+                  </span>
+                </button>
+
+                <div className="relative" ref={shareMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsShareMenuOpen((v) => !v)}
+                    className="inline-flex h-9 items-center justify-center gap-1 rounded-md border border-white/10 bg-white/[0.06] px-3 hover:bg-white/[0.10] transition"
+                    aria-label="공유하기"
+                    title="공유하기"
+                    aria-expanded={isShareMenuOpen}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }} aria-hidden="true">
+                      share
+                    </span>
+                    <span className="text-[12px] font-semibold text-white/80">공유</span>
+                    <span className="material-symbols-outlined text-white/50" style={{ fontSize: "18px" }} aria-hidden="true">
+                      expand_more
+                    </span>
+                  </button>
+
+                  {isShareMenuOpen ? (
+                    <div
+                      className="absolute right-0 mt-2 w-[210px] rounded-xl border border-white/10 bg-[#1b1b22] shadow-lg overflow-hidden"
+                      role="menu"
+                      aria-label="공유 메뉴"
                     >
-                      <span
-                        className="material-symbols-outlined"
-                        style={{
-                          fontSize: "20px",
-                          color: isTeacherLiked ? "rgb(244, 63, 94)" : "rgba(255,255,255,0.70)",
-                          fontVariationSettings: isTeacherLiked
-                            ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 20"
-                            : "'FILL' 0, 'wght' 600, 'GRAD' 0, 'opsz' 20",
-                        }}
-                        aria-hidden="true"
-                      >
-                        favorite
-                      </span>
-                    </button>
-
-                    <div className="relative" ref={shareMenuRef}>
                       <button
                         type="button"
-                        onClick={() => setIsShareMenuOpen((v) => !v)}
-                        className="inline-flex h-9 items-center justify-center gap-1 rounded-md border border-white/10 bg-white/[0.06] px-3 hover:bg-white/[0.10] transition"
-                        aria-label="공유하기"
-                        title="공유하기"
-                        aria-expanded={isShareMenuOpen}
+                        onClick={handleCopyLink}
+                        className="w-full px-4 py-3 text-left text-[13px] text-white/85 hover:bg-white/[0.06] transition"
+                        role="menuitem"
                       >
-                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }} aria-hidden="true">
-                          share
-                        </span>
-                        <span className="text-[12px] font-semibold text-white/80">공유</span>
-                        <span className="material-symbols-outlined text-white/50" style={{ fontSize: "18px" }} aria-hidden="true">
-                          expand_more
-                        </span>
+                        링크 복사
                       </button>
-
-                      {isShareMenuOpen ? (
-                        <div
-                          className="absolute right-0 mt-2 w-[210px] rounded-xl border border-white/10 bg-[#1b1b22] shadow-lg overflow-hidden"
-                          role="menu"
-                          aria-label="공유 메뉴"
-                        >
-                          <button
-                            type="button"
-                            onClick={handleCopyLink}
-                            className="w-full px-4 py-3 text-left text-[13px] text-white/85 hover:bg-white/[0.06] transition"
-                            role="menuitem"
-                          >
-                            링크 복사
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleShareDevice}
-                            className="w-full px-4 py-3 text-left text-[13px] text-white/85 hover:bg-white/[0.06] transition"
-                            role="menuitem"
-                          >
-                            기기 공유(공유 시트)
-                          </button>
-                        </div>
-                      ) : null}
+                      <button
+                        type="button"
+                        onClick={handleShareDevice}
+                        className="w-full px-4 py-3 text-left text-[13px] text-white/85 hover:bg-white/[0.06] transition"
+                        role="menuitem"
+                      >
+                        기기 공유(공유 시트)
+                      </button>
                     </div>
-                  </div>
+                  ) : null}
+                </div>
+              </div>
 
-                  <section
-                    id="teacher-board"
-                    className="unova-news-card unova-scroll-target"
-                    aria-label="선생님 게시글"
-                    style={{ marginTop: 8 }}
-                  >
-                    <div className="unova-card-head">
-                      <span className="unova-card-title">선생님 게시글</span>
-                    </div>
+              <section
+                id="teacher-board"
+                className="unova-news-card unova-scroll-target"
+                aria-label="선생님 게시글"
+                style={{ marginTop: 8 }}
+              >
+                <div className="unova-card-head">
+                  <span className="unova-card-title">선생님 게시글</span>
+                </div>
+
+                {notices.length > 0 ? (
                   <ul className="unova-news-card__list">
                     {notices.slice(0, 5).map((n, idx) => (
                       <li key={idx} className="unova-news-card__item">
@@ -1559,9 +1107,10 @@ export default function TeacherDetailClient({ teacher }: Props) {
                       </li>
                     ))}
                   </ul>
-                  </section>
-                </>
-              ) : null}
+                ) : (
+                  <div className="px-5 pb-5 text-[13px] text-white/55">게시글이 없습니다.</div>
+                )}
+              </section>
 
               <section id="teacher-review" className="unova-rating-card unova-scroll-target" aria-label="실시간 리뷰">
                 <div className="unova-card-head">
@@ -1614,405 +1163,16 @@ export default function TeacherDetailClient({ teacher }: Props) {
           </div>
         </div>
 
-        {/* PC에서는 아래 섹션 제거 (모바일만 유지) */}
-        <div className="md:hidden">
-          {/* 커리큘럼 캐러셀 */}
-          {teacher.curriculum && teacher.curriculum.length > 0 && (
-            <CurriculumCarousel slides={teacher.curriculum} />
-          )}
-
-          {/* 교재 구매하기 섹션 */}
-          {teacher.bookSets && teacher.bookSets.length > 0 && (
-            <BookCoverFlow
-              title="교재 구매하기."
-              bookSets={teacher.bookSets}
-              defaultTab={teacher.bookSets[0].id}
-            />
-          )}
-
-          {/* 강의 구매하기 섹션 */}
-          {teacher.lectureSets && teacher.lectureSets.length > 0 && (
-            <LectureRail
-              title="강의 구매하기."
-              lectureSets={teacher.lectureSets}
-              defaultTab={teacher.lectureSets[0].id}
-              curriculumLink={teacher.curriculumLink}
-            />
-          )}
-        </div>
+        {/* (모바일 강의/교재는 상단 mega-mobile-layout에서 메인페이지 카드 UI로 노출) */}
       </div>
 
-      {/* PC: 선생님 이미지 아래(검정 섹션) - 탭 메뉴 + 새소식(상세 이미지) */}
+      {/* PC: 선생님 이미지 아래(검정 섹션) - 강의/교재 고정 노출 */}
       <section id="teacher-tabs" className="hidden md:block bg-[#161616] unova-scroll-target">
-        {/* PC 탭 바: 스크롤 시 헤더 아래 고정 */}
-        <div ref={pcTabsSentinelRef} aria-hidden="true" />
-        <div ref={pcTabsBarRef} className={`unova-tabs-bar ${isPcTabsPinned ? "is-fixed" : ""}`}>
-          <div className="mx-auto max-w-6xl px-4">
-            {/* PC 탭 메뉴: 실제 tablist/tab/tabpanel 구조 */}
-            <nav className="unova-desktop-tabs unova-desktop-tabs--black" aria-label="선생님 정보 탭 메뉴 (PC)" role="tablist">
-              <div className="unova-desktop-tabs__scroll">
-              <button
-                id="pc-tab-intro"
-                role="tab"
-                type="button"
-                aria-selected={pcActiveTab === "intro"}
-                aria-controls="pc-tabpanel-intro"
-                className={`unova-desktop-tab ${pcActiveTab === "intro" ? "is-active" : ""}`}
-                onClick={() => handlePcTabClick("intro")}
-              >
-                {TAB_LABEL.intro}
-              </button>
-
-              <button
-                id="pc-tab-lecture"
-                role="tab"
-                type="button"
-                aria-selected={pcActiveTab === "lecture"}
-                aria-controls="pc-tabpanel-lecture"
-                className={`unova-desktop-tab ${pcActiveTab === "lecture" ? "is-active" : ""}`}
-                onClick={() => handlePcTabClick("lecture")}
-              >
-                {TAB_LABEL.lecture}
-              </button>
-
-              <button
-                id="pc-tab-board"
-                role="tab"
-                type="button"
-                aria-selected={pcActiveTab === "board"}
-                aria-controls="pc-tabpanel-board"
-                className={`unova-desktop-tab ${pcActiveTab === "board" ? "is-active" : ""} ${hasPcBoard ? "" : "is-disabled"}`}
-                onClick={() => hasPcBoard && handlePcTabClick("board")}
-                disabled={!hasPcBoard}
-              >
-                {TAB_LABEL.board}
-              </button>
-
-              <button
-                id="pc-tab-review"
-                role="tab"
-                type="button"
-                aria-selected={pcActiveTab === "review"}
-                aria-controls="pc-tabpanel-review"
-                className={`unova-desktop-tab ${pcActiveTab === "review" ? "is-active" : ""}`}
-                onClick={() => handlePcTabClick("review")}
-              >
-                {TAB_LABEL.review}
-              </button>
-
-              <button
-                id="pc-tab-news"
-                role="tab"
-                type="button"
-                aria-selected={pcActiveTab === "news"}
-                aria-controls="pc-tabpanel-news"
-                className={`unova-desktop-tab ${pcActiveTab === "news" ? "is-active" : ""} ${hasPcNews ? "" : "is-disabled"}`}
-                onClick={() => hasPcNews && handlePcTabClick("news")}
-                disabled={!hasPcNews}
-              >
-                {TAB_LABEL.news}
-              </button>
-              </div>
-            </nav>
-          </div>
-        </div>
-        {isPcTabsPinned ? <div style={{ height: pcTabsBarHeight }} aria-hidden="true" /> : null}
-
-        <div className="mx-auto max-w-6xl px-4">
-          <div className="unova-desktop-tabpanels">
-            {/* 선생님 소개(상세 이미지) 패널 */}
-            {pcActiveTab === "intro" ? (
-              <div
-                id="pc-tabpanel-intro"
-                role="tabpanel"
-                aria-labelledby="pc-tab-intro"
-                className="unova-desktop-tabpanel"
-              >
-                {typeof teacher.promoImageUrl === "string" && teacher.promoImageUrl.trim() ? (
-                  <div className="py-10">
-                    <div className="unova-promo-image overflow-hidden bg-white/[0.02]">
-                      <Image
-                        src={teacher.promoImageUrl.trim()}
-                        alt={`${teacher.name} 선생님 상세페이지 이미지`}
-                        width={1600}
-                        height={1200}
-                        className="w-full h-auto"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="unova-desktop-panel-empty">소개가 준비중입니다.</div>
-                )}
-              </div>
-            ) : null}
-
-            {/* 강좌/교재 패널 */}
-            {pcActiveTab === "lecture" ? (
-              <div
-                id="pc-tabpanel-lecture"
-                role="tabpanel"
-                aria-labelledby="pc-tab-lecture"
-                className="unova-desktop-tabpanel"
-              >
-                <div className="unova-desktop-panel--flat">
-                  {/* PC에서도 모바일처럼: 강좌/교재 하위 탭 메뉴 */}
-                  <div className="border-b border-white/10">
-                    <div className="flex items-center gap-8 px-1">
-                      <button
-                        type="button"
-                        onClick={() => setLectureSubTab("single")}
-                        className={`relative py-4 text-base ${
-                          lectureSubTab === "single" ? "font-semibold text-white" : "text-white/70 hover:text-white"
-                        }`}
-                      >
-                        {LECTURE_SUBTAB_LABEL.single}
-                        {lectureSubTab === "single" ? <span className="absolute inset-x-0 -bottom-[1px] h-0.5 bg-white" /> : null}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLectureSubTab("package")}
-                        className={`relative py-4 text-base ${
-                          lectureSubTab === "package"
-                            ? "font-semibold text-white"
-                            : "text-white/70 hover:text-white"
-                        }`}
-                      >
-                        {LECTURE_SUBTAB_LABEL.package}
-                        {lectureSubTab === "package" ? <span className="absolute inset-x-0 -bottom-[1px] h-0.5 bg-white" /> : null}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLectureSubTab("book")}
-                        className={`relative py-4 text-base ${
-                          lectureSubTab === "book"
-                            ? "font-semibold text-white"
-                            : "text-white/70 hover:text-white"
-                        }`}
-                      >
-                        {LECTURE_SUBTAB_LABEL.book}
-                        {lectureSubTab === "book" ? <span className="absolute inset-x-0 -bottom-[1px] h-0.5 bg-white" /> : null}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 콘텐츠 */}
-                  {lectureSubTab === "book" ? (
-                    (teacher.bookSets?.length ?? 0) > 0 ? (
-                      <section className="mt-6" aria-label="선생님 교재">
-                        <div className="unova-panel-title">선생님 교재</div>
-                        <div className="grid gap-3">
-                          {(teacher.bookSets || []).map((set) => (
-                            <div key={set.id} className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4">
-                              <div className="text-[13px] font-semibold text-white/80 mb-3">{set.label}</div>
-                              <div className="grid gap-2">
-                                {set.books.map((b, idx) => (
-                                  <Link
-                                    key={`${set.id}-${idx}`}
-                                    href={b.href}
-                                    className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 hover:bg-white/[0.05] transition"
-                                  >
-                                    <Image
-                                      src={b.cover}
-                                      alt={b.title}
-                                      width={40}
-                                      height={48}
-                                      className="h-12 w-10 rounded-md object-cover bg-white/5"
-                                      sizes="40px"
-                                      loading="lazy"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <div className="text-[13px] font-medium text-white/90 truncate">{b.title}</div>
-                                      <div className="text-[12px] text-white/40 truncate">{b.sub}</div>
-                                    </div>
-                                    <span className="material-symbols-outlined text-white/50" style={{ fontSize: "18px" }} aria-hidden="true">
-                                      chevron_right
-                                    </span>
-                                  </Link>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </section>
-                    ) : (
-                      <div className="unova-desktop-panel-empty">교재가 없습니다.</div>
-                    )
-                  ) : (
-                    <>
-                      {(lectureSubTab === "package" ? packageLectures : singleLectures).length > 0 ? (
-                        <section className="mt-6" aria-label="선생님 강좌">
-                          <div className="unova-panel-title">선생님 강좌</div>
-                          <div className="grid gap-3">
-                            {(lectureSubTab === "package" ? packageLectures : singleLectures).map((set) => (
-                              <div key={set.id} className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4">
-                                <div className="text-[13px] font-semibold text-white/80 mb-3">{set.label}</div>
-                                <div className="grid gap-2">
-                                  {set.lectures.map((lec, idx) => (
-                                    <Link
-                                      key={`${set.id}-${idx}`}
-                                      href={lec.href}
-                                      className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 hover:bg-white/[0.05] transition"
-                                    >
-                                      <Image
-                                        src={lec.thumbnail}
-                                        alt={lec.title}
-                                        width={64}
-                                        height={40}
-                                        className="h-10 w-16 rounded-md object-cover bg-white/5"
-                                        sizes="64px"
-                                        loading="lazy"
-                                      />
-                                      <div className="flex-1 min-w-0">
-                                        <div className="text-[13px] font-medium text-white/90 truncate">{lec.title}</div>
-                                        <div className="text-[12px] text-white/40">상품 보기</div>
-                                      </div>
-                                      <span className="material-symbols-outlined text-white/50" style={{ fontSize: "18px" }} aria-hidden="true">
-                                        chevron_right
-                                      </span>
-                                    </Link>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </section>
-                      ) : (
-                        <div className="unova-desktop-panel-empty">
-                          {lectureSubTab === "package" ? "패키지 강좌가 없습니다." : "강좌가 없습니다."}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            ) : null}
-
-            {/* 게시판 패널 */}
-            {pcActiveTab === "board" ? (
-              <div
-                id="pc-tabpanel-board"
-                role="tabpanel"
-                aria-labelledby="pc-tab-board"
-                className="unova-desktop-tabpanel"
-              >
-                {notices.length > 0 ? (
-                  <section className="unova-news-card--flat" aria-label="선생님 게시글">
-                    <div className="unova-card-head">
-                      <span className="unova-card-title">선생님 게시글</span>
-                    </div>
-                    <ul className="unova-news-card__list">
-                      {notices.slice(0, 10).map((n, idx) => (
-                        <li key={idx} className="unova-news-card__item">
-                          <div className="unova-news-card__body">
-                            {typeof n.href === "string" && n.href.length > 0 ? (
-                              <Link href={n.href} className="unova-news-card__text">
-                                {n.text}
-                              </Link>
-                            ) : (
-                              <span className="unova-news-card__text">{n.text}</span>
-                            )}
-                            {(n.authorName || n.createdAt) ? (
-                              <div className="unova-news-card__meta">
-                                {n.authorName ? <span className="unova-news-card__author">{formatTeacherLabel(n.authorName)}</span> : null}
-                                {n.createdAt ? <span className="unova-news-card__time">{relTimeFromIso(n.createdAt)}</span> : null}
-                              </div>
-                            ) : null}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ) : (
-                  <div className="unova-desktop-panel-empty">게시글이 없습니다.</div>
-                )}
-              </div>
-            ) : null}
-
-            {/* 리뷰 패널 */}
-            {pcActiveTab === "review" ? (
-              <div
-                id="pc-tabpanel-review"
-                role="tabpanel"
-                aria-labelledby="pc-tab-review"
-                className="unova-desktop-tabpanel"
-              >
-                <section className="unova-rating-card--flat" aria-label="실시간 리뷰">
-                  <div className="unova-card-head">
-                    <span className="unova-card-title">실시간 리뷰</span>
-                  </div>
-
-                  {reviewCount > 0 ? (
-                    <>
-                      <div className="unova-rating-card__meta">
-                        <div className="unova-rating-card__left">
-                          <div className="unova-rating-card__stars" aria-label={`평점 ${avgRatingText}점 (5점 만점)`}>
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <span key={i} className={i < filledStars ? "is-on" : "is-off"} aria-hidden="true">★</span>
-                            ))}
-                          </div>
-                          <div className="unova-rating-card__score">
-                            {avgRatingText}
-                            <small>/5</small>
-                          </div>
-                          <span className="unova-rating-card__count">총 리뷰 {reviewCount}개</span>
-                        </div>
-                      </div>
-                      <ul className="unova-rating-card__list">
-                        {reviews.slice(0, 10).map((r, idx) => (
-                          <li key={idx} className="unova-rating-card__item">
-                            <div className="unova-rating-card__item-head">
-                              <span className="unova-rating-card__item-title">{stripLeadingScore(r.text)}</span>
-                              <span className="unova-rating-card__item-score">
-                                {Number(r.rating).toFixed(1)}
-                                <span className="unova-rating-card__item-score-suffix">/5</span>
-                              </span>
-                            </div>
-                            {(r.authorName || r.createdAt) ? (
-                              <div className="unova-rating-card__item-sub">
-                                <div className="unova-rating-card__meta-row">
-                                  {r.authorName ? <span className="unova-rating-card__author">{r.authorName}</span> : null}
-                                  {r.createdAt ? <span className="unova-rating-card__time">{relTimeFromIso(r.createdAt)}</span> : null}
-                                </div>
-                              </div>
-                            ) : null}
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : (
-                    <div className="px-5 pb-5 text-[13px] text-white/55">아직 리뷰가 없습니다.</div>
-                  )}
-                </section>
-              </div>
-            ) : null}
-
-            {/* 새소식(상세 이미지) 패널 */}
-            {pcActiveTab === "news" ? (
-              <div
-                id="pc-tabpanel-news"
-                role="tabpanel"
-                aria-labelledby="pc-tab-news"
-                className="unova-desktop-tabpanel"
-              >
-                {embedSrc ? (
-                  <div className="unova-desktop-panel">
-                    <div className="unova-panel-title">커리큘럼 소개</div>
-                    <div className="unova-youtube__frame">
-                      <iframe
-                        src={embedSrc}
-                        title={`${teacher.name} 선생님 커리큘럼 소개`}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="unova-desktop-panel-empty">새소식이 없습니다.</div>
-                )}
-              </div>
-            ) : null}
-          </div>
-        </div>
+        <StorePreviewTabs
+          courses={Array.isArray(teacher.storeCourses) ? teacher.storeCourses : []}
+          textbooks={Array.isArray(teacher.storeTextbooks) ? teacher.storeTextbooks : []}
+          variant="sections"
+        />
       </section>
 
       {/* 학력/약력 모달 */}

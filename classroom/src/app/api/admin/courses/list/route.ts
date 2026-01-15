@@ -4,11 +4,20 @@ import { requireAdminUser } from "@/lib/current-user";
 
 export const runtime = "nodejs";
 
-export async function GET() {
-  await requireAdminUser();
+export async function GET(req: Request) {
+  const admin = await requireAdminUser();
+  const url = new URL(req.url);
+  const scope = (url.searchParams.get("scope") || "").trim();
+
+  // 기본: "공개된 강좌(전체)" - 레거시 호환
+  // scope=teacher-picker: /admin/teachers의 "강좌 선택" 용 → 강좌 판매하기(내 강좌) 기준으로만 노출
+  const where =
+    scope === "teacher-picker"
+      ? { ownerId: admin.id }
+      : { isPublished: true };
 
   const courses = await prisma.course.findMany({
-    where: { isPublished: true },
+    where,
     orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
     take: 500,
     select: {

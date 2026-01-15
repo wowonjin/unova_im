@@ -15,9 +15,9 @@ type Teacher = {
 };
 
 function subjectBadgeClass(subjectName: string): string {
-  // 요청: 과목명은 회색 컨테이너에 검정 글씨로 통일
+  // 전체 다크모드: 과목 배지도 다크 톤으로 통일
   void subjectName;
-  return "bg-neutral-200 text-black border-black/10";
+  return "bg-white/10 text-white/80 border-white/10";
 }
 
 export default function TeachersPage() {
@@ -132,7 +132,7 @@ export default function TeachersPage() {
                   onClick={() => setSelectedSubject(subject)}
                   className={`px-4 py-2 rounded-full text-[14px] font-medium transition-all whitespace-nowrap ${
                     selectedSubject === subject
-                      ? "bg-white text-black"
+                      ? "bg-white/10 text-white"
                       : "text-white/60 hover:text-white hover:bg-white/[0.06]"
                   }`}
                 >

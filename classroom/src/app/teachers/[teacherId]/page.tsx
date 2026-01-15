@@ -6,6 +6,7 @@ import TeacherDetailClient from "./TeacherDetailClient";
 import type { TeacherDetailTeacher } from "./TeacherDetailClient";
 import { prisma } from "@/lib/prisma";
 import { getTeacherRatingSummary } from "@/lib/teacher-rating";
+import type { StorePreviewProduct } from "@/app/_components/StorePreviewTabs";
 
 // 공개 선생님 페이지는 유저별 데이터가 아니고(쿠키/세션 의존 X),
 // DB 조회가 많아 SSR 반복 비용이 커서 ISR 캐시로 완화합니다.
@@ -48,18 +49,48 @@ async function buildTeacherLectureAndBookSets({
 }): Promise<{
   lectureSets: LectureSet[];
   bookSets: BookSet[];
+  storeCourses: StorePreviewProduct[];
+  storeTextbooks: StorePreviewProduct[];
 }> {
   const [courses, textbooks] = await Promise.all([
     courseIds.length
       ? prisma.course.findMany({
           where: { id: { in: courseIds }, isPublished: true },
-          select: { id: true, slug: true, title: true, thumbnailUrl: true, thumbnailStoredPath: true },
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            teacherName: true,
+            subjectName: true,
+            price: true,
+            originalPrice: true,
+            tags: true,
+            rating: true,
+            reviewCount: true,
+            thumbnailUrl: true,
+            thumbnailStoredPath: true,
+            updatedAt: true,
+          },
         })
       : Promise.resolve([]),
     textbookIds.length
       ? prisma.textbook.findMany({
           where: { id: { in: textbookIds }, isPublished: true },
-          select: { id: true, title: true, thumbnailUrl: true, composition: true, textbookType: true },
+          select: {
+            id: true,
+            title: true,
+            teacherName: true,
+            subjectName: true,
+            price: true,
+            originalPrice: true,
+            tags: true,
+            rating: true,
+            reviewCount: true,
+            thumbnailUrl: true,
+            composition: true,
+            textbookType: true,
+            updatedAt: true,
+          },
         })
       : Promise.resolve([]),
   ]);
@@ -82,6 +113,23 @@ async function buildTeacherLectureAndBookSets({
     ...(pack.length ? [{ id: "package", label: "패키지강좌", lectures: pack }] : []),
   ];
 
+  const storeCourses: StorePreviewProduct[] = orderedCourses.map((c) => ({
+    id: c.id,
+    title: c.title,
+    subject: (c.subjectName || "미분류") as string,
+    teacher: (c.teacherName || "선생님") as string,
+    price: typeof c.price === "number" ? c.price : 0,
+    originalPrice: typeof c.originalPrice === "number" ? c.originalPrice : null,
+    tags: Array.isArray(c.tags) ? (c.tags as any[]).filter((t) => typeof t === "string") as string[] : [],
+    textbookType: null,
+    type: "course",
+    thumbnailUrl: c.thumbnailUrl ?? null,
+    thumbnailStoredPath: c.thumbnailStoredPath ?? null,
+    thumbnailUpdatedAtISO: c.updatedAt?.toISOString?.() ? c.updatedAt.toISOString() : null,
+    rating: typeof c.rating === "number" ? c.rating : null,
+    reviewCount: typeof c.reviewCount === "number" ? c.reviewCount : null,
+  }));
+
   const textbookById = new Map(textbooks.map((t) => [t.id, t]));
   const orderedTextbooks = textbookIds.map((id) => textbookById.get(id)).filter(Boolean) as typeof textbooks;
   const books: Book[] = orderedTextbooks.map((t) => ({
@@ -93,7 +141,23 @@ async function buildTeacherLectureAndBookSets({
 
   const bookSets: BookSet[] = books.length ? [{ id: "selected", label: "교재", books }] : [];
 
-  return { lectureSets, bookSets };
+  const storeTextbooks: StorePreviewProduct[] = orderedTextbooks.map((t) => ({
+    id: t.id,
+    title: t.title,
+    subject: (t.subjectName || "교재") as string,
+    teacher: (t.teacherName || "선생님") as string,
+    price: typeof t.price === "number" ? t.price : 0,
+    originalPrice: typeof t.originalPrice === "number" ? t.originalPrice : null,
+    tags: Array.isArray(t.tags) ? (t.tags as any[]).filter((x) => typeof x === "string") as string[] : [],
+    textbookType: typeof t.textbookType === "string" ? t.textbookType : null,
+    type: "textbook",
+    thumbnailUrl: t.thumbnailUrl ?? null,
+    thumbnailUpdatedAtISO: t.updatedAt?.toISOString?.() ? t.updatedAt.toISOString() : null,
+    rating: typeof t.rating === "number" ? t.rating : null,
+    reviewCount: typeof t.reviewCount === "number" ? t.reviewCount : null,
+  }));
+
+  return { lectureSets, bookSets, storeCourses, storeTextbooks };
 }
 
 type Banner = {
@@ -222,70 +286,79 @@ function noticeCategoryToTag(category: string): Notice["tag"] {
 async function getTeacherRecentNoticesForRightPanel(teacherName: string): Promise<Notice[]> {
   const take = 5;
   const baseWhere = { isPublished: true } as const;
+  const normalizedTeacherName = (teacherName || "").trim();
 
-  // 1) 선생님별 카테고리("선생님 공지사항 - {이름}") 우선
-  const byTeacherCategory = await prisma.notice.findMany({
-    where: {
-      ...baseWhere,
-      category: { contains: `선생님 공지사항 - ${teacherName}` },
-    },
-    orderBy: [{ createdAt: "desc" }],
-    take,
-    select: { slug: true, title: true, category: true, createdAt: true, author: { select: { name: true } } },
-  });
+  try {
+    // 1) 선생님별 카테고리("선생님 공지사항 - {이름}") 우선
+    const byTeacherCategory = await prisma.notice.findMany({
+      where: {
+        ...baseWhere,
+        category: { contains: `선생님 공지사항 - ${normalizedTeacherName}` },
+      },
+      orderBy: [{ createdAt: "desc" }],
+      take,
+      select: { slug: true, title: true, category: true, createdAt: true, author: { select: { name: true } } },
+    });
 
-  // 2) 레거시/유연 매칭: 카테고리 내 "선생님"+"이름" 포함
-  const byCategoryContainsName =
-    byTeacherCategory.length > 0
-      ? []
-      : await prisma.notice.findMany({
-          where: {
-            ...baseWhere,
-            category: { contains: "선생님" },
-            title: { not: "" },
-            ...(teacherName ? { category: { contains: teacherName } } : {}),
-          } as any,
-          orderBy: [{ createdAt: "desc" }],
-          take,
-          select: { slug: true, title: true, category: true, createdAt: true, author: { select: { name: true } } },
-        });
+    // 2) 레거시/유연 매칭: 카테고리 내 "선생님"+"이름" 포함
+    const byCategoryContainsName =
+      byTeacherCategory.length > 0
+        ? []
+        : await prisma.notice.findMany({
+            where: {
+              ...baseWhere,
+              title: { not: "" },
+              AND: normalizedTeacherName
+                ? [{ category: { contains: "선생님" } }, { category: { contains: teacherName } }]
+                : [{ category: { contains: "선생님" } }],
+            },
+            orderBy: [{ createdAt: "desc" }],
+            take,
+            select: { slug: true, title: true, category: true, createdAt: true, author: { select: { name: true } } },
+          });
 
-  // 3) 가능하면 작성자 이름에 선생님 이름이 들어간 공지를 노출(레거시)
-  const byAuthorName =
-    byTeacherCategory.length > 0 || byCategoryContainsName.length > 0
-      ? []
-      : await prisma.notice.findMany({
-          where: {
-            ...baseWhere,
-            category: { contains: "선생님" },
-            author: { name: { contains: teacherName } },
-          },
-          orderBy: [{ createdAt: "desc" }],
-          take,
-          select: { slug: true, title: true, category: true, createdAt: true, author: { select: { name: true } } },
-        });
+    // 3) 가능하면 작성자 이름에 선생님 이름이 들어간 공지를 노출(레거시)
+    const byAuthorName =
+      byTeacherCategory.length > 0 || byCategoryContainsName.length > 0
+        ? []
+        : await prisma.notice.findMany({
+            where: {
+              ...baseWhere,
+              category: { contains: "선생님" },
+              author: { name: { contains: normalizedTeacherName } },
+            },
+            orderBy: [{ createdAt: "desc" }],
+            take,
+            select: { slug: true, title: true, category: true, createdAt: true, author: { select: { name: true } } },
+          });
 
-  const list =
-    byTeacherCategory.length > 0
-      ? byTeacherCategory
-      : byCategoryContainsName.length > 0
-        ? byCategoryContainsName
-        : byAuthorName.length > 0
-          ? byAuthorName
-          : await prisma.notice.findMany({
-              where: { ...baseWhere, category: { contains: "선생님" } },
-              orderBy: [{ createdAt: "desc" }],
-              take,
-              select: { slug: true, title: true, category: true, createdAt: true, author: { select: { name: true } } },
-            });
+    const list =
+      byTeacherCategory.length > 0
+        ? byTeacherCategory
+        : byCategoryContainsName.length > 0
+          ? byCategoryContainsName
+          : byAuthorName.length > 0
+            ? byAuthorName
+            : await prisma.notice.findMany({
+                where: { ...baseWhere, category: { contains: "선생님" } },
+                orderBy: [{ createdAt: "desc" }],
+                take,
+                select: { slug: true, title: true, category: true, createdAt: true, author: { select: { name: true } } },
+              });
 
-  return list.map((n) => ({
-    tag: noticeCategoryToTag(n.category),
-    text: n.title,
-    href: `/notices/${n.slug}`,
-    authorName: n.author?.name || undefined,
-    createdAt: n.createdAt?.toISOString?.() ? n.createdAt.toISOString() : undefined,
-  }));
+    return list.map((n) => ({
+      tag: noticeCategoryToTag(n.category),
+      text: n.title,
+      href: `/notices/${n.slug}`,
+      authorName: n.author?.name || undefined,
+      createdAt: n.createdAt?.toISOString?.() ? n.createdAt.toISOString() : undefined,
+    }));
+  } catch (e) {
+    // DB 연결/쿼리 타임아웃 등으로 페이지 전체가 죽지 않도록 폴백 처리
+    // eslint-disable-next-line no-console
+    console.warn("[teachers] failed to load recent notices for right panel:", e);
+    return [];
+  }
 }
 
 const teachersData: Record<string, TeacherData> = {
@@ -841,7 +914,7 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
 
     // 관리자에서 선택한 강좌/교재를 선생님 페이지에 연동 (더미 데이터 제거)
     const selected = await getTeacherSelectedProductIdsBySlug(dbTeacher.slug);
-    const { lectureSets, bookSets } = await buildTeacherLectureAndBookSets(selected);
+    const { lectureSets, bookSets, storeCourses, storeTextbooks } = await buildTeacherLectureAndBookSets(selected);
 
     const normalizeLines = (v: unknown): string[] => {
       if (typeof v !== "string") return [];
@@ -889,11 +962,14 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
         createdAt: r.createdAt.toISOString(),
       })),
       ratingSummary: { reviewCount: ratingSummary.reviewCount, avgRating: ratingSummary.avgRating },
-      notices: recentNotices.length > 0 ? recentNotices : yooYerinTemplate.notices || [],
+      // "선생님 게시글"은 실제 공지사항(Notice)와 연동된 데이터만 사용
+      notices: recentNotices,
       floatingBanners: yooYerinTemplate.floatingBanners || [],
       curriculum: yooYerinTemplate.curriculum,
       bookSets,
       lectureSets,
+      storeCourses,
+      storeTextbooks,
       curriculumLink: yooYerinTemplate.curriculumLink,
       youtubeVideos: dbTeacher.youtubeUrl
         ? [{ url: dbTeacher.youtubeUrl }]
@@ -922,8 +998,8 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
       socialLinks,
       navigationLinks: {
         ...(yooYerinTemplate.navigationLinks || {}),
-        ...(lectureSets.length ? { lecture: "#teacher-lectures" } : {}),
-        ...(bookSets.length ? { book: "#teacher-books" } : {}),
+        ...(lectureSets.length ? { lecture: "#teacher-tabs" } : {}),
+        ...(bookSets.length ? { book: "#teacher-tabs" } : {}),
         board: boardHref,
       },
     };
@@ -977,21 +1053,24 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
 
     // 관리자에서 선택한 강좌/교재를 선생님 페이지에 연동 (더미 데이터 제거)
     const selected = await getTeacherSelectedProductIdsBySlug(teacherId);
-    const { lectureSets, bookSets } = await buildTeacherLectureAndBookSets(selected);
+    const { lectureSets, bookSets, storeCourses, storeTextbooks } = await buildTeacherLectureAndBookSets(selected);
 
     const teacherWithLiveData: TeacherDetailTeacher = {
       ...(teacher as any),
       slug: teacherId,
       ...(typeof fixedHeaderSub === "string" ? { headerSub: fixedHeaderSub } : {}),
-      ...(recentNotices.length > 0 ? { notices: recentNotices } : {}),
+      // "선생님 게시글"은 실제 공지사항(Notice)와 연동된 데이터만 사용
+      notices: recentNotices,
       navigationLinks: {
         ...(((teacher as any)?.navigationLinks ?? {}) as any),
-        ...(lectureSets.length ? { lecture: "#teacher-lectures" } : {}),
-        ...(bookSets.length ? { book: "#teacher-books" } : {}),
+        ...(lectureSets.length ? { lecture: "#teacher-tabs" } : {}),
+        ...(bookSets.length ? { book: "#teacher-tabs" } : {}),
         board: boardHref,
       },
       lectureSets,
       bookSets,
+      storeCourses,
+      storeTextbooks,
       // NOTE: 템플릿(하드코딩) 테스트 리뷰가 노출되지 않도록, 항상 "실제 DB 리뷰 집계"로 덮어씀
       reviews: ratingSummary.recentReviews.map((r) => ({
         text: r.content,

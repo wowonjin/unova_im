@@ -241,8 +241,9 @@ export default function TeachersAdminClient() {
     (async () => {
       try {
         const [cRes, tRes] = await Promise.all([
-          fetch("/api/admin/courses/list", { cache: "no-store" }),
-          fetch("/api/admin/textbooks/list", { cache: "no-store" }),
+          // 강좌/교재 선택 옵션은 "판매하기" 기준으로만 노출
+          fetch("/api/admin/courses/list?scope=teacher-picker", { cache: "no-store" }),
+          fetch("/api/admin/textbooks/list?scope=teacher-picker", { cache: "no-store" }),
         ]);
         const cJson = await cRes.json().catch(() => null);
         const tJson = await tRes.json().catch(() => null);
