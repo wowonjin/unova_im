@@ -552,7 +552,11 @@ function StorePreviewSections({
           </div>
         ) : null}
         <div className="mt-6">
-          <ExpandableProductGrid products={filteredSuneungTextbooks} emptyLabel="등록된 교재 상품이 없습니다" />
+          <ExpandableProductGrid
+            products={filteredSuneungTextbooks}
+            emptyLabel="등록된 교재 상품이 없습니다"
+            collapsedRows={3}
+          />
         </div>
 
         <div className="mt-14 md:mt-16">
@@ -583,7 +587,11 @@ function StorePreviewSections({
             </div>
           ) : null}
           <div className="mt-6">
-            <ExpandableProductGrid products={filteredTransferTextbooks} emptyLabel="등록된 교재 상품이 없습니다" />
+            <ExpandableProductGrid
+              products={filteredTransferTextbooks}
+              emptyLabel="등록된 교재 상품이 없습니다"
+              collapsedRows={3}
+            />
           </div>
         </div>
       </div>

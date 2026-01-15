@@ -19,7 +19,7 @@ type LandingHeaderProps = {
   backgroundColor?: string;
   topBackgroundColor?: string;
   scrolledBackgroundColor?: string;
-  scrolledOpacity?: number; // 0~1
+  scrolledOpacity?: number; // 0~1 (prop 우선, 없으면 CSS 변수/기본값 사용)
   variant?: "dark" | "light";
   scrolledVariant?: "dark" | "light";
   /** PC(>=1024px)에서 스크롤 전 헤더 배경을 투명하게 만들어 콘텐츠와 겹치게(오버레이) 보이도록 합니다. */
@@ -86,13 +86,14 @@ export default function LandingHeader({
   backgroundColor = "#161616",
   topBackgroundColor,
   scrolledBackgroundColor,
-  scrolledOpacity = 0.72,
+  scrolledOpacity,
   variant = "dark",
   scrolledVariant,
   overlayOnDesktop = false,
 }: LandingHeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
+  const [dynamicScrolledOpacity, setDynamicScrolledOpacity] = useState<number | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -166,6 +167,38 @@ export default function LandingHeader({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // 외부(페이지/컴포넌트)에서 CSS 변수로 헤더 투명도를 동적으로 제어할 수 있게 함
+  // - 예: 스토어 상세에서 탭이 헤더 아래에 sticky로 붙을 때 탭 배경과 동일한 알파로 동기화
+  useEffect(() => {
+    const read = () => {
+      try {
+        const raw = getComputedStyle(document.documentElement)
+          .getPropertyValue("--unova-header-scrolled-opacity")
+          .trim();
+        if (!raw) {
+          setDynamicScrolledOpacity(null);
+          return;
+        }
+        const v = Number.parseFloat(raw);
+        if (!Number.isFinite(v)) {
+          setDynamicScrolledOpacity(null);
+          return;
+        }
+        setDynamicScrolledOpacity(Math.max(0, Math.min(1, v)));
+      } catch {
+        setDynamicScrolledOpacity(null);
+      }
+    };
+
+    // 초기 1회
+    read();
+
+    // 변수 변경을 통지받으면 즉시 반영
+    const on = () => read();
+    window.addEventListener("unova:header-opacity", on);
+    return () => window.removeEventListener("unova:header-opacity", on);
+  }, []);
+
   // PC 여부(헤더 오버레이 효과는 PC에서만)
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
@@ -231,6 +264,8 @@ export default function LandingHeader({
     }
     return color;
   };
+
+  const effectiveScrolledOpacity = dynamicScrolledOpacity ?? scrolledOpacity ?? 0.72;
 
   // 모바일 드로어: 라우트 변경 시 닫기
   useEffect(() => {
@@ -320,7 +355,7 @@ export default function LandingHeader({
       style={{
         // 스크롤 시에는 살짝 반투명 + blur
         backgroundColor: scrolled
-          ? toRgba(scrolledBackgroundColor ?? backgroundColor, scrolledOpacity)
+          ? toRgba(scrolledBackgroundColor ?? backgroundColor, effectiveScrolledOpacity)
           : overlayOnDesktop && isDesktop
             ? "transparent"
             : topBackgroundColor ?? backgroundColor,

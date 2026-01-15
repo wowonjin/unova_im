@@ -209,11 +209,7 @@ export default function HeroCarousel({ slides }: { slides?: Slide[] }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => handleSlideClick(idx, e)}
-                className={`relative flex-shrink-0 rounded-[18px] overflow-hidden cursor-pointer transition-shadow duration-[600ms] ease-out ${
-                  isActive 
-                    ? "shadow-[0_0_40px_rgba(255,255,255,0.04),0_0_80px_rgba(255,255,255,0.02),0_20px_60px_rgba(0,0,0,0.18)]" 
-                    : "shadow-[0_20px_60px_rgba(0,0,0,0.22)]"
-                }`}
+                className="relative flex-shrink-0 rounded-[18px] overflow-hidden cursor-pointer"
                 style={{ 
                   width: slideWidth > 0 ? `${slideWidth}px` : `${slideRatio * 100}%`,
                   // 모바일에서 세로 길이를 더 길게(높이 증가)
