@@ -316,27 +316,12 @@ html, body {
 @media (min-width: 1001px) {
   .unova-container {
     /*
-      메가스터디 스타일: 상단(보라색) 히어로 영역의 하단이
-      선생님 이미지 하단에 '딱' 닿도록, PC에서는 히어로 높이를 뷰포트 기준으로 고정.
-      (콘텐츠가 길면 컬럼 내부에서 스크롤)
+      요청사항: PC 상단 섹션에서 "내부 스크롤"이 아니라
+      페이지 자체가 자연스럽게 아래로 스크롤되도록 변경합니다.
+      → 상단 히어로 높이 고정/컬럼 overflow 스크롤을 제거
     */
-    /* 보라색(상단 히어로) 영역의 y축 길이를 더 짧게 */
-    height: clamp(560px, 72vh, 700px);
-    align-items: stretch;
-  }
-
-  .unova-left-col,
-  .unova-content,
-  .unova-right-panel {
-    max-height: 100%;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* 스크롤바 때문에 하단이 답답해 보이지 않도록 약간의 여유 */
-  .unova-content,
-  .unova-right-panel {
-    padding-bottom: 18px;
+    height: auto;
+    align-items: flex-start;
   }
 }
 

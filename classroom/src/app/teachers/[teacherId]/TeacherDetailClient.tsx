@@ -133,6 +133,32 @@ export default function TeacherDetailClient({ teacher }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isLsy = teacher.slug === "lsy" || teacher.slug === "lee-sangyeob";
 
+  // PC: 상단(보라색) 선생님 섹션에서 휠 스크롤이 "내부 컨테이너"에 잡히는 경우가 있어
+  // 항상 페이지(윈도우) 스크롤로 흘려보내도록 보정합니다.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      // 모바일/태블릿은 해당 이슈가 없으므로 건드리지 않음
+      if (window.innerWidth <= 1000) return;
+      // 모달이 열려 있으면 모달 스크롤을 우선
+      if (isModalOpen) return;
+      // Ctrl+휠(브라우저 확대/축소)은 막지 않음
+      if (e.ctrlKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.(".unova-modal, .unova-modal-overlay")) return;
+
+      window.scrollBy({ top: e.deltaY, left: e.deltaX });
+      e.preventDefault();
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", onWheel as any);
+    };
+  }, [isModalOpen]);
+
   // ===== 커스터마이징(개인 페이지에서 바로 설정) =====
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [subjectDraft, setSubjectDraft] = useState<string>(teacher.subject || "");
@@ -781,28 +807,14 @@ export default function TeacherDetailClient({ teacher }: Props) {
         </div>
 
         {/* 모바일: 탭 메뉴 제거 → 강의/교재를 바로 노출 (메인페이지 카드 UI 재사용) */}
-        <div id="teacher-tabs" className="mega-mobile-content">
-          {/* 상단 소개 이미지(있으면) */}
-          {typeof teacher.promoImageUrl === "string" && teacher.promoImageUrl.trim() ? (
-            <div className="mega-mobile-section">
-              <div className="mt-4 overflow-hidden rounded-xl bg-white/[0.02]">
-                <Image
-                  src={teacher.promoImageUrl.trim()}
-                  alt={`${teacher.name} 선생님 상세페이지 이미지`}
-                  width={1200}
-                  height={900}
-                  className="w-full h-auto"
-                />
-              </div>
-            </div>
-          ) : null}
-
+        <div id="teacher-tabs" className="mega-mobile-content pb-16">
           {/* 강의/교재 */}
           <div className="mega-mobile-section">
             <StorePreviewTabs
               courses={Array.isArray(teacher.storeCourses) ? teacher.storeCourses : []}
               textbooks={Array.isArray(teacher.storeTextbooks) ? teacher.storeTextbooks : []}
               variant="sections"
+              sectionsMode="simple"
             />
           </div>
         </div>
@@ -1167,11 +1179,12 @@ export default function TeacherDetailClient({ teacher }: Props) {
       </div>
 
       {/* PC: 선생님 이미지 아래(검정 섹션) - 강의/교재 고정 노출 */}
-      <section id="teacher-tabs" className="hidden md:block bg-[#161616] unova-scroll-target">
+      <section id="teacher-tabs" className="hidden md:block bg-[#161616] unova-scroll-target pb-24">
         <StorePreviewTabs
           courses={Array.isArray(teacher.storeCourses) ? teacher.storeCourses : []}
           textbooks={Array.isArray(teacher.storeTextbooks) ? teacher.storeTextbooks : []}
           variant="sections"
+          sectionsMode="simple"
         />
       </section>
 

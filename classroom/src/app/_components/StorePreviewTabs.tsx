@@ -24,6 +24,7 @@ export type StorePreviewProduct = {
 const types = ["교재", "강의"] as const;
 type TypeLabel = (typeof types)[number];
 type Variant = "tabs" | "sections";
+type SectionsMode = "home" | "simple";
 
 function getThumbnailSrc(product: StorePreviewProduct): string | null {
   if (!product.thumbnailUrl && !(product.type === "course" && product.thumbnailStoredPath)) return null;
@@ -416,6 +417,121 @@ function ExpandableProductGrid({
   );
 }
 
+function StorePreviewSectionsSimple({
+  courses,
+  textbooks,
+}: {
+  courses: StorePreviewProduct[];
+  textbooks: StorePreviewProduct[];
+}) {
+  const [selectedCourseSubject, setSelectedCourseSubject] = useState<string>("전체");
+  const [selectedTextbookSubject, setSelectedTextbookSubject] = useState<string>("전체");
+
+  const courseSubjects = useMemo(() => {
+    const subjectOrder = ["전체", "수학", "물리학I", "물리학II"];
+    const subjectSet = new Set(courses.map((p) => p.subject).filter(Boolean));
+    const ordered = subjectOrder.filter((s) => s === "전체" || subjectSet.has(s));
+    const other = Array.from(subjectSet).filter((s) => !subjectOrder.includes(s));
+    return [...ordered, ...other];
+  }, [courses]);
+
+  const textbookSubjects = useMemo(() => {
+    const preferred = ["전체", "국어", "수학", "물리학I", "물리학II", "미적분학", "대학물리학"];
+    const subjectSet = new Set(textbooks.map((p) => p.subject).filter(Boolean));
+    const ordered = preferred.filter((s) => s === "전체" || subjectSet.has(s));
+    const other = Array.from(subjectSet).filter((s) => !preferred.includes(s));
+    return [...ordered, ...other];
+  }, [textbooks]);
+
+  const filteredCourses = useMemo(() => {
+    if (selectedCourseSubject === "전체") return courses;
+    return courses.filter((p) => p.subject === selectedCourseSubject);
+  }, [courses, selectedCourseSubject]);
+
+  const filteredTextbooks = useMemo(() => {
+    if (selectedTextbookSubject === "전체") return textbooks;
+    return textbooks.filter((p) => p.subject === selectedTextbookSubject);
+  }, [textbooks, selectedTextbookSubject]);
+
+  useEffect(() => {
+    if (selectedCourseSubject === "전체") return;
+    if (!courseSubjects.includes(selectedCourseSubject)) setSelectedCourseSubject("전체");
+  }, [courseSubjects, selectedCourseSubject]);
+
+  useEffect(() => {
+    if (selectedTextbookSubject === "전체") return;
+    if (!textbookSubjects.includes(selectedTextbookSubject)) setSelectedTextbookSubject("전체");
+  }, [selectedTextbookSubject, textbookSubjects]);
+
+  return (
+    <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
+      <div className="mt-6 md:mt-8">
+        <h2 className="text-[16px] md:text-[26px] font-bold tracking-[-0.02em]">🚀 강의 구매하기</h2>
+        {courseSubjects.length > 1 ? (
+          <div className="mt-4">
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2 md:flex-wrap md:overflow-visible">
+              {courseSubjects.map((subject) => {
+                const active = selectedCourseSubject === subject;
+                return (
+                  <button
+                    key={`course-${subject}`}
+                    type="button"
+                    onClick={() => setSelectedCourseSubject(subject)}
+                    role="tab"
+                    aria-selected={active}
+                    className={`shrink-0 whitespace-nowrap leading-none text-[11px] font-medium md:text-[13px] ${
+                      active
+                        ? "px-3 py-1.5 rounded-full bg-white text-black md:px-4 md:py-2"
+                        : "px-3 py-1.5 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white md:px-4 md:py-2"
+                    }`}
+                  >
+                    {subject}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+        <div className="mt-6">
+          <ProductGrid products={filteredCourses} emptyLabel="등록된 강의 상품이 없습니다" />
+        </div>
+      </div>
+
+      <div className="mt-14 md:mt-20">
+        <h2 className="text-[16px] md:text-[26px] font-bold tracking-[-0.02em]">📖 교재 구매하기</h2>
+        {textbookSubjects.length > 1 ? (
+          <div className="mt-4">
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2 md:flex-wrap md:overflow-visible">
+              {textbookSubjects.map((subject) => {
+                const active = selectedTextbookSubject === subject;
+                return (
+                  <button
+                    key={`textbook-${subject}`}
+                    type="button"
+                    onClick={() => setSelectedTextbookSubject(subject)}
+                    role="tab"
+                    aria-selected={active}
+                    className={`shrink-0 whitespace-nowrap leading-none text-[11px] font-medium md:text-[13px] ${
+                      active
+                        ? "px-3 py-1.5 rounded-full bg-white text-black md:px-4 md:py-2"
+                        : "px-3 py-1.5 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white md:px-4 md:py-2"
+                    }`}
+                  >
+                    {subject}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+        <div className="mt-6">
+          <ExpandableProductGrid products={filteredTextbooks} emptyLabel="등록된 교재 상품이 없습니다" collapsedRows={3} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function StorePreviewSections({
   courses,
   textbooks,
@@ -604,14 +720,18 @@ export default function StorePreviewTabs({
   textbooks,
   defaultType = "교재",
   variant = "tabs",
+  sectionsMode = "home",
 }: {
   courses: StorePreviewProduct[];
   textbooks: StorePreviewProduct[];
   defaultType?: TypeLabel;
   variant?: Variant;
+  sectionsMode?: SectionsMode;
 }) {
   if (variant === "sections") {
-    return <StorePreviewSections courses={courses} textbooks={textbooks} />;
+    return sectionsMode === "simple"
+      ? <StorePreviewSectionsSimple courses={courses} textbooks={textbooks} />
+      : <StorePreviewSections courses={courses} textbooks={textbooks} />;
   }
 
   const [selectedType, setSelectedType] = useState<TypeLabel>(defaultType);
