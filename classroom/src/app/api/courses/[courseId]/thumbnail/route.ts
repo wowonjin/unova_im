@@ -19,6 +19,20 @@ function wantsJson(req: Request) {
   return req.headers.get("x-unova-client") === "1" || accept.includes("application/json");
 }
 
+function cacheControlForThumbnailRequest(req: Request): string {
+  // 페이지에서 /thumbnail?v=... 형태로 캐시 버스팅을 붙이므로
+  // v가 있으면 장기 캐시(immutable)로도 안전합니다.
+  try {
+    const u = new URL(req.url);
+    const v = u.searchParams.get("v");
+    if (v && v.trim()) return "public, max-age=31536000, immutable";
+  } catch {
+    // ignore
+  }
+  // v가 없으면 교체 가능성을 고려해 짧게
+  return "public, max-age=300";
+}
+
 function redirectPlaceholder(req: Request) {
   // public asset
   const res = NextResponse.redirect(new URL("/course-placeholder.svg", req.url));
@@ -30,6 +44,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
   const json = wantsJson(req);
   const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
   const { courseId } = ParamsSchema.parse(await ctx.params);
+  const cacheControl = cacheControlForThumbnailRequest(req);
 
   const course = await prisma.course.findUnique({
     where: { id: courseId },
@@ -62,7 +77,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
       // URL(/api/courses/:id/thumbnail)이 고정이면 immutable 캐시 때문에 갱신이 영구적으로 안 될 수 있음.
       // 페이지(스토어/대시보드 등)에서 ?v=... 캐시 버스팅을 붙이더라도,
       // 여기서는 과도한 immutable 캐시를 피한다.
-      headers.set("cache-control", "public, max-age=300"); // 5분
+      headers.set("cache-control", cacheControl);
 
       return new NextResponse(buffer, { status: 200, headers });
     }
@@ -71,7 +86,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
   // thumbnailUrl이 일반 URL인 경우: 리다이렉트 (인증 불필요)
   if (course.thumbnailUrl) {
     const res = NextResponse.redirect(course.thumbnailUrl);
-    res.headers.set("cache-control", "private, max-age=60");
+    res.headers.set("cache-control", cacheControl);
     return res;
   }
 
@@ -146,7 +161,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
       const headers = new Headers();
       headers.set("content-type", mimeType);
       headers.set("content-length", String(buffer.length));
-      headers.set("cache-control", "public, max-age=300");
+      headers.set("cache-control", cacheControl);
       return new NextResponse(buffer, { status: 200, headers });
     } catch (e) {
       // 마이그레이션 실패해도, 기존 방식(스트리밍)으로 계속 제공
@@ -160,7 +175,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
   const headers = new Headers();
   headers.set("content-type", mimeType);
   headers.set("content-length", String(stat.size));
-  headers.set("cache-control", allowPublic ? "public, max-age=300" : "private, max-age=60");
+  headers.set("cache-control", allowPublic ? cacheControl : "private, max-age=60");
 
   return new NextResponse(webStream, { status: 200, headers });
 }

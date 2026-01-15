@@ -53,9 +53,11 @@ function getDiscount(original: number, current: number): number {
 function ProductGrid({
   products,
   emptyLabel,
+  eagerCount = 0,
 }: {
   products: StorePreviewProduct[];
   emptyLabel: string;
+  eagerCount?: number;
 }) {
   if (products.length <= 0) {
     return (
@@ -70,7 +72,9 @@ function ProductGrid({
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-5 sm:gap-y-10">
-      {products.map((product) => (
+      {products.map((product, idx) => {
+        const eager = eagerCount > 0 && idx < eagerCount;
+        return (
         <Link key={product.id} href={`/store/${product.id}`} className="group">
           <div
             className={`relative aspect-video overflow-hidden transition-all rounded-xl ${
@@ -109,6 +113,9 @@ function ProductGrid({
                 }
                 alt={product.title}
                 className="absolute inset-0 h-full w-full object-cover"
+                loading={eager ? "eager" : "lazy"}
+                decoding="async"
+                fetchPriority={eager ? "high" : "auto"}
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
@@ -186,7 +193,8 @@ function ProductGrid({
             ) : null}
           </div>
         </Link>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -195,10 +203,12 @@ function ExpandableProductGrid({
   products,
   emptyLabel,
   collapsedRows = 2,
+  eagerCount = 0,
 }: {
   products: StorePreviewProduct[];
   emptyLabel: string;
   collapsedRows?: number;
+  eagerCount?: number;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [columns, setColumns] = useState<2 | 4>(2);
@@ -248,13 +258,13 @@ function ExpandableProductGrid({
   }, [columns, expanded, hasMore, maxVisible, products]);
 
   if (products.length <= 0) {
-    return <ProductGrid products={products} emptyLabel={emptyLabel} />;
+    return <ProductGrid products={products} emptyLabel={emptyLabel} eagerCount={eagerCount} />;
   }
 
   return (
     <div className="relative">
       {/* 자동 흘러가기(무한 루프) 효과 제거: 접힌 상태에서는 단순히 일부만 보여줌 */}
-      <ProductGrid products={visibleProducts} emptyLabel={emptyLabel} />
+      <ProductGrid products={visibleProducts} emptyLabel={emptyLabel} eagerCount={eagerCount} />
 
       {!expanded && hasMore ? (
         <>
@@ -400,7 +410,7 @@ function StorePreviewSectionsSimple({
           </div>
         ) : null}
         <div className="mt-6">
-          <ProductGrid products={filteredCourses} emptyLabel="등록된 강의 상품이 없습니다" />
+          <ProductGrid products={filteredCourses} emptyLabel="등록된 강의 상품이 없습니다" eagerCount={8} />
         </div>
       </div>
 
@@ -439,6 +449,7 @@ function StorePreviewSectionsSimple({
                 products={filteredFreeTextbooks}
                 emptyLabel="등록된 무료 자료가 없습니다"
                 collapsedRows={3}
+                eagerCount={8}
               />
             </div>
           </div>
@@ -471,7 +482,12 @@ function StorePreviewSectionsSimple({
           </div>
         ) : null}
         <div className="mt-6">
-          <ExpandableProductGrid products={filteredTextbooks} emptyLabel="등록된 교재 상품이 없습니다" collapsedRows={3} />
+          <ExpandableProductGrid
+            products={filteredTextbooks}
+            emptyLabel="등록된 교재 상품이 없습니다"
+            collapsedRows={3}
+            eagerCount={8}
+          />
         </div>
       </div>
     </section>
@@ -617,7 +633,7 @@ function StorePreviewSections({
           </div>
         ) : null}
         <div className="mt-6">
-          <ProductGrid products={filteredCourses} emptyLabel="등록된 강의 상품이 없습니다" />
+          <ProductGrid products={filteredCourses} emptyLabel="등록된 강의 상품이 없습니다" eagerCount={8} />
         </div>
       </div>
 
@@ -656,6 +672,7 @@ function StorePreviewSections({
                 products={filteredFreeTextbooks}
                 emptyLabel="등록된 무료 자료가 없습니다"
                 collapsedRows={3}
+                eagerCount={8}
               />
             </div>
           </div>
@@ -692,6 +709,7 @@ function StorePreviewSections({
             products={filteredSuneungTextbooks}
             emptyLabel="등록된 교재 상품이 없습니다"
             collapsedRows={3}
+            eagerCount={8}
           />
         </div>
 
@@ -727,6 +745,7 @@ function StorePreviewSections({
               products={filteredTransferTextbooks}
               emptyLabel="등록된 교재 상품이 없습니다"
               collapsedRows={3}
+              eagerCount={8}
             />
           </div>
         </div>
