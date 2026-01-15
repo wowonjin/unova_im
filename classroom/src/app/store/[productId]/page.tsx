@@ -829,7 +829,9 @@ export default async function ProductDetailPage({
 
   // DB에서 데이터를 찾은 경우
   if (dbCourse) {
-    const price = dbCourse.price || 0;
+    const rawPrice = dbCourse.price;
+    const isPriceSet = rawPrice !== null && rawPrice !== undefined;
+    const price = rawPrice ?? 0;
     const originalPrice = dbCourse.originalPrice || null;
     const dailyPrice = dbCourse.dailyPrice || Math.round(price / 30);
     const discount = originalPrice ? getDiscount(originalPrice, price) : null;
@@ -994,6 +996,7 @@ export default async function ProductDetailPage({
                 // course 썸네일은 /api/courses/:id/thumbnail 로 통일해서 보여줍니다.
                 // storedPath 기반 썸네일(레거시)도 UI에서 "있음"으로 인식하도록 값 보정.
                 thumbnailUrl: dbCourse.thumbnailUrl || ((dbCourse as any).thumbnailStoredPath ? "__stored__" : null),
+                isPriceSet,
                 price,
                 originalPrice,
                 dailyPrice,
@@ -1017,7 +1020,8 @@ export default async function ProductDetailPage({
               relatedProducts={bundleTextbooks.map((t) => ({
                 id: t.id,
                 title: t.title,
-                price: t.price || 0,
+                isPriceSet: t.price !== null && t.price !== undefined,
+                price: t.price ?? 0,
                 originalPrice: t.originalPrice,
                 thumbnailUrl: t.thumbnailUrl,
                 teacher: t.teacherName || "선생님",
@@ -1028,7 +1032,8 @@ export default async function ProductDetailPage({
               addonCourses={addonCourses.map((c) => ({
                 id: c.id,
                 title: c.title,
-                price: c.price || 0,
+                isPriceSet: c.price !== null && c.price !== undefined,
+                price: c.price ?? 0,
                 originalPrice: c.originalPrice,
                 thumbnailUrl: c.thumbnailUrl,
                 teacher: c.teacherName || "선생님",
@@ -1046,7 +1051,9 @@ export default async function ProductDetailPage({
   }
 
   if (dbTextbook) {
-    const price = dbTextbook.price || 0;
+    const rawPrice = dbTextbook.price;
+    const isPriceSet = rawPrice !== null && rawPrice !== undefined;
+    const price = rawPrice ?? 0;
     const originalPrice = dbTextbook.originalPrice || null;
     const dailyPrice = Math.round(price / 30);
     const discount = originalPrice ? getDiscount(originalPrice, price) : null;
@@ -1106,6 +1113,7 @@ export default async function ProductDetailPage({
                 teacherImageUrl,
                 thumbnailUrl,
                 isbn,
+                isPriceSet,
                 price,
                 originalPrice,
                 dailyPrice,
@@ -1133,7 +1141,8 @@ export default async function ProductDetailPage({
               relatedProducts={relatedTextbooks.map((t) => ({
                 id: t.id,
                 title: t.title,
-                price: t.price || 0,
+                isPriceSet: t.price !== null && t.price !== undefined,
+                price: t.price ?? 0,
                 originalPrice: t.originalPrice,
                 thumbnailUrl: t.thumbnailUrl,
                 teacher: t.teacherName || "선생님",
@@ -1173,6 +1182,7 @@ export default async function ProductDetailPage({
               ...product,
               id: productId,
               discount,
+              isPriceSet: true,
               formattedPrice: formatPrice(product.price),
               formattedOriginalPrice: product.originalPrice
                 ? formatPrice(product.originalPrice)

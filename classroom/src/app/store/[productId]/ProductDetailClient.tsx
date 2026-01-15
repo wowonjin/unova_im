@@ -39,6 +39,8 @@ type ProductData = {
   thumbnailUrl?: string | null;
   // 교재의 ISBN(관리자에서 입력한 값). 현재는 Textbook.imwebProdCode를 사용합니다.
   isbn?: string | null;
+  // DB price가 null이면 false (가격 미설정). 0원(무료)은 true + price=0.
+  isPriceSet: boolean;
   price: number;
   originalPrice: number | null;
   dailyPrice: number;
@@ -64,6 +66,7 @@ type ProductData = {
 type RelatedProduct = {
   id: string;
   title: string;
+  isPriceSet: boolean;
   price: number;
   originalPrice: number | null;
   thumbnailUrl: string | null;
@@ -76,6 +79,7 @@ type RelatedProduct = {
 type AddonCourse = {
   id: string;
   title: string;
+  isPriceSet: boolean;
   price: number;
   originalPrice: number | null;
   thumbnailUrl: string | null;
@@ -139,9 +143,10 @@ export default function ProductDetailClient({
   // 강좌 상세: "수강 옵션"을 제거하고 기본 강의 가격만 사용합니다.
   const baseAmount = product.type === "course" ? product.price : product.price;
 
-  // NOTE: 가격이 미설정(null/undefined)인 경우 page.tsx에서 0으로 내려오는 케이스가 있어
-  // UI에서는 "기본 상품"을 숨기고(=미설정처럼 취급) 표시를 깔끔하게 합니다.
-  const hasBaseProduct = Number.isFinite(baseAmount) && baseAmount > 0;
+  // NOTE:
+  // - DB price가 null이면(미설정) page.tsx에서 price=0으로 내려오지만 isPriceSet=false로 구분합니다.
+  // - 0원(무료)은 isPriceSet=true + price=0 이므로 정상적으로 0원 표시/구매가 가능합니다.
+  const hasBaseProduct = product.isPriceSet && Number.isFinite(baseAmount) && baseAmount >= 0;
   const hasAdditionalSelection = selectedRelatedIds.size > 0;
   const hasAddonCourseSelection = selectedAddonCourseIds.size > 0;
   const hasAnyAddonSelection = hasAdditionalSelection || hasAddonCourseSelection;
@@ -681,6 +686,51 @@ export default function ProductDetailClient({
         })),
       ];
 
+      // 0원(무료) 결제: 토스 결제창을 띄우지 않고 즉시 구매 처리
+      // - 모든 선택 상품이 "가격 설정됨(isPriceSet=true)" 이면서 "가격=0"인 경우에만 허용
+      const isFreeEligible = cartItems.every((it) => {
+        if (it.productId === product.id) {
+          return product.isPriceSet && product.price === 0;
+        }
+        if (it.productType === "TEXTBOOK") {
+          const p = relatedProducts.find((r) => r.id === it.productId);
+          return Boolean(p?.isPriceSet) && (p?.price ?? -1) === 0;
+        }
+        // COURSE
+        const c = addonCourses.find((a) => a.id === it.productId);
+        return Boolean(c?.isPriceSet) && (c?.price ?? -1) === 0;
+      });
+
+      if (isFreeEligible) {
+        for (const it of cartItems) {
+          const res = await fetch("/api/orders/purchase", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              productType: it.productType,
+              productId: it.productId,
+              paymentMethod: "FREE",
+            }),
+          });
+
+          if (res.status === 401) {
+            const redirect = `${window.location.pathname}${window.location.search}`;
+            window.location.assign(`/login?redirect=${encodeURIComponent(redirect)}&error=unauthorized`);
+            return;
+          }
+
+          const json = await res.json().catch(() => null);
+          if (!res.ok || !json?.ok) {
+            alert("구매 처리에 실패했습니다. 잠시 후 다시 시도해주세요.");
+            return;
+          }
+        }
+
+        const hasCourse = cartItems.some((it) => it.productType === "COURSE");
+        window.location.assign(hasCourse ? "/dashboard" : "/materials");
+        return;
+      }
+
       const res = await fetch("/api/payments/toss/create-order", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -1038,11 +1088,7 @@ export default function ProductDetailClient({
                     />
                   ))}
                 </div>
-              ) : (
-                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-8 text-center">
-                  <p className="text-[14px] text-white/60">상세 페이지 이미지가 준비되지 않았습니다.</p>
-                </div>
-              )}
+              ) : null}
             </section>
           )}
 

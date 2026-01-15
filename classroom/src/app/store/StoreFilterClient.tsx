@@ -30,7 +30,7 @@ const BOOK_FORMATS = ["전체", "실물책", "전자책"] as const;
 type BookFormat = (typeof BOOK_FORMATS)[number];
 
 // 편입학(대학 과목) 관련 과목은 스토어에서 숨김 처리
-const HIDDEN_SUBJECTS = new Set([
+const HIDDEN_SUBJECTS = new Set<string>([
   "미적분학",
   "대학물리학",
   "일반물리학",
@@ -38,7 +38,7 @@ const HIDDEN_SUBJECTS = new Set([
   "일반생물학",
   "선형대수학",
   "공업수학",
-] as const);
+]);
 
 // 입시 유형별 과목 정의
 // 내신/수능: 고등학교 교과목 (수학, 물리학I/II 등)

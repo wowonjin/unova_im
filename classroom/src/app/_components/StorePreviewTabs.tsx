@@ -553,7 +553,7 @@ function StorePreviewSections({
 
   const suneungTextbookSubjects = useMemo(() => {
     // 요청 순서 고정: 국어 → 수학 → 물리학I → 물리학II
-    const preferred = ["전체", "국어", "수학", "물리학I", "물리학II"];
+    const preferred = ["전체", "국어", "수학", "영어", "물리학I", "물리학II"];
     const subjectSet = new Set(textbooks.map((p) => p.subject).filter(Boolean));
     return preferred.filter((s) => s === "전체" || subjectSet.has(s));
   }, [textbooks]);
@@ -570,7 +570,7 @@ function StorePreviewSections({
   }, [courses, selectedCourseSubject]);
 
   const suneungTextbooks = useMemo(() => {
-    const subjectAllow = new Set(["국어", "수학", "물리학I", "물리학II"]);
+    const subjectAllow = new Set(["국어", "수학", "영어", "물리학I", "물리학II"]);
     return textbooks.filter((p) => subjectAllow.has(p.subject));
   }, [textbooks]);
 
