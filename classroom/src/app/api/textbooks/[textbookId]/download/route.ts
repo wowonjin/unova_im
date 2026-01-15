@@ -10,6 +10,20 @@ export const runtime = "nodejs";
 
 const ParamsSchema = z.object({ textbookId: z.string().min(1) });
 
+function buildLoginRedirect(req: Request, fallbackPath: string) {
+  const referer = req.headers.get("referer");
+  let redirectPath = fallbackPath;
+  try {
+    if (referer) {
+      const u = new URL(referer);
+      redirectPath = `${u.pathname}${u.search || ""}`;
+    }
+  } catch {
+    // ignore
+  }
+  return `/login?error=unauthorized&redirect=${encodeURIComponent(redirectPath)}`;
+}
+
 function parseFileIndex(req: Request): number | null {
   try {
     const u = new URL(req.url);
@@ -25,10 +39,6 @@ function parseFileIndex(req: Request): number | null {
 
 export async function GET(req: Request, ctx: { params: Promise<{ textbookId: string }> }) {
   const user = await getCurrentUser();
-  if (!user) {
-    const redirect = `/login?error=unauthorized&redirect=${encodeURIComponent("/materials")}`;
-    return NextResponse.redirect(new URL(redirect, req.url));
-  }
   const { textbookId } = ParamsSchema.parse(await ctx.params);
   const now = new Date();
 
@@ -44,6 +54,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
         originalName: string;
         mimeType: string;
         isPublished: boolean;
+        price: number | null;
         imwebProdCode: string | null;
         files?: unknown;
       }
@@ -60,6 +71,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
         originalName: true,
         mimeType: true,
         isPublished: true,
+        price: true,
         imwebProdCode: true,
         files: true,
       },
@@ -75,6 +87,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
         originalName: true,
         mimeType: true,
         isPublished: true,
+        price: true,
         imwebProdCode: true,
       },
     });
@@ -94,11 +107,22 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
   }
 
   // 관리자(교사)는 항상 다운로드 가능, 수강생은 공개된 교재만
-  if (!user.isAdmin && !tb.isPublished) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+  const isAdmin = Boolean(user?.isAdmin);
+  if (!isAdmin && !tb.isPublished) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
   // 아임웹 상품 매핑이 있으면 "구매자만" 다운로드 가능
-  const isPaywalled = tb.imwebProdCode != null && tb.imwebProdCode.length > 0;
-  if (!user.isAdmin && isPaywalled) {
+  // NOTE: "판매 가격=0"인 교재는 무료로 간주하여 paywall을 해제합니다.
+  const isPaywalled =
+    tb.imwebProdCode != null && tb.imwebProdCode.length > 0 && !(typeof tb.price === "number" && tb.price === 0);
+
+  // 비로그인 사용자는 paywall 교재 접근 불가(로그인 유도), 무료 교재는 허용
+  if (!user && isPaywalled) {
+    const redirect = buildLoginRedirect(req, "/materials");
+    return NextResponse.redirect(new URL(redirect, req.url));
+  }
+
+  if (!isAdmin && isPaywalled) {
+    if (!user) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
     const ok = await prisma.textbookEntitlement.findFirst({
       where: { userId: user.id, textbookId: tb.id, status: "ACTIVE", endAt: { gt: now } },
       select: { id: true },

@@ -10,6 +10,8 @@ export type StorePreviewProduct = {
   teacher: string;
   price: number;
   originalPrice: number | null;
+  // 서버에서 DB 값 기준으로 계산된 무료 여부(가격 null을 0으로 표시하는 경우가 있어 price===0만으로 판단하면 안 됨)
+  isFree?: boolean;
   tags: string[];
   textbookType: string | null;
   type: "course" | "textbook";
@@ -134,7 +136,9 @@ function ProductGrid({
               {product.title}
             </h3>
             <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-[13px] font-semibold text-white">{formatPrice(product.price)}</span>
+              <span className="text-[13px] font-semibold text-white">
+                {product.type === "textbook" && product.isFree ? "무료" : formatPrice(product.price)}
+              </span>
               {product.originalPrice ? (
                 <>
                   <span className="text-[11px] text-white/30 line-through">{formatPrice(product.originalPrice)}</span>
@@ -199,17 +203,6 @@ function ExpandableProductGrid({
   const [expanded, setExpanded] = useState(false);
   const [columns, setColumns] = useState<2 | 4>(2);
   const preloadedSrc = useRef<Set<string>>(new Set());
-  const [isGridHovered, setIsGridHovered] = useState(false);
-  const idleTimerRef = useRef<number | null>(null);
-  const loopRafRef = useRef<number | null>(null);
-  const loopOffsetRef = useRef(0);
-  const lastTsRef = useRef<number | null>(null);
-
-  const viewportRef = useRef<HTMLDivElement | null>(null);
-  const measureRef = useRef<HTMLDivElement | null>(null);
-  const singleTrackRef = useRef<HTMLDivElement | null>(null);
-
-  const [collapsedHeight, setCollapsedHeight] = useState<number | null>(null);
 
   // Tailwind 기준: 기본 2열, lg(1024px~) 4열
   useEffect(() => {
@@ -254,124 +247,14 @@ function ExpandableProductGrid({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns, expanded, hasMore, maxVisible, products]);
 
-  const cancelLoop = () => {
-    if (loopRafRef.current != null) {
-      window.cancelAnimationFrame(loopRafRef.current);
-      loopRafRef.current = null;
-    }
-    lastTsRef.current = null;
-  };
-
-  // 접힌 상태(더보기 있음)에서 고정된 상품 영역 안에서만 무한 루프 "흘러가기" 효과
-  useEffect(() => {
-    cancelLoop();
-
-    // 상태/환경 조건
-    if (expanded || !hasMore) return;
-    if (isGridHovered) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    // 높이/트랙 준비될 때까지 대기
-    if (!collapsedHeight || collapsedHeight <= 0) return;
-
-    const viewportEl = viewportRef.current;
-    const trackOneEl = singleTrackRef.current;
-    if (!viewportEl || !trackOneEl) return;
-
-    const trackHeight = trackOneEl.offsetHeight;
-    if (!trackHeight || trackHeight <= 0) return;
-
-    const speedPxPerSec = 14; // 아주 천천히
-    // NOTE: 중단/재시작 시에도 연속 느낌을 위해 offset은 유지
-    lastTsRef.current = null;
-    // React 리렌더로 CSS 변수가 초기화되지 않도록, 현재 offset을 다시 주입
-    viewportEl.style.setProperty("--unova-loop-y", `${loopOffsetRef.current}px`);
-
-    const step = (ts: number) => {
-      const last = lastTsRef.current;
-      lastTsRef.current = ts;
-      const dt = last == null ? 0 : Math.min(64, ts - last); // ms
-      const delta = (speedPxPerSec * dt) / 1000;
-      loopOffsetRef.current += delta;
-
-      // 한 바퀴(첫 트랙 높이)만큼 이동하면 자연스럽게 되감기
-      if (loopOffsetRef.current >= trackHeight) loopOffsetRef.current -= trackHeight;
-
-      // translateY로만 움직여서 페이지 스크롤은 고정
-      viewportEl.style.setProperty("--unova-loop-y", `${loopOffsetRef.current}px`);
-
-      loopRafRef.current = window.requestAnimationFrame(step);
-    };
-
-    loopRafRef.current = window.requestAnimationFrame(step);
-
-    return () => cancelLoop();
-  }, [collapsedHeight, expanded, hasMore, isGridHovered]);
-
-  // 접힌 상태에서 보여줄 고정 높이(2줄) 측정
-  useEffect(() => {
-    if (expanded || !hasMore) {
-      setCollapsedHeight(null);
-      return;
-    }
-    const el = measureRef.current;
-    if (!el) return;
-
-    const update = () => setCollapsedHeight(el.offsetHeight || null);
-    update();
-
-    const ro = new ResizeObserver(() => update());
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [columns, expanded, hasMore, maxVisible, products]);
-
   if (products.length <= 0) {
     return <ProductGrid products={products} emptyLabel={emptyLabel} />;
   }
 
-  const measureProducts = products.slice(0, maxVisible);
-
   return (
-    <div
-      className="relative"
-      onMouseEnter={() => {
-        setIsGridHovered(true);
-        cancelLoop();
-      }}
-      onMouseLeave={() => setIsGridHovered(false)}
-    >
-      {/* 높이 측정용(레이아웃 영향 X) */}
-      {!expanded && hasMore ? (
-        <div className="pointer-events-none absolute -z-10 opacity-0">
-          <div ref={measureRef}>
-            <ProductGrid products={measureProducts} emptyLabel={emptyLabel} />
-          </div>
-        </div>
-      ) : null}
-
-      {/* 접힌 상태: 화면은 고정, 상품만 루프 */}
-      {!expanded && hasMore && collapsedHeight ? (
-        <div
-          ref={viewportRef}
-          className="relative overflow-hidden"
-          style={{ height: collapsedHeight }}
-        >
-          <div
-            className="will-change-transform"
-            style={{
-              transform: "translate3d(0, calc(var(--unova-loop-y) * -1), 0)",
-            }}
-          >
-            <div ref={singleTrackRef}>
-              <ProductGrid products={products} emptyLabel={emptyLabel} />
-            </div>
-            {/* 두 번째 트랙(복제)로 자연스러운 무한 루프 */}
-            <ProductGrid products={products} emptyLabel={emptyLabel} />
-          </div>
-        </div>
-      ) : (
-        <ProductGrid products={visibleProducts} emptyLabel={emptyLabel} />
-      )}
+    <div className="relative">
+      {/* 자동 흘러가기(무한 루프) 효과 제거: 접힌 상태에서는 단순히 일부만 보여줌 */}
+      <ProductGrid products={visibleProducts} emptyLabel={emptyLabel} />
 
       {!expanded && hasMore ? (
         <>
@@ -425,6 +308,7 @@ function StorePreviewSectionsSimple({
   textbooks: StorePreviewProduct[];
 }) {
   const [selectedCourseSubject, setSelectedCourseSubject] = useState<string>("전체");
+  const [selectedFreeTextbookSubject, setSelectedFreeTextbookSubject] = useState<string>("전체");
   const [selectedTextbookSubject, setSelectedTextbookSubject] = useState<string>("전체");
 
   const courseSubjects = useMemo(() => {
@@ -435,9 +319,21 @@ function StorePreviewSectionsSimple({
     return [...ordered, ...other];
   }, [courses]);
 
+  const freeTextbooks = useMemo(() => {
+    return textbooks.filter((p) => Boolean(p.isFree));
+  }, [textbooks]);
+
+  const freeTextbookSubjects = useMemo(() => {
+    const preferred = ["전체", "국어", "수학", "영어", "물리학I", "물리학II", "미적분학", "대학물리학"];
+    const subjectSet = new Set(freeTextbooks.map((p) => p.subject).filter(Boolean));
+    const ordered = preferred.filter((s) => s === "전체" || subjectSet.has(s));
+    const other = Array.from(subjectSet).filter((s) => !preferred.includes(s));
+    return [...ordered, ...other];
+  }, [freeTextbooks]);
+
   const textbookSubjects = useMemo(() => {
     const preferred = ["전체", "국어", "수학", "물리학I", "물리학II", "미적분학", "대학물리학"];
-    const subjectSet = new Set(textbooks.map((p) => p.subject).filter(Boolean));
+    const subjectSet = new Set(textbooks.filter((p) => !p.isFree).map((p) => p.subject).filter(Boolean));
     const ordered = preferred.filter((s) => s === "전체" || subjectSet.has(s));
     const other = Array.from(subjectSet).filter((s) => !preferred.includes(s));
     return [...ordered, ...other];
@@ -448,9 +344,15 @@ function StorePreviewSectionsSimple({
     return courses.filter((p) => p.subject === selectedCourseSubject);
   }, [courses, selectedCourseSubject]);
 
+  const filteredFreeTextbooks = useMemo(() => {
+    if (selectedFreeTextbookSubject === "전체") return freeTextbooks;
+    return freeTextbooks.filter((p) => p.subject === selectedFreeTextbookSubject);
+  }, [freeTextbooks, selectedFreeTextbookSubject]);
+
   const filteredTextbooks = useMemo(() => {
-    if (selectedTextbookSubject === "전체") return textbooks;
-    return textbooks.filter((p) => p.subject === selectedTextbookSubject);
+    const paid = textbooks.filter((p) => !p.isFree);
+    if (selectedTextbookSubject === "전체") return paid;
+    return paid.filter((p) => p.subject === selectedTextbookSubject);
   }, [textbooks, selectedTextbookSubject]);
 
   useEffect(() => {
@@ -459,16 +361,21 @@ function StorePreviewSectionsSimple({
   }, [courseSubjects, selectedCourseSubject]);
 
   useEffect(() => {
+    if (selectedFreeTextbookSubject === "전체") return;
+    if (!freeTextbookSubjects.includes(selectedFreeTextbookSubject)) setSelectedFreeTextbookSubject("전체");
+  }, [freeTextbookSubjects, selectedFreeTextbookSubject]);
+
+  useEffect(() => {
     if (selectedTextbookSubject === "전체") return;
     if (!textbookSubjects.includes(selectedTextbookSubject)) setSelectedTextbookSubject("전체");
   }, [selectedTextbookSubject, textbookSubjects]);
 
   return (
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
-      <div className="mt-6 md:mt-8">
+      <div className="mt-4 md:mt-6">
         <h2 className="text-[16px] md:text-[26px] font-bold tracking-[-0.02em]">🚀 강의 구매하기</h2>
         {courseSubjects.length > 1 ? (
-          <div className="mt-4">
+          <div className="mt-8">
             <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2 md:flex-wrap md:overflow-visible">
               {courseSubjects.map((subject) => {
                 const active = selectedCourseSubject === subject;
@@ -498,9 +405,48 @@ function StorePreviewSectionsSimple({
       </div>
 
       <div className="mt-14 md:mt-20">
+        {/* 무료 자료 다운로드 (선생님 페이지 simple 모드 지원) */}
+        {freeTextbooks.length > 0 ? (
+          <div className="mb-14 md:mb-16">
+            <h2 className="text-[16px] md:text-[26px] font-bold tracking-[-0.02em]">📌 무료 자료 다운로드</h2>
+            {freeTextbookSubjects.length > 1 ? (
+              <div className="mt-8">
+                <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2 md:flex-wrap md:overflow-visible">
+                  {freeTextbookSubjects.map((subject) => {
+                    const active = selectedFreeTextbookSubject === subject;
+                    return (
+                      <button
+                        key={`textbook-free-simple-${subject}`}
+                        type="button"
+                        onClick={() => setSelectedFreeTextbookSubject(subject)}
+                        role="tab"
+                        aria-selected={active}
+                        className={`shrink-0 whitespace-nowrap leading-none text-[11px] font-medium md:text-[13px] ${
+                          active
+                            ? "px-3 py-1.5 rounded-full bg-white text-black md:px-4 md:py-2"
+                            : "px-3 py-1.5 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white md:px-4 md:py-2"
+                        }`}
+                      >
+                        {subject}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            <div className="mt-6">
+              <ExpandableProductGrid
+                products={filteredFreeTextbooks}
+                emptyLabel="등록된 무료 자료가 없습니다"
+                collapsedRows={3}
+              />
+            </div>
+          </div>
+        ) : null}
+
         <h2 className="text-[16px] md:text-[26px] font-bold tracking-[-0.02em]">📖 교재 구매하기</h2>
         {textbookSubjects.length > 1 ? (
-          <div className="mt-4">
+          <div className="mt-8">
             <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2 md:flex-wrap md:overflow-visible">
               {textbookSubjects.map((subject) => {
                 const active = selectedTextbookSubject === subject;
@@ -540,6 +486,7 @@ function StorePreviewSections({
   textbooks: StorePreviewProduct[];
 }) {
   const [selectedCourseSubject, setSelectedCourseSubject] = useState<string>("전체");
+  const [selectedFreeTextbookSubject, setSelectedFreeTextbookSubject] = useState<string>("전체");
   const [selectedSuneungTextbookSubject, setSelectedSuneungTextbookSubject] = useState<string>("전체");
   const [selectedTransferTextbookSubject, setSelectedTransferTextbookSubject] = useState<string>("전체");
 
@@ -554,13 +501,37 @@ function StorePreviewSections({
   const suneungTextbookSubjects = useMemo(() => {
     // 요청 순서 고정: 국어 → 수학 → 물리학I → 물리학II
     const preferred = ["전체", "국어", "수학", "영어", "물리학I", "물리학II"];
-    const subjectSet = new Set(textbooks.map((p) => p.subject).filter(Boolean));
+    const subjectAllow = new Set(["국어", "수학", "영어", "물리학I", "물리학II"]);
+    const subjectSet = new Set(
+      textbooks
+        .filter((p) => subjectAllow.has(p.subject) && !p.isFree)
+        .map((p) => p.subject)
+        .filter(Boolean)
+    );
     return preferred.filter((s) => s === "전체" || subjectSet.has(s));
   }, [textbooks]);
 
+  const freeTextbooks = useMemo(() => {
+    return textbooks.filter((p) => Boolean(p.isFree));
+  }, [textbooks]);
+
+  const freeTextbookSubjects = useMemo(() => {
+    const preferred = ["전체", "국어", "수학", "영어", "물리학I", "물리학II", "미적분학", "대학물리학"];
+    const subjectSet = new Set(freeTextbooks.map((p) => p.subject).filter(Boolean));
+    const ordered = preferred.filter((s) => s === "전체" || subjectSet.has(s));
+    const other = Array.from(subjectSet).filter((s) => !preferred.includes(s));
+    return [...ordered, ...other];
+  }, [freeTextbooks]);
+
   const transferTextbookSubjects = useMemo(() => {
     const preferred = ["전체", "미적분학", "대학물리학"];
-    const subjectSet = new Set(textbooks.map((p) => p.subject).filter(Boolean));
+    const subjectAllow = new Set(["미적분학", "대학물리학"]);
+    const subjectSet = new Set(
+      textbooks
+        .filter((p) => subjectAllow.has(p.subject) && !p.isFree)
+        .map((p) => p.subject)
+        .filter(Boolean)
+    );
     return preferred.filter((s) => s === "전체" || subjectSet.has(s));
   }, [textbooks]);
 
@@ -569,14 +540,19 @@ function StorePreviewSections({
     return courses.filter((p) => p.subject === selectedCourseSubject);
   }, [courses, selectedCourseSubject]);
 
+  const filteredFreeTextbooks = useMemo(() => {
+    if (selectedFreeTextbookSubject === "전체") return freeTextbooks;
+    return freeTextbooks.filter((p) => p.subject === selectedFreeTextbookSubject);
+  }, [freeTextbooks, selectedFreeTextbookSubject]);
+
   const suneungTextbooks = useMemo(() => {
     const subjectAllow = new Set(["국어", "수학", "영어", "물리학I", "물리학II"]);
-    return textbooks.filter((p) => subjectAllow.has(p.subject));
+    return textbooks.filter((p) => subjectAllow.has(p.subject) && !p.isFree);
   }, [textbooks]);
 
   const transferTextbooks = useMemo(() => {
     const subjectAllow = new Set(["미적분학", "대학물리학"]);
-    return textbooks.filter((p) => subjectAllow.has(p.subject));
+    return textbooks.filter((p) => subjectAllow.has(p.subject) && !p.isFree);
   }, [textbooks]);
 
   const filteredSuneungTextbooks = useMemo(() => {
@@ -596,6 +572,11 @@ function StorePreviewSections({
   }, [courseSubjects, selectedCourseSubject]);
 
   useEffect(() => {
+    if (selectedFreeTextbookSubject === "전체") return;
+    if (!freeTextbookSubjects.includes(selectedFreeTextbookSubject)) setSelectedFreeTextbookSubject("전체");
+  }, [selectedFreeTextbookSubject, freeTextbookSubjects]);
+
+  useEffect(() => {
     if (selectedSuneungTextbookSubject === "전체") return;
     if (!suneungTextbookSubjects.includes(selectedSuneungTextbookSubject)) setSelectedSuneungTextbookSubject("전체");
   }, [selectedSuneungTextbookSubject, suneungTextbookSubjects]);
@@ -608,10 +589,10 @@ function StorePreviewSections({
 
   return (
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
-      <div className="mt-6 md:mt-8">
+      <div className="mt-4 md:mt-6">
         <h2 className="text-[16px] md:text-[26px] font-bold tracking-[-0.02em]">🚀 강의 구매하기</h2>
         {courseSubjects.length > 1 ? (
-          <div className="mt-4">
+          <div className="mt-8">
             <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2 md:flex-wrap md:overflow-visible">
               {courseSubjects.map((subject) => {
                 const active = selectedCourseSubject === subject;
@@ -641,9 +622,48 @@ function StorePreviewSections({
       </div>
 
       <div className="mt-14 md:mt-20">
+        {/* 무료 자료 다운로드 */}
+        {freeTextbooks.length > 0 ? (
+          <div className="mb-14 md:mb-16">
+            <h2 className="text-[16px] md:text-[26px] font-bold tracking-[-0.02em]">📌 무료 자료 다운로드</h2>
+            {freeTextbookSubjects.length > 1 ? (
+              <div className="mt-8">
+                <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2 md:flex-wrap md:overflow-visible">
+                  {freeTextbookSubjects.map((subject) => {
+                    const active = selectedFreeTextbookSubject === subject;
+                    return (
+                      <button
+                        key={`textbook-free-${subject}`}
+                        type="button"
+                        onClick={() => setSelectedFreeTextbookSubject(subject)}
+                        role="tab"
+                        aria-selected={active}
+                        className={`shrink-0 whitespace-nowrap leading-none text-[11px] font-medium md:text-[13px] ${
+                          active
+                            ? "px-3 py-1.5 rounded-full bg-white text-black md:px-4 md:py-2"
+                            : "px-3 py-1.5 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white md:px-4 md:py-2"
+                        }`}
+                      >
+                        {subject}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            <div className="mt-6">
+              <ExpandableProductGrid
+                products={filteredFreeTextbooks}
+                emptyLabel="등록된 무료 자료가 없습니다"
+                collapsedRows={3}
+              />
+            </div>
+          </div>
+        ) : null}
+
         <h2 className="text-[16px] md:text-[26px] font-bold tracking-[-0.02em]">📖 수능 교재 구매하기</h2>
         {suneungTextbookSubjects.length > 1 ? (
-          <div className="mt-4">
+          <div className="mt-8">
             <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2 md:flex-wrap md:overflow-visible">
               {suneungTextbookSubjects.map((subject) => {
                 const active = selectedSuneungTextbookSubject === subject;
@@ -678,7 +698,7 @@ function StorePreviewSections({
         <div className="mt-14 md:mt-16">
           <h3 className="text-[16px] md:text-[26px] font-bold tracking-[-0.02em]">📖 편입 교재 구매하기</h3>
           {transferTextbookSubjects.length > 1 ? (
-            <div className="mt-4">
+            <div className="mt-8">
               <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2 md:flex-wrap md:overflow-visible">
                 {transferTextbookSubjects.map((subject) => {
                   const active = selectedTransferTextbookSubject === subject;
@@ -800,7 +820,7 @@ export default function StorePreviewTabs({
 
             {/* 과목 탭: 가로 스크롤 탭바(underline) */}
             {subjects.length > 1 ? (
-              <div className="mt-4">
+              <div className="mt-6">
                 <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
                   {subjects.map((subject) => {
                     const active = selectedSubject === subject;

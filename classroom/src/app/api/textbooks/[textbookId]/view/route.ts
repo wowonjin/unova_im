@@ -43,6 +43,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
         originalName: string;
         mimeType: string;
         isPublished: boolean;
+        price: number | null;
         imwebProdCode: string | null;
         files?: unknown;
       }
@@ -58,6 +59,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
         originalName: true,
         mimeType: true,
         isPublished: true,
+        price: true,
         imwebProdCode: true,
         files: true,
       },
@@ -72,6 +74,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
         originalName: true,
         mimeType: true,
         isPublished: true,
+        price: true,
         imwebProdCode: true,
       },
     });
@@ -92,7 +95,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ textbookId: str
     if (typeof f.mimeType === "string" && f.mimeType) mimeType = f.mimeType;
   }
 
-  const isPaywalled = tb.imwebProdCode != null && tb.imwebProdCode.length > 0;
+  // NOTE: "판매 가격=0"인 교재는 무료로 간주하여 paywall을 해제합니다.
+  const isPaywalled =
+    tb.imwebProdCode != null && tb.imwebProdCode.length > 0 && !(typeof tb.price === "number" && tb.price === 0);
   const isAdmin = Boolean(user?.isAdmin);
 
   // 비관리자는 공개된 교재만

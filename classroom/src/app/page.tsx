@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import HomeLandingHeaderClient from "./_components/HomeLandingHeaderClient";
 import HeroCarousel, { type HeroCarouselSlide } from "./_components/HeroCarousel";
 import ShortcutNav, { type ShortcutNavItem } from "./_components/ShortcutNav";
-import ScrollProgress from "./_components/ScrollProgress";
 import FloatingKakaoButton from "./_components/FloatingKakaoButton";
 import PopupLayerClient from "./_components/PopupLayerClient";
 import StorePreviewTabs, { type StorePreviewProduct } from "./_components/StorePreviewTabs";
@@ -215,6 +214,7 @@ export default async function HomePage() {
       teacher: c.teacherName || "선생님",
       price: c.price || 0,
       originalPrice: c.originalPrice,
+      isFree: false,
       tags,
       textbookType: null,
       type: "course" as const,
@@ -235,6 +235,7 @@ export default async function HomePage() {
       teacher: t.teacherName || "선생님",
       price: t.price || 0,
       originalPrice: t.originalPrice,
+      isFree: typeof t.price === "number" && t.price === 0,
       tags,
       textbookType: (t as { textbookType?: string | null }).textbookType ?? null,
       type: "textbook" as const,
@@ -252,9 +253,6 @@ export default async function HomePage() {
       fallback={<div className="min-h-screen bg-[#161616] text-white overflow-x-hidden" />}
     >
       <div suppressHydrationWarning className="min-h-screen bg-[#161616] text-white overflow-x-hidden">
-        {/* Scroll Progress Bar */}
-        <ScrollProgress />
-
         {/* Floating Kakao Button */}
         <FloatingKakaoButton />
 

@@ -15,6 +15,7 @@ export async function GET() {
     select: {
       id: true,
       title: true,
+      price: true,
       imwebProdCode: true,
     },
   });
@@ -22,7 +23,11 @@ export async function GET() {
   // 게스트(비로그인): 공개(=paywall 없는) 교재만 노출
   if (!user) {
     const textbooks = textbooksRaw
-      .filter((t) => t.imwebProdCode == null || t.imwebProdCode.length === 0)
+      .filter((t) => {
+        const isPaywalled =
+          t.imwebProdCode != null && t.imwebProdCode.length > 0 && !(typeof t.price === "number" && t.price === 0);
+        return !isPaywalled;
+      })
       .map((t) => ({ id: t.id, title: t.title }));
     return NextResponse.json({ ok: true, textbooks });
   }
@@ -33,7 +38,7 @@ export async function GET() {
   }
 
   const paywalledIds = textbooksRaw
-    .filter((t) => t.imwebProdCode != null && t.imwebProdCode.length > 0)
+    .filter((t) => t.imwebProdCode != null && t.imwebProdCode.length > 0 && !(typeof t.price === "number" && t.price === 0))
     .map((t) => t.id);
 
   const entitledIdSet =
@@ -95,7 +100,8 @@ export async function GET() {
 
   const textbooks = textbooksRaw
     .filter((t) => {
-      const isPaywalled = t.imwebProdCode != null && t.imwebProdCode.length > 0;
+      const isPaywalled =
+        t.imwebProdCode != null && t.imwebProdCode.length > 0 && !(typeof t.price === "number" && t.price === 0);
       if (!isPaywalled) return true;
       return entitledIdSet.has(t.id);
     })
