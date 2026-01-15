@@ -289,68 +289,27 @@ async function getTeacherRecentNoticesForRightPanel(teacherName: string): Promis
   const normalizedTeacherName = (teacherName || "").trim();
 
   try {
-    // 1) 선생님별 카테고리("선생님 공지사항 - {이름}") 우선
-    const byTeacherCategory = await prisma.notice.findMany({
+    // 선생님 게시글은 "해당 선생님 게시판" 글만 노출합니다.
+    // (작성자는 관리자 계정일 수 있으므로, 게시판 카테고리로 선생님을 매칭)
+    const category = `선생님 공지사항 - ${normalizedTeacherName}`.replace(/\s+/g, " ").trim();
+    if (!normalizedTeacherName) return [];
+
+    const list = await prisma.notice.findMany({
       where: {
         ...baseWhere,
-        category: { contains: `선생님 공지사항 - ${normalizedTeacherName}` },
+        category: { equals: category },
       },
       orderBy: [{ createdAt: "desc" }],
       take,
       select: { slug: true, title: true, category: true, createdAt: true, author: { select: { name: true } } },
     });
 
-    // 2) 레거시/유연 매칭: 카테고리 내 "선생님"+"이름" 포함
-    const byCategoryContainsName =
-      byTeacherCategory.length > 0
-        ? []
-        : await prisma.notice.findMany({
-            where: {
-              ...baseWhere,
-              title: { not: "" },
-              AND: normalizedTeacherName
-                ? [{ category: { contains: "선생님" } }, { category: { contains: teacherName } }]
-                : [{ category: { contains: "선생님" } }],
-            },
-            orderBy: [{ createdAt: "desc" }],
-            take,
-            select: { slug: true, title: true, category: true, createdAt: true, author: { select: { name: true } } },
-          });
-
-    // 3) 가능하면 작성자 이름에 선생님 이름이 들어간 공지를 노출(레거시)
-    const byAuthorName =
-      byTeacherCategory.length > 0 || byCategoryContainsName.length > 0
-        ? []
-        : await prisma.notice.findMany({
-            where: {
-              ...baseWhere,
-              category: { contains: "선생님" },
-              author: { name: { contains: normalizedTeacherName } },
-            },
-            orderBy: [{ createdAt: "desc" }],
-            take,
-            select: { slug: true, title: true, category: true, createdAt: true, author: { select: { name: true } } },
-          });
-
-    const list =
-      byTeacherCategory.length > 0
-        ? byTeacherCategory
-        : byCategoryContainsName.length > 0
-          ? byCategoryContainsName
-          : byAuthorName.length > 0
-            ? byAuthorName
-            : await prisma.notice.findMany({
-                where: { ...baseWhere, category: { contains: "선생님" } },
-                orderBy: [{ createdAt: "desc" }],
-                take,
-                select: { slug: true, title: true, category: true, createdAt: true, author: { select: { name: true } } },
-              });
-
     return list.map((n) => ({
       tag: noticeCategoryToTag(n.category),
       text: n.title,
       href: `/notices/${n.slug}`,
-      authorName: n.author?.name || undefined,
+      // UI에는 관리자 계정이 아니라 해당 선생님 이름이 보이도록
+      authorName: normalizedTeacherName,
       createdAt: n.createdAt?.toISOString?.() ? n.createdAt.toISOString() : undefined,
     }));
   } catch (e) {

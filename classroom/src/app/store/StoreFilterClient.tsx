@@ -22,17 +22,30 @@ type Product = {
 };
 
 // 입시 유형별 과목 매핑
-const EXAM_TYPES = ["전체", "내신", "수능", "편입학"] as const;
+const EXAM_TYPES = ["전체", "내신", "수능"] as const;
 type ExamType = (typeof EXAM_TYPES)[number];
+
+// 교재 유형(실물책/전자책) 필터
+const BOOK_FORMATS = ["전체", "실물책", "전자책"] as const;
+type BookFormat = (typeof BOOK_FORMATS)[number];
+
+// 편입학(대학 과목) 관련 과목은 스토어에서 숨김 처리
+const HIDDEN_SUBJECTS = new Set([
+  "미적분학",
+  "대학물리학",
+  "일반물리학",
+  "일반화학",
+  "일반생물학",
+  "선형대수학",
+  "공업수학",
+] as const);
 
 // 입시 유형별 과목 정의
 // 내신/수능: 고등학교 교과목 (수학, 물리학I/II 등)
-// 편입학: 대학 교과목 (미적분학, 대학물리학 등)
 const EXAM_SUBJECTS: Record<ExamType, string[]> = {
   "전체": [], // 전체는 모든 과목 표시
   "내신": ["수학", "수학I", "수학II", "미적분", "확률과 통계", "기하", "물리학I", "물리학II", "화학I", "화학II", "생명과학I", "생명과학II", "지구과학I", "지구과학II"],
   "수능": ["수학", "수학I", "수학II", "미적분", "확률과 통계", "기하", "물리학I", "물리학II", "화학I", "화학II", "생명과학I", "생명과학II", "지구과학I", "지구과학II"],
-  "편입학": ["미적분학", "대학물리학", "일반물리학", "일반화학", "일반생물학", "선형대수학", "공업수학"],
 };
 
 function formatPrice(price: number): string {
@@ -41,6 +54,12 @@ function formatPrice(price: number): string {
 
 function getDiscount(original: number, current: number): number {
   return Math.round(((original - current) / original) * 100);
+}
+
+function normalizeTextbookType(v: string | null | undefined): string {
+  return String(v ?? "")
+    .replace(/\s+/g, "")
+    .toUpperCase();
 }
 
 interface StoreFilterClientProps {
@@ -56,10 +75,18 @@ export default function StoreFilterClient({
   initialSubject = "전체",
   initialExamType = "전체",
 }: StoreFilterClientProps) {
+  const visibleProducts = useMemo(
+    () => products.filter((p) => !HIDDEN_SUBJECTS.has(p.subject)),
+    [products]
+  );
+
   const [selectedExamType, setSelectedExamType] = useState<ExamType>(
     EXAM_TYPES.includes(initialExamType as ExamType) ? (initialExamType as ExamType) : "전체"
   );
-  const [selectedSubject, setSelectedSubject] = useState(initialSubject);
+  const [selectedSubject, setSelectedSubject] = useState(
+    initialSubject !== "전체" && HIDDEN_SUBJECTS.has(initialSubject) ? "전체" : initialSubject
+  );
+  const [selectedBookFormat, setSelectedBookFormat] = useState<BookFormat>("전체");
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
@@ -67,18 +94,18 @@ export default function StoreFilterClient({
   const availableSubjects = useMemo(() => {
     if (selectedExamType === "전체") {
       // 전체인 경우 모든 상품의 과목을 수집
-      const subjectSet = new Set(products.map((p) => p.subject));
-      const subjectOrder = ["전체", "수학", "물리학I", "물리학II", "화학I", "화학II", "생명과학I", "생명과학II", "지구과학I", "지구과학II", "일반물리학", "일반화학", "일반생물학", "미적분학", "선형대수학", "공업수학"];
+      const subjectSet = new Set(visibleProducts.map((p) => p.subject));
+      const subjectOrder = ["전체", "수학", "물리학I", "물리학II", "화학I", "화학II", "생명과학I", "생명과학II", "지구과학I", "지구과학II"];
       const orderedSubjects = subjectOrder.filter((s) => s === "전체" || subjectSet.has(s));
       const otherSubjects = Array.from(subjectSet).filter((s) => !subjectOrder.includes(s));
       return [...orderedSubjects, ...otherSubjects];
     }
     // 특정 입시 유형이 선택된 경우 해당 과목만 표시
     const examSubjects = EXAM_SUBJECTS[selectedExamType];
-    const subjectSet = new Set(products.map((p) => p.subject));
+    const subjectSet = new Set(visibleProducts.map((p) => p.subject));
     const availableFromExam = examSubjects.filter((s) => subjectSet.has(s));
     return ["전체", ...availableFromExam];
-  }, [selectedExamType, products]);
+  }, [selectedExamType, visibleProducts]);
 
   // 입시 유형 변경 시 과목 초기화 (토글 기능)
   const handleExamTypeChange = useCallback((examType: ExamType) => {
@@ -101,9 +128,27 @@ export default function StoreFilterClient({
     }
   }, [selectedSubject]);
 
+  const handleBookFormatChange = useCallback((fmt: BookFormat) => {
+    if (selectedBookFormat === fmt) setSelectedBookFormat("전체");
+    else setSelectedBookFormat(fmt);
+  }, [selectedBookFormat]);
+
   // 필터링된 상품 목록
   const filteredProducts = useMemo(() => {
-    let result = products;
+    let result = visibleProducts;
+
+    // 교재 유형 필터(교재 페이지에서만)
+    if (selectedType === "교재" && selectedBookFormat !== "전체") {
+      if (selectedBookFormat === "전자책") {
+        // "PDF" 배지인 교재만
+        result = result.filter((p) => p.type !== "textbook" ? false : normalizeTextbookType(p.textbookType) === "PDF");
+      } else if (selectedBookFormat === "실물책") {
+        // "실물책+PDF" 배지인 교재만
+        result = result.filter((p) =>
+          p.type !== "textbook" ? false : normalizeTextbookType(p.textbookType) === normalizeTextbookType("실물책+PDF")
+        );
+      }
+    }
 
     // 입시 유형 필터
     if (selectedExamType !== "전체") {
@@ -129,12 +174,13 @@ export default function StoreFilterClient({
     }
 
     return result;
-  }, [products, selectedExamType, selectedSubject, searchQuery]);
+  }, [visibleProducts, selectedExamType, selectedSubject, searchQuery]);
 
   // 전체를 제외한 입시 유형
   const examTypesWithoutAll = EXAM_TYPES.filter((t) => t !== "전체");
   // 전체를 제외한 과목 목록
   const subjectsWithoutAll = availableSubjects.filter((s) => s !== "전체");
+  const bookFormatsWithoutAll = BOOK_FORMATS.filter((t) => t !== "전체");
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24">
@@ -213,6 +259,31 @@ export default function StoreFilterClient({
                 ))}
               </div>
             </div>
+
+            {/* 종류(교재만): 실물책/전자책 */}
+            {selectedType === "교재" ? (
+              <div>
+                <h3 className="text-[13px] font-medium text-white/50 mb-3">종류</h3>
+                <div className="flex flex-wrap gap-2">
+                  {bookFormatsWithoutAll.map((fmt) => (
+                    <button
+                      key={fmt}
+                      onClick={() => handleBookFormatChange(fmt)}
+                      className={`text-[12px] font-medium rounded-md min-w-16 px-3 py-1.5 text-center ${
+                        selectedBookFormat === fmt
+                          ? "bg-white text-black"
+                          : "bg-white/[0.08] text-white/70 hover:bg-white/[0.12] hover:text-white"
+                      }`}
+                    >
+                      {fmt}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-[12px] text-white/40">
+                  실물책: <span className="text-white/60">실물책+PDF</span> · 전자책: <span className="text-white/60">PDF</span>
+                </p>
+              </div>
+            ) : null}
           </div>
         </aside>
 
