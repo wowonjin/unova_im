@@ -251,7 +251,7 @@ export default async function HomePage() {
       // 서버/클라이언트의 루트 트리를 안정적으로 맞추기 위해 명시적으로 감쌉니다.
       fallback={<div className="min-h-screen bg-[#161616] text-white overflow-x-hidden" />}
     >
-      <div className="min-h-screen bg-[#161616] text-white overflow-x-hidden">
+      <div suppressHydrationWarning className="min-h-screen bg-[#161616] text-white overflow-x-hidden">
         {/* Scroll Progress Bar */}
         <ScrollProgress />
 
@@ -276,7 +276,7 @@ export default async function HomePage() {
         </div>
 
         {/* Footer */}
-        <footer className="bg-[#131313] pt-16 pb-12">
+        <footer suppressHydrationWarning className="bg-[#131313] pt-16 pb-12">
         <div className="mx-auto max-w-6xl px-4">
           {/* 모바일 푸터 (PC는 기존 그대로 유지) */}
           <div className="md:hidden">

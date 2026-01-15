@@ -67,7 +67,7 @@ export default function StorePreviewTabs({
   }, [selectedSubject, subjects]);
 
   return (
-    <section className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
+    <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
       {/* 상단 탭(교재/강의 + 과목): 스크롤 시에도 사라지지 않도록 sticky 고정 */}
       <div className="sticky top-[70px] z-40 -mx-4 px-4 bg-[#161616]/85 backdrop-blur-xl">
         <div className="py-3 md:py-4">
@@ -195,7 +195,7 @@ export default function StorePreviewTabs({
       <div className="mt-6">
         {filteredProducts.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-5 sm:gap-y-10">
-            {filteredProducts.slice(0, 12).map((product) => (
+            {filteredProducts.map((product) => (
               <Link key={product.id} href={`/store/${product.id}`} className="group">
                 <div
                   className={`relative aspect-video overflow-hidden transition-all rounded-xl ${

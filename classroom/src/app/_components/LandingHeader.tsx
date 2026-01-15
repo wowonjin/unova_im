@@ -315,6 +315,7 @@ export default function LandingHeader({
 
   return (
     <nav
+      suppressHydrationWarning
       className="fixed top-0 left-0 right-0 z-[1000] transition-colors duration-300"
       style={{
         // 스크롤 시에는 살짝 반투명 + blur
@@ -349,7 +350,7 @@ export default function LandingHeader({
               height={24}
               priority
               className="h-6 w-auto"
-              style={isLight ? { filter: "brightness(0)" } : undefined}
+              style={{ width: "auto", ...(isLight ? { filter: "brightness(0)" } : {}) }}
             />
           </Link>
 
@@ -366,7 +367,7 @@ export default function LandingHeader({
               height={24}
               priority
               className="h-5 sm:h-6 w-auto"
-              style={isLight ? { filter: "brightness(0)" } : undefined}
+              style={{ width: "auto", ...(isLight ? { filter: "brightness(0)" } : {}) }}
             />
           </Link>
 

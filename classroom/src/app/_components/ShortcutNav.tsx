@@ -68,6 +68,7 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
       <section
         id="shortcuts"
         aria-label="바로가기 메뉴"
+        suppressHydrationWarning
         className="mx-auto max-w-[1080px] px-6 pb-4 sm:pb-7 pt-1 sm:pt-3"
       >
         {/* Mobile: 한 줄에 4개 고정 (overflow 방지) */}

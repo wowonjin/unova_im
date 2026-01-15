@@ -188,7 +188,7 @@ export default function HeroCarousel({ slides }: { slides?: Slide[] }) {
   };
 
   return (
-    <section className="pt-[60px] lg:pt-[110px] pb-6 lg:pb-16">
+    <section suppressHydrationWarning className="pt-[60px] lg:pt-[110px] pb-6 lg:pb-16">
       <div 
         ref={containerRef}
         className="relative mx-auto max-w-[1100px] overflow-visible"
