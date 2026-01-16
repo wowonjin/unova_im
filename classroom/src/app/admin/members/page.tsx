@@ -145,7 +145,8 @@ export default async function AdminMembersPage({
         }
       : {};
 
-    let members: Awaited<ReturnType<typeof prisma.user.findMany>>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let members: any[];
     let count: number;
 
     // Prisma Client가 아직 갱신되지 않은 상태(Dev/Turbopack 캐시)에서는
