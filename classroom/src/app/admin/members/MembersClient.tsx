@@ -29,6 +29,11 @@ type Props = {
   currentPage: number;
   totalPages: number;
   query: string;
+  loginStats?: {
+    kakao: number;
+    naver: number;
+    email: number;
+  };
 };
 
 // 인라인 편집 컴포넌트
@@ -151,6 +156,7 @@ export default function MembersClient({
   currentPage,
   totalPages,
   query,
+  loginStats,
 }: Props) {
   const router = useRouter();
   const [members, setMembers] = useState(initialMembers);
@@ -197,7 +203,7 @@ export default function MembersClient({
             currentPage === 1 ? "pointer-events-none text-white/30" : "text-white/70 hover:bg-white/10 hover:text-white"
           }`}
         >
-          ← 이전
+          이전
         </Link>
 
         <div className="flex items-center gap-1">
@@ -222,11 +228,32 @@ export default function MembersClient({
               : "text-white/70 hover:bg-white/10 hover:text-white"
           }`}
         >
-          다음 →
+          다음
         </Link>
       </div>
     );
   }, [currentPage, paginationHref, totalPages]);
+
+  const loginStatsView = useMemo(() => {
+    if (!loginStats) return null;
+    const total = totalCount || 0;
+    const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
+    const fmt = (n: number) => `${n.toLocaleString()}명 (${pct(n).toFixed(1)}%)`;
+
+    return (
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-white/70">
+        <span className="inline-flex items-center gap-1 rounded-full bg-[#FEE500]/15 px-2 py-1 font-medium text-[#FEE500]">
+          카카오 <span className="text-white/80">{fmt(loginStats.kakao)}</span>
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-1 font-medium text-emerald-400">
+          네이버 <span className="text-white/80">{fmt(loginStats.naver)}</span>
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 font-medium text-white/70">
+          일반 <span className="text-white/80">{fmt(loginStats.email)}</span>
+        </span>
+      </div>
+    );
+  }, [loginStats, totalCount]);
 
   // 회원 정보 업데이트
   const updateMember = async (memberId: string, field: string, value: string) => {
@@ -339,6 +366,7 @@ export default function MembersClient({
           <p className="mt-1 text-[13px] text-white/60">
             총 {totalCount.toLocaleString()}명의 회원이 등록되어 있습니다
           </p>
+          {loginStatsView}
         </div>
 
         <div className="flex items-center gap-2">

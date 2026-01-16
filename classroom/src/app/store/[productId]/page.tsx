@@ -13,7 +13,9 @@ import { ensureSoldOutColumnsOnce } from "@/lib/ensure-columns";
 export const revalidate = 60;
 
 function getStoreOwnerEmail(): string {
-  return (process.env.ADMIN_EMAIL || "admin@gmail.com").toLowerCase().trim();
+  // 스토어 목록과 동일하게, 하드코딩된 기본 이메일로 owner 필터를 고정하지 않습니다.
+  // (ADMIN_EMAIL이 비어있거나 DB owner 이메일과 다르면 공개 상품이 404/폴백으로 떨어질 수 있음)
+  return (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
 }
 
 let _ensuredCourseAddonsColumns = false;
@@ -27,376 +29,6 @@ async function ensureCourseAddonsColumnsOnce() {
     // ignore (older DBs or restricted DB users). We will fallback gracefully.
   }
 }
-
-// 더미 상품 데이터
-const productsData: Record<
-  string,
-  {
-    title: string;
-    subject: string;
-    subjectColor: string;
-    subjectBg: string;
-    teacher: string;
-    teacherId: string;
-    teacherTitle: string;
-    teacherDescription: string;
-    price: number;
-    originalPrice: number | null;
-    dailyPrice: number;
-    type: "course" | "textbook";
-    description: string;
-    rating: number;
-    reviewCount: number;
-    tags: string[];
-    studyPeriod: { regular: number; review: number };
-    benefits: string[];
-    features: string[];
-    curriculum: {
-      chapter: string;
-      duration: string;
-      lessons: { title: string; duration: string; isFree?: boolean }[];
-    }[];
-    reviews: {
-      id: string;
-      name: string;
-      rating: number;
-      date: string;
-      content: string;
-      course: string;
-    }[];
-  }
-> = {
-  "math-full": {
-    title: "CONNECT 수학1+수학2+미적분 강의",
-    subject: "수학",
-    subjectColor: "text-blue-400",
-    subjectBg: "bg-blue-500/20",
-    teacher: "백하욱",
-    teacherId: "baek-hawook",
-    teacherTitle: "연세대학교 의과대학 졸업",
-    teacherDescription:
-      "수학의 본질을 이해하고 싶다면, 백하욱 선생님과 함께하세요. 연세대학교 의과대학 출신으로, 복잡한 수학 개념도 직관적이고 명확하게 설명해드립니다. 수능 수학 만점자를 다수 배출한 검증된 강의력으로 여러분의 수학 실력 향상을 책임집니다.",
-    price: 220000,
-    originalPrice: 270000,
-    dailyPrice: 7333,
-    type: "course",
-    description:
-      "연세대학교 의과대학 출신 백하욱 선생님의 수학 전 범위 마스터 강좌입니다. 수학1, 수학2, 미적분의 모든 개념을 체계적으로 정리하고 실전 문제 풀이 능력을 키워드립니다.",
-    rating: 4.9,
-    reviewCount: 328,
-    tags: ["수학", "백하욱", "올인원", "미적분", "심화"],
-    studyPeriod: { regular: 30, review: 150 },
-    benefits: [
-      "PDF 강의자료 무료 제공",
-      "초보부터 고수까지 ALL PASS",
-      "수강생 전용 질문 게시판 이용",
-    ],
-    features: [
-      "수강 완료 시 수료증 발급",
-      "모바일 수강 지원",
-      "백하욱 선생님의 모든 노하우가 담긴 올인원 강의",
-    ],
-    curriculum: [
-      {
-        chapter: "CHAPTER 1 | 수학1 - 지수와 로그",
-        duration: "02:30:00",
-        lessons: [
-          { title: "[1-0] OT - 수학1 학습 로드맵", duration: "00:08:00", isFree: true },
-          { title: "[1-1] 지수의 정의와 성질", duration: "00:25:00" },
-          { title: "[1-2] 지수함수의 그래프", duration: "00:30:00" },
-          { title: "[1-3] 로그의 정의와 성질", duration: "00:28:00" },
-          { title: "[1-4] 로그함수의 그래프", duration: "00:32:00" },
-          { title: "[1-5] 지수·로그 방정식과 부등식", duration: "00:27:00" },
-        ],
-      },
-      {
-        chapter: "CHAPTER 2 | 수학1 - 삼각함수",
-        duration: "03:00:00",
-        lessons: [
-          { title: "[2-1] 삼각함수의 정의", duration: "00:30:00" },
-          { title: "[2-2] 삼각함수의 그래프", duration: "00:35:00" },
-          { title: "[2-3] 삼각함수의 활용", duration: "00:40:00" },
-          { title: "[2-4] 사인법칙과 코사인법칙", duration: "00:35:00" },
-          { title: "[2-5] 삼각함수 심화 문제풀이", duration: "00:40:00" },
-        ],
-      },
-      {
-        chapter: "CHAPTER 3 | 수학2 - 함수의 극한과 연속",
-        duration: "02:00:00",
-        lessons: [
-          { title: "[3-1] 함수의 극한", duration: "00:30:00" },
-          { title: "[3-2] 함수의 연속", duration: "00:25:00" },
-          { title: "[3-3] 극한과 연속 심화", duration: "00:35:00" },
-          { title: "[3-4] 실전 문제풀이", duration: "00:30:00" },
-        ],
-      },
-      {
-        chapter: "CHAPTER 4 | 수학2 - 미분",
-        duration: "03:30:00",
-        lessons: [
-          { title: "[4-1] 미분계수와 도함수", duration: "00:40:00" },
-          { title: "[4-2] 도함수의 활용 (1) - 접선", duration: "00:35:00" },
-          { title: "[4-3] 도함수의 활용 (2) - 증감과 극값", duration: "00:45:00" },
-          { title: "[4-4] 도함수의 활용 (3) - 최대·최소", duration: "00:40:00" },
-          { title: "[4-5] 미분 심화 문제풀이", duration: "00:50:00" },
-        ],
-      },
-      {
-        chapter: "CHAPTER 5 | 미적분 - 수열의 극한",
-        duration: "02:00:00",
-        lessons: [
-          { title: "[5-1] 수열의 극한", duration: "00:30:00" },
-          { title: "[5-2] 급수", duration: "00:35:00" },
-          { title: "[5-3] 등비급수의 활용", duration: "00:30:00" },
-          { title: "[5-4] 실전 문제풀이", duration: "00:25:00" },
-        ],
-      },
-    ],
-    reviews: [
-      {
-        id: "r1",
-        name: "김**",
-        rating: 5,
-        date: "2025년 12월 20일",
-        content:
-          "정말 체계적인 강의입니다! 수학을 포기하려던 저도 이해할 수 있게 설명해주셔서 감사합니다. 특히 미적분 파트가 정말 좋았어요.",
-        course: "CONNECT 수학1+수학2+미적분 강의",
-      },
-      {
-        id: "r2",
-        name: "이**",
-        rating: 5,
-        date: "2025년 12월 18일",
-        content:
-          "선생님 강의력이 정말 좋으세요. 어려운 개념도 쉽게 풀어서 설명해주셔서 이해가 잘 됩니다. 강추합니다!",
-        course: "CONNECT 수학1+수학2+미적분 강의",
-      },
-      {
-        id: "r3",
-        name: "박**",
-        rating: 4.5,
-        date: "2025년 12월 15일",
-        content:
-          "가격 대비 정말 알찬 강의입니다. 수학1, 수학2, 미적분까지 한 번에 정리할 수 있어서 좋아요.",
-        course: "CONNECT 수학1+수학2+미적분 강의",
-      },
-      {
-        id: "r4",
-        name: "최**",
-        rating: 5,
-        date: "2025년 12월 10일",
-        content:
-          "2달 수강하고 모의고사 2등급에서 1등급으로 올랐습니다. 백하욱 선생님 감사합니다!",
-        course: "CONNECT 수학1+수학2+미적분 강의",
-      },
-    ],
-  },
-  "physics-full": {
-    title: "CONNECT 물리학II 전체강의",
-    subject: "물리",
-    subjectColor: "text-amber-400",
-    subjectBg: "bg-amber-500/20",
-    teacher: "장진우",
-    teacherId: "jang-jinwoo",
-    teacherTitle: "UNOVA 대표",
-    teacherDescription:
-      "물리학은 암기가 아닌 이해입니다. 물리학의 원리를 직관적으로 설명하여 누구나 물리학을 즐기면서 공부할 수 있도록 합니다. 수능 물리학과 편입 대학물리학 모두에서 뛰어난 성과를 내고 있습니다.",
-    price: 250000,
-    originalPrice: 300000,
-    dailyPrice: 8333,
-    type: "course",
-    description:
-      "물리학의 원리를 직관적으로 이해하고, 실전 문제 해결 능력을 키우는 완성형 강좌입니다.",
-    rating: 4.8,
-    reviewCount: 215,
-    tags: ["물리", "장진우", "올인원", "역학", "비역학"],
-    studyPeriod: { regular: 30, review: 150 },
-    benefits: [
-      "PDF 강의자료 무료 제공",
-      "초보부터 고수까지 ALL PASS",
-      "수강생 전용 질문 게시판 이용",
-    ],
-    features: [
-      "수강 완료 시 수료증 발급",
-      "모바일 수강 지원",
-      "장진우 선생님의 모든 노하우가 담긴 올인원 강의",
-    ],
-    curriculum: [
-      {
-        chapter: "CHAPTER 1 | 역학 - 힘과 운동",
-        duration: "03:00:00",
-        lessons: [
-          { title: "[1-0] OT - 물리학II 학습 로드맵", duration: "00:10:00", isFree: true },
-          { title: "[1-1] 뉴턴의 운동법칙", duration: "00:35:00" },
-          { title: "[1-2] 등가속도 운동", duration: "00:30:00" },
-          { title: "[1-3] 포물선 운동", duration: "00:40:00" },
-          { title: "[1-4] 원운동", duration: "00:35:00" },
-          { title: "[1-5] 역학 문제풀이", duration: "00:30:00" },
-        ],
-      },
-      {
-        chapter: "CHAPTER 2 | 역학 - 에너지와 운동량",
-        duration: "02:30:00",
-        lessons: [
-          { title: "[2-1] 일과 에너지", duration: "00:30:00" },
-          { title: "[2-2] 역학적 에너지 보존", duration: "00:35:00" },
-          { title: "[2-3] 운동량과 충격량", duration: "00:35:00" },
-          { title: "[2-4] 충돌", duration: "00:30:00" },
-          { title: "[2-5] 에너지·운동량 심화", duration: "00:20:00" },
-        ],
-      },
-      {
-        chapter: "CHAPTER 3 | 비역학 - 전자기학",
-        duration: "03:00:00",
-        lessons: [
-          { title: "[3-1] 전기장과 전위", duration: "00:40:00" },
-          { title: "[3-2] 전기회로", duration: "00:35:00" },
-          { title: "[3-3] 자기장", duration: "00:40:00" },
-          { title: "[3-4] 전자기 유도", duration: "00:35:00" },
-          { title: "[3-5] 전자기학 심화", duration: "00:30:00" },
-        ],
-      },
-    ],
-    reviews: [
-      {
-        id: "r1",
-        name: "정**",
-        rating: 5,
-        date: "2025년 12월 19일",
-        content:
-          "물리학을 이렇게 쉽게 설명해주시다니... 정말 감사합니다. 강의 퀄리티가 최고예요!",
-        course: "CONNECT 물리학II 전체강의",
-      },
-      {
-        id: "r2",
-        name: "한**",
-        rating: 5,
-        date: "2025년 12월 16일",
-        content:
-          "편입 물리 준비하면서 수강했는데 정말 도움이 많이 됐습니다. 합격했어요!",
-        course: "CONNECT 물리학II 전체강의",
-      },
-    ],
-  },
-  "korean-literature": {
-    title: "CONNECT 국어 문학 완성",
-    subject: "국어",
-    subjectColor: "text-rose-400",
-    subjectBg: "bg-rose-500/20",
-    teacher: "이상엽",
-    teacherId: "lee-sangyeob",
-    teacherTitle: "국어 전문가",
-    teacherDescription:
-      "국어 영역의 핵심을 정확히 짚어주는 강의로 많은 학생들의 성적 향상을 이끌어낸 국어 전문가입니다. 체계적인 독해 방법론과 실전 문제 풀이 전략으로 학생들이 국어 영역에서 안정적인 고득점을 받을 수 있도록 지도합니다.",
-    price: 89000,
-    originalPrice: null,
-    dailyPrice: 2967,
-    type: "course",
-    description: "수능 국어 문학 영역의 본질을 꿰뚫는 체계적인 강좌입니다.",
-    rating: 4.9,
-    reviewCount: 156,
-    tags: ["국어", "이상엽", "문학", "수능"],
-    studyPeriod: { regular: 30, review: 90 },
-    benefits: [
-      "PDF 강의자료 무료 제공",
-      "문학 작품집 무료 제공",
-      "수강생 전용 질문 게시판 이용",
-    ],
-    features: [
-      "수강 완료 시 수료증 발급",
-      "모바일 수강 지원",
-      "이상엽 선생님의 문학 분석 노하우",
-    ],
-    curriculum: [
-      {
-        chapter: "CHAPTER 1 | 문학의 기초",
-        duration: "02:00:00",
-        lessons: [
-          { title: "[1-0] OT - 문학 학습법", duration: "00:10:00", isFree: true },
-          { title: "[1-1] 문학의 본질과 기능", duration: "00:25:00" },
-          { title: "[1-2] 문학 갈래의 이해", duration: "00:30:00" },
-          { title: "[1-3] 문학 작품 분석법", duration: "00:35:00" },
-          { title: "[1-4] 기초 실전 연습", duration: "00:20:00" },
-        ],
-      },
-      {
-        chapter: "CHAPTER 2 | 현대시",
-        duration: "03:00:00",
-        lessons: [
-          { title: "[2-1] 현대시의 이해", duration: "00:30:00" },
-          { title: "[2-2] 시어와 이미지", duration: "00:35:00" },
-          { title: "[2-3] 화자와 어조", duration: "00:30:00" },
-          { title: "[2-4] 필수 작품 분석", duration: "00:45:00" },
-          { title: "[2-5] 현대시 문제풀이", duration: "00:40:00" },
-        ],
-      },
-    ],
-    reviews: [
-      {
-        id: "r1",
-        name: "송**",
-        rating: 5,
-        date: "2025년 12월 21일",
-        content: "문학이 이렇게 재밌는 과목이었다니! 선생님 강의 최고입니다.",
-        course: "CONNECT 국어 문학 완성",
-      },
-    ],
-  },
-  "english-structure": {
-    title: "CONNECT 영어 구문 완성",
-    subject: "영어",
-    subjectColor: "text-emerald-400",
-    subjectBg: "bg-emerald-500/20",
-    teacher: "유예린",
-    teacherId: "yoo-yerin",
-    teacherTitle: "영어 전문가",
-    teacherDescription:
-      "영어 문장의 구조와 논리를 체계적으로 분석하여 학생들이 영어를 근본적으로 이해할 수 있도록 돕습니다. 단순 암기가 아닌 원리 이해를 통해 어떤 지문도 자신 있게 해석할 수 있는 실력을 길러줍니다.",
-    price: 95000,
-    originalPrice: null,
-    dailyPrice: 3167,
-    type: "course",
-    description:
-      "영어 문장의 구조를 체계적으로 분석하여 어떤 지문도 정확하게 해석할 수 있는 실력을 길러줍니다.",
-    rating: 4.8,
-    reviewCount: 98,
-    tags: ["영어", "유예린", "구문", "독해"],
-    studyPeriod: { regular: 30, review: 90 },
-    benefits: [
-      "PDF 강의자료 무료 제공",
-      "구문 분석 워크북 제공",
-      "수강생 전용 질문 게시판 이용",
-    ],
-    features: [
-      "수강 완료 시 수료증 발급",
-      "모바일 수강 지원",
-      "유예린 선생님의 구문 분석 노하우",
-    ],
-    curriculum: [
-      {
-        chapter: "CHAPTER 1 | 구문의 기초",
-        duration: "02:00:00",
-        lessons: [
-          { title: "[1-0] OT - 구문 학습의 중요성", duration: "00:10:00", isFree: true },
-          { title: "[1-1] 문장의 기본 구조", duration: "00:30:00" },
-          { title: "[1-2] 주어와 동사 찾기", duration: "00:25:00" },
-          { title: "[1-3] 목적어와 보어", duration: "00:30:00" },
-          { title: "[1-4] 수식어의 이해", duration: "00:25:00" },
-        ],
-      },
-    ],
-    reviews: [
-      {
-        id: "r1",
-        name: "윤**",
-        rating: 5,
-        date: "2025년 12월 22일",
-        content: "구문을 이렇게 체계적으로 배운 건 처음이에요. 정말 추천합니다!",
-        course: "CONNECT 영어 구문 완성",
-      },
-    ],
-  },
-};
 
 function toSafeOgDescription(input: string | null | undefined): string | undefined {
   const v = (input ?? "").trim();
@@ -441,14 +73,24 @@ export async function generateMetadata({
 
   try {
     // 1) 강의 먼저 탐색 (slug 또는 id)
-    const course = await prisma.course.findFirst({
-      where: {
-        OR: [{ slug: productId }, { id: productId }],
-        isPublished: true,
-        owner: { email: storeOwnerEmail },
-      },
+    const courseBaseWhere = {
+      OR: [{ slug: productId }, { id: productId }],
+      isPublished: true,
+    } as const;
+    const courseWhere = storeOwnerEmail
+      ? ({ ...courseBaseWhere, owner: { email: storeOwnerEmail } } as const)
+      : courseBaseWhere;
+
+    let course = await prisma.course.findFirst({
+      where: courseWhere,
       select: { id: true, title: true, description: true, teacherName: true, updatedAt: true },
     });
+    if (storeOwnerEmail && !course) {
+      course = await prisma.course.findFirst({
+        where: courseBaseWhere,
+        select: { id: true, title: true, description: true, teacherName: true, updatedAt: true },
+      });
+    }
 
     if (course) {
       const title = `${course.title} | 유노바`;
@@ -481,14 +123,24 @@ export async function generateMetadata({
     }
 
     // 2) 교재 탐색
-    const textbook = await prisma.textbook.findFirst({
-      where: {
-        OR: [{ id: productId }],
-        isPublished: true,
-        owner: { email: storeOwnerEmail },
-      },
+    const textbookBaseWhere = {
+      OR: [{ id: productId }],
+      isPublished: true,
+    } as const;
+    const textbookWhere = storeOwnerEmail
+      ? ({ ...textbookBaseWhere, owner: { email: storeOwnerEmail } } as const)
+      : textbookBaseWhere;
+
+    let textbook = await prisma.textbook.findFirst({
+      where: textbookWhere,
       select: { id: true, title: true, description: true, teacherName: true, updatedAt: true },
     });
+    if (storeOwnerEmail && !textbook) {
+      textbook = await prisma.textbook.findFirst({
+        where: textbookBaseWhere,
+        select: { id: true, title: true, description: true, teacherName: true, updatedAt: true },
+      });
+    }
 
     if (textbook) {
       const title = `${textbook.title} | 유노바`;
@@ -520,30 +172,6 @@ export async function generateMetadata({
       };
     }
 
-    // 3) 더미 데이터 폴백(로컬/샘플용)
-    const dummy = productsData[productId];
-    if (dummy) {
-      const title = `${dummy.title} | 유노바`;
-      const description = toSafeOgDescription(dummy.description) || DEFAULT_DESC;
-      return {
-        title,
-        description,
-        openGraph: {
-          title,
-          description,
-          images: [{ url: "/unova_main.png", width: 1024, height: 1024, alt: dummy.title }],
-          type: "website",
-          siteName: "유노바",
-        },
-        twitter: {
-          card: "summary_large_image",
-          title,
-          description,
-          images: ["/unova_main.png"],
-        },
-        alternates: { canonical: `/store/${productId}` },
-      };
-    }
   } catch {
     // 메타데이터 생성 실패 시에도 페이지가 깨지지 않게 기본값 유지
     return base;
@@ -638,13 +266,17 @@ export default async function ProductDetailPage({
   let dbTextbook: DbTextbook | null = null;
 
   try {
-    // 먼저 DB에서 강좌를 찾기 (slug로 검색)
+    // 먼저 DB에서 강좌를 찾기 (slug 또는 id)
+    const courseBaseWhere = {
+      OR: [{ slug: productId }, { id: productId }],
+      isPublished: true,
+    } as const;
+    const courseWhere = storeOwnerEmail
+      ? ({ ...courseBaseWhere, owner: { email: storeOwnerEmail } } as const)
+      : courseBaseWhere;
+
     dbCourse = await prisma.course.findFirst({
-      where: {
-        OR: [{ slug: productId }, { id: productId }],
-        isPublished: true,
-        owner: { email: storeOwnerEmail },
-      },
+      where: courseWhere,
       include: {
         lessons: {
           where: { isPublished: true },
@@ -653,16 +285,32 @@ export default async function ProductDetailPage({
         },
       },
     });
+    if (storeOwnerEmail && !dbCourse) {
+      dbCourse = await prisma.course.findFirst({
+        where: courseBaseWhere,
+        include: {
+          lessons: {
+            where: { isPublished: true },
+            orderBy: { position: "asc" },
+            select: { id: true, title: true, durationSeconds: true, vimeoVideoId: true },
+          },
+        },
+      });
+    }
 
     // DB 교재 검색
     if (!dbCourse) {
       try {
+        const textbookBaseWhere = {
+          OR: [{ id: productId }],
+          isPublished: true,
+        } as const;
+        const textbookWhere = storeOwnerEmail
+          ? ({ ...textbookBaseWhere, owner: { email: storeOwnerEmail } } as const)
+          : textbookBaseWhere;
+
         dbTextbook = await prisma.textbook.findFirst({
-          where: {
-            OR: [{ id: productId }],
-            isPublished: true,
-            owner: { email: storeOwnerEmail },
-          },
+          where: textbookWhere,
           select: {
             id: true,
             title: true,
@@ -688,6 +336,35 @@ export default async function ProductDetailPage({
             composition: true,
           },
         });
+        if (storeOwnerEmail && !dbTextbook) {
+          dbTextbook = await prisma.textbook.findFirst({
+            where: textbookBaseWhere,
+            select: {
+              id: true,
+              title: true,
+              subjectName: true,
+              teacherName: true,
+              teacherImageUrl: true,
+              teacherTitle: true,
+              teacherDescription: true,
+              thumbnailUrl: true,
+              imwebProdCode: true,
+              price: true,
+              originalPrice: true,
+              isSoldOut: true,
+              rating: true,
+              reviewCount: true,
+              tags: true,
+              benefits: true,
+              features: true,
+              description: true,
+              extraOptions: true,
+              entitlementDays: true,
+              relatedTextbookIds: true,
+              composition: true,
+            },
+          });
+        }
       } catch (e) {
         // 운영/로컬 환경에서 마이그레이션 누락 등으로 일부 컬럼이 없을 수 있음 → 최소 select로 폴백
         // NOTE: Next dev(Turbopack)에서 server console.error가 소스맵 오버레이 이슈를 유발하는 경우가 있어
@@ -695,12 +372,16 @@ export default async function ProductDetailPage({
         console.warn("[store/product] textbook query failed with full select. Falling back to minimal select.");
         // 최소 select에서도 teacherImageUrl은 가져오되, (운영 환경 등) 컬럼이 없는 경우에는 한 번 더 폴백합니다.
         try {
+          const textbookBaseWhere = {
+            OR: [{ id: productId }],
+            isPublished: true,
+          } as const;
+          const textbookWhere = storeOwnerEmail
+            ? ({ ...textbookBaseWhere, owner: { email: storeOwnerEmail } } as const)
+            : textbookBaseWhere;
+
           dbTextbook = await prisma.textbook.findFirst({
-            where: {
-              OR: [{ id: productId }],
-              isPublished: true,
-              owner: { email: storeOwnerEmail },
-            },
+            where: textbookWhere,
             select: {
               id: true,
               title: true,
@@ -723,15 +404,45 @@ export default async function ProductDetailPage({
               entitlementDays: true,
             },
           });
+          if (storeOwnerEmail && !dbTextbook) {
+            dbTextbook = await prisma.textbook.findFirst({
+              where: textbookBaseWhere,
+              select: {
+                id: true,
+                title: true,
+                subjectName: true,
+                teacherName: true,
+                teacherImageUrl: true,
+                teacherTitle: true,
+                teacherDescription: true,
+                thumbnailUrl: true,
+                imwebProdCode: true,
+                price: true,
+                originalPrice: true,
+                isSoldOut: true,
+                rating: true,
+                reviewCount: true,
+                tags: true,
+                benefits: true,
+                features: true,
+                description: true,
+                entitlementDays: true,
+              },
+            });
+          }
         } catch {
           // teacherImageUrl 컬럼이 없는 환경(레거시/마이그레이션 누락)에서는
           // select에서 teacherImageUrl을 뺀 뒤, 결과에 null을 보정해서 타입을 맞춥니다.
-          const minimal = await prisma.textbook.findFirst({
-            where: {
-              OR: [{ id: productId }],
-              isPublished: true,
-              owner: { email: storeOwnerEmail },
-            },
+          const textbookBaseWhere = {
+            OR: [{ id: productId }],
+            isPublished: true,
+          } as const;
+          const textbookWhere = storeOwnerEmail
+            ? ({ ...textbookBaseWhere, owner: { email: storeOwnerEmail } } as const)
+            : textbookBaseWhere;
+
+          let minimal = await prisma.textbook.findFirst({
+            where: textbookWhere,
             select: {
               id: true,
               title: true,
@@ -753,6 +464,31 @@ export default async function ProductDetailPage({
               entitlementDays: true,
             },
           });
+          if (storeOwnerEmail && !minimal) {
+            minimal = await prisma.textbook.findFirst({
+              where: textbookBaseWhere,
+              select: {
+                id: true,
+                title: true,
+                subjectName: true,
+                teacherName: true,
+                teacherTitle: true,
+                teacherDescription: true,
+                thumbnailUrl: true,
+                imwebProdCode: true,
+                price: true,
+                originalPrice: true,
+                isSoldOut: true,
+                rating: true,
+                reviewCount: true,
+                tags: true,
+                benefits: true,
+                features: true,
+                description: true,
+                entitlementDays: true,
+              },
+            });
+          }
           dbTextbook = minimal ? ({ ...minimal, teacherImageUrl: null } as any) : null;
         }
       }
@@ -924,7 +660,9 @@ export default async function ProductDetailPage({
       if (selectedTextbookIds !== null) {
         bundleTextbooks = selectedTextbookIds.length
           ? await prisma.textbook.findMany({
-              where: { isPublished: true, owner: { email: storeOwnerEmail }, id: { in: selectedTextbookIds } },
+              where: storeOwnerEmail
+                ? ({ isPublished: true, owner: { email: storeOwnerEmail }, id: { in: selectedTextbookIds } } as const)
+                : ({ isPublished: true, id: { in: selectedTextbookIds } } as const),
               orderBy: { createdAt: "desc" },
               select: {
                 id: true,
@@ -947,7 +685,9 @@ export default async function ProductDetailPage({
       if (selectedCourseIds !== null) {
         addonCourses = selectedCourseIds.length
           ? await prisma.course.findMany({
-              where: { isPublished: true, owner: { email: storeOwnerEmail }, id: { in: selectedCourseIds } },
+              where: storeOwnerEmail
+                ? ({ isPublished: true, owner: { email: storeOwnerEmail }, id: { in: selectedCourseIds } } as const)
+                : ({ isPublished: true, id: { in: selectedCourseIds } } as const),
               orderBy: { createdAt: "desc" },
               select: {
                 id: true,
@@ -1168,44 +908,7 @@ export default async function ProductDetailPage({
     );
   }
 
-  // 더미 데이터로 폴백
-  const product = productsData[productId];
-
-  if (!product) {
-    notFound();
-  }
-
-  const discount = product.originalPrice
-    ? getDiscount(product.originalPrice, product.price)
-    : null;
-
-  return (
-    <div className="min-h-screen bg-[#161616] text-white">
-      <LandingHeader />
-
-      <main className="pt-[var(--unova-fixed-header-offset)]">
-        <div className="mx-auto max-w-6xl px-4">
-          {/* 상품 상세 클라이언트 컴포넌트 */}
-          <ProductDetailClient
-            product={{
-              ...product,
-              id: productId,
-              isSoldOut: false,
-              discount,
-              isPriceSet: true,
-              formattedPrice: formatPrice(product.price),
-              formattedOriginalPrice: product.originalPrice
-                ? formatPrice(product.originalPrice)
-                : null,
-              formattedDailyPrice: formatPrice(product.dailyPrice),
-            }}
-          />
-        </div>
-      </main>
-
-      <Footer />
-    </div>
-  );
+  notFound();
   } catch (e) {
     console.error("[store/product] page render failed:", e);
     return (

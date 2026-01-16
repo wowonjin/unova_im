@@ -12,6 +12,7 @@ export type StorePreviewProduct = {
   originalPrice: number | null;
   // 서버에서 DB 값 기준으로 계산된 무료 여부(가격 null을 0으로 표시하는 경우가 있어 price===0만으로 판단하면 안 됨)
   isFree?: boolean;
+  isSoldOut?: boolean;
   tags: string[];
   textbookType: string | null;
   type: "course" | "textbook";
@@ -74,15 +75,17 @@ function ProductGrid({
     <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-5 sm:gap-y-10">
       {products.map((product, idx) => {
         const eager = eagerCount > 0 && idx < eagerCount;
-        return (
-        <Link key={product.id} href={`/store/${product.id}`} className="group">
-          <div
-            className={`relative aspect-video overflow-hidden transition-all rounded-xl ${
-              product.type === "textbook"
-                ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02]"
-                : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
-            }`}
-          >
+        const isDisabled = Boolean(product.isSoldOut);
+
+        const Card = (
+          <>
+            <div
+              className={`relative aspect-video overflow-hidden transition-all rounded-xl ${
+                product.type === "textbook"
+                  ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02]"
+                  : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
+              }`}
+            >
             {/* 교재 종류 배지 (교재만) */}
             {product.type === "textbook" && product.textbookType ? (
               <div className="absolute left-2 top-2 z-10">
@@ -94,6 +97,15 @@ function ProductGrid({
                   }`}
                 >
                   {product.textbookType}
+                </span>
+              </div>
+            ) : null}
+
+            {/* 준비중 배지 */}
+            {product.isSoldOut ? (
+              <div className="absolute right-2 top-2 z-10">
+                <span className="inline-flex items-center rounded-full bg-zinc-700/80 px-3 py-1 text-[10px] font-semibold text-white/90 border border-white/10 backdrop-blur">
+                  준비중
                 </span>
               </div>
             ) : null}
@@ -136,9 +148,11 @@ function ProductGrid({
                 </div>
               </div>
             )}
-          </div>
 
-          <div className="mt-3 px-0.5">
+            {/* NOTE: 준비중 상태라도 썸네일을 어둡게 만드는 오버레이는 사용하지 않습니다. */}
+            </div>
+
+            <div className="mt-3 px-0.5">
             <h3 className="text-[14px] font-medium text-white leading-snug line-clamp-2 group-hover:text-white/90">
               {product.title}
             </h3>
@@ -191,8 +205,23 @@ function ProductGrid({
                   ))}
               </div>
             ) : null}
+            </div>
+          </>
+        );
+
+        return isDisabled ? (
+          <div
+            key={product.id}
+            className="group cursor-not-allowed"
+            aria-disabled="true"
+            title="준비중인 상품입니다"
+          >
+            {Card}
           </div>
-        </Link>
+        ) : (
+          <Link key={product.id} href={`/store/${product.id}`} className="group">
+            {Card}
+          </Link>
         );
       })}
     </div>
@@ -322,7 +351,8 @@ function StorePreviewSectionsSimple({
   const [selectedTextbookSubject, setSelectedTextbookSubject] = useState<string>("전체");
 
   const courseSubjects = useMemo(() => {
-    const subjectOrder = ["전체", "수학", "물리학I", "물리학II"];
+    // 홈 "강의 구매하기" 과목 탭 순서(요청 반영)
+    const subjectOrder = ["전체", "국어", "영어", "수학", "물리학I", "물리학II", "사회문화"];
     const subjectSet = new Set(courses.map((p) => p.subject).filter(Boolean));
     const ordered = subjectOrder.filter((s) => s === "전체" || subjectSet.has(s));
     const other = Array.from(subjectSet).filter((s) => !subjectOrder.includes(s));
@@ -582,7 +612,8 @@ function StorePreviewSections({
   const [selectedTransferTextbookSubject, setSelectedTransferTextbookSubject] = useState<string>("전체");
 
   const courseSubjects = useMemo(() => {
-    const subjectOrder = ["전체", "수학", "물리학I", "물리학II"];
+    // 홈 "강의 구매하기" 과목 탭 순서(요청 반영)
+    const subjectOrder = ["전체", "국어", "영어", "수학", "물리학I", "물리학II", "사회문화"];
     const subjectSet = new Set(courses.map((p) => p.subject).filter(Boolean));
     const ordered = subjectOrder.filter((s) => s === "전체" || subjectSet.has(s));
     const other = Array.from(subjectSet).filter((s) => !subjectOrder.includes(s));
@@ -590,16 +621,21 @@ function StorePreviewSections({
   }, [courses]);
 
   const suneungTextbookSubjects = useMemo(() => {
-    // 요청 순서 고정: 국어 → 수학 → 물리학I → 물리학II
-    const preferred = ["전체", "국어", "수학", "영어", "물리학I", "물리학II"];
-    const subjectAllow = new Set(["국어", "수학", "영어", "물리학I", "물리학II"]);
-    const subjectSet = new Set(
-      textbooks
-        .filter((p) => subjectAllow.has(p.subject) && !p.isFree)
-        .map((p) => p.subject)
-        .filter(Boolean)
-    );
-    return preferred.filter((s) => s === "전체" || subjectSet.has(s));
+    // 요청 순서 고정: 국어 → 영어 → 수학 → 물리학I → 물리학II → 사회문화
+    // NOTE: 홈에서 내려오는 교재 데이터가 "편입/기타 과목" 위주로 잘리거나(프리뷰), 과목명이 다를 경우
+    // 수능 교재 섹션이 통째로 비어 보이는 문제가 생길 수 있어 폴백 로직을 둡니다.
+    const preferred = ["전체", "국어", "영어", "수학", "물리학I", "물리학II", "사회문화"];
+    const subjectAllow = new Set(["국어", "영어", "수학", "물리학I", "물리학II", "사회문화"]);
+
+    const paid = textbooks.filter((p) => !p.isFree);
+    const allowedPaid = paid.filter((p) => subjectAllow.has(p.subject));
+
+    const source = allowedPaid.length > 0 ? allowedPaid : paid; // 폴백: 유료 교재 전체
+    const subjectSet = new Set(source.map((p) => p.subject).filter(Boolean));
+
+    const ordered = preferred.filter((s) => s === "전체" || subjectSet.has(s));
+    const other = Array.from(subjectSet).filter((s) => !preferred.includes(s));
+    return [...ordered, ...other];
   }, [textbooks]);
 
   const freeTextbooks = useMemo(() => {
@@ -637,8 +673,11 @@ function StorePreviewSections({
   }, [freeTextbooks, selectedFreeTextbookSubject]);
 
   const suneungTextbooks = useMemo(() => {
-    const subjectAllow = new Set(["국어", "수학", "영어", "물리학I", "물리학II"]);
-    return textbooks.filter((p) => subjectAllow.has(p.subject) && !p.isFree);
+    const subjectAllow = new Set(["국어", "영어", "수학", "물리학I", "물리학II", "사회문화"]);
+    const paid = textbooks.filter((p) => !p.isFree);
+    const filtered = paid.filter((p) => subjectAllow.has(p.subject));
+    // 폴백: 수능 과목으로 분류된 교재가 0개면, 유료 교재를 그대로 보여준다(섹션이 빈 화면으로 보이는 문제 방지)
+    return filtered.length > 0 ? filtered : paid;
   }, [textbooks]);
 
   const transferTextbooks = useMemo(() => {

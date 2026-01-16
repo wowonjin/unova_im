@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 type Course = {
   id: string;
+  position?: number;
   title: string;
   slug: string;
   teacherName: string | null;
@@ -50,6 +51,19 @@ export default function CourseListClient({
   const [deleteMode, setDeleteMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [items, setItems] = useState<Course[]>(() => courses);
+  const lastItemsRef = useRef<Course[]>(courses);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [orderError, setOrderError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setItems(courses);
+    lastItemsRef.current = courses;
+  }, [courses]);
+
+  const hasActiveFilter = Boolean(q.trim()) || publishedRaw !== "all";
+  const canReorder = !hasActiveFilter && !deleteMode;
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -100,13 +114,62 @@ export default function CourseListClient({
     setSelected(new Set());
   };
 
+  function readDraggingIdFromEvent(e: React.DragEvent): string | null {
+    const fromState = draggingId;
+    if (fromState) return fromState;
+    const fromTransfer = e.dataTransfer?.getData?.("text/plain");
+    return typeof fromTransfer === "string" && fromTransfer ? fromTransfer : null;
+  }
+
+  async function persistOrder(next: Course[]) {
+    setOrderError(null);
+    const ids = next.map((c) => c.id);
+    try {
+      const res = await fetch("/api/admin/courses/reorder", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ courseIds: ids }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const err = typeof body?.error === "string" ? body.error : `HTTP_${res.status}`;
+        throw new Error(err);
+      }
+      window.location.reload();
+    } catch (e) {
+      console.error(e);
+      const msg = String((e as any)?.message || "");
+      if (msg === "FORBIDDEN" || msg === "HTTP_401" || msg === "HTTP_403") {
+        setOrderError("권한이 없거나 로그인 정보가 만료되었습니다. 새로고침 후 다시 시도해주세요.");
+      } else {
+        setOrderError("순서 저장에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      }
+      setItems(lastItemsRef.current);
+    }
+  }
+
+  function moveItem(fromId: string, toId: string) {
+    if (fromId === toId) return;
+    const fromIndex = items.findIndex((t) => t.id === fromId);
+    const toIndex = items.findIndex((t) => t.id === toId);
+    if (fromIndex < 0 || toIndex < 0) return;
+
+    const next = items.slice();
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+
+    lastItemsRef.current = items;
+    setItems(next);
+    void persistOrder(next);
+  }
+
   return (
     <div className="rounded-2xl border border-white/10 bg-transparent">
       <div className="border-b border-white/10 px-5 py-4">
         <div className="flex items-center justify-between gap-3">
           <div className="text-sm font-semibold">내 강좌 목록</div>
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${courses.length ? "bg-white/10 text-white/80" : "bg-white/5 text-white/40"}`}>
-            {courses.length}개
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${items.length ? "bg-white/10 text-white/80" : "bg-white/5 text-white/40"}`}>
+            {items.length}개
           </span>
         </div>
 
@@ -127,16 +190,22 @@ export default function CourseListClient({
             <option value="all">전체</option>
             <option value="1">공개만</option>
             <option value="0">비공개만</option>
+            <option value="soldout">준비중</option>
           </select>
 
           {!deleteMode ? (
-            <button
-              type="button"
-              onClick={() => setDeleteMode(true)}
-              className="h-9 rounded-xl border border-red-500/30 bg-red-500/10 px-4 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/20"
-            >
-              삭제하기
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteMode(true)}
+                className="h-9 rounded-xl border border-red-500/30 bg-red-500/10 px-4 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/20"
+              >
+                삭제하기
+              </button>
+              <span className={`text-xs ${hasActiveFilter ? "text-white/35" : "text-white/50"}`}>
+                {hasActiveFilter ? "검색/필터 중에는 드래그 정렬이 꺼집니다" : "드래그로 순서 변경 가능"}
+              </span>
+            </div>
           ) : (
             <div className="flex items-center gap-2">
               <button
@@ -144,7 +213,7 @@ export default function CourseListClient({
                 onClick={selectAll}
                 className="h-9 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white/70 transition-colors hover:bg-white/10"
               >
-                {selected.size === courses.length ? "전체 해제" : "전체 선택"}
+                {selected.size === items.length ? "전체 해제" : "전체 선택"}
               </button>
               <button
                 type="button"
@@ -166,9 +235,21 @@ export default function CourseListClient({
         </form>
       </div>
 
-      {courses.length > 0 ? (
+      {hasActiveFilter ? (
+        <div className="border-b border-white/10 px-5 py-3 text-xs text-white/50">
+          검색/필터 상태에서는 정렬(드래그)이 꺼집니다. (필터를 전체로 돌리면 다시 사용 가능)
+        </div>
+      ) : null}
+
+      {orderError ? (
+        <div className="border-b border-red-500/30 bg-red-500/10 px-5 py-3 text-xs text-red-200">
+          {orderError}
+        </div>
+      ) : null}
+
+      {items.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {courses.map((c) => {
+          {items.map((c) => {
             const teacherLabel = c.teacherName?.trim() || inferTeacherFromTitle(c.title) || "";
             const subjectLabel = c.subjectName?.trim() || inferSubjectFromTitle(c.title) || "";
             const hasThumbnail = Boolean(c.thumbnailStoredPath || c.thumbnailUrl);
@@ -177,7 +258,7 @@ export default function CourseListClient({
               ? `/api/courses/${c.id}/thumbnail?v=${encodeURIComponent(c.updatedAtISO)}`
               : "/course-placeholder.svg";
             const isSelected = selected.has(c.id);
-            const statusLabel = !c.isPublished ? "비공개" : c.isSoldOut ? "품절" : "공개";
+            const statusLabel = !c.isPublished ? "비공개" : c.isSoldOut ? "준비중" : "공개";
             const statusToneClass = !c.isPublished
               ? "bg-white/10 text-white/60"
               : c.isSoldOut
@@ -188,6 +269,34 @@ export default function CourseListClient({
               <>
                 {/* 썸네일 */}
                 <div className="relative aspect-video w-full overflow-hidden bg-gradient-to-br from-white/5 to-white/[0.02]">
+                  {/* Drag handle (정렬 가능할 때만) */}
+                  <div className="absolute left-2 top-2 z-10">
+                    <button
+                      type="button"
+                      draggable={canReorder}
+                      onClick={(e) => e.preventDefault()}
+                      onDragStart={(e) => {
+                        setOrderError(null);
+                        if (!canReorder) return;
+                        setDraggingId(c.id);
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", c.id);
+                      }}
+                      onDragEnd={() => {
+                        setDraggingId(null);
+                        setDragOverId(null);
+                      }}
+                      className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 bg-black/40 text-white/60 backdrop-blur-sm ${
+                        canReorder ? "cursor-grab active:cursor-grabbing hover:bg-black/55" : "cursor-not-allowed opacity-40"
+                      }`}
+                      title={canReorder ? "드래그하여 순서 변경" : "전체 보기에서만 정렬할 수 있습니다"}
+                      aria-label="드래그하여 순서 변경"
+                    >
+                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                        <path d="M7 4a1 1 0 102 0 1 1 0 00-2 0zM7 10a1 1 0 102 0 1 1 0 00-2 0zM7 16a1 1 0 102 0 1 1 0 00-2 0zM11 4a1 1 0 102 0 1 1 0 00-2 0zM11 10a1 1 0 102 0 1 1 0 00-2 0zM11 16a1 1 0 102 0 1 1 0 00-2 0z" />
+                      </svg>
+                    </button>
+                  </div>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={thumbSrc}
@@ -267,7 +376,39 @@ export default function CourseListClient({
               <Link
                 key={c.id}
                 href={`/admin/course/${c.id}?tab=settings`}
-                className="group relative overflow-hidden rounded-xl border border-white/10 bg-transparent transition-all hover:border-white/20 hover:bg-transparent"
+                draggable={canReorder}
+                onDragStart={(e) => {
+                  setOrderError(null);
+                  if (!canReorder) return;
+                  setDraggingId(c.id);
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", c.id);
+                }}
+                onDragOver={(e) => {
+                  const fromId = readDraggingIdFromEvent(e);
+                  if (!fromId) return;
+                  if (!canReorder) return;
+                  e.preventDefault();
+                  setDragOverId(c.id);
+                }}
+                onDragLeave={() => {
+                  if (dragOverId === c.id) setDragOverId(null);
+                }}
+                onDrop={(e) => {
+                  const fromId = readDraggingIdFromEvent(e);
+                  if (!fromId) return;
+                  if (!canReorder) return;
+                  e.preventDefault();
+                  setDragOverId(null);
+                  moveItem(fromId, c.id);
+                }}
+                onDragEnd={() => {
+                  setDraggingId(null);
+                  setDragOverId(null);
+                }}
+                className={`group relative overflow-hidden rounded-xl border bg-transparent transition-all hover:border-white/20 hover:bg-transparent ${
+                  dragOverId === c.id && draggingId !== c.id ? "border-white/30 ring-1 ring-white/15" : "border-white/10"
+                }`}
               >
                 {cardContent}
               </Link>

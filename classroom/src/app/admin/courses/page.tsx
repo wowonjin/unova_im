@@ -16,13 +16,15 @@ export default async function AdminCoursesPage({
   const sp = (await searchParams) ?? {};
   const q = (sp.q ?? "").trim();
   const publishedRaw = sp.published ?? "all";
-  const publishedFilter =
-    publishedRaw === "1" ? true : publishedRaw === "0" ? false : null;
+  const publishedFilter = publishedRaw === "1" ? true : publishedRaw === "0" ? false : null;
+  const soldOutOnly = publishedRaw === "soldout";
 
   const courses = await prisma.course.findMany({
     where: {
       ownerId: teacher.id,
-      ...(publishedFilter == null ? {} : { isPublished: publishedFilter }),
+      // 공개 상태 필터: 전체 / 공개만 / 비공개만 / 준비중(공개+품절)
+      ...(soldOutOnly ? { isPublished: true, isSoldOut: true } : {}),
+      ...(soldOutOnly ? {} : publishedFilter == null ? {} : { isPublished: publishedFilter }),
       ...(q.length
         ? {
             OR: [
@@ -36,6 +38,7 @@ export default async function AdminCoursesPage({
     orderBy: [{ position: "asc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
     select: {
       id: true,
+      position: true,
       title: true,
       slug: true,
       teacherName: true,
@@ -64,6 +67,7 @@ export default async function AdminCoursesPage({
   // Transform courses for client component
   const coursesForClient = courses.map((c) => ({
     id: c.id,
+    position: c.position ?? 0,
     title: c.title,
     slug: c.slug,
     teacherName: c.teacherName,

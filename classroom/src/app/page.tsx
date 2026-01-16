@@ -15,12 +15,12 @@ import type { Prisma } from "@prisma/client";
 export const revalidate = 60;
 
 function getStoreOwnerEmail(): string {
-  // StorePage와 동일하게 관리자 이메일 소유 상품만 홈에도 노출
-  return (process.env.ADMIN_EMAIL || "admin@gmail.com").toLowerCase().trim();
+  // NOTE: 홈 프리뷰는 "판매 등록된 상품"을 보여줘야 하므로 특정 owner로 제한하지 않습니다.
+  return "";
 }
 
 export default async function HomePage() {
-  const storeOwnerEmail = getStoreOwnerEmail();
+  getStoreOwnerEmail();
 
   // 메인 슬라이드/바로가기 아이콘: DB 없으면 기존 하드코딩 fallback 사용
   let heroSlides: HeroCarouselSlide[] | undefined = undefined;
@@ -120,34 +120,46 @@ export default async function HomePage() {
   let storeCourses: DbCourseRow[] = [];
   let storeTextbooks: DbTextbookRow[] = [];
   try {
-    const coursesPromise = prisma.course.findMany({
-      where: { isPublished: true, owner: { email: storeOwnerEmail } },
-      select: {
-        id: true,
-        title: true,
-        subjectName: true,
-        teacherName: true,
-        price: true,
-        originalPrice: true,
-        tags: true,
-        thumbnailUrl: true,
-        thumbnailStoredPath: true,
-        updatedAt: true,
-        rating: true,
-        reviewCount: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const coursesPromise = (async () => {
+      let rows = await prisma.course.findMany({
+        where: {
+          isPublished: true,
+          // "강좌 판매하기" 기준: 판매가/정가 중 하나라도 설정된 강좌만 노출
+          OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+        },
+        select: {
+          id: true,
+          title: true,
+          subjectName: true,
+          teacherName: true,
+          price: true,
+          originalPrice: true,
+          tags: true,
+          thumbnailUrl: true,
+          thumbnailStoredPath: true,
+          updatedAt: true,
+          isSoldOut: true,
+          rating: true,
+          reviewCount: true,
+        },
+        // "내 강좌 목록"과 동일 정렬: position asc → updatedAt desc → createdAt desc
+        orderBy: [{ position: "asc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
+        take: 12,
+      });
+      return rows;
+    })();
+
+    const baseTextbookWhere = {
+      isPublished: true,
+      // /store(책 구매 페이지)와 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
+      OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+    } as const;
+    const textbookWhere = baseTextbookWhere;
 
     const textbooksPromise = (async () => {
       try {
-        return await prisma.textbook.findMany({
-          where: {
-            isPublished: true,
-            owner: { email: storeOwnerEmail },
-            // /store(책 구매 페이지)와 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
-            OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-          },
+        let rows = await prisma.textbook.findMany({
+          where: textbookWhere,
           select: {
             id: true,
             title: true,
@@ -159,22 +171,20 @@ export default async function HomePage() {
             textbookType: true,
             thumbnailUrl: true,
             updatedAt: true,
+            isSoldOut: true,
             rating: true,
             reviewCount: true,
           },
           orderBy: [{ position: "desc" }, { createdAt: "desc" }],
+          take: 12,
         });
+        return rows;
       } catch (e) {
         if (process.env.NODE_ENV !== "production") {
           console.warn("[home] store textbooks query failed with position order, fallback to createdAt:", e);
         }
-        return await prisma.textbook.findMany({
-          where: {
-            isPublished: true,
-            owner: { email: storeOwnerEmail },
-            // /store(책 구매 페이지)와 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
-            OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-          },
+        let rows = await prisma.textbook.findMany({
+          where: textbookWhere,
           select: {
             id: true,
             title: true,
@@ -186,11 +196,14 @@ export default async function HomePage() {
             textbookType: true,
             thumbnailUrl: true,
             updatedAt: true,
+            isSoldOut: true,
             rating: true,
             reviewCount: true,
           },
           orderBy: [{ createdAt: "desc" }],
+          take: 12,
         });
+        return rows;
       }
     })();
 
@@ -215,6 +228,7 @@ export default async function HomePage() {
       price: c.price || 0,
       originalPrice: c.originalPrice,
       isFree: false,
+      isSoldOut: Boolean((c as any).isSoldOut),
       tags,
       textbookType: null,
       type: "course" as const,
@@ -236,6 +250,7 @@ export default async function HomePage() {
       price: t.price || 0,
       originalPrice: t.originalPrice,
       isFree: typeof t.price === "number" && t.price === 0,
+      isSoldOut: Boolean((t as any).isSoldOut),
       tags,
       textbookType: (t as { textbookType?: string | null }).textbookType ?? null,
       type: "textbook" as const,

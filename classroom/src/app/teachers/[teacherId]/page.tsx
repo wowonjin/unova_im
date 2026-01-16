@@ -70,6 +70,7 @@ async function buildTeacherLectureAndBookSets({
             thumbnailUrl: true,
             thumbnailStoredPath: true,
             updatedAt: true,
+            isSoldOut: true,
           },
         })
       : Promise.resolve([]),
@@ -90,6 +91,7 @@ async function buildTeacherLectureAndBookSets({
             composition: true,
             textbookType: true,
             updatedAt: true,
+            isSoldOut: true,
           },
         })
       : Promise.resolve([]),
@@ -121,6 +123,7 @@ async function buildTeacherLectureAndBookSets({
     price: typeof c.price === "number" ? c.price : 0,
     originalPrice: typeof c.originalPrice === "number" ? c.originalPrice : null,
     isFree: false,
+    isSoldOut: Boolean((c as any).isSoldOut),
     tags: Array.isArray(c.tags) ? (c.tags as any[]).filter((t) => typeof t === "string") as string[] : [],
     textbookType: null,
     type: "course",
@@ -150,6 +153,7 @@ async function buildTeacherLectureAndBookSets({
     price: typeof t.price === "number" ? t.price : 0,
     originalPrice: typeof t.originalPrice === "number" ? t.originalPrice : null,
     isFree: typeof t.price === "number" && t.price === 0,
+    isSoldOut: Boolean((t as any).isSoldOut),
     tags: Array.isArray(t.tags) ? (t.tags as any[]).filter((x) => typeof x === "string") as string[] : [],
     textbookType: typeof t.textbookType === "string" ? t.textbookType : null,
     type: "textbook",

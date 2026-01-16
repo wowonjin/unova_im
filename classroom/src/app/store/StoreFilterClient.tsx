@@ -321,15 +321,17 @@ export default function StoreFilterClient({
                 // 스토어 목록은 썸네일이 많아서, 전부 eager 로딩 시 네트워크/메인스레드가 잠겨
                 // "페이지가 늦게 뜨는" 체감이 커집니다. 상단 일부만 eager, 나머지는 lazy로 분산합니다.
                 const eager = idx < 6;
-                return (
-                <Link key={product.id} href={`/store/${product.id}`} className="group">
-                  <div
-                    className={`relative aspect-video overflow-hidden transition-all rounded-xl ${
-                      product.type === "textbook"
-                        ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02]"
-                        : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
-                    }`}
-                  >
+                const isDisabled = Boolean(product.isSoldOut);
+
+                const Card = (
+                  <>
+                    <div
+                      className={`relative aspect-video overflow-hidden transition-all rounded-xl ${
+                        product.type === "textbook"
+                          ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02]"
+                          : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
+                      }`}
+                    >
                     {/* 교재 종류 배지 (교재만) */}
                     {product.type === "textbook" && product.textbookType ? (
                       <div className="absolute left-2 top-2 z-10">
@@ -345,11 +347,11 @@ export default function StoreFilterClient({
                       </div>
                     ) : null}
 
-                    {/* 품절 배지 */}
+                    {/* 준비중 배지 */}
                     {product.isSoldOut ? (
                       <div className="absolute right-2 top-2 z-10">
                         <span className="inline-flex items-center rounded-full bg-zinc-700/80 px-3 py-1 text-[10px] font-semibold text-white/90 border border-white/10 backdrop-blur">
-                          품절
+                          준비중
                         </span>
                       </div>
                     ) : null}
@@ -388,17 +390,11 @@ export default function StoreFilterClient({
                       </div>
                     )}
 
-                    {/* 품절 오버레이(가독성/상태 강조) */}
-                    {product.isSoldOut ? (
-                      <div
-                        className="absolute inset-0 bg-black/35"
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                  </div>
+                    {/* NOTE: 준비중 상태라도 썸네일을 어둡게 만드는 오버레이는 사용하지 않습니다. */}
+                    </div>
 
-                  {/* 상품 정보 */}
-                  <div className="mt-3 px-0.5">
+                    {/* 상품 정보 */}
+                    <div className="mt-3 px-0.5">
                     <h3 className="text-[15px] font-medium text-white leading-snug line-clamp-2 group-hover:text-white/90">
                       {product.title}
                     </h3>
@@ -453,8 +449,23 @@ export default function StoreFilterClient({
                           ))}
                       </div>
                     )}
+                    </div>
+                  </>
+                );
+
+                return isDisabled ? (
+                  <div
+                    key={product.id}
+                    className="group cursor-not-allowed"
+                    aria-disabled="true"
+                    title="준비중인 상품입니다"
+                  >
+                    {Card}
                   </div>
-                </Link>
+                ) : (
+                  <Link key={product.id} href={`/store/${product.id}`} className="group">
+                    {Card}
+                  </Link>
                 );
               })}
             </div>

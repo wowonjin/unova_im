@@ -132,6 +132,7 @@ export default async function AdminMembersPage({
   let membersData: MemberRow[] = dummyMembers;
   let totalCount = dummyMembers.length;
   let totalPages = 1;
+  let loginStats: { kakao: number; naver: number; email: number } | null = null;
 
   try {
     // 검색 조건
@@ -164,11 +165,12 @@ export default async function AdminMembersPage({
 
     let members: MemberQueryRow[];
     let count: number;
+    let stats: { kakao: number; naver: number; email: number };
 
     // Prisma Client가 아직 갱신되지 않은 상태(Dev/Turbopack 캐시)에서는
     // `passwordCiphertext`가 unknown field로 터질 수 있어 fallback을 둔다.
     try {
-      [members, count] = await Promise.all([
+      [members, count, stats] = await Promise.all([
         prisma.user.findMany({
           where,
           orderBy: { createdAt: "desc" },
@@ -197,11 +199,28 @@ export default async function AdminMembersPage({
           },
         }),
         prisma.user.count({ where }),
+        Promise.all([
+          prisma.user.count({ where: { ...where, oauthAccounts: { some: { provider: "kakao" } } } }),
+          prisma.user.count({
+            where: {
+              ...where,
+              oauthAccounts: { some: { provider: "naver" } },
+              NOT: { oauthAccounts: { some: { provider: "kakao" } } },
+            },
+          }),
+          prisma.user.count({
+            where: {
+              ...where,
+              emailCredential: { isNot: null },
+              oauthAccounts: { none: {} },
+            },
+          }),
+        ]).then(([kakao, naver, email]) => ({ kakao, naver, email })),
       ]);
     } catch (e) {
       const msg = String(e);
       if (msg.includes("Unknown field `passwordCiphertext`") || msg.includes("Unknown field \"passwordCiphertext\"")) {
-        [members, count] = await Promise.all([
+        [members, count, stats] = await Promise.all([
           prisma.user.findMany({
             where,
             orderBy: { createdAt: "desc" },
@@ -230,6 +249,23 @@ export default async function AdminMembersPage({
             },
           }),
           prisma.user.count({ where }),
+          Promise.all([
+            prisma.user.count({ where: { ...where, oauthAccounts: { some: { provider: "kakao" } } } }),
+            prisma.user.count({
+              where: {
+                ...where,
+                oauthAccounts: { some: { provider: "naver" } },
+                NOT: { oauthAccounts: { some: { provider: "kakao" } } },
+              },
+            }),
+            prisma.user.count({
+              where: {
+                ...where,
+                emailCredential: { isNot: null },
+                oauthAccounts: { none: {} },
+              },
+            }),
+          ]).then(([kakao, naver, email]) => ({ kakao, naver, email })),
         ]);
       } else {
         throw e;
@@ -238,6 +274,7 @@ export default async function AdminMembersPage({
 
     totalCount = count;
     totalPages = Math.ceil(totalCount / limit);
+    loginStats = stats;
 
     membersData = members.map((m) => {
       const providers = (m.oauthAccounts ?? []).map((a) => (a.provider || "").toLowerCase());
@@ -290,6 +327,13 @@ export default async function AdminMembersPage({
       );
       totalCount = membersData.length;
     }
+
+    // 더미 데이터 기준 통계
+    const subset = membersData;
+    const kakao = subset.filter((m) => m.loginType === "kakao").length;
+    const naver = subset.filter((m) => m.loginType === "naver").length;
+    const email = subset.filter((m) => m.loginType === "email").length;
+    loginStats = { kakao, naver, email };
   }
 
   return (
@@ -300,6 +344,7 @@ export default async function AdminMembersPage({
         currentPage={page}
         totalPages={totalPages}
         query={query}
+        loginStats={loginStats ?? undefined}
       />
     </AppShell>
   );

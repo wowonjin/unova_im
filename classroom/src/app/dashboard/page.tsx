@@ -9,7 +9,9 @@ import Link from "next/link";
 
 function getStoreOwnerEmail(): string {
   // 스토어(/store)와 동일한 노출 기준(관리자 소유 상품만 노출)을 사용합니다.
-  return (process.env.ADMIN_EMAIL || "admin@gmail.com").toLowerCase().trim();
+  // 다만 ADMIN_EMAIL이 비어있거나 DB의 owner 이메일과 불일치하면 공개 강의가 0개로 보일 수 있어
+  // 기본값을 하드코딩하지 않습니다. (쿼리에서 owner 필터 선택 적용 + 폴백 재조회)
+  return (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
 }
 
 export default async function DashboardPage({
@@ -58,18 +60,47 @@ export default async function DashboardPage({
     : [];
 
   const allCourses = showAll
-    ? await prisma.course.findMany({
-        where: { isPublished: true, owner: { email: storeOwnerEmail } },
-        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-        select: {
-          id: true,
-          title: true,
-          thumbnailStoredPath: true,
-          thumbnailUrl: true,
-          updatedAt: true,
-          lessons: { where: { isPublished: true }, select: { id: true, durationSeconds: true } },
-        },
-      })
+    ? await (async () => {
+        const baseWhere = { isPublished: true } as const;
+        const where = storeOwnerEmail
+          ? ({ ...baseWhere, owner: { email: storeOwnerEmail } } as const)
+          : baseWhere;
+
+        let rows = await prisma.course.findMany({
+          where,
+          orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+          select: {
+            id: true,
+            title: true,
+            thumbnailStoredPath: true,
+            thumbnailUrl: true,
+            updatedAt: true,
+            lessons: { where: { isPublished: true }, select: { id: true, durationSeconds: true } },
+          },
+        });
+
+        if (storeOwnerEmail && rows.length === 0) {
+          rows = await prisma.course.findMany({
+            where: baseWhere,
+            orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+            select: {
+              id: true,
+              title: true,
+              thumbnailStoredPath: true,
+              thumbnailUrl: true,
+              updatedAt: true,
+              lessons: { where: { isPublished: true }, select: { id: true, durationSeconds: true } },
+            },
+          });
+          if (process.env.NODE_ENV !== "production") {
+            console.warn(
+              "[dashboard] ADMIN_EMAIL owner filter returned 0 courses; falling back to all published courses."
+            );
+          }
+        }
+
+        return rows;
+      })()
     : null;
 
   // 대시보드 검색(헤더 드롭다운)에서 교재도 함께 검색되도록, 사용자 권한 기준 교재 목록을 준비

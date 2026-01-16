@@ -30,7 +30,7 @@ export default function PublishToggleClient({
   }, []);
 
   function labelOf(v: "0" | "1" | "soldout") {
-    if (v === "soldout") return "품절";
+    if (v === "soldout") return "준비중";
     return v === "1" ? "공개" : "비공개";
   }
 
@@ -134,7 +134,7 @@ export default function PublishToggleClient({
             `}
           >
             <span className="w-2 h-2 rounded-full bg-zinc-300" />
-            품절
+            준비중
             {statusValue === "soldout" && (
               <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />

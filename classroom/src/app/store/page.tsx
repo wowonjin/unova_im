@@ -12,10 +12,9 @@ import { ensureSoldOutColumnsOnce } from "@/lib/ensure-columns";
 export const revalidate = 60;
 
 function getStoreOwnerEmail(): string {
-  // 이 프로젝트는 기본적으로 "고정 관리자(ADMIN_EMAIL)" 계정이 콘텐츠를 발행합니다.
-  // 배포 환경에서 예전/다른 ownerId로 생성된 공개 강좌/교재가 남아있을 수 있어
-  // 스토어는 기본적으로 관리자 이메일 소유 상품만 노출합니다.
-  return (process.env.ADMIN_EMAIL || "admin@gmail.com").toLowerCase().trim();
+  // NOTE: 스토어는 "판매 등록된 상품"을 보여줘야 하므로,
+  // 특정 owner(ADMIN_EMAIL)로 제한하지 않습니다.
+  return "";
 }
 
 type Product = {
@@ -46,9 +45,17 @@ const TYPE_MAP: Record<string, "course" | "textbook"> = {
 };
 
 const getCachedCoursesForStore = unstable_cache(
-  async (storeOwnerEmail: string) => {
-    return prisma.course.findMany({
-      where: { isPublished: true, owner: { email: storeOwnerEmail } },
+  async () => {
+    // "강좌 판매하기"에서 판매 설정된 강좌만 노출:
+    // - 공개(isPublished)
+    // - 판매가/정가 중 하나라도 설정된 항목만
+    const where = {
+      isPublished: true,
+      OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+    } as const;
+
+    const rows = await prisma.course.findMany({
+      where,
       select: {
         id: true,
         title: true,
@@ -64,26 +71,40 @@ const getCachedCoursesForStore = unstable_cache(
         rating: true,
         reviewCount: true,
       },
-      orderBy: { createdAt: "desc" },
+      // "내 강좌 목록"과 동일 정렬: position asc → updatedAt desc → createdAt desc
+      orderBy: [{ position: "asc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
+      // 안전 가드: 너무 많은 상품을 캐시에 넣으면(2MB 제한) unstable_cache 저장이 실패할 수 있습니다.
+      take: 200,
+    });
+    // NOTE:
+    // thumbnailUrl이 data URL(베이스64)인 경우 한 리스트에서 수 MB가 될 수 있어
+    // unstable_cache(2MB 제한) 저장이 실패합니다.
+    // 캐시에는 큰 문자열(thumbnailUrl) 자체를 넣지 않고, 존재 여부만 남깁니다.
+    return rows.map((r) => {
+      const { thumbnailUrl, updatedAt, ...rest } = r;
+      // Date는 캐시 직렬화 시 string으로 바뀔 수 있어, 미리 ISO로 고정해둡니다.
+      return { ...rest, updatedAtISO: updatedAt.toISOString(), hasThumbnail: Boolean(thumbnailUrl) };
     });
   },
-  ["store:courses:v1"],
+  ["store:courses:v4"],
   { revalidate: 60 }
 );
 
 const getCachedTextbooksForStore = unstable_cache(
-  async (storeOwnerEmail: string) => {
+  async () => {
     // NOTE: 교재는 "교재 관리하기" 페이지 정렬과 동일하게 맞춤
     // - 1차: position desc -> createdAt desc
     // - 폴백: (운영 환경에서 position 컬럼 누락 등) createdAt desc
     try {
-      return await prisma.textbook.findMany({
-        where: {
-          isPublished: true,
-          owner: { email: storeOwnerEmail },
-          // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
-          OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-        },
+      const baseWhere = {
+        isPublished: true,
+        // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
+        OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+      } as const;
+      const where = baseWhere;
+
+      let rows = await prisma.textbook.findMany({
+        where,
         select: {
           id: true,
           title: true,
@@ -100,16 +121,24 @@ const getCachedTextbooksForStore = unstable_cache(
           reviewCount: true,
         },
         orderBy: [{ position: "desc" }, { createdAt: "desc" }],
+        take: 200,
+      });
+      // 캐시에 thumbnailUrl(특히 data URL)을 넣지 않도록 존재 여부만 남김
+      return rows.map((r) => {
+        const { thumbnailUrl, updatedAt, ...rest } = r;
+        return { ...rest, updatedAtISO: updatedAt.toISOString(), hasThumbnail: Boolean(thumbnailUrl) };
       });
     } catch (e) {
       console.error("[store] textbooks query failed with position order, fallback to createdAt:", e);
-      return prisma.textbook.findMany({
-        where: {
-          isPublished: true,
-          owner: { email: storeOwnerEmail },
-          // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
-          OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-        },
+      const baseWhere = {
+        isPublished: true,
+        // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
+        OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+      } as const;
+      const where = baseWhere;
+
+      let rows = await prisma.textbook.findMany({
+        where,
         select: {
           id: true,
           title: true,
@@ -126,10 +155,15 @@ const getCachedTextbooksForStore = unstable_cache(
           reviewCount: true,
         },
         orderBy: [{ createdAt: "desc" }],
+        take: 200,
+      });
+      return rows.map((r) => {
+        const { thumbnailUrl, updatedAt, ...rest } = r;
+        return { ...rest, updatedAtISO: updatedAt.toISOString(), hasThumbnail: Boolean(thumbnailUrl) };
       });
     }
   },
-  ["store:textbooks:v1"],
+  ["store:textbooks:v4"],
   { revalidate: 60 }
 );
 
@@ -190,7 +224,6 @@ async function StoreProducts({
   selectedSubject: string;
   selectedExamType: string;
 }) {
-  const storeOwnerEmail = getStoreOwnerEmail();
   await ensureSoldOutColumnsOnce();
 
   const currentType = TYPE_MAP[selectedType] ?? "textbook";
@@ -201,7 +234,7 @@ async function StoreProducts({
   let productsOfCurrentType: Product[] = [];
   try {
     if (currentType === "course") {
-      const courses = await getCachedCoursesForStore(storeOwnerEmail);
+      const courses = await getCachedCoursesForStore();
       productsOfCurrentType = courses.map((c) => {
         const tags = ((c as any).tags as string[] | null) || [];
         return {
@@ -215,16 +248,18 @@ async function StoreProducts({
           tags,
           textbookType: null,
           type: "course" as const,
-          thumbnailUrl: (c as any).thumbnailUrl,
+          // StoreFilterClient는 썸네일을 항상 /api/.../thumbnail로 가져오므로
+          // 여기서는 "썸네일이 있는지"만 나타내는 작은 값만 유지합니다.
+          thumbnailUrl: (c as any).hasThumbnail ? "__thumb__" : null,
           isSoldOut: Boolean((c as any).isSoldOut),
           thumbnailStoredPath: (c as any).thumbnailStoredPath,
-          thumbnailUpdatedAtISO: (c as any).updatedAt.toISOString(),
+          thumbnailUpdatedAtISO: (c as any).updatedAtISO,
           rating: (c as any).rating,
           reviewCount: (c as any).reviewCount,
         };
       });
     } else {
-      const textbooks = await getCachedTextbooksForStore(storeOwnerEmail);
+      const textbooks = await getCachedTextbooksForStore();
       productsOfCurrentType = textbooks.map((t) => {
         const tags = ((t as any).tags as string[] | null) || [];
         return {
@@ -238,9 +273,9 @@ async function StoreProducts({
           tags,
           textbookType: (t as any).textbookType ?? null,
           type: "textbook" as const,
-          thumbnailUrl: (t as any).thumbnailUrl,
+          thumbnailUrl: (t as any).hasThumbnail ? "__thumb__" : null,
           isSoldOut: Boolean((t as any).isSoldOut),
-          thumbnailUpdatedAtISO: (t as any).updatedAt.toISOString(),
+          thumbnailUpdatedAtISO: (t as any).updatedAtISO,
           rating: (t as any).rating,
           reviewCount: (t as any).reviewCount,
         };

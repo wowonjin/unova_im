@@ -39,7 +39,7 @@ type ProductData = {
   thumbnailUrl?: string | null;
   // 교재의 ISBN(관리자에서 입력한 값). 현재는 Textbook.imwebProdCode를 사용합니다.
   isbn?: string | null;
-  // 품절 여부(품절이면 상세는 열리되 결제/구매 버튼 비활성)
+  // 준비중 여부(준비중이면 상세는 열리되 결제/구매 버튼 비활성)
   isSoldOut: boolean;
   // DB price가 null이면 false (가격 미설정). 0원(무료)은 true + price=0.
   isPriceSet: boolean;
@@ -668,7 +668,7 @@ export default function ProductDetailClient({
   const handleCheckout = async () => {
     if (isPaying) return;
     if (product.isSoldOut) {
-      alert("품절된 상품입니다.");
+      alert("준비중인 상품입니다.");
       return;
     }
     setIsPaying(true);
@@ -766,7 +766,7 @@ export default function ProductDetailClient({
           code === "PRICE_NOT_SET"
             ? "상품 가격이 설정되지 않아 결제를 진행할 수 없습니다. 관리자에게 문의해주세요."
             : code === "SOLD_OUT"
-              ? "품절된 상품입니다."
+              ? "준비중인 상품입니다."
             : code === "INVALID_REQUEST"
               ? "결제 요청 정보가 올바르지 않습니다. 새로고침 후 다시 시도해주세요."
               : code === "INVALID_AMOUNT"
@@ -877,7 +877,7 @@ export default function ProductDetailClient({
               {product.isSoldOut && (
                 <div className="absolute right-3 top-3 z-10">
                   <span className="inline-flex items-center rounded-full bg-zinc-700/80 px-3 py-1 text-xs font-semibold text-white/90 border border-white/10">
-                    품절
+                    준비중
                   </span>
                 </div>
               )}
@@ -902,7 +902,7 @@ export default function ProductDetailClient({
               {product.isSoldOut && (
                 <div className="absolute right-3 top-3 z-10">
                   <span className="inline-flex items-center rounded-full bg-zinc-700/80 px-3 py-1 text-xs font-semibold text-white/90 border border-white/10">
-                    품절
+                    준비중
                   </span>
                 </div>
               )}
@@ -921,7 +921,7 @@ export default function ProductDetailClient({
                 {product.isSoldOut && (
                   <div className="absolute right-3 top-3 z-10">
                     <span className="inline-flex items-center rounded-full bg-zinc-700/80 px-3 py-1 text-xs font-semibold text-white/90 border border-white/10">
-                      품절
+                      준비중
                     </span>
                   </div>
                 )}
@@ -939,7 +939,7 @@ export default function ProductDetailClient({
                 {product.isSoldOut && (
                   <div className="absolute right-3 top-3 z-10">
                     <span className="inline-flex items-center rounded-full bg-zinc-700/80 px-3 py-1 text-xs font-semibold text-white/90 border border-white/10">
-                      품절
+                      준비중
                     </span>
                   </div>
                 )}
@@ -2004,7 +2004,7 @@ export default function ProductDetailClient({
                     : "bg-white text-black hover:bg-white/90"
                 } ${isPaying ? "opacity-60 pointer-events-none" : ""}`}
               >
-                {product.isSoldOut ? "품절된 상품입니다" : isPaying ? "결제 준비중..." : checkoutCtaText}
+                {product.isSoldOut ? "준비중인 상품입니다" : isPaying ? "결제 준비중..." : checkoutCtaText}
               </a>
             </div>
           </div>
@@ -2125,7 +2125,7 @@ export default function ProductDetailClient({
                 } ${isPaying ? "opacity-60" : product.isSoldOut ? "" : "hover:brightness-[0.96]"}`}
               >
                 {product.isSoldOut
-                  ? "품절된 상품입니다"
+                  ? "준비중인 상품입니다"
                   : isPaying
                     ? "준비중..."
                     : hasAnyAddonSelection

@@ -25,7 +25,7 @@ export default function TextbookPublishedSelect({
         aria-label="공개 상태"
       >
         <option value="1">공개</option>
-        <option value="soldout">품절</option>
+        <option value="soldout">준비중</option>
         <option value="0">비공개</option>
       </select>
     </form>

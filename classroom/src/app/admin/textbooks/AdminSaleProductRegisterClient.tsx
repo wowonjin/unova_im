@@ -209,7 +209,7 @@ export default function AdminSaleProductRegisterClient({ textbooks }: { textbook
             </Field>
           </div>
           <div className="md:col-span-4">
-            <Field label="품절" hint="품절이면 상세 페이지는 유지되지만 구매 버튼이 비활성화됩니다.">
+            <Field label="준비중" hint="준비중이면 상세 페이지는 유지되지만 구매 버튼이 비활성화됩니다.">
               <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80">
                 <input
                   type="checkbox"
@@ -217,7 +217,7 @@ export default function AdminSaleProductRegisterClient({ textbooks }: { textbook
                   onChange={(e) => setIsSoldOut(e.target.checked)}
                   className="h-4 w-4 accent-white"
                 />
-                품절로 설정
+                준비중으로 설정
               </label>
             </Field>
           </div>

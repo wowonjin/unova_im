@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type TextbookOption = { id: string; title: string };
@@ -84,6 +84,7 @@ export default function ShipmentsFiltersClient({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const pendingScrollYRef = useRef<number | null>(null);
 
   const validTextbookIds = useMemo(() => new Set(textbooks.map((t) => t.id)), [textbooks]);
 
@@ -120,9 +121,24 @@ export default function ShipmentsFiltersClient({
 
     setForm(merged);
     const q = buildQuery(merged);
+    pendingScrollYRef.current = window.scrollY;
     router.replace(`${pathname}?${q.toString()}`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, router, searchParams, validTextbookIds]);
+
+  // Next router.replace(검색파라미터 변경) 시 스크롤 위치가 튀는 케이스가 있어 수동으로 복원
+  useEffect(() => {
+    if (pendingScrollYRef.current == null) return;
+    const y = pendingScrollYRef.current;
+    pendingScrollYRef.current = null;
+
+    // 렌더/레이아웃이 적용된 뒤 복원되도록 rAF 2번 사용
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo(0, y);
+      });
+    });
+  }, [searchParams]);
 
   // 폼 변경 시 자동으로 URL에 반영 (필터 적용 버튼 제거)
   // - 스크롤이 아래로 튕기는 문제를 방지하기 위해 scroll: false 사용
@@ -139,6 +155,7 @@ export default function ShipmentsFiltersClient({
     if (next === cur) return;
 
     const tid = window.setTimeout(() => {
+      pendingScrollYRef.current = window.scrollY;
       router.replace(`${pathname}?${next}`, { scroll: false });
     }, 180);
 

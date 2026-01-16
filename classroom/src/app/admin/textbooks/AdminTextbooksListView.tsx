@@ -219,7 +219,7 @@ export default function AdminTextbooksListView({ items: initialItems }: { items:
             {[
               { value: "all", label: "전체" },
               { value: "published", label: "공개" },
-              { value: "soldout", label: "품절" },
+              { value: "soldout", label: "준비중" },
               { value: "draft", label: "비공개" },
             ].map((option) => (
               <button
@@ -404,7 +404,7 @@ export default function AdminTextbooksListView({ items: initialItems }: { items:
                 <td className="px-4 py-4 text-center">
                   {(() => {
                     const soldOut = Boolean((item as any).isSoldOut);
-                    const label = !item.isPublished ? "비공개" : soldOut ? "품절" : "공개";
+                    const label = !item.isPublished ? "비공개" : soldOut ? "준비중" : "공개";
                     const cls = !item.isPublished
                       ? "bg-white/5 text-white/40"
                       : soldOut
