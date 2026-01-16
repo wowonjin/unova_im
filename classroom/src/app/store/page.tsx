@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import LandingHeader from "@/app/_components/LandingHeader";
 import Footer from "@/app/_components/Footer";
 import StoreFilterClient from "@/app/store/StoreFilterClient";
@@ -33,139 +34,184 @@ type Product = {
   reviewCount: number | null;
 };
 
-export default async function StorePage({
-  searchParams,
+function StoreProductsSkeleton({ label }: { label: "교재" | "강의" }) {
+  return (
+    <div className="mx-auto max-w-6xl px-4 pb-24">
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* 왼쪽 사이드바 스켈레톤 */}
+        <aside className="w-full lg:w-56 shrink-0">
+          <div className="lg:sticky lg:top-[90px] space-y-6 pt-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i}>
+                <div className="h-4 w-16 rounded bg-white/10" />
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {Array.from({ length: i === 0 ? 1 : 4 }).map((__, j) => (
+                    <div
+                      key={j}
+                      className="h-8 w-20 rounded-md bg-white/[0.08] animate-pulse"
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        {/* 오른쪽 상품 목록 스켈레톤 */}
+        <main className="flex-1 min-w-0">
+          <div className="mb-5">
+            <p className="text-[14px] text-white/50">
+              총 <span className="inline-block h-4 w-10 rounded bg-white/10 align-[-2px] animate-pulse" />개의 {label}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-9 sm:gap-x-6 sm:gap-y-12">
+            {Array.from({ length: 9 }).map((_, idx) => (
+              <div key={idx} className="group">
+                <div className="relative aspect-video overflow-hidden rounded-xl bg-white/[0.06] animate-pulse" />
+                <div className="mt-3 px-0.5 space-y-2">
+                  <div className="h-4 w-5/6 rounded bg-white/10 animate-pulse" />
+                  <div className="h-4 w-2/3 rounded bg-white/10 animate-pulse" />
+                  <div className="h-3 w-1/2 rounded bg-white/10 animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+async function StoreProducts({
+  selectedType,
+  selectedSubject,
+  selectedExamType,
 }: {
-  searchParams?: Promise<{ subject?: string; type?: string; exam?: string }>;
+  selectedType: string;
+  selectedSubject: string;
+  selectedExamType: string;
 }) {
+  const storeOwnerEmail = getStoreOwnerEmail();
+
+  // 실제 DB에서 공개된 강좌/교재 조회
+  // Render 등 배포 환경에서 DB 연결/쿼리 이슈가 발생해도 페이지 전체가 500으로 죽지 않도록 안전 폴백 처리
+  type DbCourseRow = Prisma.CourseGetPayload<{
+    select: {
+      id: true;
+      title: true;
+      subjectName: true;
+      teacherName: true;
+      price: true;
+      originalPrice: true;
+      tags: true;
+      thumbnailUrl: true;
+      thumbnailStoredPath: true;
+      updatedAt: true;
+      rating: true;
+      reviewCount: true;
+    };
+  }>;
+
+  type DbTextbookRow = Prisma.TextbookGetPayload<{
+    select: {
+      id: true;
+      title: true;
+      subjectName: true;
+      teacherName: true;
+      price: true;
+      originalPrice: true;
+      tags: true;
+      textbookType: true;
+      thumbnailUrl: true;
+      updatedAt: true;
+      rating: true;
+      reviewCount: true;
+    };
+  }>;
+
+  let courses: DbCourseRow[] = [];
+  let textbooks: DbTextbookRow[] = [];
   try {
-    const sp = await searchParams;
-    const selectedSubject = sp?.subject || "전체";
-    const selectedExamType = sp?.exam || "전체";
-    const rawType = sp?.type || "교재";
-    // 표기 통일: 레거시 "강좌" -> "강의"
-    const selectedType = rawType === "강좌" ? "강의" : rawType;
-    const storeOwnerEmail = getStoreOwnerEmail();
-
-    // 실제 DB에서 공개된 강좌/교재 조회
-    // Render 등 배포 환경에서 DB 연결/쿼리 이슈가 발생해도 페이지 전체가 500으로 죽지 않도록 안전 폴백 처리
-    type DbCourseRow = Prisma.CourseGetPayload<{
-      select: {
-        id: true;
-        title: true;
-        subjectName: true;
-        teacherName: true;
-        price: true;
-        originalPrice: true;
-        tags: true;
-        thumbnailUrl: true;
-        thumbnailStoredPath: true;
-        updatedAt: true;
-        rating: true;
-        reviewCount: true;
-      };
-    }>;
-
-    type DbTextbookRow = Prisma.TextbookGetPayload<{
-      select: {
-        id: true;
-        title: true;
-        subjectName: true;
-        teacherName: true;
-        price: true;
-        originalPrice: true;
-        tags: true;
-        textbookType: true;
-        thumbnailUrl: true;
-        updatedAt: true;
-        rating: true;
-        reviewCount: true;
-      };
-    }>;
-
-    let courses: DbCourseRow[] = [];
-    let textbooks: DbTextbookRow[] = [];
-    try {
-      // NOTE: 교재는 "교재 관리하기" 페이지 정렬과 동일하게 맞춤
-      // - 1차: position desc -> createdAt desc
-      // - 폴백: (운영 환경에서 position 컬럼 누락 등) createdAt desc
-      [courses, textbooks] = await Promise.all([
-        prisma.course.findMany({
-          where: { isPublished: true, owner: { email: storeOwnerEmail } },
-          select: {
-            id: true,
-            title: true,
-            subjectName: true,
-            teacherName: true,
-            price: true,
-            originalPrice: true,
-            tags: true,
-            thumbnailUrl: true,
-            thumbnailStoredPath: true,
-            updatedAt: true,
-            rating: true,
-            reviewCount: true,
-          },
-          orderBy: { createdAt: "desc" },
-        }),
-        (async () => {
-          try {
-            return await prisma.textbook.findMany({
-              where: {
-                isPublished: true,
-                owner: { email: storeOwnerEmail },
-                // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
-                OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-              },
-              select: {
-                id: true,
-                title: true,
-                subjectName: true,
-                teacherName: true,
-                price: true,
-                originalPrice: true,
-                tags: true,
-                textbookType: true,
-                thumbnailUrl: true,
-                updatedAt: true,
-                rating: true,
-                reviewCount: true,
-              },
-              orderBy: [{ position: "desc" }, { createdAt: "desc" }],
-            });
-          } catch (e) {
-            console.error("[store] textbooks query failed with position order, fallback to createdAt:", e);
-            return await prisma.textbook.findMany({
-              where: {
-                isPublished: true,
-                owner: { email: storeOwnerEmail },
-                // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
-                OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-              },
-              select: {
-                id: true,
-                title: true,
-                subjectName: true,
-                teacherName: true,
-                price: true,
-                originalPrice: true,
-                tags: true,
-                textbookType: true,
-                thumbnailUrl: true,
-                updatedAt: true,
-                rating: true,
-                reviewCount: true,
-              },
-              orderBy: [{ createdAt: "desc" }],
-            });
-          }
-        })(),
-      ]);
-    } catch (e) {
-      console.error("[store] failed to load products from DB:", e);
-      courses = [];
-      textbooks = [];
-    }
+    // NOTE: 교재는 "교재 관리하기" 페이지 정렬과 동일하게 맞춤
+    // - 1차: position desc -> createdAt desc
+    // - 폴백: (운영 환경에서 position 컬럼 누락 등) createdAt desc
+    [courses, textbooks] = await Promise.all([
+      prisma.course.findMany({
+        where: { isPublished: true, owner: { email: storeOwnerEmail } },
+        select: {
+          id: true,
+          title: true,
+          subjectName: true,
+          teacherName: true,
+          price: true,
+          originalPrice: true,
+          tags: true,
+          thumbnailUrl: true,
+          thumbnailStoredPath: true,
+          updatedAt: true,
+          rating: true,
+          reviewCount: true,
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      (async () => {
+        try {
+          return await prisma.textbook.findMany({
+            where: {
+              isPublished: true,
+              owner: { email: storeOwnerEmail },
+              // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
+              OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+            },
+            select: {
+              id: true,
+              title: true,
+              subjectName: true,
+              teacherName: true,
+              price: true,
+              originalPrice: true,
+              tags: true,
+              textbookType: true,
+              thumbnailUrl: true,
+              updatedAt: true,
+              rating: true,
+              reviewCount: true,
+            },
+            orderBy: [{ position: "desc" }, { createdAt: "desc" }],
+          });
+        } catch (e) {
+          console.error("[store] textbooks query failed with position order, fallback to createdAt:", e);
+          return await prisma.textbook.findMany({
+            where: {
+              isPublished: true,
+              owner: { email: storeOwnerEmail },
+              // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
+              OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+            },
+            select: {
+              id: true,
+              title: true,
+              subjectName: true,
+              teacherName: true,
+              price: true,
+              originalPrice: true,
+              tags: true,
+              textbookType: true,
+              thumbnailUrl: true,
+              updatedAt: true,
+              rating: true,
+              reviewCount: true,
+            },
+            orderBy: [{ createdAt: "desc" }],
+          });
+        }
+      })(),
+    ]);
+  } catch (e) {
+    console.error("[store] failed to load products from DB:", e);
+    courses = [];
+    textbooks = [];
+  }
 
   // 강좌를 Product 형태로 변환
   const courseProducts: Product[] = courses.map((c) => {
@@ -215,15 +261,38 @@ export default async function StorePage({
   // 유형 맵
   // URL 파라미터/레거시 표기를 모두 수용: 강의/강좌 -> course
   const typeMap: Record<string, "course" | "textbook"> = {
-    "강의": "course",
-    "강좌": "course",
-    "교재": "textbook",
+    강의: "course",
+    강좌: "course",
+    교재: "textbook",
   };
-  const currentType = typeMap[selectedType];
+  const currentType = typeMap[selectedType] ?? "textbook";
 
   // 현재 선택된 유형에 해당하는 상품들만 필터
   const productsOfCurrentType = products.filter((p) => p.type === currentType);
 
+  return (
+    <StoreFilterClient
+      products={productsOfCurrentType}
+      selectedType={selectedType}
+      initialSubject={selectedSubject}
+      initialExamType={selectedExamType}
+    />
+  );
+}
+
+export default async function StorePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ subject?: string; type?: string; exam?: string }>;
+}) {
+  try {
+    const sp = await searchParams;
+    const selectedSubject = sp?.subject || "전체";
+    const selectedExamType = sp?.exam || "전체";
+    const rawType = sp?.type || "교재";
+    // 표기 통일: 레거시 "강좌" -> "강의"
+    const selectedType = rawType === "강좌" ? "강의" : rawType;
+    const skeletonLabel: "교재" | "강의" = selectedType === "강의" ? "강의" : "교재";
     const pageCopy =
       selectedType === "강의"
         ? {
@@ -250,13 +319,14 @@ export default async function StorePage({
             </p>
           </section>
 
-          {/* 필터 및 상품 목록 (클라이언트 컴포넌트) */}
-          <StoreFilterClient
-            products={productsOfCurrentType}
-            selectedType={selectedType}
-            initialSubject={selectedSubject}
-            initialExamType={selectedExamType}
-          />
+          {/* DB 조회는 느릴 수 있으므로, 먼저 스켈레톤을 보여주고 결과를 스트리밍합니다. */}
+          <Suspense fallback={<StoreProductsSkeleton label={skeletonLabel} />}>
+            <StoreProducts
+              selectedType={selectedType}
+              selectedSubject={selectedSubject}
+              selectedExamType={selectedExamType}
+            />
+          </Suspense>
 
       </main>
 
