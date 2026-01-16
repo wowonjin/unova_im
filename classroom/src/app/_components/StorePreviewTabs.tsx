@@ -384,7 +384,7 @@ function StorePreviewSectionsSimple({
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
       <div className="mt-4 md:mt-6">
         <h2 className="inline-flex items-center text-[20px] md:text-[26px] font-bold tracking-[-0.02em] leading-none">
-          <span aria-hidden="true" className="translate-y-[0.5px]">|&nbsp;</span>
+          <span aria-hidden="true" className="-translate-y-[0.5px]">|&nbsp;</span>
           <span>강의 구매하기</span>
         </h2>
         {courseSubjects.length > 1 ? (
@@ -447,7 +447,7 @@ function StorePreviewSectionsSimple({
         {freeTextbooks.length > 0 ? (
           <div className="mb-14 md:mb-16">
             <h2 className="inline-flex items-center text-[20px] md:text-[26px] font-bold tracking-[-0.02em] leading-none">
-              <span aria-hidden="true" className="translate-y-[0.5px]">|&nbsp;</span>
+              <span aria-hidden="true" className="-translate-y-[0.5px]">|&nbsp;</span>
               <span>무료 자료 다운로드</span>
             </h2>
             {freeTextbookSubjects.length > 1 ? (
@@ -512,7 +512,7 @@ function StorePreviewSectionsSimple({
         ) : null}
 
         <h2 className="inline-flex items-center text-[20px] md:text-[26px] font-bold tracking-[-0.02em] leading-none">
-          <span aria-hidden="true" className="translate-y-[0.5px]">|&nbsp;</span>
+          <span aria-hidden="true" className="-translate-y-[0.5px]">|&nbsp;</span>
           <span>교재 구매하기</span>
         </h2>
         {textbookSubjects.length > 1 ? (
@@ -691,7 +691,7 @@ function StorePreviewSections({
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
       <div className="mt-4 md:mt-6">
         <h2 className="inline-flex items-center text-[20px] md:text-[26px] font-bold tracking-[-0.02em] leading-none">
-          <span aria-hidden="true" className="translate-y-[0.5px]">|&nbsp;</span>
+          <span aria-hidden="true" className="-translate-y-[0.5px]">|&nbsp;</span>
           <span>강의 구매하기</span>
         </h2>
         {courseSubjects.length > 1 ? (
@@ -754,7 +754,7 @@ function StorePreviewSections({
         {freeTextbooks.length > 0 ? (
           <div className="mb-14 md:mb-16">
             <h2 className="inline-flex items-center text-[20px] md:text-[26px] font-bold tracking-[-0.02em] leading-none">
-              <span aria-hidden="true" className="translate-y-[0.5px]">|&nbsp;</span>
+              <span aria-hidden="true" className="-translate-y-[0.5px]">|&nbsp;</span>
               <span>무료 자료 다운로드</span>
             </h2>
             {freeTextbookSubjects.length > 1 ? (
@@ -819,7 +819,7 @@ function StorePreviewSections({
         ) : null}
 
         <h2 className="inline-flex items-center text-[20px] md:text-[26px] font-bold tracking-[-0.02em] leading-none">
-          <span aria-hidden="true" className="translate-y-[0.5px]">|&nbsp;</span>
+          <span aria-hidden="true" className="-translate-y-[0.5px]">|&nbsp;</span>
           <span>수능 교재 구매하기</span>
         </h2>
         {suneungTextbookSubjects.length > 1 ? (
@@ -883,7 +883,7 @@ function StorePreviewSections({
 
         <div className="mt-14 md:mt-16">
           <h3 className="inline-flex items-center text-[20px] md:text-[26px] font-bold tracking-[-0.02em] leading-none">
-            <span aria-hidden="true" className="translate-y-[0.5px]">|&nbsp;</span>
+            <span aria-hidden="true" className="-translate-y-[0.5px]">|&nbsp;</span>
             <span>편입 교재 구매하기</span>
           </h3>
           {transferTextbookSubjects.length > 1 ? (
