@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 type User = {
   id: string;
@@ -55,11 +55,13 @@ const menuItems: MenuItem[] = [
   },
   {
     label: "책 구매",
-    href: "/books",
+    // /books는 레거시 리다이렉트(서버)라서 클릭 시 1번 더 왕복이 생깁니다.
+    // 메뉴는 바로 /store로 이동하도록 합니다.
+    href: `/store?type=${encodeURIComponent("교재")}`,
   },
   {
     label: "강의 구매",
-    href: "/lectures",
+    href: `/store?type=${encodeURIComponent("강의")}`,
   },
   {
     label: "유노바 선생님",
@@ -94,6 +96,8 @@ export default function LandingHeader({
   scrolledVariant,
   overlayOnDesktop = false,
 }: LandingHeaderProps) {
+  const router = useRouter();
+  const didPrefetchRef = useRef(false);
   const [scrolled, setScrolled] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
   const [dynamicScrolledOpacity, setDynamicScrolledOpacity] = useState<number | null>(null);
@@ -134,14 +138,14 @@ export default function LandingHeader({
   }, [rawSearch]);
 
   const isActiveHref = (href: string) => {
-    // 책/강의는 현재 구현상 /books, /lectures가 /store?type=... 로 리다이렉트되므로
-    // /store 페이지에서도 책/강의 메뉴가 활성화되도록 별도 처리
-    if (href === "/books") {
-      return pathname === "/books" || (pathname === "/store" && (searchParams.get("type") || "") === "교재");
+    // 레거시(/books, /lectures)로 진입한 경우에도 메뉴 활성화가 자연스럽게 보이도록 처리
+    // (현재는 대부분 /store로 직접 이동하지만, 외부 링크/캐시 등으로 레거시가 남을 수 있음)
+    if (pathname === "/books") {
+      return href.startsWith("/store") && (new URLSearchParams(href.split("?")[1] || "").get("type") || "") === "교재";
     }
-    if (href === "/lectures") {
-      const t = searchParams.get("type") || "";
-      return pathname === "/lectures" || (pathname === "/store" && (t === "강의" || t === "강좌"));
+    if (pathname === "/lectures") {
+      const t = new URLSearchParams(href.split("?")[1] || "").get("type") || "";
+      return href.startsWith("/store") && (t === "강의" || t === "강좌");
     }
 
     const [path, qs] = href.split("?");
@@ -158,6 +162,25 @@ export default function LandingHeader({
     }
     return true;
   };
+
+  // 메뉴 클릭 전에 스토어 페이지를 미리 받아와서 체감 로딩을 줄입니다.
+  useEffect(() => {
+    if (didPrefetchRef.current) return;
+    didPrefetchRef.current = true;
+
+    const targets = [
+      `/store?type=${encodeURIComponent("교재")}`,
+      `/store?type=${encodeURIComponent("강의")}`,
+    ];
+
+    const run = () => {
+      for (const url of targets) router.prefetch(url);
+    };
+
+    const w = window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => void };
+    if (typeof w.requestIdleCallback === "function") w.requestIdleCallback(run, { timeout: 1500 });
+    else setTimeout(run, 200);
+  }, [router]);
 
   useEffect(() => {
     const handleScroll = () => {

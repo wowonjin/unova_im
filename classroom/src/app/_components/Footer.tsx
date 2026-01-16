@@ -22,12 +22,12 @@ export default function Footer() {
               <p className="font-bold text-white mb-3 text-[13px]">서비스</p>
               <ul className="space-y-2 text-[12px] text-white/50">
                 <li>
-                  <Link href="/books" className="hover:text-white transition-colors">
+                  <Link href={`/store?type=${encodeURIComponent("교재")}`} className="hover:text-white transition-colors">
                     책 구매
                   </Link>
                 </li>
                 <li>
-                  <Link href="/lectures" className="hover:text-white transition-colors">
+                  <Link href={`/store?type=${encodeURIComponent("강의")}`} className="hover:text-white transition-colors">
                     강의 구매
                   </Link>
                 </li>
@@ -113,12 +113,12 @@ export default function Footer() {
             <p className="font-bold text-white mb-4">서비스</p>
             <ul className="space-y-2.5 text-[14px] text-white/50">
               <li>
-                <Link href="/books" className="hover:text-white transition-colors">
+                <Link href={`/store?type=${encodeURIComponent("교재")}`} className="hover:text-white transition-colors">
                   책 구매
                 </Link>
               </li>
               <li>
-                <Link href="/lectures" className="hover:text-white transition-colors">
+                <Link href={`/store?type=${encodeURIComponent("강의")}`} className="hover:text-white transition-colors">
                   강의 구매
                 </Link>
               </li>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { unstable_cache } from "next/cache";
 import LandingHeader from "@/app/_components/LandingHeader";
 import Footer from "@/app/_components/Footer";
 import StoreFilterClient from "@/app/store/StoreFilterClient";
@@ -7,7 +8,8 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { ensureSoldOutColumnsOnce } from "@/lib/ensure-columns";
 
-export const dynamic = "force-dynamic";
+// 스토어는 공개 상품 목록(모든 사용자 동일)이므로 짧은 ISR 캐시로 체감 로딩을 줄입니다.
+export const revalidate = 60;
 
 function getStoreOwnerEmail(): string {
   // 이 프로젝트는 기본적으로 "고정 관리자(ADMIN_EMAIL)" 계정이 콘텐츠를 발행합니다.
@@ -35,6 +37,101 @@ type Product = {
   rating: number | null;
   reviewCount: number | null;
 };
+
+// URL 파라미터/레거시 표기를 모두 수용: 강의/강좌 -> course
+const TYPE_MAP: Record<string, "course" | "textbook"> = {
+  강의: "course",
+  강좌: "course",
+  교재: "textbook",
+};
+
+const getCachedCoursesForStore = unstable_cache(
+  async (storeOwnerEmail: string) => {
+    return prisma.course.findMany({
+      where: { isPublished: true, owner: { email: storeOwnerEmail } },
+      select: {
+        id: true,
+        title: true,
+        subjectName: true,
+        teacherName: true,
+        price: true,
+        originalPrice: true,
+        tags: true,
+        thumbnailUrl: true,
+        thumbnailStoredPath: true,
+        updatedAt: true,
+        isSoldOut: true,
+        rating: true,
+        reviewCount: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  },
+  ["store:courses:v1"],
+  { revalidate: 60 }
+);
+
+const getCachedTextbooksForStore = unstable_cache(
+  async (storeOwnerEmail: string) => {
+    // NOTE: 교재는 "교재 관리하기" 페이지 정렬과 동일하게 맞춤
+    // - 1차: position desc -> createdAt desc
+    // - 폴백: (운영 환경에서 position 컬럼 누락 등) createdAt desc
+    try {
+      return await prisma.textbook.findMany({
+        where: {
+          isPublished: true,
+          owner: { email: storeOwnerEmail },
+          // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
+          OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+        },
+        select: {
+          id: true,
+          title: true,
+          subjectName: true,
+          teacherName: true,
+          price: true,
+          originalPrice: true,
+          tags: true,
+          textbookType: true,
+          thumbnailUrl: true,
+          updatedAt: true,
+          isSoldOut: true,
+          rating: true,
+          reviewCount: true,
+        },
+        orderBy: [{ position: "desc" }, { createdAt: "desc" }],
+      });
+    } catch (e) {
+      console.error("[store] textbooks query failed with position order, fallback to createdAt:", e);
+      return prisma.textbook.findMany({
+        where: {
+          isPublished: true,
+          owner: { email: storeOwnerEmail },
+          // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
+          OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+        },
+        select: {
+          id: true,
+          title: true,
+          subjectName: true,
+          teacherName: true,
+          price: true,
+          originalPrice: true,
+          tags: true,
+          textbookType: true,
+          thumbnailUrl: true,
+          updatedAt: true,
+          isSoldOut: true,
+          rating: true,
+          reviewCount: true,
+        },
+        orderBy: [{ createdAt: "desc" }],
+      });
+    }
+  },
+  ["store:textbooks:v1"],
+  { revalidate: 60 }
+);
 
 function StoreProductsSkeleton({ label }: { label: "교재" | "강의" }) {
   return (
@@ -96,189 +193,63 @@ async function StoreProducts({
   const storeOwnerEmail = getStoreOwnerEmail();
   await ensureSoldOutColumnsOnce();
 
-  // 실제 DB에서 공개된 강좌/교재 조회
-  // Render 등 배포 환경에서 DB 연결/쿼리 이슈가 발생해도 페이지 전체가 500으로 죽지 않도록 안전 폴백 처리
-  type DbCourseRow = Prisma.CourseGetPayload<{
-    select: {
-      id: true;
-      title: true;
-      subjectName: true;
-      teacherName: true;
-      price: true;
-      originalPrice: true;
-      tags: true;
-      thumbnailUrl: true;
-      thumbnailStoredPath: true;
-      updatedAt: true;
-      isSoldOut: true;
-      rating: true;
-      reviewCount: true;
-    };
-  }>;
+  const currentType = TYPE_MAP[selectedType] ?? "textbook";
 
-  type DbTextbookRow = Prisma.TextbookGetPayload<{
-    select: {
-      id: true;
-      title: true;
-      subjectName: true;
-      teacherName: true;
-      price: true;
-      originalPrice: true;
-      tags: true;
-      textbookType: true;
-      thumbnailUrl: true;
-      updatedAt: true;
-      isSoldOut: true;
-      rating: true;
-      reviewCount: true;
-    };
-  }>;
-
-  let courses: DbCourseRow[] = [];
-  let textbooks: DbTextbookRow[] = [];
+  // 실제 DB에서 공개된 상품 조회(선택 타입만) + 캐시
+  // - 메뉴 전환 시 체감 로딩 최소화
+  // - 캐시 미스(처음 방문)에서도 불필요한 조회를 줄여 초기 로딩 개선
+  let productsOfCurrentType: Product[] = [];
   try {
-    // NOTE: 교재는 "교재 관리하기" 페이지 정렬과 동일하게 맞춤
-    // - 1차: position desc -> createdAt desc
-    // - 폴백: (운영 환경에서 position 컬럼 누락 등) createdAt desc
-    [courses, textbooks] = await Promise.all([
-      prisma.course.findMany({
-        where: { isPublished: true, owner: { email: storeOwnerEmail } },
-        select: {
-          id: true,
-          title: true,
-          subjectName: true,
-          teacherName: true,
-          price: true,
-          originalPrice: true,
-          tags: true,
-          thumbnailUrl: true,
-          thumbnailStoredPath: true,
-          updatedAt: true,
-          isSoldOut: true,
-          rating: true,
-          reviewCount: true,
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-      (async () => {
-        try {
-          return await prisma.textbook.findMany({
-            where: {
-              isPublished: true,
-              owner: { email: storeOwnerEmail },
-              // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
-              OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-            },
-            select: {
-              id: true,
-              title: true,
-              subjectName: true,
-              teacherName: true,
-              price: true,
-              originalPrice: true,
-              tags: true,
-              textbookType: true,
-              thumbnailUrl: true,
-              updatedAt: true,
-              isSoldOut: true,
-              rating: true,
-              reviewCount: true,
-            },
-            orderBy: [{ position: "desc" }, { createdAt: "desc" }],
-          });
-        } catch (e) {
-          console.error("[store] textbooks query failed with position order, fallback to createdAt:", e);
-          return await prisma.textbook.findMany({
-            where: {
-              isPublished: true,
-              owner: { email: storeOwnerEmail },
-              // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
-              OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-            },
-            select: {
-              id: true,
-              title: true,
-              subjectName: true,
-              teacherName: true,
-              price: true,
-              originalPrice: true,
-              tags: true,
-              textbookType: true,
-              thumbnailUrl: true,
-              updatedAt: true,
-              isSoldOut: true,
-              rating: true,
-              reviewCount: true,
-            },
-            orderBy: [{ createdAt: "desc" }],
-          });
-        }
-      })(),
-    ]);
+    if (currentType === "course") {
+      const courses = await getCachedCoursesForStore(storeOwnerEmail);
+      productsOfCurrentType = courses.map((c) => {
+        const tags = ((c as any).tags as string[] | null) || [];
+        return {
+          id: c.id,
+          title: c.title,
+          subject: (c as any).subjectName || "미분류",
+          teacher: (c as any).teacherName || "선생님",
+          price: (c as any).price || 0,
+          originalPrice: (c as any).originalPrice,
+          tag: tags[0] || null,
+          tags,
+          textbookType: null,
+          type: "course" as const,
+          thumbnailUrl: (c as any).thumbnailUrl,
+          isSoldOut: Boolean((c as any).isSoldOut),
+          thumbnailStoredPath: (c as any).thumbnailStoredPath,
+          thumbnailUpdatedAtISO: (c as any).updatedAt.toISOString(),
+          rating: (c as any).rating,
+          reviewCount: (c as any).reviewCount,
+        };
+      });
+    } else {
+      const textbooks = await getCachedTextbooksForStore(storeOwnerEmail);
+      productsOfCurrentType = textbooks.map((t) => {
+        const tags = ((t as any).tags as string[] | null) || [];
+        return {
+          id: t.id,
+          title: t.title,
+          subject: (t as any).subjectName || "교재",
+          teacher: (t as any).teacherName || "선생님",
+          price: (t as any).price || 0,
+          originalPrice: (t as any).originalPrice,
+          tag: tags[0] || null,
+          tags,
+          textbookType: (t as any).textbookType ?? null,
+          type: "textbook" as const,
+          thumbnailUrl: (t as any).thumbnailUrl,
+          isSoldOut: Boolean((t as any).isSoldOut),
+          thumbnailUpdatedAtISO: (t as any).updatedAt.toISOString(),
+          rating: (t as any).rating,
+          reviewCount: (t as any).reviewCount,
+        };
+      });
+    }
   } catch (e) {
     console.error("[store] failed to load products from DB:", e);
-    courses = [];
-    textbooks = [];
+    productsOfCurrentType = [];
   }
-
-  // 강좌를 Product 형태로 변환
-  const courseProducts: Product[] = courses.map((c) => {
-    const tags = (c.tags as string[] | null) || [];
-    return {
-      id: c.id,
-      title: c.title,
-      subject: c.subjectName || "미분류",
-      teacher: c.teacherName || "선생님",
-      price: c.price || 0,
-      originalPrice: c.originalPrice,
-      tag: tags[0] || null, // 첫 번째 태그를 배지로 표시
-      tags,
-      textbookType: null,
-      type: "course" as const,
-      thumbnailUrl: c.thumbnailUrl,
-      isSoldOut: Boolean((c as any).isSoldOut),
-      thumbnailStoredPath: c.thumbnailStoredPath,
-      thumbnailUpdatedAtISO: c.updatedAt.toISOString(),
-      rating: c.rating,
-      reviewCount: c.reviewCount,
-    };
-  });
-
-  // 교재를 Product 형태로 변환
-  const textbookProducts: Product[] = textbooks.map((t) => {
-    const tags = (t.tags as string[] | null) || [];
-    return {
-      id: t.id,
-      title: t.title,
-      subject: t.subjectName || "교재",
-      teacher: t.teacherName || "선생님",
-      price: t.price || 0,
-      originalPrice: t.originalPrice,
-      tag: tags[0] || null,
-      tags,
-      textbookType: (t as { textbookType?: string | null }).textbookType ?? null,
-      type: "textbook" as const,
-      thumbnailUrl: t.thumbnailUrl,
-      isSoldOut: Boolean((t as any).isSoldOut),
-      thumbnailUpdatedAtISO: t.updatedAt.toISOString(),
-      rating: t.rating,
-      reviewCount: t.reviewCount,
-    };
-  });
-
-  const products: Product[] = [...courseProducts, ...textbookProducts];
-
-  // 유형 맵
-  // URL 파라미터/레거시 표기를 모두 수용: 강의/강좌 -> course
-  const typeMap: Record<string, "course" | "textbook"> = {
-    강의: "course",
-    강좌: "course",
-    교재: "textbook",
-  };
-  const currentType = typeMap[selectedType] ?? "textbook";
-
-  // 현재 선택된 유형에 해당하는 상품들만 필터
-  const productsOfCurrentType = products.filter((p) => p.type === currentType);
 
   return (
     <StoreFilterClient
