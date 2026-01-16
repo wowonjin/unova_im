@@ -210,26 +210,9 @@ export default function LandingHeader({
 
   // "유노바 선생님" 서브메뉴: DB(어드민 등록) 기반으로 동적 생성
   useEffect(() => {
-    const run = async () => {
-      try {
-        const res = await fetch("/api/teachers/list");
-        const json = await res.json().catch(() => null);
-        if (!res.ok || !json?.ok) throw new Error("FETCH_FAILED");
-        const list = Array.isArray(json.teachers) ? json.teachers : [];
-        const items: SubMenuItem[] = list
-          .filter((t: any) => t && typeof t.slug === "string" && typeof t.name === "string")
-          .map((t: any) => ({
-            label: `${t.name} 선생님`,
-            href: `/teachers/${t.slug}`,
-            icon: "badge",
-          }));
-        setTeacherSubItems(items.length ? items : []);
-      } catch {
-        // 실패 시 서브메뉴 숨김(하드코딩 노출 방지)
-        setTeacherSubItems([]);
-      }
-    };
-    run();
+    // 선생님 상세 페이지는 개발 중이므로, 헤더 서브메뉴(드롭다운)는 숨깁니다.
+    // 메뉴 자체(/teachers)는 유지됩니다.
+    setTeacherSubItems([]);
   }, []);
 
   const mergedMenuItems = useMemo(() => {

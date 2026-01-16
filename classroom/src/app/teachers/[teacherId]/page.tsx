@@ -1,16 +1,16 @@
 import Link from "next/link";
 import LandingHeader from "@/app/_components/LandingHeader";
 import Footer from "@/app/_components/Footer";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import TeacherDetailClient from "./TeacherDetailClient";
 import type { TeacherDetailTeacher } from "./TeacherDetailClient";
 import { prisma } from "@/lib/prisma";
 import { getTeacherRatingSummary } from "@/lib/teacher-rating";
 import type { StorePreviewProduct } from "@/app/_components/StorePreviewTabs";
+import { getCurrentUser } from "@/lib/current-user";
 
-// 공개 선생님 페이지는 유저별 데이터가 아니고(쿠키/세션 의존 X),
-// DB 조회가 많아 SSR 반복 비용이 커서 ISR 캐시로 완화합니다.
-export const revalidate = 60;
+// 선생님 상세는 개발 중이므로 관리자만 접근 가능 + 유저별(세션) 권한 분기 필요
+export const dynamic = "force-dynamic";
 
 function toPublicGcsUrl(input?: string | null) {
   const s = typeof input === "string" ? input.trim() : "";
@@ -831,6 +831,13 @@ for (const id of Object.keys(teachersData)) {
 
 export default async function TeacherDetailPage({ params }: { params: Promise<{ teacherId: string }> }) {
   const { teacherId } = await params;
+
+  // 개발 중: 관리자만 접근 가능. 그 외에는 선생님 목록(/teachers)까지만 허용.
+  const user = await getCurrentUser();
+  if (!user?.isAdmin) {
+    redirect("/teachers");
+  }
+
   // 1) 레거시 하드코딩 데이터 우선
   const teacher = teachersData[teacherId];
 

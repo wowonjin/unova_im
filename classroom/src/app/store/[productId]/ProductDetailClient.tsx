@@ -986,13 +986,23 @@ export default function ProductDetailClient({
             </div>
             <div>
               <p className="text-[15px] font-medium flex items-center gap-1.5">
-                <Link
-                  href={`/teachers/${product.teacherId}`}
-                  className="inline-flex items-center text-white/90 hover:text-white transition-colors"
-                  title={`${product.teacher} 선생님 페이지로 이동`}
-                >
-                  {product.teacher} 선생님
-                </Link>
+                {isAdmin ? (
+                  <Link
+                    href={`/teachers/${product.teacherId}`}
+                    className="inline-flex items-center text-white/90 hover:text-white transition-colors"
+                    title={`${product.teacher} 선생님 페이지로 이동`}
+                  >
+                    {product.teacher} 선생님
+                  </Link>
+                ) : (
+                  <span
+                    className="inline-flex items-center text-white/70 cursor-default select-none"
+                    title="개발 중인 페이지입니다"
+                    aria-disabled="true"
+                  >
+                    {product.teacher} 선생님
+                  </span>
+                )}
               </p>
               <p className="text-[13px] text-white/50">{product.teacherTitle}</p>
             </div>
