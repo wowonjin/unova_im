@@ -1998,9 +1998,13 @@ export default function ProductDetailClient({
                   handleCheckout();
                 }}
                 href="#"
-                className={`flex-1 flex items-center justify-center py-2.5 rounded-lg bg-white text-black text-[15px] font-bold transition-all hover:bg-white/90 ${isPaying ? "opacity-60 pointer-events-none" : ""}`}
+                className={`flex-1 flex items-center justify-center py-2.5 rounded-lg text-[15px] font-bold transition-all ${
+                  product.isSoldOut
+                    ? "bg-zinc-600 text-white/90 opacity-70 pointer-events-none cursor-not-allowed"
+                    : "bg-white text-black hover:bg-white/90"
+                } ${isPaying ? "opacity-60 pointer-events-none" : ""}`}
               >
-                {isPaying ? "결제 준비중..." : checkoutCtaText}
+                {product.isSoldOut ? "품절된 상품입니다" : isPaying ? "결제 준비중..." : checkoutCtaText}
               </a>
             </div>
           </div>
