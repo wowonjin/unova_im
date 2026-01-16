@@ -23,15 +23,18 @@ type Product = {
 };
 
 // 입시 유형별 과목 매핑
-const EXAM_TYPES = ["전체", "내신", "수능"] as const;
+// - 내신/수능: 고등학교 교과
+// - 편입: 대학 과목(편입 대비)
+const EXAM_TYPES = ["전체", "내신", "수능", "편입"] as const;
 type ExamType = (typeof EXAM_TYPES)[number];
 
 // 교재 유형(실물책/전자책) 필터
 const BOOK_FORMATS = ["전체", "실물책", "전자책"] as const;
 type BookFormat = (typeof BOOK_FORMATS)[number];
 
-// 편입학(대학 과목) 관련 과목은 스토어에서 숨김 처리
-const HIDDEN_SUBJECTS = new Set<string>([
+// 편입학(대학 과목) 관련 과목
+// 기본 스토어(내신/수능/전체)에서는 숨기되, "편입" 선택 시에는 노출합니다.
+const TRANSFER_SUBJECTS = [
   "미적분학",
   "대학물리학",
   "일반물리학",
@@ -39,7 +42,8 @@ const HIDDEN_SUBJECTS = new Set<string>([
   "일반생물학",
   "선형대수학",
   "공업수학",
-]);
+];
+const HIDDEN_SUBJECTS = new Set<string>(TRANSFER_SUBJECTS);
 
 // 입시 유형별 과목 정의
 // 내신/수능: 고등학교 교과목 (수학, 물리학I/II 등)
@@ -47,6 +51,7 @@ const EXAM_SUBJECTS: Record<ExamType, string[]> = {
   "전체": [], // 전체는 모든 과목 표시
   "내신": ["수학", "수학I", "수학II", "미적분", "확률과 통계", "기하", "물리학I", "물리학II", "화학I", "화학II", "생명과학I", "생명과학II", "지구과학I", "지구과학II"],
   "수능": ["수학", "수학I", "수학II", "미적분", "확률과 통계", "기하", "물리학I", "물리학II", "화학I", "화학II", "생명과학I", "생명과학II", "지구과학I", "지구과학II"],
+  "편입": TRANSFER_SUBJECTS,
 };
 
 function formatPrice(price: number): string {
@@ -76,20 +81,27 @@ export default function StoreFilterClient({
   initialSubject = "전체",
   initialExamType = "전체",
 }: StoreFilterClientProps) {
-  const visibleProducts = useMemo(
-    () => products.filter((p) => !HIDDEN_SUBJECTS.has(p.subject)),
-    [products]
-  );
+  const initialExamTypeNormalized: ExamType =
+    EXAM_TYPES.includes(initialExamType as ExamType) ? (initialExamType as ExamType) : "전체";
 
   const [selectedExamType, setSelectedExamType] = useState<ExamType>(
-    EXAM_TYPES.includes(initialExamType as ExamType) ? (initialExamType as ExamType) : "전체"
+    initialExamTypeNormalized
   );
   const [selectedSubject, setSelectedSubject] = useState(
-    initialSubject !== "전체" && HIDDEN_SUBJECTS.has(initialSubject) ? "전체" : initialSubject
+    initialExamTypeNormalized !== "편입" && initialSubject !== "전체" && HIDDEN_SUBJECTS.has(initialSubject)
+      ? "전체"
+      : initialSubject
   );
   const [selectedBookFormat, setSelectedBookFormat] = useState<BookFormat>("전체");
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  const visibleProducts = useMemo(() => {
+    // 편입 탭에서는 편입(대학 과목) 상품을 포함해서 보여줍니다.
+    if (selectedExamType === "편입") return products;
+    // 그 외(전체/내신/수능)는 기존 정책대로 편입 과목은 숨깁니다.
+    return products.filter((p) => !HIDDEN_SUBJECTS.has(p.subject));
+  }, [products, selectedExamType]);
 
   // 현재 입시 유형에서 사용 가능한 과목 목록 계산
   const availableSubjects = useMemo(() => {
