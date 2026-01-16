@@ -5,11 +5,13 @@ import LandingHeader from "../_components/LandingHeader";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ error?: string; redirect?: string }>;
+  searchParams?: Promise<{ error?: string; redirect?: string; provider?: string; reason?: string }>;
 }) {
   const sp = (await searchParams) ?? {};
   const error = sp.error;
   const redirect = sp.redirect || "/";
+  const provider = sp.provider;
+  const reason = sp.reason;
 
   const errorMessages: Record<string, string> = {
     session_expired: "세션이 만료되었습니다. 다시 로그인해주세요.",
@@ -34,8 +36,13 @@ export default async function LoginPage({
 
         {/* 에러 메시지 */}
         {error && (
-            <div className="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-400">
-            {errorMessages[error] || "오류가 발생했습니다."}
+          <div className="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-400">
+            <div>{errorMessages[error] || "오류가 발생했습니다."}</div>
+            {error === "oauth_server_error" && provider && reason && (
+              <div className="mt-1 text-[12px] text-red-300/80">
+                (디버그: {provider}/{reason})
+              </div>
+            )}
           </div>
         )}
 

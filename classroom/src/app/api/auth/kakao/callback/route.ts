@@ -151,8 +151,21 @@ export async function GET(req: Request) {
     await createSession(user.id);
     return NextResponse.redirect(new URL(redirectTo || "/dashboard", base));
   } catch (e) {
-    console.error("[kakao callback] error", e);
-    return NextResponse.redirect(new URL(`/login?error=oauth_server_error`, base));
+    const msg = e instanceof Error ? e.message : String(e);
+    // eslint-disable-next-line no-console
+    console.error("[kakao callback] error", msg);
+
+    // Provide a safe, non-sensitive reason code to help debugging in production.
+    let reason = "unknown";
+    if (msg.includes("KAKAO_NOT_CONFIGURED")) reason = "not_configured";
+    else if (msg.startsWith("KAKAO_TOKEN_ERROR:")) reason = "token_error";
+    else if (msg.startsWith("KAKAO_PROFILE_ERROR:")) reason = "profile_error";
+
+    const sp = new URLSearchParams();
+    sp.set("error", "oauth_server_error");
+    sp.set("provider", "kakao");
+    sp.set("reason", reason);
+    return NextResponse.redirect(new URL(`/login?${sp.toString()}`, base));
   }
 }
 
