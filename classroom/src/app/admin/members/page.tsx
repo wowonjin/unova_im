@@ -145,8 +145,24 @@ export default async function AdminMembersPage({
         }
       : {};
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let members: any[];
+    type MemberQueryRow = {
+      id: string;
+      email: string;
+      name: string | null;
+      phone: string | null;
+      profileImageUrl: string | null;
+      imwebMemberCode: string | null;
+      address: string | null;
+      addressDetail: string | null;
+      birthday: string | null;
+      createdAt: Date;
+      lastLoginAt: Date | null;
+      oauthAccounts?: Array<{ provider: string | null }>;
+      emailCredential?: { passwordHash: string | null; passwordCiphertext?: string | null } | null;
+      _count: { enrollments: number; textbookEntitlements: number };
+    };
+
+    let members: MemberQueryRow[];
     let count: number;
 
     // Prisma Client가 아직 갱신되지 않은 상태(Dev/Turbopack 캐시)에서는
@@ -224,7 +240,7 @@ export default async function AdminMembersPage({
     totalPages = Math.ceil(totalCount / limit);
 
     membersData = members.map((m) => {
-      const providers = (m.oauthAccounts || []).map((a) => (a.provider || "").toLowerCase());
+      const providers = (m.oauthAccounts ?? []).map((a) => (a.provider || "").toLowerCase());
       const hasEmailPassword = Boolean(m.emailCredential?.passwordHash);
       let adminPassword: string | null = null;
       if (m.emailCredential?.passwordCiphertext) {
