@@ -383,7 +383,7 @@ function StorePreviewSectionsSimple({
   return (
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
       <div className="mt-4 md:mt-6">
-        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]"><span className="hidden md:inline">🚀 </span>강의 구매하기</h2>
+        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">강의 구매하기</h2>
         {courseSubjects.length > 1 ? (
           <div className="mt-2 md:mt-8">
             {/* 모바일: 탭 메뉴 스타일 */}
@@ -409,8 +409,8 @@ function StorePreviewSectionsSimple({
                 );
               })}
             </div>
-            {/* 데스크톱: pill 버튼 스타일 */}
-            <div className="hidden md:flex gap-2 flex-wrap">
+            {/* 데스크톱: 탭 메뉴 스타일 */}
+            <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
               {courseSubjects.map((subject) => {
                 const active = selectedCourseSubject === subject;
                 return (
@@ -420,13 +420,14 @@ function StorePreviewSectionsSimple({
                     onClick={() => setSelectedCourseSubject(subject)}
                     role="tab"
                     aria-selected={active}
-                    className={`text-[13px] font-medium ${
-                      active
-                        ? "px-4 py-2 rounded-full bg-white text-black"
-                        : "px-4 py-2 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white"
+                    className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                      active ? "text-white" : "text-white/55"
                     }`}
                   >
                     {subject}
+                    {active ? (
+                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                    ) : null}
                   </button>
                 );
               })}
@@ -442,7 +443,7 @@ function StorePreviewSectionsSimple({
         {/* 무료 자료 다운로드 (선생님 페이지 simple 모드 지원) */}
         {freeTextbooks.length > 0 ? (
           <div className="mb-14 md:mb-16">
-            <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]"><span className="hidden md:inline">📌 </span>무료 자료 다운로드</h2>
+            <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">무료 자료 다운로드</h2>
             {freeTextbookSubjects.length > 1 ? (
               <div className="mt-2 md:mt-8">
                 {/* 모바일: 탭 메뉴 스타일 */}
@@ -468,8 +469,8 @@ function StorePreviewSectionsSimple({
                     );
                   })}
                 </div>
-                {/* 데스크톱: pill 버튼 스타일 */}
-                <div className="hidden md:flex gap-2 flex-wrap">
+                {/* 데스크톱: 탭 메뉴 스타일 */}
+                <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
                   {freeTextbookSubjects.map((subject) => {
                     const active = selectedFreeTextbookSubject === subject;
                     return (
@@ -479,13 +480,14 @@ function StorePreviewSectionsSimple({
                         onClick={() => setSelectedFreeTextbookSubject(subject)}
                         role="tab"
                         aria-selected={active}
-                        className={`text-[13px] font-medium ${
-                          active
-                            ? "px-4 py-2 rounded-full bg-white text-black"
-                            : "px-4 py-2 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white"
+                        className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                          active ? "text-white" : "text-white/55"
                         }`}
                       >
                         {subject}
+                        {active ? (
+                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                        ) : null}
                       </button>
                     );
                   })}
@@ -503,7 +505,7 @@ function StorePreviewSectionsSimple({
           </div>
         ) : null}
 
-        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]"><span className="hidden md:inline">📖 </span>교재 구매하기</h2>
+        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">교재 구매하기</h2>
         {textbookSubjects.length > 1 ? (
           <div className="mt-2 md:mt-8">
             {/* 모바일: 탭 메뉴 스타일 */}
@@ -529,8 +531,8 @@ function StorePreviewSectionsSimple({
                 );
               })}
             </div>
-            {/* 데스크톱: pill 버튼 스타일 */}
-            <div className="hidden md:flex gap-2 flex-wrap">
+            {/* 데스크톱: 탭 메뉴 스타일 */}
+            <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
               {textbookSubjects.map((subject) => {
                 const active = selectedTextbookSubject === subject;
                 return (
@@ -540,13 +542,14 @@ function StorePreviewSectionsSimple({
                     onClick={() => setSelectedTextbookSubject(subject)}
                     role="tab"
                     aria-selected={active}
-                    className={`text-[13px] font-medium ${
-                      active
-                        ? "px-4 py-2 rounded-full bg-white text-black"
-                        : "px-4 py-2 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white"
+                    className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                      active ? "text-white" : "text-white/55"
                     }`}
                   >
                     {subject}
+                    {active ? (
+                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                    ) : null}
                   </button>
                 );
               })}
@@ -678,7 +681,7 @@ function StorePreviewSections({
   return (
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
       <div className="mt-4 md:mt-6">
-        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]"><span className="hidden md:inline">🚀 </span>강의 구매하기</h2>
+        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">강의 구매하기</h2>
         {courseSubjects.length > 1 ? (
           <div className="mt-2 md:mt-8">
             {/* 모바일: 탭 메뉴 스타일 */}
@@ -704,8 +707,8 @@ function StorePreviewSections({
                 );
               })}
             </div>
-            {/* 데스크톱: pill 버튼 스타일 */}
-            <div className="hidden md:flex gap-2 flex-wrap">
+            {/* 데스크톱: 탭 메뉴 스타일 */}
+            <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
               {courseSubjects.map((subject) => {
                 const active = selectedCourseSubject === subject;
                 return (
@@ -715,13 +718,14 @@ function StorePreviewSections({
                     onClick={() => setSelectedCourseSubject(subject)}
                     role="tab"
                     aria-selected={active}
-                    className={`text-[13px] font-medium ${
-                      active
-                        ? "px-4 py-2 rounded-full bg-white text-black"
-                        : "px-4 py-2 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white"
+                    className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                      active ? "text-white" : "text-white/55"
                     }`}
                   >
                     {subject}
+                    {active ? (
+                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                    ) : null}
                   </button>
                 );
               })}
@@ -737,7 +741,7 @@ function StorePreviewSections({
         {/* 무료 자료 다운로드 */}
         {freeTextbooks.length > 0 ? (
           <div className="mb-14 md:mb-16">
-            <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]"><span className="hidden md:inline">📌 </span>무료 자료 다운로드</h2>
+            <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">무료 자료 다운로드</h2>
             {freeTextbookSubjects.length > 1 ? (
               <div className="mt-2 md:mt-8">
                 {/* 모바일: 탭 메뉴 스타일 */}
@@ -763,8 +767,8 @@ function StorePreviewSections({
                     );
                   })}
                 </div>
-                {/* 데스크톱: pill 버튼 스타일 */}
-                <div className="hidden md:flex gap-2 flex-wrap">
+                {/* 데스크톱: 탭 메뉴 스타일 */}
+                <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
                   {freeTextbookSubjects.map((subject) => {
                     const active = selectedFreeTextbookSubject === subject;
                     return (
@@ -774,13 +778,14 @@ function StorePreviewSections({
                         onClick={() => setSelectedFreeTextbookSubject(subject)}
                         role="tab"
                         aria-selected={active}
-                        className={`text-[13px] font-medium ${
-                          active
-                            ? "px-4 py-2 rounded-full bg-white text-black"
-                            : "px-4 py-2 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white"
+                        className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                          active ? "text-white" : "text-white/55"
                         }`}
                       >
                         {subject}
+                        {active ? (
+                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                        ) : null}
                       </button>
                     );
                   })}
@@ -798,7 +803,7 @@ function StorePreviewSections({
           </div>
         ) : null}
 
-        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]"><span className="hidden md:inline">📖 </span>수능 교재 구매하기</h2>
+        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">수능 교재 구매하기</h2>
         {suneungTextbookSubjects.length > 1 ? (
           <div className="mt-2 md:mt-8">
             {/* 모바일: 탭 메뉴 스타일 */}
@@ -824,8 +829,8 @@ function StorePreviewSections({
                 );
               })}
             </div>
-            {/* 데스크톱: pill 버튼 스타일 */}
-            <div className="hidden md:flex gap-2 flex-wrap">
+            {/* 데스크톱: 탭 메뉴 스타일 */}
+            <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
               {suneungTextbookSubjects.map((subject) => {
                 const active = selectedSuneungTextbookSubject === subject;
                 return (
@@ -835,13 +840,14 @@ function StorePreviewSections({
                     onClick={() => setSelectedSuneungTextbookSubject(subject)}
                     role="tab"
                     aria-selected={active}
-                    className={`text-[13px] font-medium ${
-                      active
-                        ? "px-4 py-2 rounded-full bg-white text-black"
-                        : "px-4 py-2 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white"
+                    className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                      active ? "text-white" : "text-white/55"
                     }`}
                   >
                     {subject}
+                    {active ? (
+                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                    ) : null}
                   </button>
                 );
               })}
@@ -858,7 +864,7 @@ function StorePreviewSections({
         </div>
 
         <div className="mt-14 md:mt-16">
-          <h3 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]"><span className="hidden md:inline">📖 </span>편입 교재 구매하기</h3>
+          <h3 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">편입 교재 구매하기</h3>
           {transferTextbookSubjects.length > 1 ? (
             <div className="mt-2 md:mt-8">
               {/* 모바일: 탭 메뉴 스타일 */}
@@ -884,8 +890,8 @@ function StorePreviewSections({
                   );
                 })}
               </div>
-              {/* 데스크톱: pill 버튼 스타일 */}
-              <div className="hidden md:flex gap-2 flex-wrap">
+              {/* 데스크톱: 탭 메뉴 스타일 */}
+              <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
                 {transferTextbookSubjects.map((subject) => {
                   const active = selectedTransferTextbookSubject === subject;
                   return (
@@ -895,13 +901,14 @@ function StorePreviewSections({
                       onClick={() => setSelectedTransferTextbookSubject(subject)}
                       role="tab"
                       aria-selected={active}
-                      className={`text-[13px] font-medium ${
-                        active
-                          ? "px-4 py-2 rounded-full bg-white text-black"
-                          : "px-4 py-2 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white"
+                      className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                        active ? "text-white" : "text-white/55"
                       }`}
                     >
                       {subject}
+                      {active ? (
+                        <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                      ) : null}
                     </button>
                   );
                 })}
@@ -1037,11 +1044,11 @@ export default function StorePreviewTabs({
             ) : null}
           </div>
 
-          {/* 데스크탑: 기존 버튼 레이아웃 유지 */}
-          <div className="hidden md:flex items-center justify-between gap-3">
+          {/* 데스크탑: 탭 메뉴 스타일로 통일 */}
+          <div className="hidden md:flex items-end justify-between gap-6">
             {/* 과목 필터 */}
             {subjects.length > 1 ? (
-              <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+              <div className="flex min-w-0 flex-1 gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide" role="tablist">
                 {subjects.map((subject) => {
                   const active = selectedSubject === subject;
                   return (
@@ -1051,13 +1058,14 @@ export default function StorePreviewTabs({
                       onClick={() => setSelectedSubject(subject)}
                       role="tab"
                       aria-selected={active}
-                      className={`text-[13px] font-medium ${
-                        active
-                          ? "px-4 py-2 rounded-full bg-white text-black"
-                          : "px-4 py-2 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white"
+                      className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                        active ? "text-white" : "text-white/55"
                       }`}
                     >
                       {subject}
+                      {active ? (
+                        <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                      ) : null}
                     </button>
                   );
                 })}
@@ -1067,7 +1075,11 @@ export default function StorePreviewTabs({
             )}
 
             {/* 타입(교재/강의) 탭 */}
-            <div className="flex shrink-0 flex-wrap justify-end gap-4" role="tablist" aria-label="교재/강의 선택">
+            <div
+              className="flex shrink-0 justify-end gap-6 border-b border-white/10 pb-2"
+              role="tablist"
+              aria-label="교재/강의 선택"
+            >
               {types.map((t) => {
                 const active = selectedType === t;
                 return (
@@ -1080,13 +1092,14 @@ export default function StorePreviewTabs({
                     }}
                     role="tab"
                     aria-selected={active}
-                    className={`text-[13px] font-medium ${
-                      active
-                        ? "px-4 py-2 rounded-full bg-white text-black"
-                        : "px-4 py-2 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white"
+                    className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                      active ? "text-white" : "text-white/55"
                     }`}
                   >
                     {t}
+                    {active ? (
+                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                    ) : null}
                   </button>
                 );
               })}

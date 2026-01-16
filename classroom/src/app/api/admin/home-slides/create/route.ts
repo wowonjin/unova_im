@@ -6,8 +6,17 @@ import { requireAdminUser } from "@/lib/current-user";
 
 export const runtime = "nodejs";
 
+const MAX_URL_LEN = 10000;
+
+function getFormString(form: FormData, key: string): string | undefined {
+  const v = form.get(key);
+  if (typeof v === "string") return v;
+  return undefined; // null or File -> undefined (zod에서 required면 INVALID_REQUEST로 잡힘)
+}
+
 const Schema = z.object({
-  imageUrl: z.string().min(1).max(2000),
+  // data URL(base64)이나 긴 CDN URL도 허용하기 위해 넉넉하게 잡음
+  imageUrl: z.string().min(1).max(MAX_URL_LEN),
   linkUrl: z.string().optional().transform((v) => (v && v.trim().length ? v.trim() : null)),
   tag: z.string().optional().transform((v) => (v && v.trim().length ? v.trim() : null)),
   titleHtml: z.string().min(1).max(4000),
@@ -26,14 +35,19 @@ export async function POST(req: Request) {
   await requireAdminUser();
   const form = await req.formData();
   const parsed = Schema.safeParse({
-    imageUrl: form.get("imageUrl"),
-    linkUrl: form.get("linkUrl"),
-    tag: form.get("tag"),
-    titleHtml: form.get("titleHtml"),
-    subtitle: form.get("subtitle"),
-    position: form.get("position"),
+    imageUrl: getFormString(form, "imageUrl"),
+    linkUrl: getFormString(form, "linkUrl"),
+    tag: getFormString(form, "tag"),
+    titleHtml: getFormString(form, "titleHtml"),
+    subtitle: getFormString(form, "subtitle"),
+    position: getFormString(form, "position"),
   });
-  if (!parsed.success) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
+  if (!parsed.success) {
+    return NextResponse.json(
+      { ok: false, error: "INVALID_REQUEST", issues: parsed.error.issues },
+      { status: 400 }
+    );
+  }
 
   try {
     const p = prisma as unknown as { homeSlide: { create: Function } };
