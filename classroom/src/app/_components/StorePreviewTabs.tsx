@@ -383,7 +383,7 @@ function StorePreviewSectionsSimple({
   return (
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
       <div className="mt-4 md:mt-6">
-        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">강의 구매하기</h2>
+        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">| 강의 구매하기</h2>
         {courseSubjects.length > 1 ? (
           <div className="mt-2 md:mt-8">
             {/* 모바일: 탭 메뉴 스타일 */}
@@ -443,7 +443,7 @@ function StorePreviewSectionsSimple({
         {/* 무료 자료 다운로드 (선생님 페이지 simple 모드 지원) */}
         {freeTextbooks.length > 0 ? (
           <div className="mb-14 md:mb-16">
-            <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">무료 자료 다운로드</h2>
+            <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">| 무료 자료 다운로드</h2>
             {freeTextbookSubjects.length > 1 ? (
               <div className="mt-2 md:mt-8">
                 {/* 모바일: 탭 메뉴 스타일 */}
@@ -505,7 +505,7 @@ function StorePreviewSectionsSimple({
           </div>
         ) : null}
 
-        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">교재 구매하기</h2>
+        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">| 교재 구매하기</h2>
         {textbookSubjects.length > 1 ? (
           <div className="mt-2 md:mt-8">
             {/* 모바일: 탭 메뉴 스타일 */}
@@ -681,7 +681,7 @@ function StorePreviewSections({
   return (
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
       <div className="mt-4 md:mt-6">
-        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">강의 구매하기</h2>
+        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">| 강의 구매하기</h2>
         {courseSubjects.length > 1 ? (
           <div className="mt-2 md:mt-8">
             {/* 모바일: 탭 메뉴 스타일 */}
@@ -741,7 +741,7 @@ function StorePreviewSections({
         {/* 무료 자료 다운로드 */}
         {freeTextbooks.length > 0 ? (
           <div className="mb-14 md:mb-16">
-            <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">무료 자료 다운로드</h2>
+            <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">| 무료 자료 다운로드</h2>
             {freeTextbookSubjects.length > 1 ? (
               <div className="mt-2 md:mt-8">
                 {/* 모바일: 탭 메뉴 스타일 */}
@@ -803,7 +803,7 @@ function StorePreviewSections({
           </div>
         ) : null}
 
-        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">수능 교재 구매하기</h2>
+        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">| 수능 교재 구매하기</h2>
         {suneungTextbookSubjects.length > 1 ? (
           <div className="mt-2 md:mt-8">
             {/* 모바일: 탭 메뉴 스타일 */}
@@ -864,7 +864,7 @@ function StorePreviewSections({
         </div>
 
         <div className="mt-14 md:mt-16">
-          <h3 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">편입 교재 구매하기</h3>
+          <h3 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">| 편입 교재 구매하기</h3>
           {transferTextbookSubjects.length > 1 ? (
             <div className="mt-2 md:mt-8">
               {/* 모바일: 탭 메뉴 스타일 */}
