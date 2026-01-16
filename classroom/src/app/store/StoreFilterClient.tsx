@@ -304,7 +304,11 @@ export default function StoreFilterClient({
           {/* 상품 그리드 */}
           {filteredProducts.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-9 sm:gap-x-6 sm:gap-y-12">
-              {filteredProducts.map((product) => (
+              {filteredProducts.map((product, idx) => {
+                // 스토어 목록은 썸네일이 많아서, 전부 eager 로딩 시 네트워크/메인스레드가 잠겨
+                // "페이지가 늦게 뜨는" 체감이 커집니다. 상단 일부만 eager, 나머지는 lazy로 분산합니다.
+                const eager = idx < 6;
+                return (
                 <Link key={product.id} href={`/store/${product.id}`} className="group">
                   <div
                     className={`relative aspect-video overflow-hidden transition-all rounded-xl ${
@@ -339,6 +343,9 @@ export default function StoreFilterClient({
                         }
                         alt={product.title}
                         className="absolute inset-0 h-full w-full object-cover"
+                        loading={eager ? "eager" : "lazy"}
+                        decoding="async"
+                        fetchPriority={eager ? "high" : "low"}
                       />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
@@ -418,7 +425,8 @@ export default function StoreFilterClient({
                     )}
                   </div>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-24">
