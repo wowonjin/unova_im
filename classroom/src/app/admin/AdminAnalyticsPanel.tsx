@@ -107,33 +107,26 @@ function getPointCoords(values: number[], w: number, h: number, pad = 20) {
 function StatCard({
   label,
   value,
-  icon,
-  accentColor,
-  trend,
+  lines,
 }: {
   label: string;
-  value: string;
-  icon: string;
-  accentColor: string;
-  trend?: number;
+  value?: string;
+  lines?: Array<{ label: string; value: string }>;
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-      <div className="absolute -right-2 -top-2 text-[48px] opacity-[0.03]">
-        <span className="material-symbols-outlined">{icon}</span>
-      </div>
-      <div className="flex items-center gap-2 text-[11px] font-medium text-white/40 uppercase tracking-wider">
-        <span className={`material-symbols-outlined text-[14px] ${accentColor}`}>{icon}</span>
-        {label}
-      </div>
-      <div className="mt-2 text-[24px] font-semibold text-white/90 tracking-tight">{value}</div>
-      {trend !== undefined && trend !== 0 && (
-        <div className={`mt-1 flex items-center gap-1 text-[11px] ${trend >= 0 ? "text-white/40" : "text-white/30"}`}>
-          <span className="material-symbols-outlined text-[12px]">
-            {trend >= 0 ? "north" : "south"}
-          </span>
-          {Math.abs(trend)}% vs 어제
+      <div className="text-[11px] font-medium text-white/40 uppercase tracking-wider">{label}</div>
+      {lines && lines.length > 0 ? (
+        <div className="mt-3 space-y-1.5">
+          {lines.map((line) => (
+            <div key={line.label} className="flex items-center justify-between gap-3 text-[12px]">
+              <span className="text-white/40">{line.label}</span>
+              <span className="font-medium text-white/80">{line.value}</span>
+            </div>
+          ))}
         </div>
+      ) : (
+        <div className="mt-2 text-[24px] font-semibold text-white/90 tracking-tight">{value ?? "-"}</div>
       )}
     </div>
   );
@@ -149,42 +142,87 @@ export default function AdminAnalyticsPanel({
   summaryMonth: Summary;
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const [activeMetric, setActiveMetric] = useState<"pageViews" | "visitors">("pageViews");
+  const [activeMetric, setActiveMetric] = useState<"pageViews" | "visitors" | "orders" | "revenue">("pageViews");
 
   const w = 600;
   const h = 260;
   const pad = 30;
 
-  const { labels, pv, uv, pvPoints, uvPoints } = useMemo(() => {
+  const { labels, pv, uv, orders, revenue, pvPoints, uvPoints, ordersPoints, revenuePoints } = useMemo(() => {
     const labels = daily.map((d) => {
       const [, m, day] = d.date.split("-");
       return `${parseInt(m || "1")}/${parseInt(day || "1")}`;
     });
     const pv = daily.map((d) => d.pageViews);
     const uv = daily.map((d) => d.visitors);
+    const orders = daily.map((d) => d.orders);
+    const revenue = daily.map((d) => d.revenue);
     const pvPoints = getPointCoords(pv, w, h, pad);
     const uvPoints = getPointCoords(uv, w, h, pad);
-    return { labels, pv, uv, pvPoints, uvPoints };
+    const ordersPoints = getPointCoords(orders, w, h, pad);
+    const revenuePoints = getPointCoords(revenue, w, h, pad);
+    return { labels, pv, uv, orders, revenue, pvPoints, uvPoints, ordersPoints, revenuePoints };
   }, [daily]);
 
-  const pvPath = buildSmoothPath(pv, w, h, pad);
-  const uvPath = buildSmoothPath(uv, w, h, pad);
-  const pvArea = buildSmoothAreaPath(pv, w, h, pad);
-  const uvArea = buildSmoothAreaPath(uv, w, h, pad);
+  const metricConfig = {
+    pageViews: {
+      label: "페이지뷰",
+      values: pv,
+      points: pvPoints,
+      gradientId: "pvGradient",
+      stroke: "rgba(255,255,255,0.55)",
+      dot: "rgba(255,255,255,0.75)",
+    },
+    visitors: {
+      label: "방문자",
+      values: uv,
+      points: uvPoints,
+      gradientId: "uvGradient",
+      stroke: "rgba(255,255,255,0.3)",
+      dot: "rgba(255,255,255,0.5)",
+    },
+    orders: {
+      label: "주문",
+      values: orders,
+      points: ordersPoints,
+      gradientId: "ordersGradient",
+      stroke: "rgba(56,189,248,0.65)", // sky-400
+      dot: "rgba(56,189,248,0.75)",
+    },
+    revenue: {
+      label: "매출",
+      values: revenue,
+      points: revenuePoints,
+      gradientId: "revenueGradient",
+      stroke: "rgba(52,211,153,0.65)", // emerald-400
+      dot: "rgba(52,211,153,0.75)",
+    },
+  } as const;
+
+  const active = metricConfig[activeMetric];
+  const activePath = buildSmoothPath(active.values, w, h, pad);
+  const activeArea = buildSmoothAreaPath(active.values, w, h, pad);
+
+  const formatRevenueTick = (v: number) => {
+    if (v >= 100_000_000) return `${(v / 100_000_000).toFixed(1)}억`;
+    if (v >= 10_000) return `${(v / 10_000).toFixed(1)}만`;
+    return v.toLocaleString("ko-KR");
+  };
+
+  const formatActiveValue = (v: number) => {
+    if (activeMetric === "revenue") return formatMoney(v);
+    if (activeMetric === "orders") return `${v}건`;
+    return v.toLocaleString("ko-KR");
+  };
 
   // Y축 눈금 계산
-  const maxValue = Math.max(...pv, ...uv, 1);
+  const maxValue = Math.max(...active.values, 1);
   const yTicks = [0, Math.round(maxValue * 0.25), Math.round(maxValue * 0.5), Math.round(maxValue * 0.75), maxValue];
-
-  // 오늘 vs 어제 트렌드 계산
-  const today = daily[daily.length - 1];
-  const yesterday = daily[daily.length - 2];
-  const pvTrend = yesterday && yesterday.pageViews > 0 
-    ? Math.round(((today?.pageViews || 0) - yesterday.pageViews) / yesterday.pageViews * 100)
-    : 0;
-  const uvTrend = yesterday && yesterday.visitors > 0
-    ? Math.round(((today?.visitors || 0) - yesterday.visitors) / yesterday.visitors * 100)
-    : 0;
+  const todayMetric = daily[daily.length - 1];
+  const todayOrders = todayMetric?.orders ?? 0;
+  const todayRevenue = todayMetric?.revenue ?? 0;
+  const todayPageViews = todayMetric?.pageViews ?? 0;
+  const todayVisitors = todayMetric?.visitors ?? 0;
 
   return (
     <div className="mb-10 space-y-6">
@@ -192,29 +230,35 @@ export default function AdminAnalyticsPanel({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard
           label="페이지뷰"
-          value={sum(pv).toLocaleString("ko-KR")}
-          icon="visibility"
-          accentColor="text-white/50"
-          trend={pvTrend}
+          lines={[
+            { label: "오늘", value: todayPageViews.toLocaleString("ko-KR") },
+            { label: "이번주", value: sum(pv).toLocaleString("ko-KR") },
+            { label: "이번달", value: summaryMonth.pageViews.toLocaleString("ko-KR") },
+          ]}
         />
         <StatCard
           label="방문자"
-          value={sum(uv).toLocaleString("ko-KR")}
-          icon="person"
-          accentColor="text-white/50"
-          trend={uvTrend}
+          lines={[
+            { label: "오늘", value: todayVisitors.toLocaleString("ko-KR") },
+            { label: "이번주", value: sum(uv).toLocaleString("ko-KR") },
+            { label: "이번달", value: summaryMonth.visitors.toLocaleString("ko-KR") },
+          ]}
         />
         <StatCard
           label="주문"
-          value={`${summary7.orders}건`}
-          icon="shopping_cart"
-          accentColor="text-white/50"
+          lines={[
+            { label: "오늘", value: `${todayOrders}건` },
+            { label: "이번주", value: `${summary7.orders}건` },
+            { label: "이번달", value: `${summaryMonth.orders}건` },
+          ]}
         />
         <StatCard
           label="매출"
-          value={formatMoney(summary7.revenue)}
-          icon="payments"
-          accentColor="text-white/50"
+          lines={[
+            { label: "오늘", value: formatMoney(todayRevenue) },
+            { label: "이번주", value: formatMoney(summary7.revenue) },
+            { label: "이번달", value: formatMoney(summaryMonth.revenue) },
+          ]}
         />
       </div>
 
@@ -224,9 +268,8 @@ export default function AdminAnalyticsPanel({
           <div className="mb-5 flex items-center justify-between">
             <div>
               <h2 className="text-[17px] font-semibold text-white/90">트래픽 분석</h2>
-              <p className="mt-0.5 text-[12px] text-white/30">최근 7일간 방문 추이</p>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <button
                 onClick={() => setActiveMetric("pageViews")}
                 className={`rounded-lg px-3 py-1.5 text-[11px] font-medium transition-all ${
@@ -247,21 +290,34 @@ export default function AdminAnalyticsPanel({
               >
                 방문자
               </button>
+              <button
+                onClick={() => setActiveMetric("orders")}
+                className={`rounded-lg px-3 py-1.5 text-[11px] font-medium transition-all ${
+                  activeMetric === "orders"
+                    ? "bg-white/10 text-white/80"
+                    : "text-white/30 hover:bg-white/[0.04] hover:text-white/50"
+                }`}
+              >
+                주문
+              </button>
+              <button
+                onClick={() => setActiveMetric("revenue")}
+                className={`rounded-lg px-3 py-1.5 text-[11px] font-medium transition-all ${
+                  activeMetric === "revenue"
+                    ? "bg-white/10 text-white/80"
+                    : "text-white/30 hover:bg-white/[0.04] hover:text-white/50"
+                }`}
+              >
+                매출
+              </button>
             </div>
           </div>
 
           {/* 레전드 */}
-          <div className="mb-4 flex items-center gap-5">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-white/60" />
-              <span className="text-[12px] text-white/40">페이지뷰</span>
-              <span className="text-[12px] font-medium text-white/60">{sum(pv).toLocaleString()}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-white/30" />
-              <span className="text-[12px] text-white/40">방문자</span>
-              <span className="text-[12px] font-medium text-white/60">{sum(uv).toLocaleString()}</span>
-            </div>
+          <div className="mb-4 flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: active.dot }} />
+            <span className="text-[12px] text-white/40">{active.label}</span>
+            <span className="text-[12px] font-medium text-white/60">{formatActiveValue(sum(active.values))}</span>
           </div>
 
           {/* 그래프 영역 */}
@@ -282,6 +338,16 @@ export default function AdminAnalyticsPanel({
                 <linearGradient id="uvGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                   <stop offset="0%" stopColor="rgba(255,255,255,0.06)" />
                   <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                </linearGradient>
+                {/* 주문 그라데이션 */}
+                <linearGradient id="ordersGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="rgba(56,189,248,0.18)" />
+                  <stop offset="100%" stopColor="rgba(56,189,248,0)" />
+                </linearGradient>
+                {/* 매출 그라데이션 */}
+                <linearGradient id="revenueGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="rgba(52,211,153,0.16)" />
+                  <stop offset="100%" stopColor="rgba(52,211,153,0)" />
                 </linearGradient>
               </defs>
 
@@ -304,51 +370,32 @@ export default function AdminAnalyticsPanel({
                       textAnchor="end"
                       className="fill-white/20 text-[9px]"
                     >
-                      {tick}
+                      {activeMetric === "revenue" ? formatRevenueTick(tick) : tick.toLocaleString("ko-KR")}
                     </text>
                   </g>
                 );
               })}
 
               {/* 영역 채우기 */}
-              <path
-                d={pvArea}
-                fill="url(#pvGradient)"
-                className={`transition-opacity duration-300 ${activeMetric === "visitors" ? "opacity-30" : "opacity-100"}`}
-              />
-              <path
-                d={uvArea}
-                fill="url(#uvGradient)"
-                className={`transition-opacity duration-300 ${activeMetric === "pageViews" ? "opacity-30" : "opacity-100"}`}
-              />
+              <path d={activeArea} fill={`url(#${active.gradientId})`} className="transition-opacity duration-300" />
 
               {/* 라인 */}
               <path
-                d={pvPath}
+                d={activePath}
                 fill="none"
-                stroke="rgba(255,255,255,0.5)"
+                stroke={active.stroke}
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className={`transition-opacity duration-300 ${activeMetric === "visitors" ? "opacity-30" : "opacity-100"}`}
-              />
-              <path
-                d={uvPath}
-                fill="none"
-                stroke="rgba(255,255,255,0.25)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`transition-opacity duration-300 ${activeMetric === "pageViews" ? "opacity-30" : "opacity-100"}`}
+                className="transition-opacity duration-300"
               />
 
               {/* 호버 영역 및 점 */}
               {daily.map((d, i) => {
-                const pvPt = pvPoints[i];
-                const uvPt = uvPoints[i];
+                const pt = active.points[i];
                 const isHovered = hoveredIndex === i;
                 const columnWidth = (w - pad * 2) / (daily.length - 1 || 1);
-                const hitAreaX = i === 0 ? pad : pvPt.x - columnWidth / 2;
+                const hitAreaX = i === 0 ? pad : pt.x - columnWidth / 2;
                 const hitAreaWidth = i === 0 || i === daily.length - 1 ? columnWidth / 2 : columnWidth;
 
                 return (
@@ -367,8 +414,8 @@ export default function AdminAnalyticsPanel({
                     {/* 호버 시 수직선 */}
                     {isHovered && (
                       <line
-                        x1={pvPt.x}
-                        x2={pvPt.x}
+                        x1={pt.x}
+                        x2={pt.x}
                         y1={pad}
                         y2={h - pad}
                         stroke="rgba(255,255,255,0.1)"
@@ -376,26 +423,15 @@ export default function AdminAnalyticsPanel({
                       />
                     )}
 
-                    {/* 페이지뷰 점 */}
+                    {/* 점 */}
                     <circle
-                      cx={pvPt.x}
-                      cy={pvPt.y}
+                      cx={pt.x}
+                      cy={pt.y}
                       r={isHovered ? 6 : 4}
-                      fill={isHovered ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.6)"}
+                      fill={isHovered ? active.dot : active.dot}
                       stroke="rgba(0,0,0,0.3)"
                       strokeWidth="1"
-                      className={`transition-all duration-150 ${activeMetric === "visitors" ? "opacity-30" : "opacity-100"}`}
-                    />
-
-                    {/* 방문자 점 */}
-                    <circle
-                      cx={uvPt.x}
-                      cy={uvPt.y}
-                      r={isHovered ? 6 : 4}
-                      fill={isHovered ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.35)"}
-                      stroke="rgba(0,0,0,0.3)"
-                      strokeWidth="1"
-                      className={`transition-all duration-150 ${activeMetric === "pageViews" ? "opacity-30" : "opacity-100"}`}
+                      className="transition-all duration-150"
                     />
                   </g>
                 );
@@ -423,7 +459,7 @@ export default function AdminAnalyticsPanel({
               <div
                 className="pointer-events-none absolute z-10 rounded-lg border border-white/[0.08] bg-[#18181b]/95 px-3 py-2.5 shadow-xl"
                 style={{
-                  left: `${(pvPoints[hoveredIndex].x / w) * 100}%`,
+                  left: `${(active.points[hoveredIndex].x / w) * 100}%`,
                   top: "16px",
                   transform: "translateX(-50%)",
                 }}
@@ -431,14 +467,9 @@ export default function AdminAnalyticsPanel({
                 <div className="mb-1.5 text-[11px] font-medium text-white/50">{daily[hoveredIndex].date}</div>
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-white/60" />
-                    <span className="text-[11px] text-white/40">페이지뷰</span>
-                    <span className="text-[12px] font-semibold text-white/80">{daily[hoveredIndex].pageViews.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-white/30" />
-                    <span className="text-[11px] text-white/40">방문자</span>
-                    <span className="text-[12px] font-semibold text-white/80">{daily[hoveredIndex].visitors.toLocaleString()}</span>
+                    <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: active.dot }} />
+                    <span className="text-[11px] text-white/40">{active.label}</span>
+                    <span className="text-[12px] font-semibold text-white/80">{formatActiveValue(active.points[hoveredIndex].value)}</span>
                   </div>
                 </div>
               </div>
@@ -448,31 +479,23 @@ export default function AdminAnalyticsPanel({
 
         {/* 기간별 분석 카드 */}
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <h2 className="text-[17px] font-semibold text-white/90">기간별 분석</h2>
-              <p className="mt-0.5 text-[12px] text-white/30">일별 상세 통계</p>
-            </div>
-            <a
-              href="/admin/orders"
-              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] text-white/40 transition-all hover:bg-white/[0.04] hover:text-white/60"
-            >
-              더보기
-              <span className="material-symbols-outlined text-[12px]">chevron_right</span>
-            </a>
+          <div className="mb-5">
+            <h2 className="text-[17px] font-semibold text-white/90">기간별 분석</h2>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-white/[0.04] bg-black/20">
-            <div className="max-h-[280px] overflow-y-auto">
+          {/* 일별 상세 테이블 */}
+          <div className="overflow-hidden rounded-xl bg-transparent">
+            <div className="max-h-[320px] overflow-y-auto">
               <table className="w-full">
                 <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-white/[0.04] bg-[#0c0c0e]">
-                    <th className="px-3 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-white/30">일자</th>
-                    <th className="px-2 py-2.5 text-right text-[10px] font-medium uppercase tracking-wider text-white/30">주문</th>
-                    <th className="px-2 py-2.5 text-right text-[10px] font-medium uppercase tracking-wider text-white/30">매출</th>
-                    <th className="px-2 py-2.5 text-right text-[10px] font-medium uppercase tracking-wider text-white/30">방문자</th>
-                    <th className="px-2 py-2.5 text-right text-[10px] font-medium uppercase tracking-wider text-white/30">가입</th>
-                    <th className="px-2 py-2.5 text-right text-[10px] font-medium uppercase tracking-wider text-white/30">문의</th>
+                  <tr className="border-b border-white/[0.06] bg-transparent">
+                    <th className="px-3 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-white">일자</th>
+                    <th className="px-2 py-2.5 text-right text-[10px] font-medium uppercase tracking-wider text-white">주문</th>
+                    <th className="px-2 py-2.5 text-right text-[10px] font-medium uppercase tracking-wider text-white">매출</th>
+                    <th className="px-2 py-2.5 text-right text-[10px] font-medium uppercase tracking-wider text-white">방문자</th>
+                    <th className="px-2 py-2.5 text-right text-[10px] font-medium uppercase tracking-wider text-white">PV</th>
+                    <th className="px-2 py-2.5 text-right text-[10px] font-medium uppercase tracking-wider text-white">가입</th>
+                    <th className="px-2 py-2.5 text-right text-[10px] font-medium uppercase tracking-wider text-white">문의</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.02]">
@@ -485,28 +508,31 @@ export default function AdminAnalyticsPanel({
                         className={`transition-colors hover:bg-white/[0.02] ${idx === 0 ? "bg-white/[0.015]" : ""}`}
                       >
                         <td className="px-3 py-2.5">
-                          <div className="text-[12px] font-medium text-white/60">{d.date.slice(5)}</div>
+                          <div className="text-[12px] font-medium text-white">{d.date.slice(5)}</div>
                         </td>
                         <td className="px-2 py-2.5 text-right">
-                          <span className={`text-[12px] ${d.orders > 0 ? "font-medium text-white/70" : "text-white/20"}`}>
+                          <span className={`text-[12px] ${d.orders > 0 ? "font-medium text-white" : "text-white"}`}>
                             {d.orders > 0 ? d.orders : "-"}
                           </span>
                         </td>
                         <td className="px-2 py-2.5 text-right">
-                          <span className={`text-[12px] ${d.revenue > 0 ? "font-medium text-white/70" : "text-white/20"}`}>
+                          <span className={`text-[12px] ${d.revenue > 0 ? "font-medium text-white" : "text-white"}`}>
                             {d.revenue > 0 ? formatMoney(d.revenue) : "-"}
                           </span>
                         </td>
                         <td className="px-2 py-2.5 text-right">
-                          <span className="text-[12px] text-white/50">{d.visitors.toLocaleString()}</span>
+                          <span className="text-[12px] text-white">{d.visitors.toLocaleString()}</span>
                         </td>
                         <td className="px-2 py-2.5 text-right">
-                          <span className={`text-[12px] ${d.signups > 0 ? "text-white/50" : "text-white/20"}`}>
+                          <span className="text-[12px] text-white">{d.pageViews.toLocaleString()}</span>
+                        </td>
+                        <td className="px-2 py-2.5 text-right">
+                          <span className={`text-[12px] ${d.signups > 0 ? "text-white" : "text-white"}`}>
                             {d.signups > 0 ? d.signups : "-"}
                           </span>
                         </td>
                         <td className="px-2 py-2.5 text-right">
-                          <span className={`text-[12px] ${d.inquiries > 0 ? "text-white/50" : "text-white/20"}`}>
+                          <span className={`text-[12px] ${d.inquiries > 0 ? "text-white" : "text-white"}`}>
                             {d.inquiries > 0 ? d.inquiries : "-"}
                           </span>
                         </td>
@@ -516,23 +542,16 @@ export default function AdminAnalyticsPanel({
               </table>
             </div>
 
-            {/* 요약 행 */}
-            <div className="border-t border-white/[0.06] bg-white/[0.02]">
-              <div className="grid grid-cols-2 divide-x divide-white/[0.04]">
-                <div className="p-3.5">
-                  <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-white/30">최근 7일</div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-[16px] font-semibold text-white/80">{formatMoney(summary7.revenue)}</span>
-                    <span className="text-[11px] text-white/30">{summary7.orders}건</span>
-                  </div>
-                </div>
-                <div className="p-3.5">
-                  <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-white/30">이번달</div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-[16px] font-semibold text-white/80">{formatMoney(summaryMonth.revenue)}</span>
-                    <span className="text-[11px] text-white/30">{summaryMonth.orders}건</span>
-                  </div>
-                </div>
+            {/* 합계 행 */}
+            <div className="border-t border-white/[0.06] bg-transparent">
+              <div className="grid grid-cols-7 px-3 py-2.5">
+                <div className="text-[10px] font-medium uppercase tracking-wider text-white">합계 (7일)</div>
+                <div className="text-right text-[12px] font-semibold text-white">{summary7.orders}건</div>
+                <div className="text-right text-[12px] font-semibold text-white">{formatMoney(summary7.revenue)}</div>
+                <div className="text-right text-[12px] text-white">{summary7.visitors.toLocaleString()}</div>
+                <div className="text-right text-[12px] text-white">{summary7.pageViews.toLocaleString()}</div>
+                <div className="text-right text-[12px] text-white">{summary7.signups}</div>
+                <div className="text-right text-[12px] text-white">{summary7.inquiries}</div>
               </div>
             </div>
           </div>

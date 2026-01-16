@@ -74,9 +74,9 @@ export default function AdminTextbookRegisterLogClient({ items }: { items: DbTex
   }
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] overflow-hidden h-fit sticky top-6">
+    <div className="rounded-2xl border border-white/[0.08] bg-transparent overflow-hidden h-fit sticky top-5">
       {/* Header */}
-      <div className="border-b border-white/[0.06] px-5 py-4">
+      <div className="border-b border-white/[0.06] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-white/40">
@@ -100,7 +100,7 @@ export default function AdminTextbookRegisterLogClient({ items }: { items: DbTex
       {/* List */}
       <div className="max-h-[calc(100vh-280px)] overflow-y-auto">
         {sorted.length === 0 ? (
-          <div className="px-5 py-12 text-center">
+          <div className="px-4 py-10 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.03]">
               <svg className="w-5 h-5 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -124,7 +124,7 @@ export default function AdminTextbookRegisterLogClient({ items }: { items: DbTex
                 minute: "2-digit",
               });
               return (
-                <div key={idx} className="px-5 py-3 hover:bg-white/[0.02] transition-colors">
+                <div key={idx} className="px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
                   <div className="flex items-start gap-3">
                     <div className="shrink-0 w-10 h-14 rounded-lg overflow-hidden border border-white/10 bg-white/[0.03]">
                       {t.thumbnailUrl ? (
@@ -158,24 +158,56 @@ export default function AdminTextbookRegisterLogClient({ items }: { items: DbTex
                       </div>
                     </div>
 
-                    <div className="shrink-0 flex flex-col gap-2 items-end">
+                    <div className="shrink-0 flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => refreshMetadata(t.id)}
                         disabled={refreshingId === t.id || deletingId === t.id}
-                        className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-white/70 hover:bg-white/[0.06] disabled:opacity-50"
+                        aria-label="정보 다시"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/[0.06] disabled:opacity-50"
                         title="파일 정보 다시 불러오기"
                       >
-                        {refreshingId === t.id ? "갱신중..." : "정보 다시"}
+                        <svg
+                          className={`h-4 w-4 ${refreshingId === t.id ? "animate-spin" : ""}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.8}
+                            d="M4.5 12a7.5 7.5 0 0112.7-5.303L19.5 9m0-6v6h-6"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.8}
+                            d="M19.5 12a7.5 7.5 0 01-12.7 5.303L4.5 15m0 6v-6h6"
+                          />
+                        </svg>
                       </button>
                       <button
                         type="button"
                         onClick={() => deleteTextbook(t.id)}
                         disabled={deletingId === t.id || refreshingId === t.id}
-                        className="rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1.5 text-[11px] text-red-300 hover:bg-red-500/15 disabled:opacity-50"
+                        aria-label="삭제"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10 text-red-300 hover:bg-red-500/15 disabled:opacity-50"
                         title="교재 삭제"
                       >
-                        {deletingId === t.id ? "삭제중..." : "삭제"}
+                        <svg
+                          className={`h-4 w-4 ${deletingId === t.id ? "animate-pulse" : ""}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.8}
+                            d="M6 7h12M10 11v6m4-6v6M9 7l1-2h4l1 2m-8 0l1 14h8l1-14"
+                          />
+                        </svg>
                       </button>
                     </div>
                   </div>

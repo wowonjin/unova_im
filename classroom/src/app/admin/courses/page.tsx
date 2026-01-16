@@ -94,7 +94,7 @@ export default async function AdminCoursesPage({
       />
 
       <div className="mt-6 space-y-4">
-        <Card className="bg-[#1a1a1c]">
+        <Card className="bg-transparent">
           <CardHeader title="강좌 판매하기" description="강좌를 생성하고 기본 정보를 설정합니다." />
           <CardBody>
             <CreateCourseFormClient />

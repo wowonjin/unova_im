@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type HomeSlide = {
@@ -266,17 +265,37 @@ export default function HomeSettingsClient() {
     <div className="max-w-5xl mx-auto">
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-8">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <Link href="/admin" className="text-white/50 hover:text-white transition-colors">
-              <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
-                arrow_back
-              </span>
-            </Link>
-            <h1 className="text-[28px] font-bold tracking-tight">메인페이지 설정</h1>
-          </div>
-          <p className="text-white/50">메인 슬라이드와 바로가기 아이콘을 관리합니다.</p>
-        </div>
+        <h1 className="text-[28px] font-bold tracking-tight">메인페이지 설정</h1>
+        {tab === "slides" && (
+          <button
+            onClick={() => {
+              setShowSlideForm((v) => !v);
+              setEditingSlideId(null);
+              setSlideForm({ imageUrl: "", linkUrl: "", tag: "", title: "", subtitle: "", position: "0" });
+            }}
+            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
+              add
+            </span>
+            새 슬라이드
+          </button>
+        )}
+        {tab === "shortcuts" && (
+          <button
+            onClick={() => {
+              setShowShortcutForm((v) => !v);
+              setEditingShortcutId(null);
+              setShortcutForm({ imageUrl: "", label: "", linkUrl: "", bgColor: "", position: "0" });
+            }}
+            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
+              add
+            </span>
+            새 아이콘
+          </button>
+        )}
       </div>
 
       {/* 탭 */}
@@ -309,25 +328,6 @@ export default function HomeSettingsClient() {
               {errorSlides}
             </div>
           ) : null}
-
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-sm text-white/50">
-              정렬은 <b className="text-white">position(내림차순)</b> 기준입니다.
-            </div>
-            <button
-              onClick={() => {
-                setShowSlideForm((v) => !v);
-                setEditingSlideId(null);
-                setSlideForm({ imageUrl: "", linkUrl: "", tag: "", title: "", subtitle: "", position: "0" });
-              }}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
-                add
-              </span>
-              새 슬라이드
-            </button>
-          </div>
 
           {showSlideForm ? (
             <div className="mb-8 p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
@@ -417,24 +417,23 @@ export default function HomeSettingsClient() {
             </div>
           ) : null}
 
-          <div className="space-y-4">
-            {isLoadingSlides ? (
-              <div className="py-12 text-center text-white/40">불러오는 중...</div>
-            ) : slides.length > 0 ? (
-              slides.map((s) => (
+          {isLoadingSlides ? (
+            <div className="py-12 text-center text-white/40">불러오는 중...</div>
+          ) : slides.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {slides.map((s) => (
                 <div
                   key={s.id}
-                  className="flex items-center gap-6 p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06]"
+                  className="flex flex-col rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden"
                 >
-                  <div className="w-40 h-24 rounded-xl bg-white/[0.05] flex items-center justify-center shrink-0 overflow-hidden">
+                  {/* 이미지 */}
+                  <div className="w-full aspect-[16/9] bg-white/[0.05] overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={s.imageUrl} alt="" className="w-full h-full object-cover" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="text-[16px] font-semibold text-white truncate">
-                        {(s.titleHtml || "").replace(/<br\s*\/?>/gi, " / ")}
-                      </h3>
+                  {/* 콘텐츠 */}
+                  <div className="flex-1 p-4">
+                    <div className="flex items-center gap-2 mb-2">
                       <span
                         className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${
                           s.isActive ? "bg-emerald-500/20 text-emerald-400" : "bg-white/10 text-white/50"
@@ -442,34 +441,21 @@ export default function HomeSettingsClient() {
                       >
                         {s.isActive ? "활성화" : "비활성화"}
                       </span>
-                      <span className="text-[12px] text-white/40">pos: {s.position}</span>
+                      <span className="text-[11px] text-white/40">pos: {s.position}</span>
                     </div>
-                    <div className="flex flex-wrap gap-3 text-[13px] text-white/40">
-                      <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
-                          sell
-                        </span>
-                        {s.tag || "-"}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
-                          subtitle
-                        </span>
-                        {s.subtitle || "-"}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
-                          link
-                        </span>
-                        {s.linkUrl || "링크 없음"}
-                      </span>
+                    <h3 className="text-[14px] font-semibold text-white line-clamp-2 mb-2">
+                      {(s.titleHtml || "").replace(/<br\s*\/?>/gi, " / ") || "제목 없음"}
+                    </h3>
+                    <div className="space-y-1 text-[12px] text-white/40">
+                      <div className="truncate">{s.tag || "태그 없음"}</div>
+                      <div className="truncate">{s.linkUrl || "링크 없음"}</div>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
+                  {/* 버튼 */}
+                  <div className="flex items-center gap-2 p-4 pt-0">
                     <button
                       onClick={() => toggleSlideActive(s.id, !s.isActive)}
-                      className={`px-4 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                      className={`flex-1 px-3 py-2 rounded-lg text-[12px] font-medium transition-colors ${
                         s.isActive ? "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]" : "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
                       }`}
                     >
@@ -477,7 +463,7 @@ export default function HomeSettingsClient() {
                     </button>
                     <button
                       onClick={() => startEditSlide(s)}
-                      className="px-4 py-2 rounded-lg text-[13px] font-medium bg-white/[0.06] text-white/70 hover:bg-white/[0.1] transition-colors"
+                      className="flex-1 px-3 py-2 rounded-lg text-[12px] font-medium bg-white/[0.06] text-white/70 hover:bg-white/[0.1] transition-colors"
                     >
                       수정
                     </button>
@@ -485,23 +471,23 @@ export default function HomeSettingsClient() {
                       onClick={() => deleteSlide(s.id)}
                       className="p-2 rounded-lg bg-white/[0.06] text-rose-400 hover:bg-rose-500/20 transition-colors"
                     >
-                      <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
                         delete
                       </span>
                     </button>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center py-16 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-                <span className="material-symbols-outlined text-white/20" style={{ fontSize: "48px" }}>
-                  slideshow
-                </span>
-                <p className="mt-4 text-[16px] font-medium text-white/60">등록된 슬라이드가 없습니다</p>
-                <p className="mt-1 text-[14px] text-white/40">새 슬라이드를 추가해주세요</p>
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+              <span className="material-symbols-outlined text-white/20" style={{ fontSize: "48px" }}>
+                slideshow
+              </span>
+              <p className="mt-4 text-[16px] font-medium text-white/60">등록된 슬라이드가 없습니다</p>
+              <p className="mt-1 text-[14px] text-white/40">새 슬라이드를 추가해주세요</p>
+            </div>
+          )}
         </>
       ) : null}
 
@@ -513,25 +499,6 @@ export default function HomeSettingsClient() {
               {errorShortcuts}
             </div>
           ) : null}
-
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-sm text-white/50">
-              정렬은 <b className="text-white">position(내림차순)</b> 기준입니다.
-            </div>
-            <button
-              onClick={() => {
-                setShowShortcutForm((v) => !v);
-                setEditingShortcutId(null);
-                setShortcutForm({ label: "", imageUrl: "", linkUrl: "", bgColor: "", position: "0" });
-              }}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
-                add
-              </span>
-              새 아이콘
-            </button>
-          </div>
 
           {showShortcutForm ? (
             <div className="mb-8 p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
@@ -617,26 +584,29 @@ export default function HomeSettingsClient() {
             </div>
           ) : null}
 
-          <div className="space-y-4">
-            {isLoadingShortcuts ? (
-              <div className="py-12 text-center text-white/40">불러오는 중...</div>
-            ) : shortcuts.length > 0 ? (
-              shortcuts.map((s) => (
+          {isLoadingShortcuts ? (
+            <div className="py-12 text-center text-white/40">불러오는 중...</div>
+          ) : shortcuts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {shortcuts.map((s) => (
                 <div
                   key={s.id}
-                  className="flex items-center gap-6 p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06]"
+                  className="flex flex-col rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden"
                 >
-                  <div
-                    className="w-14 h-14 rounded-2xl border border-white/10 shrink-0 overflow-hidden flex items-center justify-center"
-                    style={{ backgroundColor: s.bgColor?.trim() ? s.bgColor.trim() : "#ffffff" }}
-                    title={s.bgColor || ""}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={s.imageUrl} alt="" className="block w-full h-full object-cover" />
+                  {/* 아이콘 미리보기 */}
+                  <div className="p-6 flex items-center justify-center bg-white/[0.02]">
+                    <div
+                      className="w-16 h-16 rounded-2xl border border-white/10 overflow-hidden flex items-center justify-center"
+                      style={{ backgroundColor: s.bgColor?.trim() ? s.bgColor.trim() : "#ffffff" }}
+                      title={s.bgColor || ""}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={s.imageUrl} alt="" className="block w-full h-full object-cover" />
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="text-[16px] font-semibold text-white truncate">{s.label}</h3>
+                  {/* 콘텐츠 */}
+                  <div className="flex-1 p-4">
+                    <div className="flex items-center gap-2 mb-2">
                       <span
                         className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${
                           s.isActive ? "bg-emerald-500/20 text-emerald-400" : "bg-white/10 text-white/50"
@@ -644,28 +614,25 @@ export default function HomeSettingsClient() {
                       >
                         {s.isActive ? "활성화" : "비활성화"}
                       </span>
-                      <span className="text-[12px] text-white/40">pos: {s.position}</span>
+                      <span className="text-[11px] text-white/40">pos: {s.position}</span>
                     </div>
-                    <div className="flex flex-wrap gap-3 text-[13px] text-white/40">
-                      <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
-                          link
-                        </span>
+                    <h3 className="text-[14px] font-semibold text-white truncate mb-2">{s.label}</h3>
+                    <div className="space-y-1 text-[12px] text-white/40">
+                      <div className="truncate flex items-center gap-1">
+                        <span className="material-symbols-outlined" style={{ fontSize: "12px" }}>link</span>
                         {s.linkUrl}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
-                          palette
-                        </span>
+                      </div>
+                      <div className="truncate flex items-center gap-1">
+                        <span className="material-symbols-outlined" style={{ fontSize: "12px" }}>palette</span>
                         {s.bgColor || "-"}
-                      </span>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
+                  {/* 버튼 */}
+                  <div className="flex items-center gap-2 p-4 pt-0">
                     <button
                       onClick={() => toggleShortcutActive(s.id, !s.isActive)}
-                      className={`px-4 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                      className={`flex-1 px-3 py-2 rounded-lg text-[12px] font-medium transition-colors ${
                         s.isActive ? "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]" : "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
                       }`}
                     >
@@ -673,7 +640,7 @@ export default function HomeSettingsClient() {
                     </button>
                     <button
                       onClick={() => startEditShortcut(s)}
-                      className="px-4 py-2 rounded-lg text-[13px] font-medium bg-white/[0.06] text-white/70 hover:bg-white/[0.1] transition-colors"
+                      className="flex-1 px-3 py-2 rounded-lg text-[12px] font-medium bg-white/[0.06] text-white/70 hover:bg-white/[0.1] transition-colors"
                     >
                       수정
                     </button>
@@ -681,23 +648,23 @@ export default function HomeSettingsClient() {
                       onClick={() => deleteShortcut(s.id)}
                       className="p-2 rounded-lg bg-white/[0.06] text-rose-400 hover:bg-rose-500/20 transition-colors"
                     >
-                      <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
                         delete
                       </span>
                     </button>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center py-16 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-                <span className="material-symbols-outlined text-white/20" style={{ fontSize: "48px" }}>
-                  apps
-                </span>
-                <p className="mt-4 text-[16px] font-medium text-white/60">등록된 아이콘이 없습니다</p>
-                <p className="mt-1 text-[14px] text-white/40">새 아이콘을 추가해주세요</p>
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+              <span className="material-symbols-outlined text-white/20" style={{ fontSize: "48px" }}>
+                apps
+              </span>
+              <p className="mt-4 text-[16px] font-medium text-white/60">등록된 아이콘이 없습니다</p>
+              <p className="mt-1 text-[14px] text-white/40">새 아이콘을 추가해주세요</p>
+            </div>
+          )}
         </>
       ) : null}
     </div>

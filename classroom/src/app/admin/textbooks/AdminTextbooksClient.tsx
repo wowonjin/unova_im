@@ -20,6 +20,7 @@ type TextbookRow = {
   subjectName?: string | null;
   price?: number | null;
   originalPrice?: number | null;
+  salesCount?: number;
 };
 
 type TextbookOption = { id: string; title: string; originalName: string };
@@ -38,14 +39,11 @@ export default function AdminTextbooksClient({
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="border-b border-white/[0.06] bg-[#0d0d0f]">
+      <div className="border-b border-white/[0.06] bg-transparent">
         <div className="mx-auto max-w-6xl px-6">
           <div className="flex items-center justify-between py-8">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-white">판매 물품</h1>
-              <p className="mt-1 text-sm text-white/50">
-                교재를 판매 상품으로 등록하고 관리하세요
-              </p>
             </div>
             <Link
               href="/admin/textbooks/register"

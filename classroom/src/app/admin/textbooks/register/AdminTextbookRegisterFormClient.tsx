@@ -189,12 +189,12 @@ export default function AdminTextbookRegisterFormClient() {
   const urlCount = parseUrls(url).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Main Form Card */}
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+      <div className="rounded-2xl border border-white/[0.08] bg-transparent overflow-hidden">
         <form onSubmit={handleSubmit}>
           {/* URL Input Section */}
-          <div className="p-6 border-b border-white/[0.06]">
+          <div className="p-4">
             <div className="flex items-start gap-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-white/50">
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -228,7 +228,7 @@ export default function AdminTextbookRegisterFormClient() {
 
           {/* Preview Section - Show when URL is entered */}
           {url.trim() && (
-            <div className="p-6 border-b border-white/[0.06] bg-white/[0.01]">
+            <div className="px-4 pb-4">
               <div className="flex items-start gap-5">
                 {/* Thumbnail */}
                 <div className="shrink-0 w-20 h-28 rounded-xl overflow-hidden border border-white/10 bg-[#0a0a0b]">
@@ -294,7 +294,7 @@ export default function AdminTextbookRegisterFormClient() {
           )}
 
           {/* Details Section */}
-          <div className="p-6">
+          <div className="px-4 pb-4">
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-white/70 mb-2">교재 제목</label>
@@ -319,7 +319,7 @@ export default function AdminTextbookRegisterFormClient() {
             <input type="hidden" name="thumbnailDataUrl" value={thumbnailDataUrl || ""} />
 
             {/* Submit */}
-            <div className="mt-6 flex items-center justify-between">
+            <div className="mt-4 flex items-center justify-between">
               <p className="text-xs text-white/35">
                 등록 후 판매 물품에서 가격을 설정할 수 있습니다
               </p>
@@ -346,7 +346,7 @@ export default function AdminTextbookRegisterFormClient() {
       </div>
 
       {/* Tips */}
-      <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-4">
+      <div className="rounded-xl bg-transparent border border-white/[0.04] p-3">
         <div className="flex items-start gap-3">
           <div className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-500/10 text-blue-400/70">
             <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">

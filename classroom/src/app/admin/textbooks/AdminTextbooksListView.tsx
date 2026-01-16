@@ -20,6 +20,7 @@ type TextbookRow = {
   subjectName?: string | null;
   price?: number | null;
   originalPrice?: number | null;
+  salesCount?: number;
 };
 
 function formatBytes(bytes: number) {
@@ -179,7 +180,7 @@ export default function AdminTextbooksListView({ items: initialItems }: { items:
 
   if (!items.length) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] py-20">
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-transparent py-20">
         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/5">
           <svg className="h-7 w-7 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -209,12 +210,12 @@ export default function AdminTextbooksListView({ items: initialItems }: { items:
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="상품명, 파일명, 선생님으로 검색..."
-            className="w-full rounded-lg border border-white/10 bg-white/[0.03] py-2.5 pl-10 pr-4 text-sm text-white placeholder-white/30 outline-none transition-colors focus:border-white/20 focus:bg-white/[0.05]"
+            className="w-full rounded-lg border border-white/10 bg-transparent py-2.5 pl-10 pr-4 text-sm text-white placeholder-white/30 outline-none transition-colors focus:border-white/20 focus:bg-transparent"
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-white/10 bg-white/[0.03] p-1">
+        <div className="flex items-center gap-4">
+          <div className="flex rounded-lg border border-white/10 bg-transparent p-1">
             {[
               { value: "all", label: "전체" },
               { value: "published", label: "공개" },
@@ -234,18 +235,17 @@ export default function AdminTextbooksListView({ items: initialItems }: { items:
               </button>
             ))}
           </div>
+          {/* Results count */}
+          <div className="text-xs text-white/40 whitespace-nowrap">
+            {filteredItems.length === items.length
+              ? `총 ${items.length}개 상품`
+              : `${filteredItems.length}개 검색됨 / 총 ${items.length}개`}
+          </div>
         </div>
       </div>
 
-      {/* Results count */}
-      <div className="text-xs text-white/40">
-        {filteredItems.length === items.length
-          ? `총 ${items.length}개 상품`
-          : `${filteredItems.length}개 검색됨 / 총 ${items.length}개`}
-      </div>
-
       {hasActiveFilter ? (
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-white/60">
+        <div className="rounded-xl border border-white/10 bg-transparent px-4 py-3 text-xs text-white/60">
           검색/필터 상태에서는 정렬(드래그)이 꺼집니다. (전체 보기로 되돌리면 다시 사용 가능)
         </div>
       ) : null}
@@ -257,10 +257,10 @@ export default function AdminTextbooksListView({ items: initialItems }: { items:
       ) : null}
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
+      <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-transparent">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-white/[0.06] bg-white/[0.02]">
+            <tr className="border-b border-white/[0.06] bg-transparent">
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/40">
                 상품
               </th>
@@ -272,6 +272,9 @@ export default function AdminTextbooksListView({ items: initialItems }: { items:
               </th>
               <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-white/40">
                 상태
+              </th>
+              <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-white/40">
+                판매개수
               </th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-white/40">
                 <span className="sr-only">작업</span>
@@ -314,8 +317,8 @@ export default function AdminTextbooksListView({ items: initialItems }: { items:
                   setDraggingId(null);
                   setDragOverId(null);
                 }}
-                className={`group transition-colors hover:bg-white/[0.02] ${
-                  dragOverId === item.id && draggingId !== item.id ? "bg-white/[0.04]" : ""
+                className={`group transition-colors hover:bg-transparent ${
+                  dragOverId === item.id && draggingId !== item.id ? "ring-1 ring-white/20" : ""
                 }`}
               >
                 <td className="px-4 py-4">
@@ -413,6 +416,11 @@ export default function AdminTextbooksListView({ items: initialItems }: { items:
                       </span>
                     );
                   })()}
+                </td>
+                <td className="px-4 py-4 text-center">
+                  <span className="text-sm font-medium text-white/80">
+                    {new Intl.NumberFormat("ko-KR").format(item.salesCount ?? 0)}
+                  </span>
                 </td>
                 <td className="px-4 py-4">
                   <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">

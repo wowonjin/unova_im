@@ -101,7 +101,7 @@ export default function CourseListClient({
   };
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#1a1a1c]">
+    <div className="rounded-2xl border border-white/10 bg-transparent">
       <div className="border-b border-white/10 px-5 py-4">
         <div className="flex items-center justify-between gap-3">
           <div className="text-sm font-semibold">내 강좌 목록</div>
@@ -116,12 +116,12 @@ export default function CourseListClient({
             name="q"
             defaultValue={q}
             placeholder="제목/선생님/과목 검색 후 Enter"
-            className="h-9 w-full rounded-xl border border-white/10 bg-[#1d1d1f] px-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/20 focus:ring-2 focus:ring-white/10 sm:w-72"
+            className="h-9 w-full rounded-xl border border-white/10 bg-transparent px-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/20 focus:ring-2 focus:ring-white/10 sm:w-72"
           />
           <select
             name="published"
             defaultValue={publishedRaw}
-            className="h-9 w-full rounded-xl border border-white/10 bg-[#1a1a1c] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10 sm:w-40"
+            className="h-9 w-full rounded-xl border border-white/10 bg-transparent px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10 sm:w-40"
             aria-label="공개 상태 필터"
           >
             <option value="all">전체</option>
@@ -255,7 +255,7 @@ export default function CourseListClient({
                   className={`group relative cursor-pointer overflow-hidden rounded-xl border transition-all ${
                     isSelected
                       ? "border-red-500 bg-red-500/10"
-                      : "border-white/10 bg-[#1a1a1c] hover:border-white/20 hover:bg-[#1f1f21]"
+                      : "border-white/10 bg-transparent hover:border-white/20 hover:bg-transparent"
                   }`}
                 >
                   {cardContent}
@@ -267,7 +267,7 @@ export default function CourseListClient({
               <Link
                 key={c.id}
                 href={`/admin/course/${c.id}?tab=settings`}
-                className="group relative overflow-hidden rounded-xl border border-white/10 bg-[#1a1a1c] transition-all hover:border-white/20 hover:bg-[#1f1f21]"
+                className="group relative overflow-hidden rounded-xl border border-white/10 bg-transparent transition-all hover:border-white/20 hover:bg-transparent"
               >
                 {cardContent}
               </Link>

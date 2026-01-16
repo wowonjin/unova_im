@@ -1,7 +1,6 @@
 import AppShell from "@/app/_components/AppShell";
 import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
 import AdminTextbookRegisterFormClient from "./AdminTextbookRegisterFormClient";
 import AdminTextbookRegisterLogClient from "./AdminTextbookRegisterLogClient";
 
@@ -61,29 +60,17 @@ export default async function AdminTextbookRegisterPage() {
     <AppShell>
       <div className="min-h-screen">
         {/* Header */}
-        <div className="border-b border-white/[0.06] bg-[#0d0d0f]">
-          <div className="mx-auto max-w-6xl px-6">
-            <div className="py-8">
-              <Link 
-                href="/admin/textbooks"
-                className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-white/60 transition-colors mb-4"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
-                </svg>
-                판매 물품으로 돌아가기
-              </Link>
+        <div className="bg-transparent">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6">
+            <div className="py-5">
               <h1 className="text-2xl font-semibold tracking-tight text-white">교재 업로드</h1>
-              <p className="mt-1 text-sm text-white/50">
-                구글 스토리지 URL을 입력하여 교재를 등록하세요
-              </p>
             </div>
           </div>
         </div>
 
         {/* Content */}
-        <div className="mx-auto max-w-6xl px-6 py-8">
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-5">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
             {/* Left: Form */}
             <div className="lg:col-span-3">
               <AdminTextbookRegisterFormClient />

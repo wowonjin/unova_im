@@ -225,7 +225,7 @@ export default function AdminTextbooksRegisterView({
 
   if (!textbooks.length) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] py-20">
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-transparent py-20">
         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/5">
           <svg className="h-7 w-7 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -247,7 +247,7 @@ export default function AdminTextbooksRegisterView({
     <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-5">
       {/* Left: Textbook Selection */}
       <div className="lg:col-span-2">
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+        <div className="rounded-xl border border-white/[0.06] bg-transparent overflow-hidden">
           <div className="border-b border-white/[0.06] px-5 py-4">
             <h3 className="text-sm font-medium text-white">교재 선택</h3>
             <p className="mt-1 text-xs text-white/40">
@@ -270,7 +270,7 @@ export default function AdminTextbooksRegisterView({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="교재 검색..."
-                className="w-full rounded-lg border border-white/10 bg-white/[0.03] py-2 pl-10 pr-4 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
+                className="w-full rounded-lg border border-white/10 bg-transparent py-2 pl-10 pr-4 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
               />
             </div>
             <div className="mt-3 flex items-center justify-between">
@@ -342,7 +342,7 @@ export default function AdminTextbooksRegisterView({
 
       {/* Right: Form Fields */}
       <div className="lg:col-span-3">
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+        <div className="rounded-xl border border-white/[0.06] bg-transparent overflow-hidden">
           <div className="border-b border-white/[0.06] px-5 py-4">
             <h3 className="text-sm font-medium text-white">판매 정보</h3>
             <p className="mt-1 text-xs text-white/40">
@@ -397,8 +397,8 @@ export default function AdminTextbooksRegisterView({
                   onClick={() => fileInputRef.current?.click()}
                   className={`relative cursor-pointer rounded-xl border-2 border-dashed transition-all ${
                     isDragging 
-                      ? "border-white/40 bg-white/[0.08]" 
-                      : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]"
+                      ? "border-white/40 bg-transparent" 
+                      : "border-white/10 bg-transparent hover:border-white/20 hover:bg-transparent"
                   }`}
                 >
                   <div className="flex flex-col items-center justify-center py-8 px-4">
@@ -447,7 +447,7 @@ export default function AdminTextbooksRegisterView({
                 value={productName}
                 onChange={(e) => setProductName(e.target.value)}
                 placeholder="비워두면 기존 교재 제목 유지"
-                className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
+                className="w-full rounded-lg border border-white/10 bg-transparent px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
               />
             </div>
 
@@ -463,7 +463,7 @@ export default function AdminTextbooksRegisterView({
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
                     placeholder="49,000"
-                    className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2.5 pr-10 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
+                    className="w-full rounded-lg border border-white/10 bg-transparent px-4 py-2.5 pr-10 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-white/30">원</span>
                 </div>
@@ -478,7 +478,7 @@ export default function AdminTextbooksRegisterView({
                     value={originalPrice}
                     onChange={(e) => setOriginalPrice(e.target.value)}
                     placeholder="99,000"
-                    className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2.5 pr-10 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
+                    className="w-full rounded-lg border border-white/10 bg-transparent px-4 py-2.5 pr-10 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-white/30">원</span>
                 </div>
@@ -497,7 +497,7 @@ export default function AdminTextbooksRegisterView({
                   value={teacherName}
                   onChange={(e) => setTeacherName(e.target.value)}
                   placeholder="홍길동"
-                  className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
+                  className="w-full rounded-lg border border-white/10 bg-transparent px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
                 />
               </div>
               <div>
@@ -509,7 +509,7 @@ export default function AdminTextbooksRegisterView({
                   value={subjectName}
                   onChange={(e) => setSubjectName(e.target.value)}
                   placeholder="수학"
-                  className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
+                  className="w-full rounded-lg border border-white/10 bg-transparent px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
                 />
               </div>
               <div>
@@ -523,7 +523,7 @@ export default function AdminTextbooksRegisterView({
                     onChange={(e) => setEntitlementDays(e.target.value)}
                     min={1}
                     max={3650}
-                    className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2.5 pr-10 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
+                    className="w-full rounded-lg border border-white/10 bg-transparent px-4 py-2.5 pr-10 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-white/30">일</span>
                 </div>
@@ -531,7 +531,7 @@ export default function AdminTextbooksRegisterView({
             </div>
 
             {/* Publish Toggle */}
-            <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] p-4">
+            <div className="flex items-center justify-between rounded-lg border border-white/10 bg-transparent p-4">
               <div>
                 <p className="text-sm font-medium text-white">즉시 공개</p>
                 <p className="text-xs text-white/40">활성화하면 바로 스토어에 노출됩니다</p>

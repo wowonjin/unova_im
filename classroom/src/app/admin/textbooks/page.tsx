@@ -3,6 +3,7 @@ import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import AdminTextbooksClient from "./AdminTextbooksClient";
 import { ensureSoldOutColumnsOnce } from "@/lib/ensure-columns";
+import { OrderStatus, ProductType } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function AdminTextbooksPage() {
     subjectName?: string | null;
     price?: number | null;
     originalPrice?: number | null;
+    salesCount?: number;
   }> = [];
 
   try {
@@ -79,6 +81,33 @@ export default async function AdminTextbooksPage() {
     isSoldOut: (t as any).isSoldOut ?? false,
   }));
 
+  // 판매개수: 주문(결제 완료/부분환불) 기준으로 교재별 주문 수 집계
+  // - Order 모델은 "수량(quantity)" 컬럼이 없어서, 현재는 "완료된 주문 건수"를 판매개수로 사용합니다.
+  // - 취소/환불/결제대기 주문은 제외합니다.
+  const saleItemIds = saleItemsWithDefaults.map((t) => t.id);
+  const salesByTextbookId = new Map<string, number>();
+  if (saleItemIds.length) {
+    const grouped = await prisma.order.groupBy({
+      by: ["textbookId"],
+      where: {
+        productType: ProductType.TEXTBOOK,
+        textbookId: { in: saleItemIds },
+        status: { in: [OrderStatus.COMPLETED, OrderStatus.PARTIALLY_REFUNDED] },
+      },
+      _count: { _all: true },
+    });
+    for (const g of grouped) {
+      if (typeof g.textbookId === "string") {
+        salesByTextbookId.set(g.textbookId, g._count._all);
+      }
+    }
+  }
+
+  const saleItemsWithSales = saleItemsWithDefaults.map((t) => ({
+    ...t,
+    salesCount: salesByTextbookId.get(t.id) ?? 0,
+  }));
+
   // "교재 등록"(/admin/textbooks/register)로 등록된 교재만 옵션으로 노출
   // - 해당 플로우는 storedPath에 GCS URL(https://storage.googleapis.com/...)을 저장합니다.
   // - 또한 "교재 판매하기"에서 이미 판매 설정(가격/원가)이 들어간 교재는 옵션에서 제외합니다.
@@ -117,7 +146,7 @@ export default async function AdminTextbooksPage() {
   return (
     <AppShell>
       <AdminTextbooksClient 
-        saleItems={saleItemsWithDefaults as any} 
+        saleItems={saleItemsWithSales as any} 
         textbookOptions={textbookOptions} 
       />
     </AppShell>

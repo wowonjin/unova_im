@@ -16,6 +16,8 @@ type User = {
 type LandingHeaderProps = {
   showMobileMenu?: boolean;
   fullWidth?: boolean;
+  /** 관리자 등에서 헤더 컨테이너를 화면 양 끝까지 확장(좌/우 패딩 제거) */
+  edgeToEdge?: boolean;
   backgroundColor?: string;
   topBackgroundColor?: string;
   scrolledBackgroundColor?: string;
@@ -83,6 +85,7 @@ function useSidebarOptional() {
 export default function LandingHeader({
   showMobileMenu = false,
   fullWidth = false,
+  edgeToEdge = false,
   backgroundColor = "#161616",
   topBackgroundColor,
   scrolledBackgroundColor,
@@ -345,7 +348,15 @@ export default function LandingHeader({
         backdropFilter: scrolled ? "blur(12px)" : "none",
       }}
     >
-      <div className={fullWidth ? "px-4" : "mx-auto max-w-6xl px-4"}>
+      <div
+        className={
+          edgeToEdge
+            ? "px-4 md:px-6"
+            : fullWidth
+              ? "px-4"
+              : "mx-auto max-w-6xl px-4"
+        }
+      >
         <div className="relative flex items-center h-[50px] lg:h-[70px]">
           {/* Mobile Menu Button */}
           <button

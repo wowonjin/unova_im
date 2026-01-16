@@ -38,7 +38,7 @@ export default function AppShellClient({ children, sidebar, floatingButton }: Pr
         <div className={`min-h-screen ${bgClass} text-white flex flex-col`}>
           {/* 헤더 */}
           {isAdminPage ? (
-            <LandingHeader />
+            <LandingHeader edgeToEdge />
           ) : (
             <>
               {/* 비관리자(AppShell) 페이지: 모바일에서만 헤더 표시(로고 중앙 + 메뉴 버튼) */}
@@ -65,10 +65,14 @@ export default function AppShellClient({ children, sidebar, floatingButton }: Pr
             {sidebar}
             <main
               className={`flex-1 pb-6 ${isAdminPage ? "admin-wide" : ""} ${
-                // 레슨 페이지: 좌측 패딩을 줄여(강의/아래 요소를 더 크게) 사이드바와 콘텐츠 사이 빈공간을 축소
-                isLessonPage
-                  ? "pl-2 pr-2 pt-0 md:pl-4 md:pr-4 md:pt-2 lg:pt-2 md:pb-6"
-                  : "px-4 pt-4 md:px-8 md:py-6 lg:pt-6"
+                isAdminPage
+                  ? // 관리자: 헤더(LandingHeader)의 px-4 기준선과 메인 영역 좌/우 끝을 맞춤
+                    // 헤더가 edge-to-edge로 확장되므로 메인도 좌/우 여백 제거
+                    "pl-0 pr-4 pt-4 md:pr-6 md:py-6 lg:pt-6"
+                  : // 레슨 페이지: 좌측 패딩을 줄여(강의/아래 요소를 더 크게) 사이드바와 콘텐츠 사이 빈공간을 축소
+                    isLessonPage
+                    ? "pl-2 pr-2 pt-0 md:pl-4 md:pr-4 md:pt-2 lg:pt-2 md:pb-6"
+                    : "px-4 pt-4 md:px-8 md:py-6 lg:pt-6"
               }`}
             >
               {children}

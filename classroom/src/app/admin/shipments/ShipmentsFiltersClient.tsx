@@ -120,9 +120,30 @@ export default function ShipmentsFiltersClient({
 
     setForm(merged);
     const q = buildQuery(merged);
-    router.replace(`${pathname}?${q.toString()}`);
+    router.replace(`${pathname}?${q.toString()}`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, router, searchParams, validTextbookIds]);
+
+  // 폼 변경 시 자동으로 URL에 반영 (필터 적용 버튼 제거)
+  // - 스크롤이 아래로 튕기는 문제를 방지하기 위해 scroll: false 사용
+  // - 입력(메시지/운임 등) 중 과도한 네비게이션을 막기 위해 짧게 디바운스
+  useEffect(() => {
+    const safe: Filters = {
+      ...form,
+      textbookIds: (Array.isArray(form.textbookIds) ? form.textbookIds : []).filter((id) => validTextbookIds.has(id)).slice(0, 50),
+      date: form.date === "all" ? "all" : "today",
+    };
+
+    const next = buildQuery(safe).toString();
+    const cur = searchParams.toString();
+    if (next === cur) return;
+
+    const tid = window.setTimeout(() => {
+      router.replace(`${pathname}?${next}`, { scroll: false });
+    }, 180);
+
+    return () => window.clearTimeout(tid);
+  }, [form, pathname, router, searchParams, validTextbookIds]);
 
   const onChange = (key: keyof Omit<Filters, "textbookIds">) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const next = { ...form, [key]: e.target.value } as Filters;
@@ -137,21 +158,10 @@ export default function ShipmentsFiltersClient({
 
   const selectedSet = useMemo(() => new Set(form.textbookIds), [form.textbookIds]);
 
-  const handleApply = () => {
-    const safe: Filters = {
-      ...form,
-      textbookIds: (Array.isArray(form.textbookIds) ? form.textbookIds : []).filter((id) => validTextbookIds.has(id)).slice(0, 50),
-      date: form.date === "all" ? "all" : "today",
-    };
-    writeStoredFilters(safe);
-    const q = buildQuery(safe);
-    router.push(`${pathname}?${q.toString()}`);
-  };
-
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* 상품 선택 패널 */}
-      <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-transparent overflow-hidden">
+      <div className="rounded-2xl border border-white/[0.08] bg-transparent overflow-hidden">
         <button
           type="button"
           onClick={() => setProductPanelOpen(!productPanelOpen)}
@@ -224,7 +234,7 @@ export default function ShipmentsFiltersClient({
               </div>
 
               {/* 상품 리스트 */}
-              <div className="mt-3 max-h-[200px] overflow-auto rounded-xl border border-white/[0.06] bg-[#0a0a0b]">
+              <div className="mt-3 max-h-[240px] overflow-auto rounded-xl border border-white/[0.06] bg-transparent">
                 {filtered.length === 0 ? (
                   <div className="px-4 py-8 text-center">
                     <span className="material-symbols-outlined text-white/15" style={{ fontSize: "32px" }}>
@@ -288,7 +298,7 @@ export default function ShipmentsFiltersClient({
       </div>
 
       {/* 필터 옵션 */}
-      <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-transparent p-5">
+      <div className="rounded-2xl border border-white/[0.08] bg-transparent p-5">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-9 h-9 rounded-xl bg-emerald-500/20 flex items-center justify-center">
             <span className="material-symbols-outlined text-emerald-400" style={{ fontSize: "18px" }}>
@@ -347,19 +357,7 @@ export default function ShipmentsFiltersClient({
             />
           </div>
         </div>
-
-        <div className="mt-4 flex justify-end">
-          <button
-            type="button"
-            onClick={handleApply}
-            className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-[13px] font-medium text-black hover:bg-white/90 transition-colors"
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-              check
-            </span>
-            필터 적용
-          </button>
-        </div>
+        {/* 자동 적용됨: 버튼 제거 */}
       </div>
     </div>
   );

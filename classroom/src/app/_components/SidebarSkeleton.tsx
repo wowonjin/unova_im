@@ -2,8 +2,8 @@ export default function SidebarSkeleton() {
   // SidebarClient의 실제 레이아웃과 완벽히 동일할 필요는 없고,
   // 페이지 전환 시 "즉시" 화면이 바뀌는 체감을 주는 게 목적입니다.
   return (
-    <aside className="hidden lg:block w-[280px] shrink-0">
-      <div className="h-full border-r border-white/10 bg-[#161616] px-4 py-4">
+    <aside className="hidden lg:block w-72 shrink-0 bg-[#161616] p-5">
+      <div className="h-full">
         <div className="space-y-4">
           <div className="h-10 rounded-xl bg-white/10" />
           <div className="h-24 rounded-2xl bg-white/5" />

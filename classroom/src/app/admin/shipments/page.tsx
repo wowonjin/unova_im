@@ -1,7 +1,6 @@
 import AppShell from "@/app/_components/AppShell";
 import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
 import ShipmentsFiltersClient from "./ShipmentsFiltersClient";
 
 function kstDateKey(d: Date): string {
@@ -161,16 +160,8 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <Link href="/admin" className="text-white/40 hover:text-white/70 transition-colors">
-                <span className="material-symbols-outlined" style={{ fontSize: "22px" }}>
-                  arrow_back
-                </span>
-              </Link>
               <h1 className="text-[26px] font-bold tracking-tight">택배 관리</h1>
             </div>
-            <p className="text-[14px] text-white/50 ml-[34px]">
-              교재 주문을 조회하고 택배사 업로드용 엑셀을 다운로드합니다
-            </p>
           </div>
 
           {downloadUrl ? (
@@ -202,7 +193,7 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
 
         {/* 통계 카드 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-transparent p-5">
+          <div className="rounded-2xl border border-white/[0.08] bg-transparent p-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center">
                 <span className="material-symbols-outlined text-blue-400" style={{ fontSize: "20px" }}>
@@ -216,7 +207,7 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-transparent p-5">
+          <div className="rounded-2xl border border-white/[0.08] bg-transparent p-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
                 <span className="material-symbols-outlined text-emerald-400" style={{ fontSize: "20px" }}>
@@ -230,7 +221,7 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-transparent p-5">
+          <div className="rounded-2xl border border-white/[0.08] bg-transparent p-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
                 <span className="material-symbols-outlined text-amber-400" style={{ fontSize: "20px" }}>
@@ -246,7 +237,7 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-transparent p-5">
+          <div className="rounded-2xl border border-white/[0.08] bg-transparent p-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center">
                 <span className="material-symbols-outlined text-purple-400" style={{ fontSize: "20px" }}>
@@ -278,7 +269,7 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
         {/* 테이블 영역 */}
         <div className="mt-6">
           {selectedIds.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-12 text-center">
+            <div className="rounded-2xl border border-dashed border-white/10 bg-transparent p-12 text-center">
               <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
                 <span className="material-symbols-outlined text-white/20" style={{ fontSize: "32px" }}>
                   inventory_2
@@ -290,7 +281,7 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
               </p>
             </div>
           ) : rows.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-12 text-center">
+            <div className="rounded-2xl border border-dashed border-white/10 bg-transparent p-12 text-center">
               <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
                 <span className="material-symbols-outlined text-white/20" style={{ fontSize: "32px" }}>
                   inbox
@@ -302,7 +293,7 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
               </p>
             </div>
           ) : (
-            <div className="rounded-2xl border border-white/[0.08] overflow-hidden bg-[#0c0c0d]">
+            <div className="rounded-2xl border border-white/[0.08] overflow-hidden bg-transparent">
               {/* 테이블 헤더 정보 */}
               <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06] bg-white/[0.02]">
                 <div className="flex items-center gap-2">
