@@ -383,23 +383,47 @@ function StorePreviewSectionsSimple({
   return (
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
       <div className="mt-4 md:mt-6">
-        <h2 className="text-[16px] md:text-[26px] font-bold tracking-[-0.02em]">🚀 강의 구매하기</h2>
+        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]"><span className="hidden md:inline">🚀 </span>강의 구매하기</h2>
         {courseSubjects.length > 1 ? (
-          <div className="mt-8">
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2 md:flex-wrap md:overflow-visible">
+          <div className="mt-2 md:mt-8">
+            {/* 모바일: 탭 메뉴 스타일 */}
+            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
               {courseSubjects.map((subject) => {
                 const active = selectedCourseSubject === subject;
                 return (
                   <button
-                    key={`course-${subject}`}
+                    key={`course-simple-${subject}`}
                     type="button"
                     onClick={() => setSelectedCourseSubject(subject)}
                     role="tab"
                     aria-selected={active}
-                    className={`shrink-0 whitespace-nowrap leading-none text-[11px] font-medium md:text-[13px] ${
+                    className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                      active ? "text-white" : "text-white/55"
+                    }`}
+                  >
+                    {subject}
+                    {active ? (
+                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+            {/* 데스크톱: pill 버튼 스타일 */}
+            <div className="hidden md:flex gap-2 flex-wrap">
+              {courseSubjects.map((subject) => {
+                const active = selectedCourseSubject === subject;
+                return (
+                  <button
+                    key={`course-simple-${subject}-desktop`}
+                    type="button"
+                    onClick={() => setSelectedCourseSubject(subject)}
+                    role="tab"
+                    aria-selected={active}
+                    className={`text-[13px] font-medium ${
                       active
-                        ? "px-3 py-1.5 rounded-full bg-white text-black md:px-4 md:py-2"
-                        : "px-3 py-1.5 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white md:px-4 md:py-2"
+                        ? "px-4 py-2 rounded-full bg-white text-black"
+                        : "px-4 py-2 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white"
                     }`}
                   >
                     {subject}
@@ -418,10 +442,11 @@ function StorePreviewSectionsSimple({
         {/* 무료 자료 다운로드 (선생님 페이지 simple 모드 지원) */}
         {freeTextbooks.length > 0 ? (
           <div className="mb-14 md:mb-16">
-            <h2 className="text-[16px] md:text-[26px] font-bold tracking-[-0.02em]">📌 무료 자료 다운로드</h2>
+            <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]"><span className="hidden md:inline">📌 </span>무료 자료 다운로드</h2>
             {freeTextbookSubjects.length > 1 ? (
-              <div className="mt-8">
-                <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2 md:flex-wrap md:overflow-visible">
+              <div className="mt-2 md:mt-8">
+                {/* 모바일: 탭 메뉴 스타일 */}
+                <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
                   {freeTextbookSubjects.map((subject) => {
                     const active = selectedFreeTextbookSubject === subject;
                     return (
@@ -431,10 +456,33 @@ function StorePreviewSectionsSimple({
                         onClick={() => setSelectedFreeTextbookSubject(subject)}
                         role="tab"
                         aria-selected={active}
-                        className={`shrink-0 whitespace-nowrap leading-none text-[11px] font-medium md:text-[13px] ${
+                        className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                          active ? "text-white" : "text-white/55"
+                        }`}
+                      >
+                        {subject}
+                        {active ? (
+                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* 데스크톱: pill 버튼 스타일 */}
+                <div className="hidden md:flex gap-2 flex-wrap">
+                  {freeTextbookSubjects.map((subject) => {
+                    const active = selectedFreeTextbookSubject === subject;
+                    return (
+                      <button
+                        key={`textbook-free-simple-${subject}-desktop`}
+                        type="button"
+                        onClick={() => setSelectedFreeTextbookSubject(subject)}
+                        role="tab"
+                        aria-selected={active}
+                        className={`text-[13px] font-medium ${
                           active
-                            ? "px-3 py-1.5 rounded-full bg-white text-black md:px-4 md:py-2"
-                            : "px-3 py-1.5 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white md:px-4 md:py-2"
+                            ? "px-4 py-2 rounded-full bg-white text-black"
+                            : "px-4 py-2 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white"
                         }`}
                       >
                         {subject}
@@ -455,10 +503,11 @@ function StorePreviewSectionsSimple({
           </div>
         ) : null}
 
-        <h2 className="text-[16px] md:text-[26px] font-bold tracking-[-0.02em]">📖 교재 구매하기</h2>
+        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]"><span className="hidden md:inline">📖 </span>교재 구매하기</h2>
         {textbookSubjects.length > 1 ? (
-          <div className="mt-8">
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2 md:flex-wrap md:overflow-visible">
+          <div className="mt-2 md:mt-8">
+            {/* 모바일: 탭 메뉴 스타일 */}
+            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
               {textbookSubjects.map((subject) => {
                 const active = selectedTextbookSubject === subject;
                 return (
@@ -468,10 +517,33 @@ function StorePreviewSectionsSimple({
                     onClick={() => setSelectedTextbookSubject(subject)}
                     role="tab"
                     aria-selected={active}
-                    className={`shrink-0 whitespace-nowrap leading-none text-[11px] font-medium md:text-[13px] ${
+                    className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                      active ? "text-white" : "text-white/55"
+                    }`}
+                  >
+                    {subject}
+                    {active ? (
+                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+            {/* 데스크톱: pill 버튼 스타일 */}
+            <div className="hidden md:flex gap-2 flex-wrap">
+              {textbookSubjects.map((subject) => {
+                const active = selectedTextbookSubject === subject;
+                return (
+                  <button
+                    key={`textbook-${subject}-desktop`}
+                    type="button"
+                    onClick={() => setSelectedTextbookSubject(subject)}
+                    role="tab"
+                    aria-selected={active}
+                    className={`text-[13px] font-medium ${
                       active
-                        ? "px-3 py-1.5 rounded-full bg-white text-black md:px-4 md:py-2"
-                        : "px-3 py-1.5 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white md:px-4 md:py-2"
+                        ? "px-4 py-2 rounded-full bg-white text-black"
+                        : "px-4 py-2 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white"
                     }`}
                   >
                     {subject}
@@ -606,23 +678,47 @@ function StorePreviewSections({
   return (
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
       <div className="mt-4 md:mt-6">
-        <h2 className="text-[16px] md:text-[26px] font-bold tracking-[-0.02em]">🚀 강의 구매하기</h2>
+        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]"><span className="hidden md:inline">🚀 </span>강의 구매하기</h2>
         {courseSubjects.length > 1 ? (
-          <div className="mt-8">
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2 md:flex-wrap md:overflow-visible">
+          <div className="mt-2 md:mt-8">
+            {/* 모바일: 탭 메뉴 스타일 */}
+            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
               {courseSubjects.map((subject) => {
                 const active = selectedCourseSubject === subject;
                 return (
                   <button
-                    key={`course-${subject}`}
+                    key={`course-home-${subject}`}
                     type="button"
                     onClick={() => setSelectedCourseSubject(subject)}
                     role="tab"
                     aria-selected={active}
-                    className={`shrink-0 whitespace-nowrap leading-none text-[11px] font-medium md:text-[13px] ${
+                    className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                      active ? "text-white" : "text-white/55"
+                    }`}
+                  >
+                    {subject}
+                    {active ? (
+                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+            {/* 데스크톱: pill 버튼 스타일 */}
+            <div className="hidden md:flex gap-2 flex-wrap">
+              {courseSubjects.map((subject) => {
+                const active = selectedCourseSubject === subject;
+                return (
+                  <button
+                    key={`course-home-${subject}-desktop`}
+                    type="button"
+                    onClick={() => setSelectedCourseSubject(subject)}
+                    role="tab"
+                    aria-selected={active}
+                    className={`text-[13px] font-medium ${
                       active
-                        ? "px-3 py-1.5 rounded-full bg-white text-black md:px-4 md:py-2"
-                        : "px-3 py-1.5 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white md:px-4 md:py-2"
+                        ? "px-4 py-2 rounded-full bg-white text-black"
+                        : "px-4 py-2 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white"
                     }`}
                   >
                     {subject}
@@ -641,23 +737,47 @@ function StorePreviewSections({
         {/* 무료 자료 다운로드 */}
         {freeTextbooks.length > 0 ? (
           <div className="mb-14 md:mb-16">
-            <h2 className="text-[16px] md:text-[26px] font-bold tracking-[-0.02em]">📌 무료 자료 다운로드</h2>
+            <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]"><span className="hidden md:inline">📌 </span>무료 자료 다운로드</h2>
             {freeTextbookSubjects.length > 1 ? (
-              <div className="mt-8">
-                <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2 md:flex-wrap md:overflow-visible">
+              <div className="mt-2 md:mt-8">
+                {/* 모바일: 탭 메뉴 스타일 */}
+                <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
                   {freeTextbookSubjects.map((subject) => {
                     const active = selectedFreeTextbookSubject === subject;
                     return (
                       <button
-                        key={`textbook-free-${subject}`}
+                        key={`textbook-free-home-${subject}`}
                         type="button"
                         onClick={() => setSelectedFreeTextbookSubject(subject)}
                         role="tab"
                         aria-selected={active}
-                        className={`shrink-0 whitespace-nowrap leading-none text-[11px] font-medium md:text-[13px] ${
+                        className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                          active ? "text-white" : "text-white/55"
+                        }`}
+                      >
+                        {subject}
+                        {active ? (
+                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* 데스크톱: pill 버튼 스타일 */}
+                <div className="hidden md:flex gap-2 flex-wrap">
+                  {freeTextbookSubjects.map((subject) => {
+                    const active = selectedFreeTextbookSubject === subject;
+                    return (
+                      <button
+                        key={`textbook-free-home-${subject}-desktop`}
+                        type="button"
+                        onClick={() => setSelectedFreeTextbookSubject(subject)}
+                        role="tab"
+                        aria-selected={active}
+                        className={`text-[13px] font-medium ${
                           active
-                            ? "px-3 py-1.5 rounded-full bg-white text-black md:px-4 md:py-2"
-                            : "px-3 py-1.5 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white md:px-4 md:py-2"
+                            ? "px-4 py-2 rounded-full bg-white text-black"
+                            : "px-4 py-2 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white"
                         }`}
                       >
                         {subject}
@@ -678,23 +798,47 @@ function StorePreviewSections({
           </div>
         ) : null}
 
-        <h2 className="text-[16px] md:text-[26px] font-bold tracking-[-0.02em]">📖 수능 교재 구매하기</h2>
+        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]"><span className="hidden md:inline">📖 </span>수능 교재 구매하기</h2>
         {suneungTextbookSubjects.length > 1 ? (
-          <div className="mt-8">
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2 md:flex-wrap md:overflow-visible">
+          <div className="mt-2 md:mt-8">
+            {/* 모바일: 탭 메뉴 스타일 */}
+            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
               {suneungTextbookSubjects.map((subject) => {
                 const active = selectedSuneungTextbookSubject === subject;
                 return (
                   <button
-                    key={`textbook-suneung-${subject}`}
+                    key={`textbook-suneung-home-${subject}`}
                     type="button"
                     onClick={() => setSelectedSuneungTextbookSubject(subject)}
                     role="tab"
                     aria-selected={active}
-                    className={`shrink-0 whitespace-nowrap leading-none text-[11px] font-medium md:text-[13px] ${
+                    className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                      active ? "text-white" : "text-white/55"
+                    }`}
+                  >
+                    {subject}
+                    {active ? (
+                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+            {/* 데스크톱: pill 버튼 스타일 */}
+            <div className="hidden md:flex gap-2 flex-wrap">
+              {suneungTextbookSubjects.map((subject) => {
+                const active = selectedSuneungTextbookSubject === subject;
+                return (
+                  <button
+                    key={`textbook-suneung-home-${subject}-desktop`}
+                    type="button"
+                    onClick={() => setSelectedSuneungTextbookSubject(subject)}
+                    role="tab"
+                    aria-selected={active}
+                    className={`text-[13px] font-medium ${
                       active
-                        ? "px-3 py-1.5 rounded-full bg-white text-black md:px-4 md:py-2"
-                        : "px-3 py-1.5 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white md:px-4 md:py-2"
+                        ? "px-4 py-2 rounded-full bg-white text-black"
+                        : "px-4 py-2 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white"
                     }`}
                   >
                     {subject}
@@ -714,23 +858,47 @@ function StorePreviewSections({
         </div>
 
         <div className="mt-14 md:mt-16">
-          <h3 className="text-[16px] md:text-[26px] font-bold tracking-[-0.02em]">📖 편입 교재 구매하기</h3>
+          <h3 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]"><span className="hidden md:inline">📖 </span>편입 교재 구매하기</h3>
           {transferTextbookSubjects.length > 1 ? (
-            <div className="mt-8">
-              <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2 md:flex-wrap md:overflow-visible">
+            <div className="mt-2 md:mt-8">
+              {/* 모바일: 탭 메뉴 스타일 */}
+              <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
                 {transferTextbookSubjects.map((subject) => {
                   const active = selectedTransferTextbookSubject === subject;
                   return (
                     <button
-                      key={`textbook-transfer-${subject}`}
+                      key={`textbook-transfer-home-${subject}`}
                       type="button"
                       onClick={() => setSelectedTransferTextbookSubject(subject)}
                       role="tab"
                       aria-selected={active}
-                      className={`shrink-0 whitespace-nowrap leading-none text-[11px] font-medium md:text-[13px] ${
+                      className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                        active ? "text-white" : "text-white/55"
+                      }`}
+                    >
+                      {subject}
+                      {active ? (
+                        <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* 데스크톱: pill 버튼 스타일 */}
+              <div className="hidden md:flex gap-2 flex-wrap">
+                {transferTextbookSubjects.map((subject) => {
+                  const active = selectedTransferTextbookSubject === subject;
+                  return (
+                    <button
+                      key={`textbook-transfer-home-${subject}-desktop`}
+                      type="button"
+                      onClick={() => setSelectedTransferTextbookSubject(subject)}
+                      role="tab"
+                      aria-selected={active}
+                      className={`text-[13px] font-medium ${
                         active
-                          ? "px-3 py-1.5 rounded-full bg-white text-black md:px-4 md:py-2"
-                          : "px-3 py-1.5 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white md:px-4 md:py-2"
+                          ? "px-4 py-2 rounded-full bg-white text-black"
+                          : "px-4 py-2 rounded-full bg-white/0 text-white/55 hover:bg-white/[0.06] hover:text-white"
                       }`}
                     >
                       {subject}

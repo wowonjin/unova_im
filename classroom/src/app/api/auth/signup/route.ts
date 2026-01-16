@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
 import { consumePendingOAuthAccount } from "@/lib/oauth";
 import bcrypt from "bcryptjs";
+import { encryptPassword } from "@/lib/password-vault";
 
 export const runtime = "nodejs";
 
@@ -68,10 +69,12 @@ export async function POST(req: Request) {
 
       // 이메일(일반) 로그인용 비밀번호 해시 저장
       const passwordHash = await bcrypt.hash(password, 10);
+      const passwordCiphertext = encryptPassword(password);
       await prisma.emailCredential.create({
         data: {
           userId: user.id,
           passwordHash,
+          passwordCiphertext,
         },
       });
 

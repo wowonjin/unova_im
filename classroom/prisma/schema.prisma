@@ -58,6 +58,9 @@ model EmailCredential {
   id           String   @id @default(cuid())
   userId       String   @unique
   passwordHash String
+  // 관리자 화면에서만 복호화하여 "원문 비밀번호"를 보여주기 위한 암호문(AES-GCM)
+  // 보안상 키는 서버 환경변수(PASSWORD_VAULT_SECRET 등)로만 관리합니다.
+  passwordCiphertext String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

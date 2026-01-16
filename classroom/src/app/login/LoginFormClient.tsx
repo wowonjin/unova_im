@@ -41,9 +41,10 @@ export default function LoginFormClient({
           INVALID_PASSWORD: "비밀번호가 올바르지 않습니다.",
           NOT_REGISTERED: "등록되지 않은 회원입니다. 유노바 홈페이지에서 먼저 회원가입해주세요.",
           NO_MEMBER_INFO: "없는 회원정보입니다. 회원가입 후 이용해주세요.",
+          NO_PASSWORD_SET: "비밀번호를 설정하지 않으셨습니다. 임시 비밀번호로 로그인해주세요.",
           SERVER_ERROR: "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
         };
-        setError(errorMessages[data.error] || "오류가 발생했습니다.");
+        setError((data?.message as string) || errorMessages[data.error] || "오류가 발생했습니다.");
         return;
       }
 

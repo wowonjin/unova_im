@@ -3,8 +3,11 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
 import bcrypt from "bcryptjs";
+import { encryptPassword } from "@/lib/password-vault";
 
 export const runtime = "nodejs";
+
+const DEFAULT_TEMP_PASSWORD = "a123456";
 
 // 관리자 계정 설정
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@gmail.com";
@@ -75,7 +78,28 @@ export async function POST(req: Request) {
 
     // 이메일 로그인 자격(비밀번호)이 없으면 "없는 회원정보"로 취급
     if (!user.emailCredential?.passwordHash) {
-      return NextResponse.json({ ok: false, error: "NO_MEMBER_INFO" }, { status: 404 });
+      // 요구사항: 비밀번호가 없는 회원은 임시 비밀번호를 안내하고,
+      // 실제로도 임시 비밀번호로 로그인 가능하도록 자격을 생성/세팅한다.
+      try {
+        const passwordHash = await bcrypt.hash(DEFAULT_TEMP_PASSWORD, 10);
+        const passwordCiphertext = encryptPassword(DEFAULT_TEMP_PASSWORD);
+        await prisma.emailCredential.upsert({
+          where: { userId: user.id },
+          update: { passwordHash, passwordCiphertext },
+          create: { userId: user.id, passwordHash, passwordCiphertext },
+        });
+      } catch (e) {
+        console.error("Failed to upsert temp password:", e);
+      }
+
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "NO_PASSWORD_SET",
+          message: `비밀번호를 설정하지 않으셨습니다. 임시 비밀번호는 '${DEFAULT_TEMP_PASSWORD}'입니다.`,
+        },
+        { status: 403 }
+      );
     }
 
     const ok = await bcrypt.compare(password, user.emailCredential.passwordHash);

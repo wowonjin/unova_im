@@ -2,6 +2,7 @@ import AppShell from "@/app/_components/AppShell";
 import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import MembersClient from "./MembersClient";
+import { decryptPassword } from "@/lib/password-vault";
 
 type MemberRow = {
   id: string;
@@ -14,7 +15,7 @@ type MemberRow = {
   addressDetail: string | null;
   loginType: "kakao" | "naver" | "email" | "none" | "unknown";
   hasEmailPassword: boolean;
-  passwordHashPrefix: string | null;
+  adminPassword: string | null;
   createdAt: string;
   lastLoginAt: string | null;
   enrollmentCount: number;
@@ -35,7 +36,7 @@ const dummyMembers: MemberRow[] = [
     addressDetail: "참존빌딩 402호",
     loginType: "email",
     hasEmailPassword: true,
-    passwordHashPrefix: "$2a$10$...",
+    adminPassword: "admin",
     createdAt: "2024-01-01T00:00:00.000Z",
     lastLoginAt: "2025-12-25T10:00:00.000Z",
     enrollmentCount: 3,
@@ -53,7 +54,7 @@ const dummyMembers: MemberRow[] = [
     addressDetail: "아파트 101동 1001호",
     loginType: "kakao",
     hasEmailPassword: false,
-    passwordHashPrefix: null,
+    adminPassword: null,
     createdAt: "2024-06-15T09:30:00.000Z",
     lastLoginAt: "2025-12-24T14:20:00.000Z",
     enrollmentCount: 2,
@@ -71,7 +72,7 @@ const dummyMembers: MemberRow[] = [
     addressDetail: null,
     loginType: "naver",
     hasEmailPassword: false,
-    passwordHashPrefix: null,
+    adminPassword: null,
     createdAt: "2024-08-20T11:00:00.000Z",
     lastLoginAt: "2025-12-23T09:15:00.000Z",
     enrollmentCount: 4,
@@ -89,7 +90,7 @@ const dummyMembers: MemberRow[] = [
     addressDetail: "오피스텔 502호",
     loginType: "email",
     hasEmailPassword: true,
-    passwordHashPrefix: "$2a$10$...",
+    adminPassword: null,
     createdAt: "2024-09-10T14:45:00.000Z",
     lastLoginAt: "2025-12-22T16:30:00.000Z",
     enrollmentCount: 1,
@@ -107,7 +108,7 @@ const dummyMembers: MemberRow[] = [
     addressDetail: null,
     loginType: "email",
     hasEmailPassword: true,
-    passwordHashPrefix: "$2a$10$...",
+    adminPassword: null,
     createdAt: "2024-10-05T08:20:00.000Z",
     lastLoginAt: "2025-12-21T11:45:00.000Z",
     enrollmentCount: 3,
@@ -144,35 +145,77 @@ export default async function AdminMembersPage({
         }
       : {};
 
-    const [members, count] = await Promise.all([
-      prisma.user.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          phone: true,
-          profileImageUrl: true,
-          imwebMemberCode: true,
-          address: true,
-          addressDetail: true,
-          createdAt: true,
-          lastLoginAt: true,
-          oauthAccounts: { select: { provider: true } },
-          emailCredential: { select: { passwordHash: true } },
-          _count: {
-            select: {
-              enrollments: true,
-              textbookEntitlements: true,
+    let members: Awaited<ReturnType<typeof prisma.user.findMany>>;
+    let count: number;
+
+    // Prisma Client가 아직 갱신되지 않은 상태(Dev/Turbopack 캐시)에서는
+    // `passwordCiphertext`가 unknown field로 터질 수 있어 fallback을 둔다.
+    try {
+      [members, count] = await Promise.all([
+        prisma.user.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            phone: true,
+            profileImageUrl: true,
+            imwebMemberCode: true,
+            address: true,
+            addressDetail: true,
+            createdAt: true,
+            lastLoginAt: true,
+            oauthAccounts: { select: { provider: true } },
+            emailCredential: { select: { passwordHash: true, passwordCiphertext: true } },
+            _count: {
+              select: {
+                enrollments: true,
+                textbookEntitlements: true,
+              },
             },
           },
-        },
-      }),
-      prisma.user.count({ where }),
-    ]);
+        }),
+        prisma.user.count({ where }),
+      ]);
+    } catch (e) {
+      const msg = String(e);
+      if (msg.includes("Unknown field `passwordCiphertext`") || msg.includes("Unknown field \"passwordCiphertext\"")) {
+        [members, count] = await Promise.all([
+          prisma.user.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            skip,
+            take: limit,
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              phone: true,
+              profileImageUrl: true,
+              imwebMemberCode: true,
+              address: true,
+              addressDetail: true,
+              createdAt: true,
+              lastLoginAt: true,
+              oauthAccounts: { select: { provider: true } },
+              emailCredential: { select: { passwordHash: true } },
+              _count: {
+                select: {
+                  enrollments: true,
+                  textbookEntitlements: true,
+                },
+              },
+            },
+          }),
+          prisma.user.count({ where }),
+        ]);
+      } else {
+        throw e;
+      }
+    }
 
     totalCount = count;
     totalPages = Math.ceil(totalCount / limit);
@@ -180,9 +223,14 @@ export default async function AdminMembersPage({
     membersData = members.map((m) => {
       const providers = (m.oauthAccounts || []).map((a) => (a.provider || "").toLowerCase());
       const hasEmailPassword = Boolean(m.emailCredential?.passwordHash);
-      const passwordHashPrefix = m.emailCredential?.passwordHash
-        ? `${m.emailCredential.passwordHash.slice(0, 12)}…`
-        : null;
+      let adminPassword: string | null = null;
+      if (m.emailCredential?.passwordCiphertext) {
+        try {
+          adminPassword = decryptPassword(m.emailCredential.passwordCiphertext);
+        } catch {
+          adminPassword = null;
+        }
+      }
       const loginType: MemberRow["loginType"] =
         providers.includes("kakao") ? "kakao" :
         providers.includes("naver") ? "naver" :
@@ -200,7 +248,7 @@ export default async function AdminMembersPage({
       addressDetail: m.addressDetail ?? null,
       loginType,
       hasEmailPassword,
-      passwordHashPrefix,
+      adminPassword,
       createdAt: m.createdAt.toISOString(),
       lastLoginAt: m.lastLoginAt?.toISOString() || null,
       enrollmentCount: m._count.enrollments,
