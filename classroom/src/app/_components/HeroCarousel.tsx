@@ -46,6 +46,14 @@ export default function HeroCarousel({ slides }: { slides?: Slide[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isDraggingRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragStartYRef = useRef(0);
+  const dragStartOffsetRef = useRef(0);
+  const dragDxRef = useRef(0);
+  const dragAxisLockedRef = useRef<"none" | "x" | "y">("none");
+  const didDragRef = useRef(false);
+  const wasPlayingRef = useRef(true);
 
   const totalSlides = resolvedSlides.length;
   const gap = 16;
@@ -181,17 +189,135 @@ export default function HeroCarousel({ slides }: { slides?: Slide[] }) {
 
   // 슬라이드 클릭 핸들러
   const handleSlideClick = (idx: number, e: React.MouseEvent) => {
+    // 드래그 직후에는 링크 클릭/슬라이드 점프가 발생하지 않도록 차단
+    if (didDragRef.current) {
+      e.preventDefault();
+      didDragRef.current = false;
+      return;
+    }
     if (idx !== currentIndex) {
       e.preventDefault();
       goToSlide(idx, true);
     }
   };
 
+  const getSwipeThresholdPx = useCallback(() => {
+    // 너무 민감하게 넘어가지 않게: 카드 폭 기준 + 최소값
+    const base = slideWidth > 0 ? slideWidth * 0.12 : 48;
+    return Math.max(36, Math.min(96, Math.round(base)));
+  }, [slideWidth]);
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!isMobile) return;
+      if (isTransitioning) return;
+      if (!trackRef.current) return;
+
+      // 터치/펜 중심으로 처리 (마우스도 동작하지만 모바일 요구사항이므로 제한적으로만)
+      // iOS Safari에서도 PointerEvent는 지원됩니다.
+      isDraggingRef.current = true;
+      dragAxisLockedRef.current = "none";
+      didDragRef.current = false;
+      dragDxRef.current = 0;
+      dragStartXRef.current = e.clientX;
+      dragStartYRef.current = e.clientY;
+      dragStartOffsetRef.current = getOffset(currentIndex);
+
+      // 드래그 중에는 자동재생을 잠깐 멈춤
+      wasPlayingRef.current = isPlaying;
+      if (isPlaying) setIsPlaying(false);
+
+      try {
+        // 포인터 캡처: 드래그 중 포인터가 요소 밖으로 나가도 추적
+        (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
+    },
+    [currentIndex, getOffset, isMobile, isPlaying, isTransitioning]
+  );
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!isMobile) return;
+      if (!isDraggingRef.current) return;
+      if (!trackRef.current) return;
+
+      const dx = e.clientX - dragStartXRef.current;
+      const dy = e.clientY - dragStartYRef.current;
+
+      // 축 잠금(초기 6px 이동까지는 판단 유예)
+      if (dragAxisLockedRef.current === "none") {
+        if (Math.abs(dx) + Math.abs(dy) < 6) return;
+        dragAxisLockedRef.current = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
+      }
+
+      // 세로 스크롤 제스처면 캐러셀 드래그는 관여하지 않음
+      if (dragAxisLockedRef.current === "y") return;
+
+      // 가로 드래그로 확정된 경우: 페이지 스크롤 방지 + 트랙을 직접 이동
+      e.preventDefault();
+      dragDxRef.current = dx;
+      if (Math.abs(dx) > 8) didDragRef.current = true;
+
+      trackRef.current.style.transition = "none";
+      trackRef.current.style.transform = `translate3d(${dragStartOffsetRef.current + dx}px, 0, 0)`;
+    },
+    [isMobile]
+  );
+
+  const endDrag = useCallback(() => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    const dx = dragDxRef.current;
+    dragDxRef.current = 0;
+    dragAxisLockedRef.current = "none";
+
+    const threshold = getSwipeThresholdPx();
+    if (dx <= -threshold) {
+      goToSlide(currentIndex + 1, true);
+    } else if (dx >= threshold) {
+      goToSlide(currentIndex - 1, true);
+    } else {
+      goToSlide(currentIndex, true);
+    }
+
+    // 자동재생 상태 복구(사용자가 드래그 했더라도 원래 재생 중이었다면 다시 켬)
+    if (wasPlayingRef.current) {
+      // 살짝 텀을 줘서 스냅 애니메이션과 겹치지 않게
+      window.setTimeout(() => setIsPlaying(true), 650);
+    }
+  }, [currentIndex, getSwipeThresholdPx, goToSlide]);
+
+  const onPointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!isMobile) return;
+      try {
+        (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
+      endDrag();
+    },
+    [endDrag, isMobile]
+  );
+
+  const onPointerCancel = useCallback(() => {
+    if (!isMobile) return;
+    endDrag();
+  }, [endDrag, isMobile]);
+
   return (
     <section suppressHydrationWarning className="pt-[60px] lg:pt-[110px] pb-6 lg:pb-16">
       <div 
         ref={containerRef}
-        className="relative mx-auto max-w-[1100px] overflow-visible"
+        className="relative mx-auto max-w-[1100px] overflow-visible select-none"
+        // 모바일에서 세로 스크롤은 유지하고, 가로 스와이프는 우리가 처리
+        style={{ touchAction: "pan-y" }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
       >
         {/* 슬라이드 트랙 */}
         <div
