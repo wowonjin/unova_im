@@ -15,6 +15,7 @@ type Product = {
   textbookType: string | null;
   type: "course" | "textbook";
   thumbnailUrl: string | null;
+  isSoldOut: boolean;
   thumbnailStoredPath?: string | null;
   thumbnailUpdatedAtISO?: string | null;
   rating: number | null;
@@ -332,6 +333,15 @@ export default function StoreFilterClient({
                       </div>
                     ) : null}
 
+                    {/* 품절 배지 */}
+                    {product.isSoldOut ? (
+                      <div className="absolute right-2 top-2 z-10">
+                        <span className="inline-flex items-center rounded-full bg-zinc-700/80 px-3 py-1 text-[10px] font-semibold text-white/90 border border-white/10 backdrop-blur">
+                          품절
+                        </span>
+                      </div>
+                    ) : null}
+
                     {/* 상품 이미지 영역 */}
                     {product.thumbnailUrl ||
                     (product.type === "course" && product.thumbnailStoredPath) ? (
@@ -365,6 +375,14 @@ export default function StoreFilterClient({
                         </div>
                       </div>
                     )}
+
+                    {/* 품절 오버레이(가독성/상태 강조) */}
+                    {product.isSoldOut ? (
+                      <div
+                        className="absolute inset-0 bg-black/35"
+                        aria-hidden="true"
+                      />
+                    ) : null}
                   </div>
 
                   {/* 상품 정보 */}

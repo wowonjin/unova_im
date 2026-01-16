@@ -5,6 +5,7 @@ import Footer from "@/app/_components/Footer";
 import StoreFilterClient from "@/app/store/StoreFilterClient";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
+import { ensureSoldOutColumnsOnce } from "@/lib/ensure-columns";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ type Product = {
   textbookType: string | null;
   type: "course" | "textbook";
   thumbnailUrl: string | null;
+  isSoldOut: boolean;
   // course 레거시(파일 저장) 썸네일 지원용: thumbnailUrl이 비어있어도 storedPath가 있으면 API로 서빙 가능
   thumbnailStoredPath?: string | null;
   thumbnailUpdatedAtISO?: string | null;
@@ -92,6 +94,7 @@ async function StoreProducts({
   selectedExamType: string;
 }) {
   const storeOwnerEmail = getStoreOwnerEmail();
+  await ensureSoldOutColumnsOnce();
 
   // 실제 DB에서 공개된 강좌/교재 조회
   // Render 등 배포 환경에서 DB 연결/쿼리 이슈가 발생해도 페이지 전체가 500으로 죽지 않도록 안전 폴백 처리
@@ -107,6 +110,7 @@ async function StoreProducts({
       thumbnailUrl: true;
       thumbnailStoredPath: true;
       updatedAt: true;
+      isSoldOut: true;
       rating: true;
       reviewCount: true;
     };
@@ -124,6 +128,7 @@ async function StoreProducts({
       textbookType: true;
       thumbnailUrl: true;
       updatedAt: true;
+      isSoldOut: true;
       rating: true;
       reviewCount: true;
     };
@@ -149,6 +154,7 @@ async function StoreProducts({
           thumbnailUrl: true,
           thumbnailStoredPath: true,
           updatedAt: true,
+          isSoldOut: true,
           rating: true,
           reviewCount: true,
         },
@@ -174,6 +180,7 @@ async function StoreProducts({
               textbookType: true,
               thumbnailUrl: true,
               updatedAt: true,
+              isSoldOut: true,
               rating: true,
               reviewCount: true,
             },
@@ -199,6 +206,7 @@ async function StoreProducts({
               textbookType: true,
               thumbnailUrl: true,
               updatedAt: true,
+              isSoldOut: true,
               rating: true,
               reviewCount: true,
             },
@@ -228,6 +236,7 @@ async function StoreProducts({
       textbookType: null,
       type: "course" as const,
       thumbnailUrl: c.thumbnailUrl,
+      isSoldOut: Boolean((c as any).isSoldOut),
       thumbnailStoredPath: c.thumbnailStoredPath,
       thumbnailUpdatedAtISO: c.updatedAt.toISOString(),
       rating: c.rating,
@@ -250,6 +259,7 @@ async function StoreProducts({
       textbookType: (t as { textbookType?: string | null }).textbookType ?? null,
       type: "textbook" as const,
       thumbnailUrl: t.thumbnailUrl,
+      isSoldOut: Boolean((t as any).isSoldOut),
       thumbnailUpdatedAtISO: t.updatedAt.toISOString(),
       rating: t.rating,
       reviewCount: t.reviewCount,

@@ -2121,7 +2121,7 @@ export default function ProductDetailClient({
                 } ${isPaying ? "opacity-60" : product.isSoldOut ? "" : "hover:brightness-[0.96]"}`}
               >
                 {product.isSoldOut
-                  ? "품절"
+                  ? "품절된 상품입니다"
                   : isPaying
                     ? "준비중..."
                     : hasAnyAddonSelection
