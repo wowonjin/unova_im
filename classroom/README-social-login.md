@@ -8,8 +8,10 @@
 `.env.local`에 아래 값을 추가하세요.
 
 ```bash
-# 공통 (권장) - 로컬이면 http://localhost:3001
-NEXT_PUBLIC_BASE_URL=http://localhost:3001
+# 공통 (권장)
+# - 로컬은 보통 `http://localhost:3000` (next dev 기본값)
+# - 만약 다른 포트로 실행 중이면 그 포트로 맞추세요.
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
 
 # Kakao (카카오 디벨로퍼스 > 앱 키 > REST API 키)
 KAKAO_REST_API_KEY=YOUR_KAKAO_REST_API_KEY
@@ -26,11 +28,11 @@ NAVER_CLIENT_SECRET=YOUR_NAVER_CLIENT_SECRET
 각 플랫폼 개발자 콘솔에 아래 Redirect URI를 등록해야 합니다.
 
 - **Kakao Redirect URI**
-  - `http://localhost:3001/api/auth/kakao/callback`
+  - `http://localhost:3000/api/auth/kakao/callback`
 - **Naver Callback URL**
-  - `http://localhost:3001/api/auth/naver/callback`
+  - `http://localhost:3000/api/auth/naver/callback`
 
-운영 도메인이 있다면, 동일하게 운영 도메인으로도 등록하세요.
+운영 도메인이 있다면, 동일한 경로로 운영 도메인도 추가로 등록하세요.
 
 ## 3) 로그인 사용 방법
 

@@ -12,7 +12,9 @@ type MemberRow = {
   imwebMemberCode: string | null;
   address: string | null;
   addressDetail: string | null;
-  loginType: "kakao" | "naver" | "email" | "unknown";
+  loginType: "kakao" | "naver" | "email" | "none" | "unknown";
+  hasEmailPassword: boolean;
+  passwordHashPrefix: string | null;
   createdAt: string;
   lastLoginAt: string | null;
   enrollmentCount: number;
@@ -32,6 +34,8 @@ const dummyMembers: MemberRow[] = [
     address: "서울특별시 강남구 학동로 24길 20",
     addressDetail: "참존빌딩 402호",
     loginType: "email",
+    hasEmailPassword: true,
+    passwordHashPrefix: "$2a$10$...",
     createdAt: "2024-01-01T00:00:00.000Z",
     lastLoginAt: "2025-12-25T10:00:00.000Z",
     enrollmentCount: 3,
@@ -48,6 +52,8 @@ const dummyMembers: MemberRow[] = [
     address: "서울특별시 서초구 서초동 123-45",
     addressDetail: "아파트 101동 1001호",
     loginType: "kakao",
+    hasEmailPassword: false,
+    passwordHashPrefix: null,
     createdAt: "2024-06-15T09:30:00.000Z",
     lastLoginAt: "2025-12-24T14:20:00.000Z",
     enrollmentCount: 2,
@@ -64,6 +70,8 @@ const dummyMembers: MemberRow[] = [
     address: "경기도 성남시 분당구 정자동 567",
     addressDetail: null,
     loginType: "naver",
+    hasEmailPassword: false,
+    passwordHashPrefix: null,
     createdAt: "2024-08-20T11:00:00.000Z",
     lastLoginAt: "2025-12-23T09:15:00.000Z",
     enrollmentCount: 4,
@@ -80,6 +88,8 @@ const dummyMembers: MemberRow[] = [
     address: "인천광역시 연수구 송도동 89",
     addressDetail: "오피스텔 502호",
     loginType: "email",
+    hasEmailPassword: true,
+    passwordHashPrefix: "$2a$10$...",
     createdAt: "2024-09-10T14:45:00.000Z",
     lastLoginAt: "2025-12-22T16:30:00.000Z",
     enrollmentCount: 1,
@@ -96,6 +106,8 @@ const dummyMembers: MemberRow[] = [
     address: "대전광역시 유성구 봉명동 234",
     addressDetail: null,
     loginType: "email",
+    hasEmailPassword: true,
+    passwordHashPrefix: "$2a$10$...",
     createdAt: "2024-10-05T08:20:00.000Z",
     lastLoginAt: "2025-12-21T11:45:00.000Z",
     enrollmentCount: 3,
@@ -150,6 +162,7 @@ export default async function AdminMembersPage({
           createdAt: true,
           lastLoginAt: true,
           oauthAccounts: { select: { provider: true } },
+          emailCredential: { select: { passwordHash: true } },
           _count: {
             select: {
               enrollments: true,
@@ -166,11 +179,15 @@ export default async function AdminMembersPage({
 
     membersData = members.map((m) => {
       const providers = (m.oauthAccounts || []).map((a) => (a.provider || "").toLowerCase());
+      const hasEmailPassword = Boolean(m.emailCredential?.passwordHash);
+      const passwordHashPrefix = m.emailCredential?.passwordHash
+        ? `${m.emailCredential.passwordHash.slice(0, 12)}…`
+        : null;
       const loginType: MemberRow["loginType"] =
         providers.includes("kakao") ? "kakao" :
         providers.includes("naver") ? "naver" :
         providers.length > 0 ? "unknown" :
-        "email";
+        (hasEmailPassword ? "email" : "none");
 
       return {
       id: m.id,
@@ -182,6 +199,8 @@ export default async function AdminMembersPage({
       address: m.address ?? null,
       addressDetail: m.addressDetail ?? null,
       loginType,
+      hasEmailPassword,
+      passwordHashPrefix,
       createdAt: m.createdAt.toISOString(),
       lastLoginAt: m.lastLoginAt?.toISOString() || null,
       enrollmentCount: m._count.enrollments,

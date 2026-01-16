@@ -27,6 +27,8 @@ model User {
   phone           String?
   name            String?
   profileImageUrl String?
+  // 이메일(일반) 로그인 비밀번호 해시 (없으면 이메일 로그인 불가)
+  emailCredential EmailCredential?
   // 추가 회원 정보
   address         String?  // 주소
   addressDetail   String?  // 상세주소
@@ -50,6 +52,18 @@ model User {
   productLikes ProductLike[]
 
   @@index([imwebMemberCode])
+}
+
+model EmailCredential {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model OAuthAccount {

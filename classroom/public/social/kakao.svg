@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="Kakao" fill="none">
+  <!-- Kakao-style speech bubble (brown on Kakao yellow background) -->
+  <path
+    fill="#3C1E1E"
+    d="M12 3C6.477 3 2 6.477 2 10.76c0 2.693 1.73 5.057 4.35 6.412l-1.017 3.543c-.08.28.234.51.49.36l4.144-2.765c.663.1 1.347.15 2.033.15 5.523 0 10-3.477 10-7.7C22 6.477 17.523 3 12 3Z"
+  />
+</svg>
+

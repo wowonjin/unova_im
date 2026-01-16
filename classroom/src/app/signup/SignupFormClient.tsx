@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 
@@ -24,13 +25,17 @@ export default function SignupFormClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/";
+  const redirectParam = encodeURIComponent(redirectTo || "/");
+  const fromSocial = Boolean(searchParams.get("from"));
 
   // 소셜 로그인 콜백에서 넘어오는 프리필 값(없으면 빈 값)
   const prefillName = searchParams.get("name") || "";
   const prefillEmail = searchParams.get("email") || "";
 
-  // 카카오 등 소셜 회원가입은 잠시 비활성화: 이메일 회원가입 폼만 노출
-  const [step, setStep] = useState<"select" | "form">("form");
+  // 일반 진입: 선택 화면(소셜/이메일). 소셜 콜백으로 들어온 경우: 바로 폼 노출(프리필 반영)
+  const [step, setStep] = useState<"select" | "form">(
+    fromSocial || Boolean(prefillName || prefillEmail) ? "form" : "select",
+  );
   const [formData, setFormData] = useState(() => ({
     name: prefillName,
     email: prefillEmail,
@@ -199,6 +204,34 @@ export default function SignupFormClient() {
   if (step === "select") {
     return (
       <div className="space-y-3">
+        {/* 소셜로 시작하기 */}
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = `/api/auth/kakao/start?redirect=${redirectParam}`;
+          }}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] px-4 py-3.5 text-[15px] font-semibold text-black transition-all hover:brightness-95"
+        >
+          <Image src="/social/kakao.svg" alt="" width={22} height={22} />
+          카카오로 시작하기
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = `/api/auth/naver/start?redirect=${redirectParam}`;
+          }}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#03C75A] px-4 py-3.5 text-[15px] font-semibold text-white transition-all hover:brightness-95"
+        >
+          <Image src="/social/naver.svg" alt="" width={26} height={26} />
+          네이버로 시작하기
+        </button>
+
+        <div className="flex items-center gap-3 py-1">
+          <div className="h-px flex-1 bg-white/10" />
+          <div className="text-[12px] text-white/50">또는</div>
+          <div className="h-px flex-1 bg-white/10" />
+        </div>
+
         {/* 이메일로 회원가입 */}
         <button
           type="button"

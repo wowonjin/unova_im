@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
 import { consumePendingOAuthAccount } from "@/lib/oauth";
+import bcrypt from "bcryptjs";
 
 export const runtime = "nodejs";
 
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "INVALID_EMAIL" }, { status: 400 });
     }
 
-    const { name, email, phone, zonecode, address, addressDetail } = parsed.data;
+    const { name, email, phone, password, zonecode, address, addressDetail } = parsed.data;
 
     let user;
 
@@ -63,6 +64,15 @@ export async function POST(req: Request) {
           lastLoginAt: new Date(),
         },
         select: { id: true, name: true, profileImageUrl: true },
+      });
+
+      // 이메일(일반) 로그인용 비밀번호 해시 저장
+      const passwordHash = await bcrypt.hash(password, 10);
+      await prisma.emailCredential.create({
+        data: {
+          userId: user.id,
+          passwordHash,
+        },
       });
 
       // 소셜 로그인 -> 회원가입으로 넘어온 케이스면, 가입과 동시에 OAuth 연동까지 생성

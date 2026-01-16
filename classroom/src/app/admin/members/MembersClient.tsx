@@ -13,7 +13,9 @@ type Member = {
   imwebMemberCode: string | null;
   address: string | null;
   addressDetail: string | null;
-  loginType: "kakao" | "naver" | "email" | "unknown";
+  loginType: "kakao" | "naver" | "email" | "none" | "unknown";
+  hasEmailPassword: boolean;
+  passwordHashPrefix: string | null;
   createdAt: string;
   lastLoginAt: string | null;
   enrollmentCount: number;
@@ -136,6 +138,8 @@ function formatLoginType(t: Member["loginType"]) {
       return { label: "네이버", className: "bg-emerald-500/20 text-emerald-400" };
     case "email":
       return { label: "일반", className: "bg-white/10 text-white/70" };
+    case "none":
+      return { label: "없는 회원정보", className: "bg-red-500/15 text-red-400" };
     default:
       return { label: "기타", className: "bg-white/5 text-white/50" };
   }
@@ -469,9 +473,22 @@ export default function MembersClient({
                             placeholder="이름 입력"
                             onSave={(v) => updateMember(member.id, "name", v)}
                           />
-                          <p className="truncate text-xs text-white/50">
-                            {member.email}
-                          </p>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                            <p className="truncate text-xs text-white/50">
+                              {member.email}
+                            </p>
+                            {/* 이메일 비밀번호(자격) 상태 - 원문 비밀번호는 저장/표시하지 않음 */}
+                            {member.loginType === "email" || member.loginType === "none" ? (
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                  member.hasEmailPassword ? "bg-white/10 text-white/70" : "bg-red-500/15 text-red-400"
+                                }`}
+                                title={member.passwordHashPrefix ? `passwordHash: ${member.passwordHashPrefix}` : "passwordHash 없음"}
+                              >
+                                {member.hasEmailPassword ? "비번 설정됨" : "비번 없음"}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     </td>

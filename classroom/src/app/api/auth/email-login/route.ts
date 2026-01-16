@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
+import bcrypt from "bcryptjs";
 
 export const runtime = "nodejs";
 
@@ -11,7 +12,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin";
 
 const Schema = z.object({
   email: z.string().email().transform((s) => s.toLowerCase().trim()),
-  password: z.string().optional(),
+  password: z.string().min(1),
 });
 
 export async function POST(req: Request) {
@@ -55,16 +56,31 @@ export async function POST(req: Request) {
       });
     }
 
-    // 일반 사용자 로그인 (기존 로직)
-    // DB에서 사용자 조회 (웹훅으로 동기화된 회원만 존재)
+    // 일반 사용자 로그인
+    // DB에서 사용자 조회
     const user = await prisma.user.findUnique({
       where: { email },
-      select: { id: true, name: true, profileImageUrl: true },
+      select: {
+        id: true,
+        name: true,
+        profileImageUrl: true,
+        emailCredential: { select: { passwordHash: true } },
+      },
     });
 
     if (!user) {
       // DB에 없는 회원 = 아임웹에서 동기화되지 않은 회원
       return NextResponse.json({ ok: false, error: "NOT_REGISTERED" }, { status: 404 });
+    }
+
+    // 이메일 로그인 자격(비밀번호)이 없으면 "없는 회원정보"로 취급
+    if (!user.emailCredential?.passwordHash) {
+      return NextResponse.json({ ok: false, error: "NO_MEMBER_INFO" }, { status: 404 });
+    }
+
+    const ok = await bcrypt.compare(password, user.emailCredential.passwordHash);
+    if (!ok) {
+      return NextResponse.json({ ok: false, error: "INVALID_PASSWORD" }, { status: 401 });
     }
 
     // 마지막 로그인 시간 업데이트
