@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/current-user";
+import { ensureSoldOutColumnsOnce } from "@/lib/ensure-columns";
 
 export const runtime = "nodejs";
 
@@ -26,6 +27,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   }
 
+  await ensureSoldOutColumnsOnce();
+
   let body;
   try {
     body = await req.json();
@@ -48,11 +51,14 @@ export async function POST(req: Request) {
   if (productType === "COURSE") {
     const course = await prisma.course.findUnique({
       where: { id: productId, isPublished: true },
-      select: { id: true, title: true, price: true, enrollmentDays: true },
+      select: { id: true, title: true, price: true, enrollmentDays: true, isSoldOut: true },
     });
 
     if (!course) {
       return NextResponse.json({ ok: false, error: "PRODUCT_NOT_FOUND" }, { status: 404 });
+    }
+    if ((course as any).isSoldOut) {
+      return NextResponse.json({ ok: false, error: "SOLD_OUT" }, { status: 409 });
     }
 
     productName = course.title;
@@ -61,11 +67,14 @@ export async function POST(req: Request) {
   } else {
     const textbook = await prisma.textbook.findUnique({
       where: { id: productId, isPublished: true },
-      select: { id: true, title: true, price: true, entitlementDays: true },
+      select: { id: true, title: true, price: true, entitlementDays: true, isSoldOut: true },
     });
 
     if (!textbook) {
       return NextResponse.json({ ok: false, error: "PRODUCT_NOT_FOUND" }, { status: 404 });
+    }
+    if ((textbook as any).isSoldOut) {
+      return NextResponse.json({ ok: false, error: "SOLD_OUT" }, { status: 409 });
     }
 
     productName = textbook.title;

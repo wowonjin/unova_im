@@ -10,6 +10,7 @@ import { ConfirmDeleteIconButton } from "@/app/_components/ConfirmDeleteButton";
 import LessonListClient from "@/app/_components/LessonListClient";
 import CourseDetailPageClient from "@/app/_components/CourseDetailPageClient";
 import CourseAddonsClient from "@/app/_components/CourseAddonsClient";
+import { ensureSoldOutColumnsOnce } from "@/lib/ensure-columns";
 
 export default async function AdminCoursePage({
   params,
@@ -19,6 +20,7 @@ export default async function AdminCoursePage({
   searchParams?: Promise<{ tab?: string; imweb?: string; thumb?: string; enroll?: string }>;
 }) {
   const teacher = await requireAdminUser();
+  await ensureSoldOutColumnsOnce();
   const { courseId } = await params;
   const sp = (await searchParams) ?? {};
   const tabRaw = sp.tab || "curriculum";
@@ -174,7 +176,13 @@ export default async function AdminCoursePage({
             <Card>
               <CardHeader
                 title="강좌 설정"
-                right={<PublishToggleClient courseId={course.id} initialValue={course.isPublished} />}
+                right={
+                  <PublishToggleClient
+                    courseId={course.id}
+                    initialValue={course.isPublished}
+                    initialSoldOut={(course as any).isSoldOut ?? false}
+                  />
+                }
               />
               <CardBody>
                 <CourseSettingsAutoSaveClient

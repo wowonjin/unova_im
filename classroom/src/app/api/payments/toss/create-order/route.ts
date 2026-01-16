@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/current-user";
 import { generateTossOrderId, getTossClientKey, getTossPaymentClientKey } from "@/lib/toss";
 import { getBaseUrl } from "@/lib/oauth";
+import { ensureSoldOutColumnsOnce } from "@/lib/ensure-columns";
 
 export const runtime = "nodejs";
 
@@ -34,6 +35,7 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
   const baseUrl = getBaseUrl(req);
+  await ensureSoldOutColumnsOnce();
 
   let clientKey: string; // 위젯/호환용
   let paymentClientKey: string;
@@ -81,9 +83,15 @@ export async function POST(req: Request) {
     if (item.productType === "COURSE") {
       const course = await prisma.course.findFirst({
         where: { id: item.productId, isPublished: true },
-        select: { id: true, title: true, price: true },
+        select: { id: true, title: true, price: true, isSoldOut: true },
       });
       if (!course) return NextResponse.json({ ok: false, error: "PRODUCT_NOT_FOUND" }, { status: 404 });
+      if ((course as any).isSoldOut) {
+        return NextResponse.json(
+          { ok: false, error: "SOLD_OUT", details: { productType: "COURSE", productId: item.productId } },
+          { status: 409 }
+        );
+      }
       itemName = course.title;
       if (!Number.isFinite(course.price as any) || (course.price ?? 0) <= 0) {
         return NextResponse.json(
@@ -96,9 +104,15 @@ export async function POST(req: Request) {
     } else {
       const textbook = await prisma.textbook.findFirst({
         where: { id: item.productId, isPublished: true },
-        select: { id: true, title: true, price: true },
+        select: { id: true, title: true, price: true, isSoldOut: true },
       });
       if (!textbook) return NextResponse.json({ ok: false, error: "PRODUCT_NOT_FOUND" }, { status: 404 });
+      if ((textbook as any).isSoldOut) {
+        return NextResponse.json(
+          { ok: false, error: "SOLD_OUT", details: { productType: "TEXTBOOK", productId: item.productId } },
+          { status: 409 }
+        );
+      }
       itemName = textbook.title;
       if (!Number.isFinite(textbook.price as any) || (textbook.price ?? 0) <= 0) {
         return NextResponse.json(

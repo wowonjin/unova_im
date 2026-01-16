@@ -3,6 +3,7 @@ import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import { Badge, Button, Card, CardBody, CardHeader, HelpTip, PageHeader, Tabs } from "@/app/_components/ui";
 import TextbookPublishedSelect from "@/app/_components/TextbookPublishedSelect";
+import { ensureSoldOutColumnsOnce } from "@/lib/ensure-columns";
 import TextbookThumbnailGenerator from "@/app/_components/TextbookThumbnailGenerator";
 import TextbookThumbnailUploadClient from "@/app/_components/TextbookThumbnailUploadClient";
 import TextbookBasicInfoClient from "@/app/_components/TextbookBasicInfoClient";
@@ -20,6 +21,7 @@ export default async function AdminTextbookPage({
   searchParams?: Promise<{ entitle?: string; tab?: string }>;
 }) {
   const teacher = await requireAdminUser();
+  await ensureSoldOutColumnsOnce();
   const { textbookId } = await params;
   const sp = (await searchParams) ?? {};
   const entitleMsg = sp.entitle || null;
@@ -110,6 +112,7 @@ export default async function AdminTextbookPage({
         pageCount: true,
         createdAt: true,
         isPublished: true,
+        isSoldOut: true,
         thumbnailUrl: true,
         imwebProdCode: true,
         composition: true,
@@ -160,6 +163,7 @@ export default async function AdminTextbookPage({
         sizeBytes: true,
         createdAt: true,
         isPublished: true,
+        isSoldOut: true,
         thumbnailUrl: true,
         imwebProdCode: true,
         entitlements: {
@@ -372,7 +376,13 @@ export default async function AdminTextbookPage({
             <Card className="lg:col-span-5">
               <CardHeader
                 title="기본 정보"
-                right={<TextbookPublishedSelect textbookId={textbook.id} isPublished={textbook.isPublished} />}
+                right={
+                  <TextbookPublishedSelect
+                    textbookId={textbook.id}
+                    isPublished={textbook.isPublished}
+                    isSoldOut={(textbook as any).isSoldOut ?? false}
+                  />
+                }
               />
               <CardBody className="space-y-8">
                 <TextbookBasicInfoClient

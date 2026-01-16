@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Button, Card, CardBody, CardHeader, PageHeader } from "@/app/_components/ui";
 import CreateCourseFormClient from "@/app/_components/CreateCourseFormClient";
 import CourseListClient from "@/app/_components/CourseListClient";
+import { ensureSoldOutColumnsOnce } from "@/lib/ensure-columns";
 
 export default async function AdminCoursesPage({
   searchParams,
@@ -11,6 +12,7 @@ export default async function AdminCoursesPage({
   searchParams?: Promise<{ q?: string; published?: string }>;
 }) {
   const teacher = await requireAdminUser();
+  await ensureSoldOutColumnsOnce();
   const sp = (await searchParams) ?? {};
   const q = (sp.q ?? "").trim();
   const publishedRaw = sp.published ?? "all";
@@ -39,6 +41,7 @@ export default async function AdminCoursesPage({
       teacherName: true,
       subjectName: true,
       isPublished: true,
+      isSoldOut: true,
       updatedAt: true,
       thumbnailStoredPath: true,
       thumbnailUrl: true,
@@ -66,6 +69,7 @@ export default async function AdminCoursesPage({
     teacherName: c.teacherName,
     subjectName: c.subjectName,
     isPublished: c.isPublished,
+    isSoldOut: (c as any).isSoldOut ?? false,
     updatedAtISO: c.updatedAt.toISOString(),
     thumbnailStoredPath: c.thumbnailStoredPath,
     thumbnailUrl: c.thumbnailUrl,

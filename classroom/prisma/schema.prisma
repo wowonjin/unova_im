@@ -111,6 +111,7 @@ model Course {
   thumbnailMimeType     String?
   thumbnailSizeBytes    Int?
   isPublished    Boolean  @default(true)
+  isSoldOut      Boolean  @default(false)
   imwebGroupCode String?  @unique
   // 수강 기간 (일 단위, 기본값 365일)
   enrollmentDays Int      @default(365)
@@ -347,6 +348,7 @@ model Textbook {
   // PDF 페이지 수(옵션). 외부 URL 교재는 업로드 시 서버가 계산하여 저장합니다.
   pageCount    Int?
   isPublished  Boolean  @default(true)
+  isSoldOut    Boolean  @default(false)
   // 아임웹 상품 매핑(옵션): 설정되면 수강생은 구매(Entitlement)가 있어야 접근 가능
   // @unique 제거: 같은 상품 코드를 여러 교재에 사용 가능
   imwebProdCode String?

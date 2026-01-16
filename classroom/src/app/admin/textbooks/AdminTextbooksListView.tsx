@@ -13,6 +13,7 @@ type TextbookRow = {
   sizeBytes: number;
   createdAt: string | Date;
   isPublished: boolean;
+  isSoldOut?: boolean;
   thumbnailUrl: string | null;
   entitlementDays?: number | null;
   teacherName?: string | null;
@@ -43,7 +44,7 @@ export default function AdminTextbooksListView({ items: initialItems }: { items:
   const [orderError, setOrderError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "published" | "soldout" | "draft">("all");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState<string | null>(null);
 
@@ -65,6 +66,7 @@ export default function AdminTextbooksListView({ items: initialItems }: { items:
       }
       // Status
       if (statusFilter === "published" && !item.isPublished) return false;
+      if (statusFilter === "soldout" && !(item.isPublished && (item as any).isSoldOut)) return false;
       if (statusFilter === "draft" && item.isPublished) return false;
       return true;
     });
@@ -216,6 +218,7 @@ export default function AdminTextbooksListView({ items: initialItems }: { items:
             {[
               { value: "all", label: "전체" },
               { value: "published", label: "공개" },
+              { value: "soldout", label: "품절" },
               { value: "draft", label: "비공개" },
             ].map((option) => (
               <button
@@ -396,15 +399,20 @@ export default function AdminTextbooksListView({ items: initialItems }: { items:
                   </div>
                 </td>
                 <td className="px-4 py-4 text-center">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-                      item.isPublished
-                        ? "bg-emerald-500/10 text-emerald-400"
-                        : "bg-white/5 text-white/40"
-                    }`}
-                  >
-                    {item.isPublished ? "공개" : "비공개"}
-                  </span>
+                  {(() => {
+                    const soldOut = Boolean((item as any).isSoldOut);
+                    const label = !item.isPublished ? "비공개" : soldOut ? "품절" : "공개";
+                    const cls = !item.isPublished
+                      ? "bg-white/5 text-white/40"
+                      : soldOut
+                        ? "bg-zinc-500/20 text-zinc-200"
+                        : "bg-emerald-500/10 text-emerald-400";
+                    return (
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${cls}`}>
+                        {label}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td className="px-4 py-4">
                   <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">

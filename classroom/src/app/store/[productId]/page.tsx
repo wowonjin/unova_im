@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import ProductDetailClient from "./ProductDetailClient";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
+import { ensureSoldOutColumnsOnce } from "@/lib/ensure-columns";
 
 // 상품 상세는 공개 데이터이며, DB 조회가 많아 SSR 반복 비용이 큽니다.
 // 동적 라우트지만 ISR 캐시를 두면 동일 상품 페이지 재방문/공유 시 체감이 좋아집니다.
@@ -567,6 +568,7 @@ export default async function ProductDetailPage({
   try {
     const { productId } = await params;
     const storeOwnerEmail = getStoreOwnerEmail();
+    await ensureSoldOutColumnsOnce();
 
   // Render 등 배포 환경에서 DB 쿼리 실패 시에도 상세 페이지가 500으로 죽지 않도록 폴백 처리
   type DbCourse = Prisma.CourseGetPayload<{
@@ -592,6 +594,7 @@ export default async function ProductDetailPage({
       imwebProdCode: true;
       price: true;
       originalPrice: true;
+      isSoldOut: true;
       rating: true;
       reviewCount: true;
       tags: true;
@@ -618,6 +621,7 @@ export default async function ProductDetailPage({
       imwebProdCode: true;
       price: true;
       originalPrice: true;
+      isSoldOut: true;
       rating: true;
       reviewCount: true;
       tags: true;
@@ -671,6 +675,7 @@ export default async function ProductDetailPage({
             imwebProdCode: true,
             price: true,
             originalPrice: true,
+            isSoldOut: true,
             rating: true,
             reviewCount: true,
             tags: true,
@@ -708,6 +713,7 @@ export default async function ProductDetailPage({
               imwebProdCode: true,
               price: true,
               originalPrice: true,
+              isSoldOut: true,
               rating: true,
               reviewCount: true,
               tags: true,
@@ -737,6 +743,7 @@ export default async function ProductDetailPage({
               imwebProdCode: true,
               price: true,
               originalPrice: true,
+              isSoldOut: true,
               rating: true,
               reviewCount: true,
               tags: true,
@@ -996,6 +1003,7 @@ export default async function ProductDetailPage({
                 // course 썸네일은 /api/courses/:id/thumbnail 로 통일해서 보여줍니다.
                 // storedPath 기반 썸네일(레거시)도 UI에서 "있음"으로 인식하도록 값 보정.
                 thumbnailUrl: dbCourse.thumbnailUrl || ((dbCourse as any).thumbnailStoredPath ? "__stored__" : null),
+                isSoldOut: Boolean((dbCourse as any).isSoldOut),
                 isPriceSet,
                 price,
                 originalPrice,
@@ -1113,6 +1121,7 @@ export default async function ProductDetailPage({
                 teacherImageUrl,
                 thumbnailUrl,
                 isbn,
+                isSoldOut: Boolean((dbTextbook as any).isSoldOut),
                 isPriceSet,
                 price,
                 originalPrice,
@@ -1181,6 +1190,7 @@ export default async function ProductDetailPage({
             product={{
               ...product,
               id: productId,
+              isSoldOut: false,
               discount,
               isPriceSet: true,
               formattedPrice: formatPrice(product.price),

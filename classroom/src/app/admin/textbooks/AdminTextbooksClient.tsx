@@ -13,6 +13,7 @@ type TextbookRow = {
   sizeBytes: number;
   createdAt: string | Date;
   isPublished: boolean;
+  isSoldOut?: boolean;
   thumbnailUrl: string | null;
   entitlementDays?: number | null;
   teacherName?: string | null;

@@ -10,6 +10,7 @@ type Course = {
   teacherName: string | null;
   subjectName: string | null;
   isPublished: boolean;
+  isSoldOut: boolean;
   updatedAtISO: string;
   thumbnailStoredPath: string | null;
   thumbnailUrl: string | null;
@@ -176,6 +177,12 @@ export default function CourseListClient({
               ? `/api/courses/${c.id}/thumbnail?v=${encodeURIComponent(c.updatedAtISO)}`
               : "/course-placeholder.svg";
             const isSelected = selected.has(c.id);
+            const statusLabel = !c.isPublished ? "비공개" : c.isSoldOut ? "품절" : "공개";
+            const statusToneClass = !c.isPublished
+              ? "bg-white/10 text-white/60"
+              : c.isSoldOut
+                ? "bg-zinc-500/30 text-zinc-100"
+                : "bg-emerald-500/20 text-emerald-300";
 
             const cardContent = (
               <>
@@ -189,10 +196,8 @@ export default function CourseListClient({
                   />
                   {/* 공개 상태 */}
                   <div className="absolute right-2 top-2">
-                    <span className={`rounded-md px-2 py-0.5 text-xs font-medium backdrop-blur-sm ${
-                      c.isPublished ? "bg-emerald-500/20 text-emerald-300" : "bg-white/10 text-white/60"
-                    }`}>
-                      {c.isPublished ? "공개" : "비공개"}
+                    <span className={`rounded-md px-2 py-0.5 text-xs font-medium backdrop-blur-sm ${statusToneClass}`}>
+                      {statusLabel}
                     </span>
                   </div>
                   {/* 선택 체크박스 */}

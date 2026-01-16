@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentTeacherUser } from "@/lib/current-user";
 import fs from "node:fs/promises";
 import { getStorageRoot, safeJoin } from "@/lib/storage";
+import { ensureSoldOutColumnsOnce } from "@/lib/ensure-columns";
 
 export const runtime = "nodejs";
 
@@ -24,6 +25,7 @@ const Schema = z.discriminatedUnion("action", [
         subjectName: z.string().min(1).nullable().optional(),
         // 판매 등록용(옵션): 전달된 경우에만 갱신
         isPublished: z.boolean().optional(),
+        isSoldOut: z.boolean().optional(),
         imwebProdCode: z.string().min(1).nullable().optional(),
         entitlementDays: z.number().int().min(1).max(3650).optional(),
       })
@@ -34,6 +36,8 @@ const Schema = z.discriminatedUnion("action", [
 export async function POST(req: Request) {
   const teacher = await getCurrentTeacherUser();
   if (!teacher) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+
+  await ensureSoldOutColumnsOnce();
 
   const json = await req.json().catch(() => null);
   const parsed = Schema.safeParse(json);
@@ -87,6 +91,7 @@ export async function POST(req: Request) {
   if ("teacherName" in update) data.teacherName = update.teacherName;
   if ("subjectName" in update) data.subjectName = update.subjectName;
   if ("isPublished" in update) data.isPublished = update.isPublished;
+  if ("isSoldOut" in update) data.isSoldOut = update.isSoldOut;
   if ("imwebProdCode" in update) data.imwebProdCode = update.imwebProdCode;
   if ("entitlementDays" in update) data.entitlementDays = update.entitlementDays;
 

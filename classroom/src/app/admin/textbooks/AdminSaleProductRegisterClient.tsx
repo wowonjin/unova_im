@@ -26,6 +26,7 @@ export default function AdminSaleProductRegisterClient({ textbooks }: { textbook
   const [subjectName, setSubjectName] = useState("");
   const [entitlementDays, setEntitlementDays] = useState("30");
   const [isPublished, setIsPublished] = useState(true);
+  const [isSoldOut, setIsSoldOut] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +61,7 @@ export default function AdminSaleProductRegisterClient({ textbooks }: { textbook
       originalPrice: op === undefined ? undefined : op,
       entitlementDays: days,
       isPublished,
+      isSoldOut,
     };
     if (productName.trim()) update.title = productName.trim();
     if (teacherName.trim()) update.teacherName = teacherName.trim();
@@ -81,6 +83,7 @@ export default function AdminSaleProductRegisterClient({ textbooks }: { textbook
       setSubjectName("");
       setEntitlementDays("30");
       setIsPublished(true);
+      setIsSoldOut(false);
       router.refresh();
     } catch {
       setError("판매 물품 등록에 실패했습니다.");
@@ -202,6 +205,19 @@ export default function AdminSaleProductRegisterClient({ textbooks }: { textbook
                   className="h-4 w-4 accent-white"
                 />
                 공개로 설정
+              </label>
+            </Field>
+          </div>
+          <div className="md:col-span-4">
+            <Field label="품절" hint="품절이면 상세 페이지는 유지되지만 구매 버튼이 비활성화됩니다.">
+              <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80">
+                <input
+                  type="checkbox"
+                  checked={isSoldOut}
+                  onChange={(e) => setIsSoldOut(e.target.checked)}
+                  className="h-4 w-4 accent-white"
+                />
+                품절로 설정
               </label>
             </Field>
           </div>
