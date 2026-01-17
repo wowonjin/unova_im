@@ -879,7 +879,8 @@ function StorePreviewSections({
         <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">수능 교재 구매하기</h2>
         {/* 전자책/실물책 필터 (과목 탭 위) */}
         <div className="mt-3 md:mt-6">
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {/* 과목 탭과 동일한 탭 메뉴(underline) 스타일 */}
+          <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
             {BOOK_FORMATS.map((fmt) => {
               const active = selectedSuneungBookFormat === fmt;
               return (
@@ -887,21 +888,20 @@ function StorePreviewSections({
                   key={`suneung-bookfmt-${fmt}`}
                   type="button"
                   onClick={() => setSelectedSuneungBookFormat((prev) => (prev === fmt ? "전체" : fmt))}
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors border ${
-                    active
-                      ? "bg-white text-black border-white"
-                      : "bg-white/[0.06] text-white/70 border-white/10 hover:bg-white/[0.09] hover:text-white"
+                  role="tab"
+                  aria-selected={active}
+                  className={`relative shrink-0 px-1 py-2 text-[13px] md:text-[15px] font-semibold ${
+                    active ? "text-white" : "text-white/55"
                   }`}
-                  aria-pressed={active}
                 >
                   {fmt}
+                  {active ? (
+                    <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                  ) : null}
                 </button>
               );
             })}
           </div>
-          <p className="mt-2 text-[12px] text-white/40">
-            실물책: <span className="text-white/60">실물책+PDF</span> · 전자책: <span className="text-white/60">PDF</span>
-          </p>
         </div>
 
         {suneungTextbookSubjects.length > 1 ? (
