@@ -86,6 +86,7 @@ export default function ShipmentsFiltersClient({
   const searchParams = useSearchParams();
   const pendingScrollYRef = useRef<number | null>(null);
   const autoScrollToResultsRef = useRef(false);
+  const didInitStorageRef = useRef(false);
 
   const validTextbookIds = useMemo(() => new Set(textbooks.map((t) => t.id)), [textbooks]);
 
@@ -95,13 +96,21 @@ export default function ShipmentsFiltersClient({
 
   // 변경 즉시 저장(페이지 이동/새로고침해도 선택 유지)
   useEffect(() => {
+    // 첫 렌더에서 URL에 선택값이 없는 경우(initial이 비어있음) 기존 저장값을 덮어쓰지 않도록 스킵
+    // - 저장된 값은 아래 "자동 복원" effect가 먼저 적용한 뒤, 그 다음 변경부터 저장됨
+    const hasTextbooksInUrl = Boolean(searchParams.get("textbookIds")) || Boolean(searchParams.get("textbookId"));
+    if (!didInitStorageRef.current) {
+      didInitStorageRef.current = true;
+      if (!hasTextbooksInUrl) return;
+    }
+
     const safe: Filters = {
       ...form,
       textbookIds: (Array.isArray(form.textbookIds) ? form.textbookIds : []).filter((id) => validTextbookIds.has(id)).slice(0, 50),
       date: form.date === "all" ? "all" : "today",
     };
     writeStoredFilters(safe);
-  }, [form, validTextbookIds]);
+  }, [form, validTextbookIds, searchParams]);
 
   // URL에 교재 선택값이 없으면, 저장된 교재 선택값을 자동 복원
   useEffect(() => {
