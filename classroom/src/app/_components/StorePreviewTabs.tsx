@@ -112,8 +112,8 @@ function ProductGrid({
 
             {/* 준비중 배지 */}
             {product.isSoldOut ? (
-              <div className="absolute right-2 top-2 z-10">
-                <span className="inline-flex items-center rounded-full bg-zinc-700/80 px-3 py-1 text-[10px] font-semibold text-white/90 border border-white/10 backdrop-blur">
+              <div className="absolute right-1 top-1 z-10 sm:right-2 sm:top-2">
+                <span className="inline-flex items-center rounded-full bg-zinc-700/80 px-2 py-0.5 text-[9px] font-semibold text-white/90 border border-white/10 backdrop-blur sm:px-3 sm:py-1 sm:text-[10px]">
                   준비중
                 </span>
               </div>
