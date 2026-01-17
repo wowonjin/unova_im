@@ -2027,23 +2027,18 @@ export default function ProductDetailClient({
         </div>
       </aside>
 
-      {/* 모바일 하단 결제 영역용 여백 */}
-      <div className="h-24 md:hidden" />
+      {/* 모바일 하단 결제 영역용 여백 (고정 푸터에 가려지지 않도록) */}
+      <div className="h-[calc(env(safe-area-inset-bottom)+104px)] md:hidden" />
     </div>
 
-    {/* 모바일 하단 결제 영역 (화면 하단 고정) - 2026 스타일(플로팅/글래스) */}
-    <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-      {/* 아래에서 위로 올라오는 그라데이션(콘텐츠와 자연스럽게 분리) */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-
+    {/* 모바일 하단 결제 영역 (화면 하단 고정) - 바(bar) 형태로 하단에 완전 밀착 */}
+    <div className="fixed inset-x-0 bottom-0 z-50 md:hidden">
       {/* safe-area + 여백 */}
-      <div className="relative mx-auto max-w-6xl px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+14px)]">
-        {/* iOS 다크 툴바 느낌: 더 강한 블러 + 헤어라인 + 과하지 않은 섀도우 */}
-        <div className="overflow-hidden rounded-3xl border border-white/[0.08] bg-[#1c1c1e]/70 backdrop-blur-2xl shadow-[0_10px_34px_rgba(0,0,0,0.45)] ring-1 ring-white/[0.06]">
+      <div className="mx-auto max-w-6xl bg-[#1c1c1e]/92 backdrop-blur-xl border-t border-white/[0.10] pb-[env(safe-area-inset-bottom)]">
           {/* 선택된 추가 상품 요약 (선택한 게 있을 때만) */}
           {hasAnyAddonSelection && (
-            <div className="px-4 py-2 border-b border-white/[0.08] bg-white/[0.02]">
-              <div className="flex items-center justify-between text-[12px]">
+            <div className="px-4 py-1.5 border-b border-white/[0.08] bg-white/[0.02]">
+              <div className="flex items-center justify-between text-[11px]">
                 <span className="text-white/65">
                   추가 상품 {selectedRelatedIds.size + selectedAddonCourseIds.size}개
                 </span>
@@ -2054,17 +2049,17 @@ export default function ProductDetailClient({
             </div>
           )}
 
-          <div className="px-3 py-3">
+          <div className="px-3 py-2.5">
             <div className="flex items-center gap-3">
               {/* 좋아요 버튼 (터치 타겟만 확보, 배경/테두리는 없음) */}
               <button
                 onClick={handleToggleLike}
-                className="group flex flex-col items-center justify-center w-12 h-12 rounded-full bg-transparent border-0 shrink-0 transition-transform active:scale-[0.98] active:bg-white/[0.08]"
+                className="group flex flex-col items-center justify-center w-11 h-11 rounded-full bg-transparent border-0 shrink-0 transition-transform active:scale-[0.98] active:bg-white/[0.08]"
                 aria-label="좋아요"
               >
                 <svg
-                  width="18"
-                  height="18"
+                  width="17"
+                  height="17"
                   viewBox="0 0 24 24"
                   fill={isLiked ? "currentColor" : "none"}
                   stroke="currentColor"
@@ -2073,7 +2068,7 @@ export default function ProductDetailClient({
                 >
                   <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                 </svg>
-                <span className="text-[9px] text-white/55 mt-0.5">
+                <span className="text-[8px] text-white/55 mt-0.5">
                   {likeCount >= 10000 ? `${(likeCount / 10000).toFixed(1)}만` : likeCount.toLocaleString("ko-KR")}
                 </span>
               </button>
@@ -2082,12 +2077,12 @@ export default function ProductDetailClient({
               {(relatedProducts.length > 0 || addonCourses.length > 0) && (
                 <button
                   onClick={openMobileAddonSheet}
-                  className="relative flex flex-col items-center justify-center w-12 h-12 rounded-full bg-transparent border-0 shrink-0 transition-transform active:scale-[0.98] active:bg-white/[0.08]"
+                  className="relative flex flex-col items-center justify-center w-11 h-11 rounded-full bg-transparent border-0 shrink-0 transition-transform active:scale-[0.98] active:bg-white/[0.08]"
                   aria-label="추가 상품 선택"
                 >
                   <svg
-                    width="18"
-                    height="18"
+                    width="17"
+                    height="17"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -2096,7 +2091,7 @@ export default function ProductDetailClient({
                   >
                     <path d="M12 5v14M5 12h14" />
                   </svg>
-                  <span className="text-[9px] text-white/55 mt-0.5">추가</span>
+                  <span className="text-[8px] text-white/55 mt-0.5">추가</span>
                   {hasAnyAddonSelection && (
                     <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center">
                       {selectedRelatedIds.size + selectedAddonCourseIds.size}
@@ -2109,24 +2104,24 @@ export default function ProductDetailClient({
               <div className="flex-1 min-w-0">
                 {hasAnyAddonSelection ? (
                   <div className="flex flex-col items-end leading-tight">
-                    <div className="text-[11px] text-white/45 line-through">{product.formattedPrice}</div>
-                    <div className="text-[17px] font-extrabold text-white tracking-[-0.01em]">
+                    <div className="text-[10px] text-white/45 line-through">{product.formattedPrice}</div>
+                    <div className="text-[15px] font-extrabold text-white tracking-[-0.01em]">
                       {totalAmount.toLocaleString("ko-KR")}원
                     </div>
                   </div>
                 ) : hasBaseProduct ? (
                   <div className="flex items-center justify-end gap-2">
-                    <span className="text-[17px] font-extrabold text-white tracking-[-0.01em]">
+                    <span className="text-[15px] font-extrabold text-white tracking-[-0.01em]">
                       {product.formattedPrice}
                     </span>
                     {product.discount && (
-                      <span className="inline-flex items-center justify-center rounded-full bg-rose-500/85 px-2 py-0.5 text-[10px] font-extrabold text-white">
+                      <span className="inline-flex items-center justify-center rounded-full bg-rose-500/85 px-2 py-0.5 text-[9px] font-extrabold text-white">
                         {product.discount}%
                       </span>
                     )}
                   </div>
                 ) : (
-                  <div className="text-right text-[12px] text-white/55">가격 준비중</div>
+                  <div className="text-right text-[11px] text-white/55">가격 준비중</div>
                 )}
               </div>
 
@@ -2134,7 +2129,7 @@ export default function ProductDetailClient({
               <button
                 onClick={handleCheckout}
                 disabled={isPaying || product.isSoldOut}
-                className={`h-12 px-5 rounded-full text-[14px] font-extrabold shadow-[0_8px_24px_rgba(0,0,0,0.30)] transition-[transform,filter] active:scale-[0.99] ${
+                className={`h-11 min-w-[168px] px-6 rounded-xl text-[13px] font-extrabold shadow-[0_8px_24px_rgba(0,0,0,0.30)] transition-[transform,filter] active:scale-[0.99] ${
                   product.isSoldOut
                     ? "bg-zinc-600 text-white/90 opacity-70 cursor-not-allowed"
                     : "bg-white text-black"
@@ -2152,7 +2147,6 @@ export default function ProductDetailClient({
               </button>
             </div>
           </div>
-        </div>
       </div>
     </div>
 
