@@ -363,7 +363,7 @@ export default function HeroCarousel({ slides }: { slides?: Slide[] }) {
                     isActive ? "opacity-100" : "opacity-0"
                   }`}
                 >
-                  <div className="inline-block px-[10px] py-1 mb-[10px] rounded-full bg-white text-black text-[10px] md:text-[12px] font-medium">
+                  <div className="inline-flex max-w-full items-center truncate rounded-full bg-white text-black font-medium px-2 py-0.5 mb-2 text-[9px] md:inline-block md:px-[10px] md:py-1 md:mb-[10px] md:text-[12px]">
                     {slide.tag}
                   </div>
                   <div
