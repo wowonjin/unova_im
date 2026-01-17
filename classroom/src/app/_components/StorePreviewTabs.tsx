@@ -149,7 +149,10 @@ function ProductGrid({
               </div>
             )}
 
-            {/* NOTE: 준비중 상태라도 썸네일을 어둡게 만드는 오버레이는 사용하지 않습니다. */}
+            {/* 준비중(=isSoldOut) 상품은 예전처럼 썸네일을 살짝 어둡게 처리 */}
+            {product.isSoldOut ? (
+              <div className="pointer-events-none absolute inset-0 bg-black/25" aria-hidden="true" />
+            ) : null}
             </div>
 
             <div className="mt-3 px-0.5">

@@ -894,6 +894,10 @@ export default function ProductDetailClient({
                   <span className="text-white/40 text-sm">교재 이미지 준비중</span>
                 </div>
               )}
+              {/* 준비중(=isSoldOut) 상품은 썸네일을 살짝 어둡게 처리 */}
+              {product.isSoldOut ? (
+                <div className="pointer-events-none absolute inset-0 bg-black/25" aria-hidden="true" />
+              ) : null}
             </div>
           </div>
         ) : (
@@ -914,6 +918,10 @@ export default function ProductDetailClient({
                 allowFullScreen
                 title="강의 소개 영상"
               />
+              {/* 준비중(=isSoldOut) 상품은 미디어를 살짝 어둡게 처리 */}
+              {product.isSoldOut ? (
+                <div className="pointer-events-none absolute inset-0 bg-black/25" aria-hidden="true" />
+              ) : null}
             </div>
           ) : product.thumbnailUrl ? (
             <div className="mb-8">
@@ -931,6 +939,10 @@ export default function ProductDetailClient({
                   alt={product.title}
                   className="h-full w-full object-cover"
                 />
+                {/* 준비중(=isSoldOut) 상품은 썸네일을 살짝 어둡게 처리 */}
+                {product.isSoldOut ? (
+                  <div className="pointer-events-none absolute inset-0 bg-black/25" aria-hidden="true" />
+                ) : null}
               </div>
             </div>
           ) : (
@@ -944,6 +956,10 @@ export default function ProductDetailClient({
                   </div>
                 )}
                 <span className="text-white/40 text-sm">미디어 준비중</span>
+                {/* 준비중(=isSoldOut) 상품은 썸네일을 살짝 어둡게 처리 */}
+                {product.isSoldOut ? (
+                  <div className="pointer-events-none absolute inset-0 bg-black/25" aria-hidden="true" />
+                ) : null}
               </div>
             </div>
           )
