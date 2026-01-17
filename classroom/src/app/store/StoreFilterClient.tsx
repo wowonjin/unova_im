@@ -3,6 +3,52 @@
 import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 
+function UnderlineTabBar({
+  items,
+  activeKey,
+  onSelect,
+  ariaLabel,
+  className = "",
+}: {
+  items: { key: string; label: string }[];
+  activeKey: string;
+  onSelect: (key: string) => void;
+  ariaLabel: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide ${className}`}
+      role="tablist"
+      aria-label={ariaLabel}
+    >
+      {items.map((it) => {
+        const active = activeKey === it.key;
+        return (
+          <button
+            key={it.key}
+            type="button"
+            onClick={() => onSelect(it.key)}
+            role="tab"
+            aria-selected={active}
+            className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold transition-colors ${
+              active ? "text-white" : "text-white/55"
+            }`}
+          >
+            {it.label}
+            {active ? (
+              <span
+                className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white"
+                aria-hidden="true"
+              />
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 type Product = {
   id: string;
   title: string;
@@ -187,7 +233,7 @@ export default function StoreFilterClient({
     }
 
     return result;
-  }, [visibleProducts, selectedExamType, selectedSubject, searchQuery]);
+  }, [visibleProducts, selectedType, selectedBookFormat, selectedExamType, selectedSubject, searchQuery]);
 
   // 전체를 제외한 입시 유형
   const examTypesWithoutAll = EXAM_TYPES.filter((t) => t !== "전체");
@@ -201,6 +247,80 @@ export default function StoreFilterClient({
         {/* 왼쪽 사이드바 */}
         <aside className="w-full lg:w-56 shrink-0">
           <div className="lg:sticky lg:top-[90px] space-y-6 pt-2">
+            {/* 모바일: 메인과 동일한 탭바 UI */}
+            <div className="lg:hidden space-y-6">
+              {/* 검색 */}
+              <div>
+                <h3 className="text-[13px] font-medium text-white/50 mb-3">검색</h3>
+                <div
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 transition-all ${
+                    isSearchFocused
+                      ? "bg-white/[0.12]"
+                      : "bg-white/[0.08] hover:bg-white/[0.12]"
+                  }`}
+                >
+                  <input
+                    type="text"
+                    placeholder="교재명, 선생님..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => setIsSearchFocused(true)}
+                    onBlur={() => setIsSearchFocused(false)}
+                    className="flex-1 bg-transparent text-[13px] text-white placeholder-white/40 outline-none"
+                  />
+                  {searchQuery ? (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="flex h-5 w-5 items-center justify-center rounded-full bg-white/[0.1] text-white/60 transition-colors hover:bg-white/[0.15] hover:text-white"
+                      aria-label="검색어 지우기"
+                      type="button"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                  ) : (
+                    <span className="material-symbols-outlined text-[16px] text-white/40">search</span>
+                  )}
+                </div>
+              </div>
+
+              {/* 입시: 탭바 */}
+              <div>
+                <h3 className="text-[13px] font-medium text-white/50 mb-3">입시</h3>
+                <UnderlineTabBar
+                  ariaLabel="입시 선택"
+                  items={EXAM_TYPES.map((t) => ({ key: t, label: t }))}
+                  activeKey={selectedExamType}
+                  onSelect={(k) => handleExamTypeChange(k as ExamType)}
+                />
+              </div>
+
+              {/* 과목: 탭바 */}
+              <div>
+                <h3 className="text-[13px] font-medium text-white/50 mb-3">과목</h3>
+                <UnderlineTabBar
+                  ariaLabel="과목 선택"
+                  items={availableSubjects.map((s) => ({ key: s, label: s }))}
+                  activeKey={selectedSubject}
+                  onSelect={(k) => handleSubjectChange(k)}
+                />
+              </div>
+
+              {/* 종류(교재만): 실물책/전자책 */}
+              {selectedType === "교재" ? (
+                <div>
+                  <h3 className="text-[13px] font-medium text-white/50 mb-3">종류</h3>
+                  <UnderlineTabBar
+                    ariaLabel="교재 종류 선택"
+                    items={BOOK_FORMATS.map((fmt) => ({ key: fmt, label: fmt }))}
+                    activeKey={selectedBookFormat}
+                    onSelect={(k) => handleBookFormatChange(k as BookFormat)}
+                  />
+                </div>
+              ) : null}
+            </div>
+
+            {/* 데스크톱: 기존 버튼 UI 유지 */}
+            <div className="hidden lg:block space-y-6">
             {/* 검색 */}
             <div>
               <h3 className="text-[13px] font-medium text-white/50 mb-3">검색</h3>
@@ -224,6 +344,7 @@ export default function StoreFilterClient({
                   <button
                     onClick={() => setSearchQuery("")}
                     className="flex h-5 w-5 items-center justify-center rounded-full bg-white/[0.1] text-white/60 transition-colors hover:bg-white/[0.15] hover:text-white"
+                    type="button"
                   >
                     <span className="material-symbols-outlined text-[14px]">close</span>
                   </button>
@@ -292,11 +413,9 @@ export default function StoreFilterClient({
                     </button>
                   ))}
                 </div>
-                <p className="mt-2 text-[12px] text-white/40">
-                  실물책: <span className="text-white/60">실물책+PDF</span> · 전자책: <span className="text-white/60">PDF</span>
-                </p>
               </div>
             ) : null}
+          </div>
           </div>
         </aside>
 
@@ -321,7 +440,6 @@ export default function StoreFilterClient({
                 // 스토어 목록은 썸네일이 많아서, 전부 eager 로딩 시 네트워크/메인스레드가 잠겨
                 // "페이지가 늦게 뜨는" 체감이 커집니다. 상단 일부만 eager, 나머지는 lazy로 분산합니다.
                 const eager = idx < 6;
-                const isDisabled = Boolean(product.isSoldOut);
 
                 const Card = (
                   <>
@@ -456,17 +574,13 @@ export default function StoreFilterClient({
                   </>
                 );
 
-                return isDisabled ? (
-                  <div
+                return (
+                  <Link
                     key={product.id}
-                    className="group cursor-not-allowed"
-                    aria-disabled="true"
-                    title="준비중인 상품입니다"
+                    href={`/store/${product.id}`}
+                    className={`group ${product.isSoldOut ? "opacity-90" : ""}`}
+                    title={product.isSoldOut ? "준비중인 상품입니다" : undefined}
                   >
-                    {Card}
-                  </div>
-                ) : (
-                  <Link key={product.id} href={`/store/${product.id}`} className="group">
                     {Card}
                   </Link>
                 );

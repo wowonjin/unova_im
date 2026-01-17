@@ -181,7 +181,8 @@ export default async function HomePage() {
         return rows;
       } catch (e) {
         if (process.env.NODE_ENV !== "production") {
-          console.warn("[home] store textbooks query failed with position order, fallback to createdAt:", e);
+          const msg = e instanceof Error ? e.message : String(e);
+          console.warn("[home] store textbooks query failed with position order, fallback to createdAt:", msg);
         }
         let rows = await prisma.textbook.findMany({
           where: textbookWhere,
@@ -212,7 +213,8 @@ export default async function HomePage() {
     storeTextbooks = textbooksRes.status === "fulfilled" ? textbooksRes.value : [];
   } catch (e) {
     if (process.env.NODE_ENV !== "production") {
-      console.warn("[home] failed to load store products:", e);
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn("[home] failed to load store products:", msg);
     }
     storeCourses = [];
     storeTextbooks = [];

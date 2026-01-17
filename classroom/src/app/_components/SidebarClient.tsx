@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { warmupThumb } from "./pdfThumbWarmup";
 import { useSidebar } from "@/app/_components/SidebarContext";
@@ -471,44 +472,61 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
     </div>
   ) : null;
 
+  // Portal을 위한 mounted 상태 (SSR 안전)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // 모바일 드로어 (Portal로 body에 렌더링하여 스크롤 위치 영향 방지)
+  const mobileDrawer = isOpen ? (
+    <>
+      <div
+        className="fixed inset-0 z-[1100] bg-black/60 lg:hidden animate-[fadeIn_180ms_ease-out]"
+        onClick={() => setIsOpen(false)}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="fixed inset-y-0 left-0 z-[1200] w-72 bg-[#161616] p-5 lg:hidden animate-[drawerIn_180ms_ease-out] overflow-y-auto overscroll-contain"
+      >
+        <div className="flex h-full flex-col">
+          <div className="flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2">
+              <Image
+                src="/logo.svg"
+                alt="유노바"
+                width={28}
+                height={28}
+                className="h-7 w-7"
+              />
+            </Link>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              aria-label="메뉴 닫기"
+              className="rounded-lg p-2 hover:bg-white/10"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+
+          {/* 모바일 사이드 메뉴 */}
+          <div className="mt-5">{Nav}</div>
+
+          {/* 회원 정보: 왼쪽 하단 고정 */}
+          <div className="mt-auto pt-6">{Profile}</div>
+        </div>
+      </div>
+    </>
+  ) : null;
+
   return (
     <>
-      {/* 모바일 드로어 */}
-      {isOpen ? (
-        <>
-          <div
-            className="fixed inset-0 z-[1100] bg-black/60 lg:hidden animate-[fadeIn_180ms_ease-out]"
-            onClick={() => setIsOpen(false)}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="fixed inset-y-0 left-0 z-[1200] w-72 bg-[#161616] p-5 lg:hidden animate-[drawerIn_180ms_ease-out] overflow-y-auto overscroll-contain"
-          >
-            <div className="flex h-full flex-col">
-              <div className="flex items-center justify-between">
-                <div />
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  aria-label="메뉴 닫기"
-                  className="rounded-lg p-2 hover:bg-white/10"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* 모바일 사이드 메뉴 */}
-              <div className="mt-5">{Nav}</div>
-
-              {/* 회원 정보: 왼쪽 하단 고정 */}
-              <div className="mt-auto pt-6">{Profile}</div>
-            </div>
-          </div>
-        </>
-      ) : null}
+      {/* 모바일 드로어 - Portal로 body에 렌더링 */}
+      {mounted && mobileDrawer && createPortal(mobileDrawer, document.body)}
 
       {/* 데스크탑 사이드바 */}
       <aside

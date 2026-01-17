@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 
 type User = {
@@ -107,6 +108,7 @@ export default function LandingHeader({
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState<Record<string, boolean>>({});
   const [mobileProfileExpanded, setMobileProfileExpanded] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const sidebar = showMobileMenu ? useSidebarOptional() : null;
   const pathname = usePathname();
   const [rawSearch, setRawSearch] = useState<string>("");
@@ -120,6 +122,11 @@ export default function LandingHeader({
   const hoverSoftBgClass = isLight ? "hover:bg-black/[0.06]" : "hover:bg-white/[0.06]";
   // 모바일 드로어에서 hover 배경색이 "붙어 보이는" 현상 방지
   const mobileNoHoverBgClass = "hover:bg-transparent";
+
+  // Portal 렌더링을 위한 mounted 상태 (SSR 안전)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // `useSearchParams()`는 SSR/프리렌더 단계에서 CSR bail-out + Suspense 요구를 유발할 수 있어,
   // 헤더에서는 window.location.search 기반으로만 사용합니다(메뉴 활성화 표시용).
@@ -597,8 +604,8 @@ export default function LandingHeader({
         </div>
       </div>
 
-      {/* Mobile Drawer (Landing pages) */}
-      {!sidebar && mobileDrawerOpen ? (
+      {/* Mobile Drawer (Landing pages) - Portal로 body에 렌더링 */}
+      {mounted && !sidebar && mobileDrawerOpen && createPortal(
         <>
           <div
             className="fixed inset-0 z-[1100] bg-black/60 lg:hidden animate-[fadeIn_180ms_ease-out]"
@@ -825,8 +832,9 @@ export default function LandingHeader({
               </div>
             </div>
           </div>
-        </>
-      ) : null}
+        </>,
+        document.body
+      )}
     </nav>
   );
 }

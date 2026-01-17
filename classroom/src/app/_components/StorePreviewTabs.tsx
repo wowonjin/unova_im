@@ -84,7 +84,6 @@ function ProductGrid({
     <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-5 sm:gap-y-10">
       {products.map((product, idx) => {
         const eager = eagerCount > 0 && idx < eagerCount;
-        const isDisabled = Boolean(product.isSoldOut);
 
         const Card = (
           <>
@@ -221,17 +220,13 @@ function ProductGrid({
           </>
         );
 
-        return isDisabled ? (
-          <div
+        return (
+          <Link
             key={product.id}
-            className="group cursor-not-allowed"
-            aria-disabled="true"
-            title="준비중인 상품입니다"
+            href={`/store/${product.id}`}
+            className={`group ${product.isSoldOut ? "opacity-90" : ""}`}
+            title={product.isSoldOut ? "준비중인 상품입니다" : undefined}
           >
-            {Card}
-          </div>
-        ) : (
-          <Link key={product.id} href={`/store/${product.id}`} className="group">
             {Card}
           </Link>
         );

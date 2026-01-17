@@ -99,13 +99,36 @@ function createPrismaClient(): PrismaClient {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { PrismaPg } = require("@prisma/adapter-pg");
 
+    const connectionTimeoutMillis = (() => {
+      const raw = process.env.PG_CONNECTION_TIMEOUT_MS;
+      const v = raw ? Number(raw) : NaN;
+      // 기본값은 충분히 여유있게(원격/SSL/슬립 해제 등) 잡되, 무한 대기는 방지
+      return Number.isFinite(v) && v > 0 ? v : 10_000;
+    })();
+
+    const max = (() => {
+      const raw = process.env.PG_POOL_MAX;
+      const v = raw ? Number(raw) : NaN;
+      if (Number.isFinite(v) && v > 0) return v;
+      // dev에서는 동시 요청/핫리로드로 풀이 빠르게 고갈될 수 있어 조금 더 여유있게 둡니다.
+      return process.env.NODE_ENV === "production" ? 10 : 20;
+    })();
+
+    const idleTimeoutMillis = (() => {
+      const raw = process.env.PG_IDLE_TIMEOUT_MS;
+      const v = raw ? Number(raw) : NaN;
+      return Number.isFinite(v) && v > 0 ? v : 30_000;
+    })();
+
     const pool = new Pool({
       connectionString: dbUrl,
       ssl: shouldUsePgSsl(dbUrl) ? { rejectUnauthorized: false } : undefined,
       // DB가 죽어있거나 네트워크가 불안정할 때 "페이지 전환이 10초씩 멈춤"을 유발하는 경우가 있어
       // 연결 시도는 짧게 실패하도록(빠른 폴백/UI 노출) 타임아웃을 둡니다.
       // (단위: ms)
-      connectionTimeoutMillis: 3000,
+      connectionTimeoutMillis,
+      max,
+      idleTimeoutMillis,
     });
     const adapter = new PrismaPg(pool);
     return new PrismaClient({ adapter });

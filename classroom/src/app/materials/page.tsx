@@ -9,6 +9,7 @@ export default async function MaterialsPage() {
   const user = await getCurrentUserOrGuest();
   const now = new Date();
   const TEST_TITLE_MARKER = "T 교재";
+  try {
 
   // ====== NEW IMPLEMENTATION (요청사항: "상품 등록"의 교재 목록 기준으로 노출) ======
   // - "상품 등록"(/admin/textbooks → 새 물품 등록)에서 선택되는 교재 옵션과 동일한 기준:
@@ -74,6 +75,7 @@ export default async function MaterialsPage() {
   // 로그인하지 않으면 교재 목록 비움
   let saleTextbooks: SaleTextbookRow[] = [];
   let enrollments: { courseId: string; endAt: Date; course: { id: string; title: string } }[] = [];
+  let entitlementEndAtISOByTextbookId: Record<string, string> = {};
 
   if (user.isLoggedIn && user.id) {
     // 강좌 첨부파일(기존 기능 유지): 수강중인 강좌 범위
@@ -132,9 +134,17 @@ export default async function MaterialsPage() {
       // 구매(Entitlement)된 판매 상품만
       const entitlements = await prisma.textbookEntitlement.findMany({
         where: { userId: user.id, status: "ACTIVE", endAt: { gt: now } },
-        select: { textbookId: true },
+        select: { textbookId: true, endAt: true },
       });
       const entitledIds = entitlements.map((e) => e.textbookId);
+      // 같은 textbook에 entitlement가 여러 개 있을 수 있으므로 가장 늦은 endAt만 사용
+      entitlementEndAtISOByTextbookId = entitlements.reduce<Record<string, string>>((acc, e) => {
+        if (!e?.textbookId || !e?.endAt) return acc;
+        const iso = e.endAt.toISOString();
+        const prev = acc[e.textbookId];
+        if (!prev || iso > prev) acc[e.textbookId] = iso;
+        return acc;
+      }, {});
       if (entitledIds.length > 0) {
         saleTextbooks = await prisma.textbook.findMany({
           where: {
@@ -249,6 +259,11 @@ export default async function MaterialsPage() {
         id: `${t.id}:${f.fileIndex}`,
         title: mappedTitle || f.label || t.title,
         thumbnailUrl: t.thumbnailUrl,
+        sizeBytes: f.sizeBytes,
+        pageCount: f.pageCount,
+        entitlementDays: t.entitlementDays,
+        entitlementEndAtISO: user.isAdmin ? null : entitlementEndAtISOByTextbookId[t.id] ?? null,
+        createdAtISO: t.createdAt.toISOString(),
         downloadHref: `/api/textbooks/${t.id}/download?file=${f.fileIndex}`,
       };
     });
@@ -375,4 +390,18 @@ export default async function MaterialsPage() {
       )}
     </AppShell>
   );
+  } catch (e) {
+    console.error("[materials] page render failed:", e);
+    return (
+      <AppShell>
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.04]">
+            <span className="material-symbols-outlined text-[32px] text-white/30">cloud_off</span>
+          </div>
+          <p className="mt-4 text-sm font-medium text-white/70">자료를 불러오지 못했습니다</p>
+          <p className="mt-1 text-xs text-white/40">잠시 후 다시 시도해주세요.</p>
+        </div>
+      </AppShell>
+    );
+  }
 }
