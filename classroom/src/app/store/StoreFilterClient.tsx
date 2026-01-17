@@ -334,12 +334,12 @@ export default function StoreFilterClient({
                     >
                     {/* 교재 종류 배지 (교재만) */}
                     {product.type === "textbook" && product.textbookType ? (
-                      <div className="absolute left-2 top-2 z-10">
+                      <div className="absolute left-1 top-1 z-10 sm:left-2 sm:top-2">
                         <span
-                          className={`rounded-md font-semibold text-white backdrop-blur ${
+                          className={`inline-flex max-w-[calc(100%-72px)] items-center truncate rounded-md font-semibold text-white backdrop-blur ${
                             String(product.textbookType).trim().toUpperCase() === "PDF"
                               ? "bg-gradient-to-r from-blue-500 to-purple-500 px-1.5 py-0.5 text-[9px] sm:px-2 sm:py-0.5 sm:text-[10px]"
-                              : "bg-black/70 px-2 py-0.5 text-[10px]"
+                              : "bg-black/70 px-1.5 py-0.5 text-[9px] sm:px-2 sm:py-0.5 sm:text-[10px]"
                           }`}
                         >
                           {product.textbookType}
