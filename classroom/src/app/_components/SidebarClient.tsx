@@ -492,13 +492,13 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
       >
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2 px-3">
               <Image
-                src="/logo.svg"
+                src="/logoheader.png"
                 alt="유노바"
-                width={28}
-                height={28}
-                className="h-7 w-7"
+                width={84}
+                height={20}
+                className="h-5 w-auto max-w-[120px] object-contain"
               />
             </Link>
             <button

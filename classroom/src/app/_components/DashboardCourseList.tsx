@@ -169,7 +169,7 @@ export default function DashboardCourseList({
                   else onSelectCourse?.(en.courseId);
                 }
               }}
-              className={`group relative cursor-pointer overflow-hidden rounded-xl border transition-colors focus:outline-none focus:ring-2 focus:ring-white/10 ${
+              className={`relative cursor-pointer overflow-hidden rounded-xl border transition-colors focus:outline-none focus:ring-2 focus:ring-white/10 ${
                 selected
                   ? "border-white/30 bg-white/10"
                   : "border-white/10 bg-[#1C1C1C] hover:bg-[#232323]"

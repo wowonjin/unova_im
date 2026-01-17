@@ -1,8 +1,11 @@
 "use client";
 
+import { toImageProxyUrl } from "@/lib/image-proxy";
+
 interface ShortcutItem {
   href: string;
   image: string;
+  imageVersion?: string;
   label: string;
   iconClass?: string;
   bgColor?: string | null;
@@ -115,7 +118,7 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={item.image}
+                    src={toImageProxyUrl(item.image, item.imageVersion)}
                     alt={item.label}
                     className={
                       shouldCover

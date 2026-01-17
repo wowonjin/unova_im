@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Badge, Field, Input } from "@/app/_components/ui";
-import TextbookTeacherImageUpload from "./TextbookTeacherImageUpload";
 
 type Props = {
   textbookId: string;
@@ -174,7 +173,27 @@ export default function TextbookBasicInfoClient({
             <div className="flex-1">
               <Input value={teacherName} onChange={(e) => setTeacherName(e.target.value)} placeholder="예: 홍길동" className="bg-transparent" />
             </div>
-            <TextbookTeacherImageUpload textbookId={textbookId} currentImageUrl={teacherImageUrl} />
+            <div
+              className="shrink-0 w-14 h-14 rounded-full overflow-hidden border border-white/10 bg-white/5"
+              aria-label="선생님 프로필 이미지"
+              title="선생님 프로필 이미지(자동)"
+            >
+              {teacherImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={teacherImageUrl} alt="선생님 프로필" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white/35">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                </div>
+              )}
+            </div>
           </div>
         </Field>
         <Field label="과목" hint="스토어에서 과목별 필터링에 사용됩니다.">

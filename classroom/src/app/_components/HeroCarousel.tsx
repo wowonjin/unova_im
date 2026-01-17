@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { toImageProxyUrl } from "@/lib/image-proxy";
 
 interface Slide {
   href: string;
   image: string;
+  imageVersion?: string;
   tag: string;
   title: string;
   subtitle: string;
@@ -345,7 +347,7 @@ export default function HeroCarousel({ slides }: { slides?: Slide[] }) {
                 {/* 이미지 */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={slide.image}
+                  src={toImageProxyUrl(slide.image, slide.imageVersion)}
                   alt={slide.subtitle}
                   className="absolute inset-0 w-full h-full object-cover"
                 />

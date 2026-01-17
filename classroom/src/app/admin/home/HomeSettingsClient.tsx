@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toImageProxyUrl } from "@/lib/image-proxy";
 
 type HomeSlide = {
   id: string;
@@ -12,6 +13,7 @@ type HomeSlide = {
   titleHtml: string;
   subtitle: string | null;
   createdAt: string;
+  updatedAt: string;
 };
 
 type HomeShortcut = {
@@ -23,6 +25,7 @@ type HomeShortcut = {
   linkUrl: string;
   bgColor: string | null;
   createdAt: string;
+  updatedAt: string;
 };
 
 type TabKey = "slides" | "shortcuts";
@@ -429,7 +432,7 @@ export default function HomeSettingsClient() {
                   {/* 이미지 */}
                   <div className="w-full aspect-[16/9] bg-white/[0.05] overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={s.imageUrl} alt="" className="w-full h-full object-cover" />
+                    <img src={toImageProxyUrl(s.imageUrl, s.updatedAt || s.createdAt)} alt="" className="w-full h-full object-cover" />
                   </div>
                   {/* 콘텐츠 */}
                   <div className="flex-1 p-4">
@@ -601,7 +604,11 @@ export default function HomeSettingsClient() {
                       title={s.bgColor || ""}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={s.imageUrl} alt="" className="block w-full h-full object-cover" />
+                      <img
+                        src={toImageProxyUrl(s.imageUrl, s.updatedAt || s.createdAt)}
+                        alt=""
+                        className="block w-full h-full object-cover"
+                      />
                     </div>
                   </div>
                   {/* 콘텐츠 */}

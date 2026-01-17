@@ -54,6 +54,7 @@ export default async function HomePage() {
         .map((s: any) => ({
           href: s.linkUrl || "#",
           image: s.imageUrl,
+          imageVersion: s.updatedAt ? new Date(s.updatedAt).toISOString() : s.createdAt ? new Date(s.createdAt).toISOString() : undefined,
           tag: s.tag || "",
           title: s.titleHtml || "",
           subtitle: s.subtitle || "",
@@ -67,6 +68,7 @@ export default async function HomePage() {
         .map((s: any) => ({
           href: s.linkUrl,
           image: s.imageUrl,
+          imageVersion: s.updatedAt ? new Date(s.updatedAt).toISOString() : s.createdAt ? new Date(s.createdAt).toISOString() : undefined,
           label: s.label,
           bgColor: s.bgColor || null,
         }))

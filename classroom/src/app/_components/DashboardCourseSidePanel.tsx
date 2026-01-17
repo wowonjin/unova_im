@@ -125,11 +125,11 @@ export default function DashboardCourseSidePanel({
 
   return (
     <>
-      {/* Desktop overlay */}
+      {/* Overlay (click to close) */}
       {open ? (
         <div
           // 헤더(z-[1000]) 및 헤더 드롭다운(z-[1300])보다 위로
-          className="fixed inset-0 z-[1390] hidden bg-black/40 lg:block"
+          className="fixed inset-0 z-[1390] bg-black/40"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -137,7 +137,7 @@ export default function DashboardCourseSidePanel({
 
       <aside
         // 헤더(z-[1000]) 및 헤더 드롭다운(z-[1300])보다 위로
-        className={`fixed bottom-0 right-0 top-0 z-[1400] hidden w-[420px] border-l border-white/10 bg-[#1d1d1f] transition-transform duration-200 lg:block ${
+        className={`fixed bottom-0 right-0 top-0 z-[1400] w-[min(420px,100vw)] border-l border-white/10 bg-[#1d1d1f] transition-transform duration-200 ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
         aria-hidden={!open}
