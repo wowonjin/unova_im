@@ -250,6 +250,16 @@ body {
   }
 }
 
+/* 이벤트 배너 높이(모바일/PC) */
+.unova-event-banner-vars {
+  --unova-event-banner-h: 36px; /* mobile */
+}
+@media (min-width: 640px) {
+  .unova-event-banner-vars {
+    --unova-event-banner-h: 44px; /* sm+ */
+  }
+}
+
 /* Hide scrollbar while allowing scroll */
 .scrollbar-hide {
   -ms-overflow-style: none;

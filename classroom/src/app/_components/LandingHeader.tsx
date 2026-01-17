@@ -367,14 +367,15 @@ export default function LandingHeader({
 
   // 스크롤 시 배너 숨김
   const showEventBanner = eventBannerVisible && !scrolled;
-  const eventBannerHeight = showEventBanner ? 44 : 0;
+  // 모바일/PC 높이를 CSS 변수로 관리 (모바일에서 더 낮게)
+  const eventBannerOffset = showEventBanner ? "var(--unova-event-banner-h)" : "0px";
 
   return (
-    <>
+    <div className="unova-event-banner-vars" style={{ ["--unova-event-banner-offset" as any]: eventBannerOffset } as any}>
       {/* ❄️ 겨울 이벤트 배너 - 게임 스타일 */}
       {eventBannerVisible && (
         <div
-          className={`fixed top-0 left-0 right-0 z-[1001] h-11 overflow-hidden transition-all duration-300 ease-out ${
+          className={`fixed top-0 left-0 right-0 z-[1001] h-[var(--unova-event-banner-h)] overflow-hidden transition-all duration-300 ease-out ${
             scrolled ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"
           }`}
           style={{
@@ -447,9 +448,8 @@ export default function LandingHeader({
 
       <nav
         suppressHydrationWarning
-        className="fixed left-0 right-0 z-[1000] transition-all duration-300"
+        className="fixed left-0 right-0 z-[1000] transition-all duration-300 top-[var(--unova-event-banner-offset)]"
         style={{
-          top: eventBannerHeight,
           // 스크롤 시에는 살짝 반투명 + blur
           backgroundColor: scrolled
             ? toRgba(scrolledBackgroundColor ?? backgroundColor, effectiveScrolledOpacity)
@@ -974,13 +974,12 @@ export default function LandingHeader({
         document.body
       )}
     </nav>
-    {/* 배너가 보일 때(스크롤 전)만, 메인 콘텐츠를 아래로 밀어주는 스페이서 */}
-    <div
-      aria-hidden="true"
-      className="transition-[height] duration-300 ease-out"
-      style={{ height: eventBannerHeight }}
-    />
-    </>
+      {/* 배너가 보일 때(스크롤 전)만, 메인 콘텐츠를 아래로 밀어주는 스페이서 */}
+      <div
+        aria-hidden="true"
+        className="transition-[height] duration-300 ease-out h-[var(--unova-event-banner-offset)]"
+      />
+    </div>
   );
 }
 
