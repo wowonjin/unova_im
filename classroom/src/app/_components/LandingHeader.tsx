@@ -442,14 +442,6 @@ export default function LandingHeader({
             </Link>
           </div>
 
-          {/* 하단 글로우 라인 */}
-          <div 
-            className="absolute bottom-0 left-0 right-0 h-[1px]"
-            style={{
-              background: "linear-gradient(90deg, transparent, rgba(147, 197, 253, 0.6), rgba(196, 181, 253, 0.6), rgba(147, 197, 253, 0.6), transparent)",
-            }}
-            aria-hidden="true"
-          />
         </div>
       )}
 
@@ -982,6 +974,12 @@ export default function LandingHeader({
         document.body
       )}
     </nav>
+    {/* 배너가 보일 때(스크롤 전)만, 메인 콘텐츠를 아래로 밀어주는 스페이서 */}
+    <div
+      aria-hidden="true"
+      className="transition-[height] duration-300 ease-out"
+      style={{ height: eventBannerHeight }}
+    />
     </>
   );
 }
