@@ -87,6 +87,7 @@ export default function ShipmentsFiltersClient({
   const pendingScrollYRef = useRef<number | null>(null);
   const autoScrollToResultsRef = useRef(false);
   const didInitStorageRef = useRef(false);
+  const didRestoreFromStorageRef = useRef(false);
 
   const validTextbookIds = useMemo(() => new Set(textbooks.map((t) => t.id)), [textbooks]);
 
@@ -114,15 +115,20 @@ export default function ShipmentsFiltersClient({
 
   // URL에 교재 선택값이 없으면, 저장된 교재 선택값을 자동 복원
   useEffect(() => {
+    if (didRestoreFromStorageRef.current) return;
     const hasTextbooks = Boolean(searchParams.get("textbookIds")) || Boolean(searchParams.get("textbookId"));
     if (hasTextbooks) return;
 
     const stored = readStoredFilters();
     if (!stored) return;
-    if (stored.textbookIds.some((id) => !validTextbookIds.has(id))) return;
+
+    // 저장된 값 중 현재 유효한(노출되는) 상품만 부분 복원
+    const restoredIds = stored.textbookIds.filter((id) => validTextbookIds.has(id)).slice(0, 50);
+    if (restoredIds.length === 0) return;
 
     const merged: Filters = {
       ...stored,
+      textbookIds: restoredIds,
       date: (searchParams.get("date") === "all" ? "all" : stored.date) as "today" | "all",
       shippingFee: searchParams.get("shippingFee") ?? stored.shippingFee,
       freightCode: searchParams.get("freightCode") ?? stored.freightCode,
@@ -132,7 +138,13 @@ export default function ShipmentsFiltersClient({
     setForm(merged);
     const q = buildQuery(merged);
     pendingScrollYRef.current = window.scrollY;
-    router.replace(`${pathname}?${q.toString()}`, { scroll: false });
+
+    const next = q.toString();
+    const cur = searchParams.toString();
+    didRestoreFromStorageRef.current = true;
+    if (next !== cur) {
+      router.replace(`${pathname}?${next}`, { scroll: false });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, router, searchParams, validTextbookIds]);
 
