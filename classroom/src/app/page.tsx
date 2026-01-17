@@ -176,7 +176,7 @@ export default async function HomePage() {
             reviewCount: true,
           },
           orderBy: [{ position: "desc" }, { createdAt: "desc" }],
-          take: 12,
+          take: 200,
         });
         return rows;
       } catch (e) {
@@ -201,7 +201,7 @@ export default async function HomePage() {
             reviewCount: true,
           },
           orderBy: [{ createdAt: "desc" }],
-          take: 12,
+          take: 200,
         });
         return rows;
       }
@@ -232,7 +232,9 @@ export default async function HomePage() {
       tags,
       textbookType: null,
       type: "course" as const,
-      thumbnailUrl: c.thumbnailUrl,
+      // StorePreviewTabs는 썸네일을 항상 /api/.../thumbnail로 가져오므로
+      // 여기서는 "썸네일이 있는지"만 나타내는 작은 값만 유지합니다(베이스64 payload 방지).
+      thumbnailUrl: c.thumbnailUrl ? "__thumb__" : null,
       thumbnailStoredPath: c.thumbnailStoredPath,
       thumbnailUpdatedAtISO: c.updatedAt.toISOString(),
       rating: c.rating,
@@ -254,7 +256,9 @@ export default async function HomePage() {
       tags,
       textbookType: (t as { textbookType?: string | null }).textbookType ?? null,
       type: "textbook" as const,
-      thumbnailUrl: t.thumbnailUrl,
+      // StorePreviewTabs는 썸네일을 항상 /api/.../thumbnail로 가져오므로
+      // 여기서는 "썸네일이 있는지"만 나타내는 작은 값만 유지합니다(베이스64 payload 방지).
+      thumbnailUrl: t.thumbnailUrl ? "__thumb__" : null,
       thumbnailUpdatedAtISO: t.updatedAt.toISOString(),
       rating: t.rating,
       reviewCount: t.reviewCount,
