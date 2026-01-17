@@ -324,9 +324,9 @@ export default async function StorePage({
       <div className="min-h-screen bg-[#161616] text-white flex flex-col">
         <LandingHeader />
 
-        <main className="flex-1 pt-[70px]">
+        <main className="flex-1 pt-[50px] lg:pt-[70px]">
           {/* 페이지 타이틀(필터 버튼 위) */}
-          <section className="mx-auto max-w-6xl px-4 pt-10 pb-6 text-left md:text-center">
+          <section className="mx-auto max-w-6xl px-4 pt-6 pb-4 md:pt-10 md:pb-6 text-left md:text-center">
             <h1 className="text-[22px] md:text-[40px] font-bold tracking-[-0.02em]">
               {pageCopy.title}
             </h1>
@@ -354,7 +354,7 @@ export default async function StorePage({
     return (
       <div className="min-h-screen bg-[#161616] text-white flex flex-col">
         <LandingHeader />
-        <main className="flex-1 pt-[70px]">
+        <main className="flex-1 pt-[50px] lg:pt-[70px]">
           <div className="mx-auto max-w-3xl px-6 py-16">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
               <h1 className="text-xl font-semibold text-white">교재 및 강의 구매</h1>

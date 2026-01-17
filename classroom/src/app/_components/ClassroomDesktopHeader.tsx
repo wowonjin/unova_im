@@ -143,17 +143,16 @@ export default function ClassroomDesktopHeader() {
           ) : (
             <>
               <Link
+                href="/login"
+                className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-transparent px-2 text-[15px] text-white/80 transition-opacity hover:opacity-80"
+              >
+                <span className="hidden sm:inline">로그인</span>
+              </Link>
+              <Link
                 href="/signup"
                 className="hidden rounded-xl px-3 py-2 text-[15px] text-white/80 transition-colors hover:bg-white/[0.06] hover:text-white sm:inline-flex"
               >
                 회원가입
-              </Link>
-              <Link
-                href="/login"
-                className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-transparent px-2 text-[15px] text-white/80 transition-opacity hover:opacity-80"
-              >
-                <span className="material-symbols-outlined login-icon">login</span>
-                <span className="hidden sm:inline">로그인</span>
               </Link>
             </>
           )}

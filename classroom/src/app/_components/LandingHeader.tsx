@@ -109,6 +109,7 @@ export default function LandingHeader({
   const [mobileExpanded, setMobileExpanded] = useState<Record<string, boolean>>({});
   const [mobileProfileExpanded, setMobileProfileExpanded] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [eventBannerVisible] = useState(true);
   const sidebar = showMobileMenu ? useSidebarOptional() : null;
   const pathname = usePathname();
   const [rawSearch, setRawSearch] = useState<string>("");
@@ -364,20 +365,108 @@ export default function LandingHeader({
   };
 
 
+  // 스크롤 시 배너 숨김
+  const showEventBanner = eventBannerVisible && !scrolled;
+  const eventBannerHeight = showEventBanner ? 44 : 0;
+
   return (
-    <nav
-      suppressHydrationWarning
-      className="fixed top-0 left-0 right-0 z-[1000] transition-colors duration-300"
-      style={{
-        // 스크롤 시에는 살짝 반투명 + blur
-        backgroundColor: scrolled
-          ? toRgba(scrolledBackgroundColor ?? backgroundColor, effectiveScrolledOpacity)
-          : overlayOnDesktop && isDesktop
-            ? "transparent"
-            : topBackgroundColor ?? backgroundColor,
-        backdropFilter: scrolled ? "blur(12px)" : "none",
-      }}
-    >
+    <>
+      {/* ❄️ 겨울 이벤트 배너 - 게임 스타일 */}
+      {eventBannerVisible && (
+        <div
+          className={`fixed top-0 left-0 right-0 z-[1001] h-11 overflow-hidden transition-all duration-300 ease-out ${
+            scrolled ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"
+          }`}
+          style={{
+            background: "linear-gradient(90deg, #0f172a 0%, #1e3a5f 25%, #312e81 50%, #4c1d95 75%, #1e3a5f 100%)",
+            backgroundSize: "200% 100%",
+            animation: "gradientShift 8s ease infinite",
+          }}
+        >
+          {/* 눈 내리는 효과 */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+            {[...Array(12)].map((_, i) => (
+              <span
+                key={i}
+                className="absolute text-white/40 animate-[snowfall_linear_infinite]"
+                style={{
+                  left: `${8 + i * 8}%`,
+                  top: "-10px",
+                  fontSize: `${6 + (i % 3) * 2}px`,
+                  animationDuration: `${3 + (i % 4)}s`,
+                  animationDelay: `${i * 0.3}s`,
+                }}
+              >
+                ❄
+              </span>
+            ))}
+          </div>
+
+          {/* 반짝이는 별 효과 */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+            {[...Array(6)].map((_, i) => (
+              <span
+                key={i}
+                className="absolute w-1 h-1 rounded-full bg-white animate-[twinkle_ease-in-out_infinite]"
+                style={{
+                  left: `${10 + i * 15}%`,
+                  top: `${20 + (i % 3) * 20}%`,
+                  animationDuration: `${1.5 + (i % 3) * 0.5}s`,
+                  animationDelay: `${i * 0.2}s`,
+                }}
+              />
+            ))}
+          </div>
+
+          {/* 메인 콘텐츠 */}
+          <div className="relative mx-auto flex h-full max-w-6xl items-center justify-center px-4">
+            <Link
+              href="https://unova.co.kr/store/cmkfcr810002a3uip4c8d2gzb"
+              className="group flex items-center"
+            >
+              {/* 텍스트 - 글로우 + 그라데이션 */}
+              <span className="flex items-center gap-1.5 text-[12px] sm:text-[14px] font-bold tracking-wide">
+                <span aria-hidden="true">🎁</span>
+                <span 
+                  className="text-transparent bg-clip-text"
+                  style={{
+                    backgroundImage: "linear-gradient(90deg, #e0f2fe, #ffffff, #c4b5fd, #ffffff, #e0f2fe)",
+                    backgroundSize: "200% auto",
+                    animation: "shimmer 3s linear infinite",
+                    filter: "drop-shadow(0 0 8px rgba(255,255,255,0.5))",
+                  }}
+                >
+                  겨울방학 필수 암기 숙어집 무료 다운로드!
+                </span>
+              </span>
+            </Link>
+          </div>
+
+          {/* 하단 글로우 라인 */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 h-[1px]"
+            style={{
+              background: "linear-gradient(90deg, transparent, rgba(147, 197, 253, 0.6), rgba(196, 181, 253, 0.6), rgba(147, 197, 253, 0.6), transparent)",
+            }}
+            aria-hidden="true"
+          />
+        </div>
+      )}
+
+      <nav
+        suppressHydrationWarning
+        className="fixed left-0 right-0 z-[1000] transition-all duration-300"
+        style={{
+          top: eventBannerHeight,
+          // 스크롤 시에는 살짝 반투명 + blur
+          backgroundColor: scrolled
+            ? toRgba(scrolledBackgroundColor ?? backgroundColor, effectiveScrolledOpacity)
+            : overlayOnDesktop && isDesktop
+              ? "transparent"
+              : topBackgroundColor ?? backgroundColor,
+          backdropFilter: scrolled ? "blur(12px)" : "none",
+        }}
+      >
       <div
         className={
           edgeToEdge
@@ -579,24 +668,34 @@ export default function LandingHeader({
               // 비로그인 상태
               <>
             <Link
-                  href="/signup"
-                  className={`hidden sm:inline-flex text-[16px] ${fgClass} ${isLight ? "hover:text-black/80" : "hover:text-white/80"} transition-colors`}
-            >
-              회원가입
-            </Link>
-            <Link
                   href="/login"
-                  className={`flex items-center gap-1.5 px-4 py-2 text-[15px] ${fgClass} transition-all ${isLight ? "hover:text-black/80" : "hover:text-white/80"}`}
+                  className={`flex items-center gap-1.5 pl-4 pr-2 py-2 text-[15px] ${fgClass} transition-all ${isLight ? "hover:text-black/80" : "hover:text-white/80"}`}
             >
                   <span 
-                    className="material-symbols-outlined login-icon"
+                    className="material-symbols-outlined login-icon sm:!hidden"
                     style={{ 
+                      fontSize: "18px",
                       fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20"
                     }}
                   >
                     login
                   </span>
                   <span className="hidden sm:inline">로그인</span>
+            </Link>
+            <Link
+                  href="/signup"
+                  className="hidden sm:inline-flex items-center gap-2 rounded-full bg-[#FEE500] px-4 py-2 text-[14px] font-bold text-black transition-[filter,transform] hover:brightness-95 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[#161616]"
+            >
+              <span className="inline-flex h-5 w-5 items-center justify-center" aria-hidden="true">
+                {/* 카카오 아이콘(검정) */}
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M12 4.5c-4.42 0-8 2.74-8 6.12 0 2.2 1.55 4.12 3.94 5.18-.17.6-.62 2.18-.71 2.55-.11.45.16.44.33.33.13-.09 2.1-1.44 2.94-2.02.48.07.98.1 1.5.1 4.42 0 8-2.74 8-6.12S16.42 4.5 12 4.5Z"
+                    fill="#000000"
+                  />
+                </svg>
+              </span>
+              1초 회원가입
             </Link>
               </>
             )}
@@ -618,7 +717,7 @@ export default function LandingHeader({
             style={{ backgroundColor }}
           >
             <div className="flex h-full flex-col">
-              <div className="flex items-center">
+              <div className="flex items-center justify-between">
                 <Link href="/" className="inline-flex items-center" onClick={closeMenu}>
                   <Image
                     src="/logoheader.png"
@@ -630,14 +729,28 @@ export default function LandingHeader({
                     style={{ width: "auto", ...(isLight ? { filter: "brightness(0)" } : {}) }}
                   />
                 </Link>
+                <button
+                  type="button"
+                  onClick={closeMenu}
+                  aria-label="메뉴 닫기"
+                  className={`-mr-0.5 inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                    isLight
+                      ? "text-black/70 hover:bg-black/[0.06] hover:text-black focus-visible:ring-black/40 ring-offset-white"
+                      : "text-white/75 hover:bg-white/[0.08] hover:text-white focus-visible:ring-white/40 ring-offset-[#161616]"
+                  }`}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: "20px" }} aria-hidden="true">
+                    close
+                  </span>
+                </button>
               </div>
 
               {/* 모바일 사이드 메뉴: 좌우 여백 제거(컨테이너가 드로어 끝까지 붙도록) */}
-              <nav className="mt-6 -mx-5 space-y-1 text-sm">
+              <nav className="mt-4 -mx-5 space-y-0.5 text-[13px]">
                 {mergedMenuItems.map((item) => (
                   <div key={`mobile-${item.label}`} className="w-full">
                     <div
-                      className={`flex w-full items-center justify-between px-5 py-2 transition-colors ${mobileNoHoverBgClass} ${
+                      className={`flex w-full items-center justify-between px-5 py-1.5 transition-colors ${mobileNoHoverBgClass} ${
                         isActiveHref(item.href) ? `${fgClass} font-semibold` : fgSubtleClass
                       }`}
                     >
@@ -659,12 +772,12 @@ export default function LandingHeader({
                             e.stopPropagation();
                             toggleMobileSubmenu(item.label);
                           }}
-                          className="ml-2 rounded-md p-1.5"
+                            className="ml-2 rounded-md p-1"
                         >
                           <span
                             className={`material-symbols-outlined ${isLight ? "text-black/60" : "text-white/70"} transition-transform duration-200`}
                             style={{
-                              fontSize: "18px",
+                                fontSize: "18px",
                               transform: mobileExpanded[item.label] ? "rotate(180deg)" : "rotate(0deg)",
                             }}
                             aria-hidden="true"
@@ -674,18 +787,14 @@ export default function LandingHeader({
                         </button>
                       ) : (
                         // 서브메뉴가 없는 항목도 우측 영역 폭을 맞춰 높이/간격이 들쭉날쭉해 보이지 않게 함
-                        <span className="ml-2 h-8 w-8" aria-hidden="true" />
+                          <span className="ml-2 h-6 w-6" aria-hidden="true" />
                       )}
                     </div>
 
-                    {item.subItems ? (
-                      <div
-                        className={`overflow-hidden px-5 transition-[max-height,opacity] duration-200 ease-out ${
-                          mobileExpanded[item.label] ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-                        }`}
-                      >
-                        {/* 서브메뉴 컨테이너(테두리/배경 박스) 제거: 링크들만 바로 노출 */}
-                        <div className="mt-1 space-y-0.5 pl-3 pb-0.5">
+                    {item.subItems && mobileExpanded[item.label] ? (
+                      <div className="px-5">
+                        {/* 서브메뉴: 클릭 즉시 표시(애니메이션 제거) + 메인 메뉴와 동일한 줄간격 */}
+                        <div className="mt-0.5 space-y-0.5 pl-3 pb-0.5">
                           {item.subItems.map((sub) => (
                             <Link
                               key={`mobile-sub-${sub.label}`}
@@ -722,7 +831,7 @@ export default function LandingHeader({
                 ) : null}
               </nav>
 
-              <div className={`mt-auto pt-6 ${user ? `border-t ${isLight ? "border-black/10" : "border-white/10"}` : ""}`}>
+              <div className={`mt-auto pt-4 ${user ? `border-t ${isLight ? "border-black/10" : "border-white/10"}` : ""}`}>
                 {loading ? (
                   <div className="h-10" />
                 ) : user ? (
@@ -804,25 +913,62 @@ export default function LandingHeader({
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    <Link
-                      href="/signup"
-                      onClick={closeMenu}
-                      className={`rounded-xl px-3 py-2.5 text-center text-[14px] font-semibold transition-colors border ${
-                        isLight
-                          ? "text-black/80 border-black/15 bg-black/[0.04] hover:bg-black/[0.07]"
-                          : "text-white/85 border-white/15 bg-white/[0.06] hover:bg-white/[0.10]"
-                      }`}
-                    >
-                      회원가입
-                    </Link>
+                  <div className="flex items-end justify-center gap-2 text-[14px]">
+                    {/* 회원가입 + 말풍선(회원가입 바로 위에 고정) */}
+                    <div className="flex flex-col items-center">
+                      <Link
+                        href="/login"
+                        onClick={closeMenu}
+                        className="animate-[gentleBounce_2s_ease-in-out_infinite] group -mb-0.5"
+                        aria-label="카카오로 1초 로그인"
+                      >
+                        <div className="relative whitespace-nowrap rounded-full bg-[#FEE500] px-3 py-1.5 text-[12px] font-bold leading-none text-[#3C1E1E] shadow-md transition-transform group-hover:scale-105">
+                          <span className="inline-flex items-center gap-1.5">
+                            {/* 카카오 아이콘(노란 버튼 안) */}
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              aria-hidden="true"
+                              className="h-4 w-4"
+                            >
+                              <path
+                                d="M12 4.5c-4.42 0-8 2.74-8 6.12 0 2.2 1.55 4.12 3.94 5.18-.17.6-.62 2.18-.71 2.55-.11.45.16.44.33.33.13-.09 2.1-1.44 2.94-2.02.48.07.98.1 1.5.1 4.42 0 8-2.74 8-6.12S16.42 4.5 12 4.5Z"
+                                fill="#3C1E1E"
+                              />
+                            </svg>
+                            1초 만에 시작
+                          </span>
+                          {/* 말풍선 꼬리(삼각형): 회원가입 중앙을 향하도록 */}
+                          <span
+                            className="absolute left-1/2 -bottom-1.5 -translate-x-1/2 border-x-[5px] border-t-[5px] border-x-transparent border-t-[#FEE500]"
+                            aria-hidden="true"
+                          />
+                        </div>
+                      </Link>
+                      <Link
+                        href="/signup"
+                        onClick={closeMenu}
+                        className={`px-1 py-1.5 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                          isLight
+                            ? "text-black/80 hover:text-black focus-visible:ring-black/40 ring-offset-white"
+                            : "text-white/80 hover:text-white focus-visible:ring-white/40 ring-offset-[#161616]"
+                        }`}
+                      >
+                        1초 회원가입
+                      </Link>
+                    </div>
+                    <span className={`${isLight ? "text-black/25" : "text-white/25"}`} aria-hidden="true">
+                      ·
+                    </span>
                     <Link
                       href="/login"
                       onClick={closeMenu}
-                      className={`rounded-xl px-3 py-2.5 text-center text-[14px] font-bold transition-all shadow-sm ${
+                      className={`px-1 py-1.5 font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
                         isLight
-                          ? "bg-black text-white hover:bg-black/90"
-                          : "bg-white text-black hover:bg-white/90"
+                          ? "text-black hover:text-black/80 focus-visible:ring-black/40 ring-offset-white"
+                          : "text-white hover:text-white/90 focus-visible:ring-white/40 ring-offset-[#161616]"
                       }`}
                     >
                       로그인
@@ -836,6 +982,7 @@ export default function LandingHeader({
         document.body
       )}
     </nav>
+    </>
   );
 }
 

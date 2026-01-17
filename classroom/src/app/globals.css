@@ -175,6 +175,81 @@ body {
   animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
 
+/* 말풍선 부드러운 바운스 애니메이션 */
+@keyframes gentleBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* 이벤트 배너 슬라이드 다운 애니메이션 */
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 🎮 게임 스타일 이벤트 배너 애니메이션 */
+
+/* 그라데이션 배경 움직임 */
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* 눈 내리는 효과 */
+@keyframes snowfall {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(50px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* 별 반짝임 효과 */
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* 텍스트 shimmer 효과 */
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
 /* Hide scrollbar while allowing scroll */
 .scrollbar-hide {
   -ms-overflow-style: none;
