@@ -905,7 +905,7 @@ function StorePreviewSections({
         </div>
 
         {suneungTextbookSubjects.length > 1 ? (
-          <div className="mt-2 md:mt-8">
+          <div className="mt-2 md:mt-4">
             {/* 모바일: 탭 메뉴 스타일 */}
             <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
               {suneungTextbookSubjects.map((subject) => {
