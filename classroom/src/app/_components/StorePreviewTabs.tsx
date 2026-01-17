@@ -29,6 +29,15 @@ type TypeLabel = (typeof types)[number];
 type Variant = "tabs" | "sections";
 type SectionsMode = "home" | "simple";
 
+type BookFormat = "전체" | "실물책" | "전자책";
+const BOOK_FORMATS: BookFormat[] = ["전체", "실물책", "전자책"];
+
+function normalizeTextbookType(v: string | null | undefined): string {
+  return String(v ?? "")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+}
+
 function getThumbnailSrc(product: StorePreviewProduct): string | null {
   if (!product.thumbnailUrl && !(product.type === "course" && product.thumbnailStoredPath)) return null;
 
@@ -613,6 +622,7 @@ function StorePreviewSections({
   const [selectedFreeTextbookSubject, setSelectedFreeTextbookSubject] = useState<string>("전체");
   const [selectedSuneungTextbookSubject, setSelectedSuneungTextbookSubject] = useState<string>("전체");
   const [selectedTransferTextbookSubject, setSelectedTransferTextbookSubject] = useState<string>("전체");
+  const [selectedSuneungBookFormat, setSelectedSuneungBookFormat] = useState<BookFormat>("전체");
 
   const courseSubjects = useMemo(() => {
     // 홈 "강의 구매하기" 과목 탭 순서(요청 반영)
@@ -633,13 +643,23 @@ function StorePreviewSections({
     const paid = textbooks.filter((p) => !p.isFree);
     const allowedPaid = paid.filter((p) => subjectAllow.has(p.subject));
 
-    const source = allowedPaid.length > 0 ? allowedPaid : paid; // 폴백: 유료 교재 전체
+    const baseSource = allowedPaid.length > 0 ? allowedPaid : paid; // 폴백: 유료 교재 전체
+    const source =
+      selectedSuneungBookFormat === "전체"
+        ? baseSource
+        : baseSource.filter((p) => {
+            const tt = normalizeTextbookType(p.textbookType);
+            if (selectedSuneungBookFormat === "전자책") return tt === "PDF";
+            // 실물책: 현재 운영 표기(실물책+PDF)만 포함
+            return tt === normalizeTextbookType("실물책+PDF");
+          });
+
     const subjectSet = new Set(source.map((p) => p.subject).filter(Boolean));
 
     const ordered = preferred.filter((s) => s === "전체" || subjectSet.has(s));
     const other = Array.from(subjectSet).filter((s) => !preferred.includes(s));
     return [...ordered, ...other];
-  }, [textbooks]);
+  }, [selectedSuneungBookFormat, textbooks]);
 
   const freeTextbooks = useMemo(() => {
     return textbooks.filter((p) => Boolean(p.isFree));
@@ -680,8 +700,14 @@ function StorePreviewSections({
     const paid = textbooks.filter((p) => !p.isFree);
     const filtered = paid.filter((p) => subjectAllow.has(p.subject));
     // 폴백: 수능 과목으로 분류된 교재가 0개면, 유료 교재를 그대로 보여준다(섹션이 빈 화면으로 보이는 문제 방지)
-    return filtered.length > 0 ? filtered : paid;
-  }, [textbooks]);
+    const baseSource = filtered.length > 0 ? filtered : paid;
+    if (selectedSuneungBookFormat === "전체") return baseSource;
+    return baseSource.filter((p) => {
+      const tt = normalizeTextbookType(p.textbookType);
+      if (selectedSuneungBookFormat === "전자책") return tt === "PDF";
+      return tt === normalizeTextbookType("실물책+PDF");
+    });
+  }, [selectedSuneungBookFormat, textbooks]);
 
   const transferTextbooks = useMemo(() => {
     const subjectAllow = new Set(["미적분학", "대학물리학"]);
@@ -713,6 +739,11 @@ function StorePreviewSections({
     if (selectedSuneungTextbookSubject === "전체") return;
     if (!suneungTextbookSubjects.includes(selectedSuneungTextbookSubject)) setSelectedSuneungTextbookSubject("전체");
   }, [selectedSuneungTextbookSubject, suneungTextbookSubjects]);
+
+  // 수능 교재 "실물책/전자책" 선택이 바뀌면, 과목 탭도 안전하게 리셋
+  useEffect(() => {
+    setSelectedSuneungTextbookSubject("전체");
+  }, [selectedSuneungBookFormat]);
 
   useEffect(() => {
     if (selectedTransferTextbookSubject === "전체") return;
@@ -846,6 +877,33 @@ function StorePreviewSections({
         ) : null}
 
         <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">수능 교재 구매하기</h2>
+        {/* 전자책/실물책 필터 (과목 탭 위) */}
+        <div className="mt-3 md:mt-6">
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {BOOK_FORMATS.map((fmt) => {
+              const active = selectedSuneungBookFormat === fmt;
+              return (
+                <button
+                  key={`suneung-bookfmt-${fmt}`}
+                  type="button"
+                  onClick={() => setSelectedSuneungBookFormat((prev) => (prev === fmt ? "전체" : fmt))}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors border ${
+                    active
+                      ? "bg-white text-black border-white"
+                      : "bg-white/[0.06] text-white/70 border-white/10 hover:bg-white/[0.09] hover:text-white"
+                  }`}
+                  aria-pressed={active}
+                >
+                  {fmt}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[12px] text-white/40">
+            실물책: <span className="text-white/60">실물책+PDF</span> · 전자책: <span className="text-white/60">PDF</span>
+          </p>
+        </div>
+
         {suneungTextbookSubjects.length > 1 ? (
           <div className="mt-2 md:mt-8">
             {/* 모바일: 탭 메뉴 스타일 */}
