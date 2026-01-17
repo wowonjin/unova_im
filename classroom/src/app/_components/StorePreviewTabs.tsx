@@ -876,36 +876,40 @@ function StorePreviewSections({
           </div>
         ) : null}
 
-        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">수능 교재 구매하기</h2>
-        {/* 전자책/실물책 필터 (과목 탭 위) */}
-        <div className="mt-3 md:mt-6">
-          {/* 과목 탭과 동일한 탭 메뉴(underline) 스타일 */}
-          <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
-            {BOOK_FORMATS.map((fmt) => {
-              const active = selectedSuneungBookFormat === fmt;
-              return (
-                <button
-                  key={`suneung-bookfmt-${fmt}`}
-                  type="button"
-                  onClick={() => setSelectedSuneungBookFormat((prev) => (prev === fmt ? "전체" : fmt))}
-                  role="tab"
-                  aria-selected={active}
-                  className={`relative shrink-0 px-1 py-2 text-[13px] md:text-[15px] font-semibold ${
-                    active ? "text-white" : "text-white/55"
-                  }`}
-                >
-                  {fmt}
-                  {active ? (
-                    <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                  ) : null}
-                </button>
-              );
-            })}
+        <div className={freeTextbooks.length > 0 ? "mt-10 md:mt-16" : ""}>
+          <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">수능 교재 구매하기</h2>
+          {/* 전자책/실물책 필터 (과목 탭 위) */}
+          <div className="mt-3 md:mt-6">
+            {/* 과목 탭과 동일한 탭 메뉴(underline) 스타일 */}
+            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+              {BOOK_FORMATS.map((fmt) => {
+                const active = selectedSuneungBookFormat === fmt;
+                return (
+                  <button
+                    key={`suneung-bookfmt-${fmt}`}
+                    type="button"
+                    onClick={() => setSelectedSuneungBookFormat((prev) => (prev === fmt ? "전체" : fmt))}
+                    role="tab"
+                    aria-selected={active}
+                    className={`relative shrink-0 px-1 py-2 text-[13px] md:text-[15px] font-semibold ${
+                      active ? "text-white" : "text-white/55"
+                    }`}
+                  >
+                    {fmt}
+                    {active ? (
+                      <span
+                        className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white"
+                        aria-hidden="true"
+                      />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
 
-        {suneungTextbookSubjects.length > 1 ? (
-          <div className="mt-2 md:mt-4">
+          {suneungTextbookSubjects.length > 1 ? (
+            <div className="mt-2 md:mt-4">
             {/* 모바일: 탭 메뉴 스타일 */}
             <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
               {suneungTextbookSubjects.map((subject) => {
@@ -953,14 +957,15 @@ function StorePreviewSections({
               })}
             </div>
           </div>
-        ) : null}
-        <div className="mt-6">
-          <ExpandableProductGrid
-            products={filteredSuneungTextbooks}
-            emptyLabel="등록된 교재 상품이 없습니다"
-            collapsedRows={3}
-            eagerCount={8}
-          />
+          ) : null}
+          <div className="mt-6">
+            <ExpandableProductGrid
+              products={filteredSuneungTextbooks}
+              emptyLabel="등록된 교재 상품이 없습니다"
+              collapsedRows={3}
+              eagerCount={8}
+            />
+          </div>
         </div>
 
         <div className="mt-14 md:mt-16">
