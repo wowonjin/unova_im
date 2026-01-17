@@ -879,9 +879,10 @@ function StorePreviewSections({
         <div className={freeTextbooks.length > 0 ? "mt-10 md:mt-16" : ""}>
           <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">수능 교재 구매하기</h2>
           {/* 전자책/실물책 필터 (과목 탭 위) */}
-          <div className="mt-1 md:mt-6">
+          {/* 다른 섹션(과목 탭)과 동일하게, 제목 아래 여백을 충분히 둡니다 */}
+          <div className="mt-4 md:mt-6">
             {/* 과목 탭과 동일한 탭 메뉴(underline) 스타일 */}
-            <div className="flex gap-3 md:gap-4 overflow-x-auto border-b border-white/10 pb-1.5 md:pb-2 scrollbar-hide">
+            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
               {BOOK_FORMATS.map((fmt) => {
                 const active = selectedSuneungBookFormat === fmt;
                 return (
@@ -891,14 +892,14 @@ function StorePreviewSections({
                     onClick={() => setSelectedSuneungBookFormat((prev) => (prev === fmt ? "전체" : fmt))}
                     role="tab"
                     aria-selected={active}
-                    className={`relative shrink-0 px-0.5 py-1 text-[12px] md:px-1 md:py-2 md:text-[15px] font-semibold ${
+                    className={`relative shrink-0 px-1 py-2 text-[13px] md:px-1 md:py-2 md:text-[15px] font-semibold ${
                       active ? "text-white" : "text-white/55"
                     }`}
                   >
                     {fmt}
                     {active ? (
                       <span
-                        className="absolute left-0 right-0 -bottom-1 md:-bottom-2 h-[2px] rounded-full bg-white"
+                        className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white"
                         aria-hidden="true"
                       />
                     ) : null}
