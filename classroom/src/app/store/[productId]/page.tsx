@@ -73,12 +73,12 @@ export async function generateMetadata({
 
   try {
     // 1) 강의 먼저 탐색 (slug 또는 id)
-    const courseBaseWhere = {
+    const courseBaseWhere: Prisma.CourseWhereInput = {
       OR: [{ slug: productId }, { id: productId }],
       isPublished: true,
-    } as const;
-    const courseWhere = storeOwnerEmail
-      ? ({ ...courseBaseWhere, owner: { email: storeOwnerEmail } } as const)
+    };
+    const courseWhere: Prisma.CourseWhereInput = storeOwnerEmail
+      ? { ...courseBaseWhere, owner: { email: storeOwnerEmail } }
       : courseBaseWhere;
 
     let course = await prisma.course.findFirst({
@@ -123,12 +123,12 @@ export async function generateMetadata({
     }
 
     // 2) 교재 탐색
-    const textbookBaseWhere = {
+    const textbookBaseWhere: Prisma.TextbookWhereInput = {
       OR: [{ id: productId }],
       isPublished: true,
-    } as const;
-    const textbookWhere = storeOwnerEmail
-      ? ({ ...textbookBaseWhere, owner: { email: storeOwnerEmail } } as const)
+    };
+    const textbookWhere: Prisma.TextbookWhereInput = storeOwnerEmail
+      ? { ...textbookBaseWhere, owner: { email: storeOwnerEmail } }
       : textbookBaseWhere;
 
     let textbook = await prisma.textbook.findFirst({
@@ -267,12 +267,12 @@ export default async function ProductDetailPage({
 
   try {
     // 먼저 DB에서 강좌를 찾기 (slug 또는 id)
-    const courseBaseWhere = {
+    const courseBaseWhere: Prisma.CourseWhereInput = {
       OR: [{ slug: productId }, { id: productId }],
       isPublished: true,
-    } as const;
-    const courseWhere = storeOwnerEmail
-      ? ({ ...courseBaseWhere, owner: { email: storeOwnerEmail } } as const)
+    };
+    const courseWhere: Prisma.CourseWhereInput = storeOwnerEmail
+      ? { ...courseBaseWhere, owner: { email: storeOwnerEmail } }
       : courseBaseWhere;
 
     dbCourse = await prisma.course.findFirst({
@@ -301,12 +301,12 @@ export default async function ProductDetailPage({
     // DB 교재 검색
     if (!dbCourse) {
       try {
-        const textbookBaseWhere = {
+        const textbookBaseWhere: Prisma.TextbookWhereInput = {
           OR: [{ id: productId }],
           isPublished: true,
-        } as const;
-        const textbookWhere = storeOwnerEmail
-          ? ({ ...textbookBaseWhere, owner: { email: storeOwnerEmail } } as const)
+        };
+        const textbookWhere: Prisma.TextbookWhereInput = storeOwnerEmail
+          ? { ...textbookBaseWhere, owner: { email: storeOwnerEmail } }
           : textbookBaseWhere;
 
         dbTextbook = await prisma.textbook.findFirst({
@@ -372,12 +372,12 @@ export default async function ProductDetailPage({
         console.warn("[store/product] textbook query failed with full select. Falling back to minimal select.");
         // 최소 select에서도 teacherImageUrl은 가져오되, (운영 환경 등) 컬럼이 없는 경우에는 한 번 더 폴백합니다.
         try {
-          const textbookBaseWhere = {
+          const textbookBaseWhere: Prisma.TextbookWhereInput = {
             OR: [{ id: productId }],
             isPublished: true,
-          } as const;
-          const textbookWhere = storeOwnerEmail
-            ? ({ ...textbookBaseWhere, owner: { email: storeOwnerEmail } } as const)
+          };
+          const textbookWhere: Prisma.TextbookWhereInput = storeOwnerEmail
+            ? { ...textbookBaseWhere, owner: { email: storeOwnerEmail } }
             : textbookBaseWhere;
 
           dbTextbook = await prisma.textbook.findFirst({
@@ -433,12 +433,12 @@ export default async function ProductDetailPage({
         } catch {
           // teacherImageUrl 컬럼이 없는 환경(레거시/마이그레이션 누락)에서는
           // select에서 teacherImageUrl을 뺀 뒤, 결과에 null을 보정해서 타입을 맞춥니다.
-          const textbookBaseWhere = {
+          const textbookBaseWhere: Prisma.TextbookWhereInput = {
             OR: [{ id: productId }],
             isPublished: true,
-          } as const;
-          const textbookWhere = storeOwnerEmail
-            ? ({ ...textbookBaseWhere, owner: { email: storeOwnerEmail } } as const)
+          };
+          const textbookWhere: Prisma.TextbookWhereInput = storeOwnerEmail
+            ? { ...textbookBaseWhere, owner: { email: storeOwnerEmail } }
             : textbookBaseWhere;
 
           let minimal = await prisma.textbook.findFirst({
@@ -660,9 +660,13 @@ export default async function ProductDetailPage({
       if (selectedTextbookIds !== null) {
         bundleTextbooks = selectedTextbookIds.length
           ? await prisma.textbook.findMany({
-              where: storeOwnerEmail
-                ? ({ isPublished: true, owner: { email: storeOwnerEmail }, id: { in: selectedTextbookIds } } as const)
-                : ({ isPublished: true, id: { in: selectedTextbookIds } } as const),
+              where: (storeOwnerEmail
+                ? {
+                    isPublished: true,
+                    owner: { email: storeOwnerEmail },
+                    id: { in: selectedTextbookIds },
+                  }
+                : { isPublished: true, id: { in: selectedTextbookIds } }) satisfies Prisma.TextbookWhereInput,
               orderBy: { createdAt: "desc" },
               select: {
                 id: true,
@@ -685,9 +689,13 @@ export default async function ProductDetailPage({
       if (selectedCourseIds !== null) {
         addonCourses = selectedCourseIds.length
           ? await prisma.course.findMany({
-              where: storeOwnerEmail
-                ? ({ isPublished: true, owner: { email: storeOwnerEmail }, id: { in: selectedCourseIds } } as const)
-                : ({ isPublished: true, id: { in: selectedCourseIds } } as const),
+              where: (storeOwnerEmail
+                ? {
+                    isPublished: true,
+                    owner: { email: storeOwnerEmail },
+                    id: { in: selectedCourseIds },
+                  }
+                : { isPublished: true, id: { in: selectedCourseIds } }) satisfies Prisma.CourseWhereInput,
               orderBy: { createdAt: "desc" },
               select: {
                 id: true,

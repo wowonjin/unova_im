@@ -49,10 +49,10 @@ const getCachedCoursesForStore = unstable_cache(
     // "강좌 판매하기"에서 판매 설정된 강좌만 노출:
     // - 공개(isPublished)
     // - 판매가/정가 중 하나라도 설정된 항목만
-    const where = {
+    const where: Prisma.CourseWhereInput = {
       isPublished: true,
       OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-    } as const;
+    };
 
     const rows = await prisma.course.findMany({
       where,
@@ -96,11 +96,11 @@ const getCachedTextbooksForStore = unstable_cache(
     // - 1차: position desc -> createdAt desc
     // - 폴백: (운영 환경에서 position 컬럼 누락 등) createdAt desc
     try {
-      const baseWhere = {
+      const baseWhere: Prisma.TextbookWhereInput = {
         isPublished: true,
         // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
         OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-      } as const;
+      };
       const where = baseWhere;
 
       let rows = await prisma.textbook.findMany({
@@ -130,11 +130,11 @@ const getCachedTextbooksForStore = unstable_cache(
       });
     } catch (e) {
       console.error("[store] textbooks query failed with position order, fallback to createdAt:", e);
-      const baseWhere = {
+      const baseWhere: Prisma.TextbookWhereInput = {
         isPublished: true,
         // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
         OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-      } as const;
+      };
       const where = baseWhere;
 
       let rows = await prisma.textbook.findMany({

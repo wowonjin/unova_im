@@ -149,11 +149,11 @@ export default async function HomePage() {
       return rows;
     })();
 
-    const baseTextbookWhere = {
+    const baseTextbookWhere: Prisma.TextbookWhereInput = {
       isPublished: true,
       // /store(책 구매 페이지)와 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
       OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-    } as const;
+    };
     const textbookWhere = baseTextbookWhere;
 
     const textbooksPromise = (async () => {
