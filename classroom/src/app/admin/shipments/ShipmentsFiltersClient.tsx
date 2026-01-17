@@ -85,6 +85,7 @@ export default function ShipmentsFiltersClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const pendingScrollYRef = useRef<number | null>(null);
+  const autoScrollToResultsRef = useRef(false);
 
   const validTextbookIds = useMemo(() => new Set(textbooks.map((t) => t.id)), [textbooks]);
 
@@ -136,6 +137,18 @@ export default function ShipmentsFiltersClient({
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         window.scrollTo(0, y);
+      });
+    });
+  }, [searchParams]);
+
+  // 상품 선택 시: 자동으로 "택배 내역" 영역으로 이동
+  useEffect(() => {
+    if (!autoScrollToResultsRef.current) return;
+    autoScrollToResultsRef.current = false;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById("shipments-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     });
   }, [searchParams]);
@@ -290,8 +303,11 @@ export default function ShipmentsFiltersClient({
                               const nextChecked = e.target.checked;
                               setForm((prev) => {
                                 const cur = new Set(prev.textbookIds);
-                                if (nextChecked) cur.add(t.id);
-                                else cur.delete(t.id);
+                                // 요구사항: 상품 선택을 취소(언체크)해도 체크가 유지되도록 (해제는 '선택 해제' 버튼만)
+                                if (nextChecked) {
+                                  cur.add(t.id);
+                                  autoScrollToResultsRef.current = true;
+                                }
                                 return { ...prev, textbookIds: Array.from(cur) };
                               });
                             }}

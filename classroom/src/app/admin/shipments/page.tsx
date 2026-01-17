@@ -267,7 +267,7 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
         />
 
         {/* 테이블 영역 */}
-        <div className="mt-6">
+        <div id="shipments-results" className="mt-6 scroll-mt-24">
           {selectedIds.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-white/10 bg-transparent p-12 text-center">
               <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
@@ -281,16 +281,20 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
               </p>
             </div>
           ) : rows.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-transparent p-12 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
-                <span className="material-symbols-outlined text-white/20" style={{ fontSize: "32px" }}>
-                  inbox
-                </span>
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-white/25" style={{ fontSize: "18px" }}>
+                    inbox
+                  </span>
+                </div>
+                <div>
+                  <p className="text-[13px] font-medium text-white/70">주문이 없습니다</p>
+                  <p className="text-[12px] text-white/40 mt-0.5">
+                    선택한 상품에 해당하는 {dateFilter === "today" ? "오늘 " : ""}주문이 없습니다
+                  </p>
+                </div>
               </div>
-              <p className="text-[15px] font-medium text-white/70">주문이 없습니다</p>
-              <p className="text-[13px] text-white/40 mt-1">
-                선택한 상품에 해당하는 {dateFilter === "today" ? "오늘" : ""} 주문이 없습니다
-              </p>
             </div>
           ) : (
             <div className="rounded-2xl border border-white/[0.08] overflow-hidden bg-transparent">
