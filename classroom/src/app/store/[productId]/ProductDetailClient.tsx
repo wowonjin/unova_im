@@ -1590,7 +1590,7 @@ export default function ProductDetailClient({
             <section>
               
               {/* 요약 + CTA */}
-              <div className="mb-6 rounded-2xl border border-white/10 p-5">
+              <div className={`mb-6 rounded-2xl p-5 ${isSimpleReviewUi ? "" : "border border-white/10"}`}>
                 <div className="flex flex-col gap-4">
                   <div className="flex items-start gap-4">
                     <div
