@@ -3055,7 +3055,16 @@ export default function ProductDetailClient({
               )}
 
               <div className="grid gap-4 sm:grid-cols-[1fr_220px]">
-                <div className="hidden sm:block" />
+                {/* 작성자 표시: 데스크톱에서 평점 왼쪽 영역 */}
+                <div className="hidden sm:block">
+                  <p className="text-[12px] font-medium text-white/60">작성자</p>
+                  <p className="mt-2 text-[13px] font-semibold text-white/80">
+                    {meUser?.email || "—"}
+                  </p>
+                  {meUser?.name ? (
+                    <p className="mt-1 text-[11px] text-white/40">{meUser.name}</p>
+                  ) : null}
+                </div>
                 <div>
                   <label className="block text-[12px] font-medium text-white/60">평점</label>
                   <div className="mt-2 flex items-center justify-between rounded-xl border border-white/10 px-4 py-3">
