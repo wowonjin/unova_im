@@ -47,6 +47,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
         userId: true,
         teacherReply: true,
         teacherReplyAt: true,
+        teacherReplyIsSecret: true,
       },
     });
 
@@ -82,7 +83,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
       }
     }
 
-    const normalized = reviews.map((r) => ({
+    const normalized = reviews.map((r) => {
+      const isSecret = Boolean((r as any).teacherReplyIsSecret);
+      const canViewTeacherReply = Boolean(viewerUserId) && Boolean(r.userId) && r.userId === viewerUserId;
+      const shouldMask = isSecret && !canViewTeacherReply;
+      return {
       id: r.id,
       name: r.authorName,
       rating: r.rating,
@@ -92,9 +97,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
       createdAtISO: r.createdAt.toISOString(),
       userId: r.userId,
       helpfulCount: helpfulCountByReviewId.get(r.id) ?? 0,
-      teacherReply: r.teacherReply ?? null,
-      teacherReplyAtISO: r.teacherReplyAt ? r.teacherReplyAt.toISOString() : null,
-    }));
+      teacherReplyIsSecret: isSecret,
+      canViewTeacherReply,
+      teacherReply: shouldMask ? null : (r.teacherReply ?? null),
+      teacherReplyAtISO: shouldMask ? null : (r.teacherReplyAt ? r.teacherReplyAt.toISOString() : null),
+      };
+    });
 
     let filtered = normalized;
     if (photoOnly) {
@@ -165,6 +173,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
       isVerifiedBuyer: r.userId ? verifiedBuyerIds.has(r.userId) : false,
       teacherReply: r.teacherReply,
       teacherReplyAtISO: r.teacherReplyAtISO,
+      teacherReplyIsSecret: r.teacherReplyIsSecret,
+      canViewTeacherReply: r.canViewTeacherReply,
     }));
 
     if (verifiedOnly) {

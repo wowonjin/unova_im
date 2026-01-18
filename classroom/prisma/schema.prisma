@@ -527,6 +527,7 @@ model Review {
   // 선생님 답글
   teacherReply   String?
   teacherReplyAt DateTime?
+  teacherReplyIsSecret Boolean @default(false) // 비밀 답글 여부 (작성자만 확인)
   isApproved  Boolean     @default(true) // 관리자 승인 여부
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt

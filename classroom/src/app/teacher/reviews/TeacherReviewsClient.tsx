@@ -14,6 +14,7 @@ export type TeacherReviewItem = {
   productTitle: string;
   teacherReply: string | null;
   teacherReplyAtISO: string | null;
+  teacherReplyIsSecret: boolean;
 };
 
 export default function TeacherReviewsClient({ reviews }: { reviews: TeacherReviewItem[] }) {
@@ -21,6 +22,7 @@ export default function TeacherReviewsClient({ reviews }: { reviews: TeacherRevi
   const [filter, setFilter] = useState<"all" | "unanswered">("all");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [draftSecret, setDraftSecret] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const counts = useMemo(() => {
@@ -36,11 +38,13 @@ export default function TeacherReviewsClient({ reviews }: { reviews: TeacherRevi
   const openEditor = (r: TeacherReviewItem) => {
     setEditingId(r.id);
     setDraft(r.teacherReply ?? "");
+    setDraftSecret(Boolean(r.teacherReplyIsSecret));
   };
 
   const closeEditor = () => {
     setEditingId(null);
     setDraft("");
+    setDraftSecret(false);
   };
 
   const saveReply = async (reviewId: string) => {
@@ -50,7 +54,7 @@ export default function TeacherReviewsClient({ reviews }: { reviews: TeacherRevi
       const res = await fetch(`/api/teacher/reviews/${reviewId}/reply`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ reply: body }),
+        body: JSON.stringify({ reply: body, isSecret: draftSecret }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || `HTTP_${res.status}`);
@@ -99,7 +103,14 @@ export default function TeacherReviewsClient({ reviews }: { reviews: TeacherRevi
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone="muted">{r.productType}</Badge>
                       <p className="truncate text-sm font-semibold text-white/90">{r.productTitle}</p>
-                      {hasReply ? <Badge tone="success">답변 완료</Badge> : <Badge tone="neutral">미답변</Badge>}
+                      {hasReply ? (
+                        <>
+                          <Badge tone="success">답변 완료</Badge>
+                          {r.teacherReplyIsSecret ? <Badge tone="muted">비밀</Badge> : null}
+                        </>
+                      ) : (
+                        <Badge tone="neutral">미답변</Badge>
+                      )}
                     </div>
                     <p className="mt-1 text-xs text-white/45">
                       {dateText} · {r.authorName} · {r.rating}점
@@ -146,6 +157,17 @@ export default function TeacherReviewsClient({ reviews }: { reviews: TeacherRevi
 
                 {isEditing ? (
                   <div className="mt-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        id={`secret-${r.id}`}
+                        type="checkbox"
+                        checked={draftSecret}
+                        onChange={(e) => setDraftSecret(e.target.checked)}
+                      />
+                      <label htmlFor={`secret-${r.id}`} className="text-xs text-white/70">
+                        비밀 답글 (작성자만 확인)
+                      </label>
+                    </div>
                     <Field label="답글">
                       <Textarea
                         value={draft}

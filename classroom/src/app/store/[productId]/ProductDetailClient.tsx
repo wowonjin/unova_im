@@ -28,6 +28,8 @@ type Review = {
   isVerifiedBuyer?: boolean;
   teacherReply?: string | null;
   teacherReplyAtISO?: string | null;
+  teacherReplyIsSecret?: boolean;
+  canViewTeacherReply?: boolean;
 };
 
 type ReviewSummary = {
@@ -256,7 +258,6 @@ export default function ProductDetailClient({
   const [reviewKeyword, setReviewKeyword] = useState<string | null>(null);
   const [isReporting, setIsReporting] = useState(false);
   const [reportToast, setReportToast] = useState<string | null>(null);
-  const [reviewFormName, setReviewFormName] = useState("");
   const [reviewFormRating, setReviewFormRating] = useState(5);
   const [reviewFormContent, setReviewFormContent] = useState("");
   const [reviewFormImages, setReviewFormImages] = useState<File[]>([]);
@@ -266,6 +267,7 @@ export default function ProductDetailClient({
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewSuccess, setReviewSuccess] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [meUser, setMeUser] = useState<{ id: string; email: string; name: string | null } | null>(null);
   const [isReviewWriteModalOpen, setIsReviewWriteModalOpen] = useState(false);
   const reviewCounts = useMemo(() => {
     return Array.isArray(reviewSummary.ratingCounts) && reviewSummary.ratingCounts.length === 5
@@ -381,7 +383,6 @@ export default function ProductDetailClient({
   }, [reviewImagePreviews]);
 
   const resetReviewDraft = () => {
-    setReviewFormName("");
     setReviewFormRating(5);
     setReviewFormContent("");
     setReviewFormImages([]);
@@ -395,6 +396,13 @@ export default function ProductDetailClient({
   };
 
   const openReviewWriteModal = () => {
+    // 로그인 필수
+    if (!meUser && typeof window !== "undefined") {
+      alert("후기 작성은 로그인 후 가능합니다.");
+      const redirect = `${window.location.pathname}${window.location.search}`;
+      window.location.assign(`/login?redirect=${encodeURIComponent(redirect)}&error=unauthorized`);
+      return;
+    }
     setReviewError(null);
     setIsReviewWriteModalOpen(true);
   };
@@ -776,9 +784,16 @@ export default function ProductDetailClient({
       try {
         const res = await fetch("/api/me", { cache: "no-store" });
         const data = await res.json().catch(() => null);
-        if (res.ok && data?.ok) setIsAdmin(Boolean(data.user?.isAdmin));
+        if (res.ok && data?.ok) {
+          setIsAdmin(Boolean(data.user?.isAdmin));
+          setMeUser(data.user ? { id: data.user.id, email: data.user.email, name: data.user.name ?? null } : null);
+        } else {
+          setIsAdmin(false);
+          setMeUser(null);
+        }
       } catch {
-        // ignore
+        setIsAdmin(false);
+        setMeUser(null);
       }
     };
     fetchMe();
@@ -821,10 +836,6 @@ export default function ProductDetailClient({
 
   // 후기 제출
   const handleSubmitReview = async () => {
-    if (!reviewFormName.trim()) {
-      setReviewError("이름을 입력해주세요.");
-      return;
-    }
     if (!reviewFormContent.trim()) {
       setReviewError("후기 내용을 입력해주세요.");
       return;
@@ -855,7 +866,6 @@ export default function ProductDetailClient({
         body: JSON.stringify({
           productType: product.type === "course" ? "COURSE" : "TEXTBOOK",
           productId: product.id,
-          authorName: reviewFormName.trim(),
           rating: reviewFormRating,
           content: reviewFormContent.trim(),
           imageUrls,
@@ -868,7 +878,6 @@ export default function ProductDetailClient({
       }
       
       // 성공 시 폼 초기화 및 후기 목록 새로고침
-      setReviewFormName("");
       setReviewFormRating(5);
       setReviewFormContent("");
       setReviewFormImages([]);
@@ -2100,6 +2109,19 @@ export default function ProductDetailClient({
                             </div>
                             <p className="mt-1 text-[13px] text-white/80 whitespace-pre-line">{review.teacherReply}</p>
                           </div>
+                        ) : review.teacherReplyIsSecret ? (
+                          <div className="mt-3 ml-12 border-l border-white/10 pl-4">
+                            <div className="flex flex-wrap items-center gap-2 text-[12px] text-white/55">
+                              <span className="font-semibold text-white/75">{reviewTeacherDisplayName}</span>
+                              <span className="text-white/30">·</span>
+                              <span>비밀 답글</span>
+                            </div>
+                            <p className="mt-1 text-[13px] text-white/55">
+                              {review.canViewTeacherReply
+                                ? "비밀 답글입니다. (표시 권한 있음)"
+                                : "비밀 답글입니다. 작성자만 확인할 수 있어요. (로그인 필요)"}
+                            </p>
+                          </div>
                         ) : null}
                         {isLong && (
                           <button
@@ -3033,16 +3055,7 @@ export default function ProductDetailClient({
               )}
 
               <div className="grid gap-4 sm:grid-cols-[1fr_220px]">
-                <div>
-                  <label className="block text-[12px] font-medium text-white/60">작성자</label>
-                  <input
-                    type="text"
-                    value={reviewFormName}
-                    onChange={(e) => setReviewFormName(e.target.value)}
-                    placeholder="닉네임을 입력하세요"
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-transparent px-4 py-3 text-[14px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/25"
-                  />
-                </div>
+                <div className="hidden sm:block" />
                 <div>
                   <label className="block text-[12px] font-medium text-white/60">평점</label>
                   <div className="mt-2 flex items-center justify-between rounded-xl border border-white/10 px-4 py-3">

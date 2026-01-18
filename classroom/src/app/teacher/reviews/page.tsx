@@ -65,6 +65,7 @@ export default async function TeacherReviewsPage() {
       createdAt: true,
       teacherReply: true,
       teacherReplyAt: true,
+      teacherReplyIsSecret: true,
       course: { select: { id: true, title: true, teacherName: true, ownerId: true } },
       textbook: { select: { id: true, title: true, teacherName: true, ownerId: true } },
     },
@@ -90,6 +91,7 @@ export default async function TeacherReviewsPage() {
         createdAt: true,
         teacherReply: true,
         teacherReplyAt: true,
+        teacherReplyIsSecret: true,
         course: { select: { id: true, title: true, teacherName: true, ownerId: true } },
         textbook: { select: { id: true, title: true, teacherName: true, ownerId: true } },
       },
@@ -110,6 +112,7 @@ export default async function TeacherReviewsPage() {
       productTitle,
       teacherReply: r.teacherReply ?? null,
       teacherReplyAtISO: r.teacherReplyAt ? r.teacherReplyAt.toISOString() : null,
+      teacherReplyIsSecret: Boolean((r as any).teacherReplyIsSecret),
     };
   });
 

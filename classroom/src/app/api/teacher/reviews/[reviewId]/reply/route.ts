@@ -11,6 +11,7 @@ const ParamsSchema = z.object({
 
 const BodySchema = z.object({
   reply: z.string(),
+  isSecret: z.boolean().optional(),
 });
 
 export async function PUT(req: Request, ctx: { params: Promise<{ reviewId: string }> }) {
@@ -27,7 +28,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ reviewId: strin
 
     const { reviewId } = ParamsSchema.parse(await ctx.params);
     const json = await req.json().catch(() => null);
-    const { reply } = BodySchema.parse(json ?? {});
+    const { reply, isSecret } = BodySchema.parse(json ?? {});
     const replyTrim = reply.trim();
 
     const review = await prisma.review.findUnique({
@@ -62,6 +63,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ reviewId: strin
       data: {
         teacherReply: replyTrim.length > 0 ? replyTrim : null,
         teacherReplyAt: replyTrim.length > 0 ? new Date() : null,
+        teacherReplyIsSecret: replyTrim.length > 0 ? Boolean(isSecret) : false,
       },
       select: { id: true },
     });

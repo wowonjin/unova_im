@@ -8,13 +8,12 @@ export const runtime = "nodejs";
 const CreateSchema = z.object({
   productType: z.enum(["COURSE", "TEXTBOOK"]),
   productId: z.string().min(1),
-  authorName: z.string().min(1).max(50),
   rating: z.number().int().min(1).max(5),
   content: z.string().min(1).max(2000),
   imageUrls: z.array(z.string()).optional(),
 });
 
-// POST: 후기 작성 (로그인 불필요)
+// POST: 후기 작성 (로그인 필수)
 export async function POST(req: Request) {
   const json = await req.json().catch(() => null);
   if (!json) {
@@ -26,7 +25,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "VALIDATION_ERROR", details: parsed.error.issues }, { status: 400 });
   }
 
-  const { productType, productId, authorName, rating, content, imageUrls } = parsed.data;
+  const { productType, productId, rating, content, imageUrls } = parsed.data;
 
   // 상품 존재 확인
   if (productType === "COURSE") {
@@ -41,9 +40,16 @@ export async function POST(req: Request) {
     }
   }
 
-  // 현재 로그인한 사용자가 있으면 userId 연결
+  // 로그인 필수: 작성자는 로그인 계정과 연동
   const user = await getCurrentUser();
-  const userId = user?.id || null;
+  if (!user) {
+    return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+  }
+  const userId = user.id;
+  const authorName =
+    (user.name || "").trim() ||
+    String(user.email || "").split("@")[0] ||
+    "사용자";
 
   const review = await prisma.review.create({
     data: {

@@ -77,11 +77,15 @@ CREATE TABLE IF NOT EXISTS "Review" (
   "imageUrls" JSONB,
   "teacherReply" TEXT,
   "teacherReplyAt" TIMESTAMP(3),
+  "teacherReplyIsSecret" BOOLEAN NOT NULL DEFAULT false,
   "isApproved" BOOLEAN NOT NULL DEFAULT true,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "Review_pkey" PRIMARY KEY ("id")
 );
+
+-- existing DBs may miss newer columns
+ALTER TABLE "Review" ADD COLUMN IF NOT EXISTS "teacherReplyIsSecret" BOOLEAN NOT NULL DEFAULT false;
 
 CREATE INDEX IF NOT EXISTS "Review_courseId_createdAt_idx" ON "Review" ("courseId", "createdAt");
 CREATE INDEX IF NOT EXISTS "Review_textbookId_createdAt_idx" ON "Review" ("textbookId", "createdAt");
