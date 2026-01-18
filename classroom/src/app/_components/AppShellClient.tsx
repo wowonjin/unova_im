@@ -17,9 +17,9 @@ export default function AppShellClient({ children, sidebar, floatingButton }: Pr
   const pathname = usePathname();
   // 나의 강의실 전체 배경색: #161616
   const bgClass = "bg-[#161616]";
-  // 관리자 페이지에서는 헤더 표시
-  const isAdminPage = pathname?.startsWith("/admin");
-  const showMobileHeader = !isAdminPage;
+  // 스태프(관리자/선생님) 영역에서는 LandingHeader를 고정 헤더로 사용
+  const isStaffPage = pathname?.startsWith("/admin") || pathname?.startsWith("/teacher");
+  const showMobileHeader = !isStaffPage;
 
   // "나의 강의실" PC 전용 헤더: 대시보드 섹션에만 노출
   const isClassroomSection =
@@ -37,7 +37,7 @@ export default function AppShellClient({ children, sidebar, floatingButton }: Pr
       <ClassroomSearchProvider>
         <div className={`min-h-screen ${bgClass} text-white flex flex-col`}>
           {/* 헤더 */}
-          {isAdminPage ? (
+          {isStaffPage ? (
             <LandingHeader edgeToEdge />
           ) : (
             <>
@@ -53,7 +53,7 @@ export default function AppShellClient({ children, sidebar, floatingButton }: Pr
           {/* 메인 콘텐츠 영역 */}
           <div
             className={`flex flex-1 ${
-              isAdminPage
+              isStaffPage
                 ? "pt-[70px]"
                 : showMobileHeader
                   ? isClassroomSection
@@ -64,8 +64,8 @@ export default function AppShellClient({ children, sidebar, floatingButton }: Pr
           >
             {sidebar}
             <main
-              className={`flex-1 pb-6 ${isAdminPage ? "admin-wide" : ""} ${
-                isAdminPage
+              className={`flex-1 pb-6 ${isStaffPage ? "admin-wide" : ""} ${
+                isStaffPage
                   ? // 관리자: 헤더(LandingHeader)의 px-4 기준선과 메인 영역 좌/우 끝을 맞춤
                     // 헤더가 edge-to-edge로 확장되므로 메인도 좌/우 여백 제거
                     "pl-0 pr-4 pt-4 md:pr-6 md:py-6 lg:pt-6"

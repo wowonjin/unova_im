@@ -16,6 +16,7 @@ type Props = {
   displayName: string;
   avatarUrl: string | null;
   isAdmin: boolean;
+  isTeacher: boolean;
   isLoggedIn: boolean;
   showAllCourses?: boolean;
   enrolledCourses: {
@@ -59,13 +60,13 @@ function ProgressRing({ percent }: { percent: number }) {
 
 function NavItem({ href, label, icon }: { href: string; label: string; icon?: string }) {
   const pathname = usePathname();
-  const isAdminArea = pathname?.startsWith("/admin");
+  const isStaffArea = pathname?.startsWith("/admin") || pathname?.startsWith("/teacher");
   const activeBase = pathname === href || (href !== "/" && pathname?.startsWith(href + "/"));
   // "수강중인 강좌"는 대시보드뿐 아니라 강좌/강의(lesson) 상세로 들어가도 계속 활성화로 보이게 처리
   const active =
     activeBase ||
     (href === "/dashboard" && (pathname?.startsWith("/course/") || pathname?.startsWith("/lesson/")));
-  const cls = isAdminArea
+  const cls = isStaffArea
     ? active
       ? "flex items-center gap-2 rounded-lg px-3 py-2 bg-transparent hover:bg-transparent text-white"
       : "flex items-center gap-2 rounded-lg px-3 py-2 bg-transparent hover:bg-transparent text-white/70 hover:text-white"
@@ -91,9 +92,11 @@ function NavItem({ href, label, icon }: { href: string; label: string; icon?: st
   );
 }
 
-export default function SidebarClient({ email, userId, displayName, avatarUrl, isAdmin, isLoggedIn, showAllCourses, enrolledCourses }: Props) {
+export default function SidebarClient({ email, userId, displayName, avatarUrl, isAdmin, isTeacher, isLoggedIn, showAllCourses, enrolledCourses }: Props) {
   const pathname = usePathname();
   const isAdminArea = pathname?.startsWith("/admin");
+  const isTeacherArea = pathname?.startsWith("/teacher");
+  const isStaffArea = isAdminArea || isTeacherArea;
   const { isOpen, setIsOpen, isDesktopSidebarCollapsed } = useSidebar();
   const [showLogout, setShowLogout] = useState(false);
   const [recentFallback, setRecentFallback] = useState<Props["enrolledCourses"]>([]);
@@ -381,25 +384,46 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
 
   const Nav = (
     <nav className="space-y-1 text-sm">
-      {/* 관리자 페이지에서는 관리 메뉴만 표시 */}
-      {isAdminArea ? (
+      {/* 스태프 영역: 관리자/선생님 메뉴 */}
+      {isStaffArea ? (
         <>
-          <NavItem href="/admin" label="관리자 대시보드" icon="dashboard" />
-          <div className="mt-4">
-          <p className="px-3 text-xs font-semibold text-white/60">관리</p>
-          <div className="mt-2 space-y-1">
-              <NavItem href="/admin/home" label="메인페이지 설정" icon="tune" />
-              <NavItem href="/admin/textbooks/register" label="교재 등록" icon="add_circle" />
-              <NavItem href="/admin/textbooks" label="교재 판매하기" icon="menu_book" />
-              <NavItem href="/admin/courses" label="강좌 판매하기" icon="video_library" />
-              <NavItem href="/admin/members" label="회원 관리" icon="group" />
-              <NavItem href="/admin/orders" label="주문 관리" icon="receipt_long" />
-              <NavItem href="/admin/shipments" label="택배 관리" icon="local_shipping" />
-              <NavItem href="/admin/popups" label="팝업 관리" icon="web_asset" />
-              <NavItem href="/admin/reviews" label="후기 관리" icon="rate_review" />
-              <NavItem href="/admin/teachers" label="선생님 관리" icon="badge" />
-            </div>
-          </div>
+          {isAdminArea ? (
+            <>
+              <NavItem href="/admin" label="관리자 대시보드" icon="dashboard" />
+              <div className="mt-4">
+                <p className="px-3 text-xs font-semibold text-white/60">관리</p>
+                <div className="mt-2 space-y-1">
+                  <NavItem href="/admin/home" label="메인페이지 설정" icon="tune" />
+                  <NavItem href="/admin/textbooks/register" label="교재 등록" icon="add_circle" />
+                  <NavItem href="/admin/textbooks" label="교재 판매하기" icon="menu_book" />
+                  <NavItem href="/admin/courses" label="강좌 판매하기" icon="video_library" />
+                  <NavItem href="/admin/members" label="회원 관리" icon="group" />
+                  <NavItem href="/admin/orders" label="주문 관리" icon="receipt_long" />
+                  <NavItem href="/admin/shipments" label="택배 관리" icon="local_shipping" />
+                  <NavItem href="/admin/popups" label="팝업 관리" icon="web_asset" />
+                  <NavItem href="/admin/reviews" label="후기 관리" icon="rate_review" />
+                  <NavItem href="/admin/teachers" label="선생님 관리" icon="badge" />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <NavItem href="/teacher" label="선생님 대시보드" icon="dashboard" />
+              <div className="mt-4">
+                <p className="px-3 text-xs font-semibold text-white/60">내 스토어</p>
+                <div className="mt-2 space-y-1">
+                  <NavItem href="/teacher/products" label="내 상품" icon="inventory_2" />
+                  <NavItem href="/teacher/reviews" label="내 리뷰" icon="rate_review" />
+                  <NavItem href="/teacher/sales" label="매출" icon="bar_chart" />
+                </div>
+              </div>
+              {!isTeacher ? (
+                <p className="mt-3 px-3 text-xs text-amber-200/80">
+                  이 계정은 아직 선생님 계정으로 연결되지 않았습니다.
+                </p>
+              ) : null}
+            </>
+          )}
         </>
       ) : (
         <>

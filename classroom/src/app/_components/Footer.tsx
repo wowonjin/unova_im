@@ -192,7 +192,7 @@ export default function Footer() {
             {/* PC 버전 - 한 줄로 표시 */}
             <div className="hidden md:block">
               <p>
-                상호 : 유노바 · 대표 : 장진우 · 개인정보책임관리자 : 장진우 · 사업자등록번호 : 259-40-01233 · <a href="https://www.ftc.go.kr/bizCommPop.do?wrkr_no=2594001233" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">사업자정보확인</a> · 소재지 : 서울특별시 강남구 학동로 24길 20, 4층 402호 a411 · TEL : 050-6678-6390
+                상호 : 유노바 · 대표 : 장진우 · 개인정보책임관리자 : 장진우 · 사업자등록번호 : 259-40-01233 · 소재지 : 서울특별시 강남구 학동로 24길 20, 4층 402호 a411 · TEL : 050-6678-6390
               </p>
               <p className="mt-1">
                 이메일 : unova.team.cs@gmail.com · 운영시간 : 평일 13:00~21:00, 토요일 13:00~18:00, 일요일 휴무 · 통신판매업 신고번호 : 2024-서울강남-06080
@@ -200,20 +200,9 @@ export default function Footer() {
             </div>
             {/* 모바일 버전 - 세로 배열 */}
             <div className="md:hidden space-y-1.5">
-              <p>상호 : 유노바</p>
-              <p>대표 : 장진우</p>
+              <p>상호 : 유노바 · 대표 : 장진우</p>
               <p>개인정보책임관리자 : 장진우</p>
-              <p>
-                사업자등록번호 : 259-40-01233 ·{" "}
-                <a
-                  href="https://www.ftc.go.kr/bizCommPop.do?wrkr_no=2594001233"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-white"
-                >
-                  사업자정보확인
-                </a>
-              </p>
+              <p>사업자등록번호 : 259-40-01233</p>
               <p>소재지 : 서울특별시 강남구 학동로 24길 20, 4층 402호 a411</p>
               <p>TEL : 050-6678-6390</p>
               <p>이메일 : unova.team.cs@gmail.com</p>

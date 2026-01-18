@@ -10,6 +10,22 @@ export default async function Sidebar() {
   const email = user.email || "guest";
   const showAllCourses = isAllCoursesTestModeFromAllParam(null);
 
+  // 선생님(계정) 여부: Teacher.accountUserId == user.id
+  // (Teacher 테이블/컬럼은 배포 환경에서 마이그레이션 누락이 있을 수 있어 raw로 보강)
+  let isTeacher = false;
+  if (user.id) {
+    try {
+      await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "accountUserId" TEXT;');
+      const rows = (await prisma.$queryRawUnsafe(
+        'SELECT "id" FROM "Teacher" WHERE "accountUserId" = $1 LIMIT 1',
+        user.id
+      )) as any[];
+      isTeacher = Array.isArray(rows) && rows.length > 0;
+    } catch {
+      isTeacher = false;
+    }
+  }
+
   // DB에서 추가 정보 조회 (name, profileImageUrl, imwebMemberCode)
   const dbUser = user.id
     ? await prisma.user.findUnique({
@@ -94,6 +110,7 @@ export default async function Sidebar() {
       displayName={displayName}
       avatarUrl={avatarUrl}
       isAdmin={user.isAdmin}
+      isTeacher={isTeacher}
       isLoggedIn={isLoggedIn}
       showAllCourses={showAllCourses}
       enrolledCourses={recentEnrolledCourses}

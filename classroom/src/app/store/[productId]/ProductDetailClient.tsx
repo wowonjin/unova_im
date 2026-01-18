@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 
 type Lesson = {
   title: string;
@@ -23,6 +23,17 @@ type Review = {
   date: string;
   content: string;
   imageUrls?: string[];
+  helpfulCount?: number;
+  isHelpful?: boolean;
+  isVerifiedBuyer?: boolean;
+};
+
+type ReviewSummary = {
+  totalCount: number;
+  averageRating: number;
+  ratingCounts: number[];
+  photoCount: number;
+  verifiedCount: number;
 };
 
 type ProductData = {
@@ -225,16 +236,188 @@ export default function ProductDetailClient({
   // 후기 관련 상태
   const [reviews, setReviews] = useState<Review[]>(product.reviews);
   const [reviewCount, setReviewCount] = useState(product.reviewCount);
-  const [averageRating, setAverageRating] = useState(product.rating);
+  const [averageRating, setAverageRating] = useState(product.rating ?? 0);
+  const [reviewSummary, setReviewSummary] = useState<ReviewSummary>({
+    totalCount: product.reviewCount ?? 0,
+    averageRating: product.rating ?? 0,
+    ratingCounts: [0, 0, 0, 0, 0],
+    photoCount: 0,
+    verifiedCount: 0,
+  });
+  const [reviewSort, setReviewSort] = useState<"latest" | "rating" | "helpful">("latest");
+  const [reviewPhotoOnly, setReviewPhotoOnly] = useState(false);
+  const [reviewVerifiedOnly, setReviewVerifiedOnly] = useState(false);
+  const [visibleReviewCount, setVisibleReviewCount] = useState(10);
+  const [visiblePhotoCount, setVisiblePhotoCount] = useState(24);
+  const [photoModalUrl, setPhotoModalUrl] = useState<string | null>(null);
+  const [reportTargetId, setReportTargetId] = useState<string | null>(null);
+  const [reviewKeyword, setReviewKeyword] = useState<string | null>(null);
+  const [isReporting, setIsReporting] = useState(false);
+  const [reportToast, setReportToast] = useState<string | null>(null);
   const [reviewFormName, setReviewFormName] = useState("");
   const [reviewFormRating, setReviewFormRating] = useState(5);
   const [reviewFormContent, setReviewFormContent] = useState("");
   const [reviewFormImages, setReviewFormImages] = useState<File[]>([]);
   const [reviewImagePreviews, setReviewImagePreviews] = useState<string[]>([]);
+  const reviewImagePreviewsRef = useRef<string[]>([]);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewSuccess, setReviewSuccess] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isReviewWriteModalOpen, setIsReviewWriteModalOpen] = useState(false);
+  const reviewCounts = useMemo(() => {
+    return Array.isArray(reviewSummary.ratingCounts) && reviewSummary.ratingCounts.length === 5
+      ? reviewSummary.ratingCounts
+      : [0, 0, 0, 0, 0];
+  }, [reviewSummary.ratingCounts]);
+  const totalReviews = reviewSummary.totalCount ?? reviewCount;
+  const photoReviews = useMemo(() => {
+    return reviews.filter((r) => (r.imageUrls ?? []).length > 0);
+  }, [reviews]);
+  const photoUrls = useMemo(() => {
+    const urls: string[] = [];
+    for (const r of photoReviews) {
+      for (const u of r.imageUrls ?? []) {
+        if (typeof u === "string" && u.trim()) urls.push(u);
+      }
+    }
+    return urls;
+  }, [photoReviews]);
+  const bestReviews = useMemo(() => {
+    return [...reviews]
+      .sort((a, b) => {
+        const helpfulDiff = (b.helpfulCount ?? 0) - (a.helpfulCount ?? 0);
+        if (helpfulDiff !== 0) return helpfulDiff;
+        const ratingDiff = b.rating - a.rating;
+        if (ratingDiff !== 0) return ratingDiff;
+        return b.date.localeCompare(a.date);
+      })
+      .slice(0, 3);
+  }, [reviews]);
+
+  const featuredReviews = useMemo(() => {
+    // 네이버 느낌: 구매자/도움돼요 우선 + 평점 보조
+    const sorted = [...reviews].sort((a, b) => {
+      const vb = Number(Boolean(b.isVerifiedBuyer)) - Number(Boolean(a.isVerifiedBuyer));
+      if (vb !== 0) return vb;
+      const helpfulDiff = (b.helpfulCount ?? 0) - (a.helpfulCount ?? 0);
+      if (helpfulDiff !== 0) return helpfulDiff;
+      const ratingDiff = b.rating - a.rating;
+      if (ratingDiff !== 0) return ratingDiff;
+      return b.date.localeCompare(a.date);
+    });
+    return sorted.slice(0, 2);
+  }, [reviews]);
+  const featuredIds = useMemo(() => new Set(featuredReviews.map((r) => r.id)), [featuredReviews]);
+
+  const keywordStats = useMemo(() => {
+    const STOP = new Set([
+      "그",
+      "이",
+      "저",
+      "것",
+      "수업",
+      "강의",
+      "교재",
+      "문제",
+      "정말",
+      "너무",
+      "진짜",
+      "완전",
+      "그리고",
+      "근데",
+      "그래서",
+      "해서",
+      "합니다",
+      "했어요",
+      "좋아요",
+      "좋습니다",
+      "좋은",
+      "나쁜",
+      "최고",
+      "추천",
+      "비추천",
+      "그냥",
+      "좀",
+      "많이",
+      "조금",
+      "있어요",
+      "없어요",
+      "있음",
+      "없음",
+      "배송",
+      "구매",
+      "가격",
+    ]);
+
+    const counts = new Map<string, number>();
+    for (const r of reviews) {
+      const text = String(r.content || "")
+        .replace(/[0-9]/g, " ")
+        .replace(/[^\p{L}\s]/gu, " ")
+        .toLowerCase();
+      const words = text.split(/\s+/g).map((w) => w.trim()).filter(Boolean);
+      for (const w of words) {
+        if (w.length < 2) continue;
+        if (STOP.has(w)) continue;
+        counts.set(w, (counts.get(w) ?? 0) + 1);
+      }
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([word, count]) => ({ word, count }));
+  }, [reviews]);
+
+  const filteredReviews = useMemo(() => {
+    if (!reviewKeyword) return reviews;
+    return reviews.filter((r) => String(r.content || "").toLowerCase().includes(reviewKeyword.toLowerCase()));
+  }, [reviews, reviewKeyword]);
+
+  useEffect(() => {
+    reviewImagePreviewsRef.current = reviewImagePreviews;
+  }, [reviewImagePreviews]);
+
+  const resetReviewDraft = () => {
+    setReviewFormName("");
+    setReviewFormRating(5);
+    setReviewFormContent("");
+    setReviewFormImages([]);
+    try {
+      reviewImagePreviewsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    } catch {
+      // ignore
+    }
+    setReviewImagePreviews([]);
+    setReviewError(null);
+  };
+
+  const openReviewWriteModal = () => {
+    setReviewError(null);
+    setIsReviewWriteModalOpen(true);
+  };
+
+  const closeReviewWriteModal = () => {
+    resetReviewDraft();
+    setIsReviewWriteModalOpen(false);
+  };
+
+  // 후기 작성 모달 열림 시: 바디 스크롤 잠금 + ESC로 닫기(애플 느낌의 기본 UX)
+  useEffect(() => {
+    if (!isReviewWriteModalOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeReviewWriteModal();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReviewWriteModalOpen]);
   
   // 공유 모달 상태
   const [showShareModal, setShowShareModal] = useState(false);
@@ -328,6 +511,7 @@ export default function ProductDetailClient({
   const [isTabSticky, setIsTabSticky] = useState(false);
   const tabPlaceholderRef = useRef<HTMLDivElement>(null);
   const tabContentRef = useRef<HTMLDivElement>(null);
+  const [tabPlaceholderHeight, setTabPlaceholderHeight] = useState<number>(56);
   const [tabStyle, setTabStyle] = useState<{
     position: "static" | "fixed";
     top: number;
@@ -412,6 +596,17 @@ export default function ProductDetailClient({
             width: placeholderRect.width,
           });
         }
+
+        // 탭이 2줄(모바일)로 바뀌어도 sticky 전환 시 레이아웃이 튀지 않도록 placeholder 높이 동기화
+        try {
+          window.requestAnimationFrame(() => {
+            const h = tabContentRef.current?.offsetHeight ?? 56;
+            if (Number.isFinite(h) && h > 0) setTabPlaceholderHeight(h);
+          });
+        } catch {
+          const h = tabContentRef.current?.offsetHeight ?? 56;
+          if (Number.isFinite(h) && h > 0) setTabPlaceholderHeight(h);
+        }
       }
       
       // 사이드바 고정 처리
@@ -454,42 +649,125 @@ export default function ProductDetailClient({
     };
   }, []);
 
-  // 평균 평점 계산 함수
-  const calculateAverageRating = (reviewList: Review[]) => {
-    if (reviewList.length === 0) return 0;
-    const sum = reviewList.reduce((acc, r) => acc + r.rating, 0);
-    return Math.round((sum / reviewList.length) * 10) / 10; // 소수점 1자리
-  };
+  const fetchReviews = async () => {
+    try {
+      const type = product.type === "course" ? "COURSE" : "TEXTBOOK";
+      const qs = new URLSearchParams();
+      qs.set("type", type);
+      qs.set("sort", reviewSort);
+      if (reviewPhotoOnly) qs.set("photoOnly", "1");
+      if (reviewVerifiedOnly) qs.set("verifiedOnly", "1");
+      if (visitorId) qs.set("visitorId", visitorId);
 
-  // 후기 목록 불러오기
-  useEffect(() => {
-    const fetchReviews = async () => {
-      try {
-        const type = product.type === "course" ? "COURSE" : "TEXTBOOK";
-        const res = await fetch(`/api/reviews/${product.id}?type=${type}`);
-        const data = await res.json();
-        if (data.ok && data.reviews) {
-          setReviews(data.reviews);
-          setReviewCount(data.reviews.length);
-          // 후기가 없으면 0, 있으면 실제 평균 계산
-          const calculatedRating = calculateAverageRating(data.reviews);
-          setAverageRating(calculatedRating);
+      const res = await fetch(`/api/reviews/${product.id}?${qs.toString()}`, { cache: "no-store" });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.ok) {
+        const nextReviews: Review[] = Array.isArray(data.reviews) ? data.reviews : [];
+        setReviews(nextReviews);
+        if (data.summary) {
+          setReviewSummary(data.summary);
+          setReviewCount(data.summary.totalCount ?? nextReviews.length);
+          setAverageRating(data.summary.averageRating ?? 0);
         } else {
-          // API가 실패해도 초기화
-          setReviews([]);
-          setReviewCount(0);
+          setReviewSummary({
+            totalCount: nextReviews.length,
+            averageRating: 0,
+            ratingCounts: [0, 0, 0, 0, 0],
+            photoCount: nextReviews.filter((r) => (r.imageUrls ?? []).length > 0).length,
+            verifiedCount: nextReviews.filter((r) => r.isVerifiedBuyer).length,
+          });
+          setReviewCount(nextReviews.length);
           setAverageRating(0);
         }
-      } catch (err) {
-        console.error("Failed to fetch reviews:", err);
-        // 에러 발생 시 0으로 초기화
+        setReviewError(null);
+      } else {
         setReviews([]);
+        setReviewSummary({ totalCount: 0, averageRating: 0, ratingCounts: [0, 0, 0, 0, 0], photoCount: 0 });
         setReviewCount(0);
         setAverageRating(0);
       }
-    };
+    } catch (err) {
+      console.error("Failed to fetch reviews:", err);
+      setReviews([]);
+      setReviewSummary({ totalCount: 0, averageRating: 0, ratingCounts: [0, 0, 0, 0, 0], photoCount: 0, verifiedCount: 0 });
+      setReviewSummary({ totalCount: 0, averageRating: 0, ratingCounts: [0, 0, 0, 0, 0], photoCount: 0, verifiedCount: 0 });
+      setReviewCount(0);
+      setAverageRating(0);
+    }
+  };
+
+  // 후기 목록 불러오기 (정렬/필터 변경 포함)
+  useEffect(() => {
     fetchReviews();
-  }, [product.id, product.type]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id, product.type, reviewSort, reviewPhotoOnly, reviewVerifiedOnly, visitorId]);
+
+  // 네이버 느낌: 탭/정렬이 바뀌면 목록을 다시 "처음 10개"부터 보여줌
+  useEffect(() => {
+    setVisibleReviewCount(10);
+    setVisiblePhotoCount(24);
+  }, [reviewSort, reviewPhotoOnly, reviewVerifiedOnly]);
+
+  const getOrCreateVisitorId = () => {
+    let vid = visitorId;
+    if (!vid && typeof window !== "undefined") {
+      const stored = localStorage.getItem("visitorId");
+      if (stored) {
+        vid = stored;
+      } else {
+        vid = crypto.randomUUID();
+        localStorage.setItem("visitorId", vid);
+      }
+      if (vid !== visitorId) setVisitorId(vid);
+    }
+    return vid;
+  };
+
+  const handleToggleHelpful = async (reviewId: string) => {
+    const vid = getOrCreateVisitorId();
+    if (!vid) return;
+    try {
+      const res = await fetch("/api/reviews/helpful", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewId, visitorId: vid }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "HELPFUL_FAILED");
+      setReviews((prev) =>
+        prev.map((r) =>
+          r.id === reviewId
+            ? { ...r, helpfulCount: data.helpfulCount ?? r.helpfulCount, isHelpful: data.isHelpful ?? r.isHelpful }
+            : r
+        )
+      );
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleSubmitReport = async (reviewId: string, reason: string) => {
+    const vid = getOrCreateVisitorId();
+    if (!vid) return;
+    setIsReporting(true);
+    try {
+      const res = await fetch("/api/reviews/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewId, reason, visitorId: vid }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "REPORT_FAILED");
+      setReportToast("신고가 접수되었습니다.");
+      window.setTimeout(() => setReportToast(null), 2000);
+      setReportTargetId(null);
+    } catch {
+      setReportToast("신고에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      window.setTimeout(() => setReportToast(null), 2000);
+    } finally {
+      setIsReporting(false);
+    }
+  };
 
   // 관리자 여부 확인 (관리자면 후기 삭제 버튼 노출)
   useEffect(() => {
@@ -515,14 +793,7 @@ export default function ProductDetailClient({
 
       // UI 즉시 반영 후, 다시 불러와 평점/개수도 최신화
       setReviews((prev) => prev.filter((r) => r.id !== reviewId));
-      const type = product.type === "course" ? "COURSE" : "TEXTBOOK";
-      const refreshRes = await fetch(`/api/reviews/${product.id}?type=${type}`, { cache: "no-store" });
-      const refreshData = await refreshRes.json().catch(() => null);
-      if (refreshRes.ok && refreshData?.ok && Array.isArray(refreshData.reviews)) {
-        setReviews(refreshData.reviews);
-        setReviewCount(refreshData.reviews.length);
-        setAverageRating(calculateAverageRating(refreshData.reviews));
-      }
+      await fetchReviews();
     } catch (e) {
       alert("후기 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.");
     }
@@ -605,14 +876,10 @@ export default function ProductDetailClient({
       setReviewSuccess(true);
       
       // 후기 목록 새로고침
-      const type = product.type === "course" ? "COURSE" : "TEXTBOOK";
-      const refreshRes = await fetch(`/api/reviews/${product.id}?type=${type}`);
-      const refreshData = await refreshRes.json();
-      if (refreshData.ok && refreshData.reviews) {
-        setReviews(refreshData.reviews);
-        setReviewCount(refreshData.reviews.length);
-        setAverageRating(calculateAverageRating(refreshData.reviews));
-      }
+      await fetchReviews();
+
+      // 작성 완료 후 모달 닫기
+      closeReviewWriteModal();
       
       setTimeout(() => setReviewSuccess(false), 3000);
     } catch (err) {
@@ -973,7 +1240,7 @@ export default function ProductDetailClient({
               {displayTags.slice(0, 6).map((tag, idx) => (
                 <span
                   key={`${product.id}-tag-top-${idx}`}
-                  className={`px-2.5 py-1 rounded-md text-[12px] font-bold ${
+                  className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[10px] sm:text-[12px] font-bold ${
                     idx === 0
                       ? "bg-white text-black"
                       : idx === 1
@@ -989,7 +1256,7 @@ export default function ProductDetailClient({
 
           {/* 제목 */}
           <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-start sm:gap-3 sm:gap-y-0">
-            <h1 className="text-[26px] sm:text-[28px] font-bold leading-tight">{product.title}</h1>
+            <h1 className="text-[20px] sm:text-[24px] lg:text-[28px] font-bold leading-tight">{product.title}</h1>
             {product.type === "textbook" && (product.isbn ?? "").trim().length > 0 && (
               <span className="hidden sm:inline-flex items-center rounded-md bg-white/10 px-2 py-1 text-[12px] font-semibold text-white/80 sm:mt-[6px]">
                 ISBN {String(product.isbn).trim()}
@@ -1070,7 +1337,7 @@ export default function ProductDetailClient({
         <div
           ref={tabPlaceholderRef}
           className="overflow-visible mt-3"
-          style={{ height: tabStyle.position === "fixed" ? "56px" : "auto" }}
+          style={{ height: tabStyle.position === "fixed" ? `${tabPlaceholderHeight}px` : "auto" }}
         >
           {/* 탭 콘텐츠 - 스크롤 시 fixed로 전환 */}
           <div
@@ -1092,9 +1359,31 @@ export default function ProductDetailClient({
                 : "bg-transparent"
             }`}
           >
-            <div className="flex justify-between">
-              {tabs.map((tab) => (
-                <div key={tab} className="relative">
+            {(() => {
+              const renderMobileShortLabel = (t: TabKey) => {
+                switch (t) {
+                  case "상세 페이지":
+                    return "상세";
+                  case "강의소개":
+                  case "교재소개":
+                    return "소개";
+                  case "커리큘럼":
+                    return "커리";
+                  case "강의후기":
+                  case "교재후기":
+                    return "후기";
+                  case "환불정책":
+                    return "환불";
+                  default:
+                    return String(t);
+                }
+              };
+
+              const mobileColsClass = tabs.length >= 5 ? "grid-cols-5" : "grid-cols-4";
+              return (
+                <div className={`grid ${mobileColsClass} gap-x-1 gap-y-1 px-2 py-2 sm:flex sm:justify-between sm:px-0 sm:py-0`}>
+                  {tabs.map((tab) => (
+                    <div key={tab} className="relative">
                   {/* FREE 말풍선 - 커리큘럼 탭 위에 (탭이 sticky 상태가 아닐 때만 표시) */}
                   {product.type === "course" && tab === "커리큘럼" && !isTabSticky && (
                     <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-10">
@@ -1110,26 +1399,33 @@ export default function ProductDetailClient({
                   )}
                   <button
                     onClick={() => setActiveTab(tab)}
-                    className={`relative px-5 py-4 text-[14px] font-medium whitespace-nowrap transition-colors duration-150 ${
+                    className={`relative w-full px-1 py-2 text-[10px] font-semibold text-center leading-tight whitespace-nowrap transition-colors duration-150 sm:w-auto sm:px-5 sm:py-4 sm:text-[14px] sm:font-medium sm:whitespace-nowrap ${
                       activeTab === tab
                         ? "text-white"
                         : "text-white/40 hover:text-white/70"
                     }`}
                   >
-                    {tab === "강의후기" || tab === "교재후기" ? (
-                      <>{tab} ({reviewCount})</>
-                    ) : tab === "커리큘럼" ? (
-                      <>커리큘럼 ({totalLessons}강)</>
-                    ) : (
-                      tab
-                    )}
+                    {/* 모바일: 짧은 라벨로 한 줄 4개가 확실히 들어가게 */}
+                    <span className="sm:hidden">{renderMobileShortLabel(tab)}</span>
+                    {/* 데스크톱: 기존 라벨/카운트 유지 */}
+                    <span className="hidden sm:inline">
+                      {tab === "강의후기" || tab === "교재후기" ? (
+                        <>{tab} ({reviewCount})</>
+                      ) : tab === "커리큘럼" ? (
+                        <>커리큘럼 ({totalLessons}강)</>
+                      ) : (
+                        tab
+                      )}
+                    </span>
                     {activeTab === tab && (
                       <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-white" />
                     )}
                   </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -1285,237 +1581,529 @@ export default function ProductDetailClient({
           {activeTab === reviewTabKey && (
             <section>
               
-              {/* 평점 요약 */}
-              <div className="flex items-center gap-4 mb-6 p-5 rounded-xl bg-white/[0.02] border border-white/10">
-                <div className="text-center">
-                  <p className="text-[36px] font-bold text-white">
-                    {averageRating.toFixed(1)}
-                  </p>
-                  <div className="flex justify-center mt-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <span
-                        key={star}
-                        className={`text-[16px] ${
-                          star <= Math.round(averageRating)
-                            ? "text-yellow-200"
-                            : "text-white/20"
-                        }`}
-                      >
-                        ★
+              {/* 요약 + CTA */}
+              <div className="mb-6 rounded-2xl border border-white/10 p-5">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-start gap-4">
+                    <div
+                      className={`rounded-2xl px-4 py-3 text-center min-w-[140px] ${
+                        totalReviews <= 0 ? "" : "border border-white/10"
+                      }`}
+                    >
+                      <p className="text-[28px] sm:text-[32px] font-semibold tracking-[-0.02em] text-white">
+                        {averageRating.toFixed(1)}
+                      </p>
+                      <div className="mt-1 flex justify-center">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span
+                            key={star}
+                            className={`text-[13px] ${star <= Math.round(averageRating) ? "text-yellow-200" : "text-white/20"}`}
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </div>
+                      <p className="mt-1 text-[12px] text-white/45">
+                        총 {totalReviews.toLocaleString("ko-KR")}개
+                      </p>
+                    </div>
+
+                    <div className="flex-1 space-y-2">
+                      {[5, 4, 3, 2, 1].map((score) => {
+                        const count = reviewCounts[score - 1] ?? 0;
+                        const pct = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
+                        // 0%인 구간(예: 2점 0%, 1점 0%)은 아예 숨깁니다.
+                        if (totalReviews > 0 && count === 0) return null;
+                        return (
+                          <div key={score} className="flex items-center gap-2 text-[12px] text-white/60">
+                            <span className="w-6 text-right">{score}점</span>
+                            <div className="relative h-2 flex-1 rounded-full bg-white/10 overflow-hidden">
+                              <div className="absolute inset-y-0 left-0 bg-white/60" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="w-10 text-right">{pct}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {reviewSuccess && (
+                  <div className="mt-4 rounded-xl border border-green-500/25 bg-green-500/10 px-4 py-3 text-[13px] text-green-200 flex items-center gap-2">
+                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                      check_circle
+                    </span>
+                    후기가 등록되었습니다. 감사합니다!
+                  </div>
+                )}
+              </div>
+
+              {/* 필터/정렬 (네이버 스타일: 탭 + 드롭다운) */}
+              <div className="mb-4 border-b border-white/10">
+                <div className="flex items-end justify-between gap-3">
+                  {/* 탭(전체/사진/구매자) */}
+                  <div className="flex min-w-0 gap-5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReviewPhotoOnly(false);
+                        setReviewVerifiedOnly(false);
+                      }}
+                      className={`relative pb-3 text-[13px] font-semibold transition-colors ${
+                        !reviewPhotoOnly && !reviewVerifiedOnly ? "text-white" : "text-white/50 hover:text-white/75"
+                      }`}
+                    >
+                      전체
+                      <span className="ml-2 text-[12px] font-medium text-white/45">
+                        {totalReviews.toLocaleString("ko-KR")}
                       </span>
+                      {!reviewPhotoOnly && !reviewVerifiedOnly ? (
+                        <span className="absolute inset-x-0 -bottom-[1px] h-[2px] bg-white" aria-hidden="true" />
+                      ) : null}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReviewPhotoOnly(true);
+                        setReviewVerifiedOnly(false);
+                      }}
+                      className={`relative pb-3 text-[13px] font-semibold transition-colors ${
+                        reviewPhotoOnly ? "text-white" : "text-white/50 hover:text-white/75"
+                      }`}
+                    >
+                      사진후기
+                      <span className="ml-2 text-[12px] font-medium text-white/45">
+                        {reviewSummary.photoCount.toLocaleString("ko-KR")}
+                      </span>
+                      {reviewPhotoOnly ? (
+                        <span className="absolute inset-x-0 -bottom-[1px] h-[2px] bg-white" aria-hidden="true" />
+                      ) : null}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReviewVerifiedOnly(true);
+                        setReviewPhotoOnly(false);
+                      }}
+                      className={`relative pb-3 text-[13px] font-semibold transition-colors ${
+                        reviewVerifiedOnly ? "text-white" : "text-white/50 hover:text-white/75"
+                      }`}
+                    >
+                      구매자
+                      <span className="ml-2 text-[12px] font-medium text-white/45">
+                        {reviewSummary.verifiedCount.toLocaleString("ko-KR")}
+                      </span>
+                      {reviewVerifiedOnly ? (
+                        <span className="absolute inset-x-0 -bottom-[1px] h-[2px] bg-white" aria-hidden="true" />
+                      ) : null}
+                    </button>
+                  </div>
+
+                  {/* 정렬 드롭다운 */}
+                  <label className="flex items-center gap-2 pb-2 text-[12px] text-white/50">
+                    <span className="hidden sm:inline">정렬</span>
+                    <select
+                      value={reviewSort}
+                      onChange={(e) => setReviewSort(e.target.value as any)}
+                      className="rounded-lg border border-white/10 bg-[#161616] px-3 py-2 text-[13px] text-white/90 outline-none"
+                    >
+                      <option value="latest">최신순</option>
+                      <option value="rating">평점순</option>
+                      <option value="helpful">도움순</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              {/* 키워드 요약(네이버 느낌) */}
+              {keywordStats.length > 0 ? (
+                <div className="mb-6 rounded-2xl border border-white/10 px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[13px] font-semibold text-white/90">키워드</p>
+                    {reviewKeyword ? (
+                      <button
+                        type="button"
+                        onClick={() => setReviewKeyword(null)}
+                        className="text-[12px] text-white/55 hover:text-white/75"
+                      >
+                        초기화
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {keywordStats.map((k) => {
+                      const active = reviewKeyword === k.word;
+                      return (
+                        <button
+                          key={k.word}
+                          type="button"
+                          onClick={() => setReviewKeyword(active ? null : k.word)}
+                          className={`rounded-full border px-3 py-1 text-[12px] transition-colors ${
+                            active
+                              ? "border-white/25 bg-white/10 text-white"
+                              : "border-white/10 bg-white/[0.04] text-white/60 hover:text-white/80"
+                          }`}
+                        >
+                          {k.word}
+                          <span className="ml-1 text-white/40">{k.count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* 포토리뷰 미리보기 */}
+              {photoReviews.length > 0 && (
+                <div className="mb-6 rounded-2xl border border-white/10 p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-[14px] font-semibold text-white">포토리뷰</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReviewPhotoOnly(true);
+                        setReviewVerifiedOnly(false);
+                      }}
+                      className="text-[12px] text-white/60 hover:text-white/80"
+                    >
+                      사진후기 더보기
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                    {photoReviews.slice(0, 6).map((r) => (
+                      <button
+                        key={`photo-preview-${r.id}`}
+                        type="button"
+                        onClick={() => {
+                          setReviewPhotoOnly(true);
+                          setReviewVerifiedOnly(false);
+                        }}
+                        className="aspect-square w-full overflow-hidden rounded-xl border border-white/10 hover:border-white/25 transition-colors"
+                      >
+                        <img src={(r.imageUrls ?? [])[0]} alt="" className="h-full w-full object-cover" />
+                      </button>
                     ))}
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* 후기 작성 폼 - 네이버/쿠팡 스타일 */}
-              <div className="mb-8 rounded-xl border border-white/10 overflow-hidden">
-                {/* 헤더 */}
-                <div className="px-5 py-4 bg-white/[0.03] border-b border-white/10">
-                  <h3 className="text-[15px] font-bold">후기 작성</h3>
+              {/* 사진후기 탭: 포토리뷰 모아보기(네이버 느낌) */}
+              {reviewPhotoOnly && photoUrls.length > 0 && (
+                <div className="mb-6 rounded-2xl border border-white/10 p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-[14px] font-semibold text-white">포토리뷰 모아보기</p>
+                    <span className="text-[12px] text-white/50">{photoUrls.length.toLocaleString("ko-KR")}장</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                    {photoUrls.slice(0, visiblePhotoCount).map((url, idx) => (
+                      <button
+                        key={`photo-only-${idx}`}
+                        type="button"
+                        onClick={() => setPhotoModalUrl(url)}
+                        className="aspect-square w-full overflow-hidden rounded-xl border border-white/10 hover:border-white/25 transition-colors"
+                        aria-label="사진 보기"
+                      >
+                        <img src={url} alt="" className="h-full w-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                  {photoUrls.length > visiblePhotoCount ? (
+                    <div className="mt-4 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setVisiblePhotoCount((n) => Math.min(photoUrls.length, n + 24))}
+                        className="rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3 text-[13px] font-semibold text-white/75 hover:bg-white/[0.08] hover:text-white"
+                      >
+                        사진 더보기
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
-                
-                <div className="p-5">
-                  {reviewSuccess && (
-                    <div className="mb-4 p-3 rounded-lg bg-green-500/20 text-green-300 text-[14px] flex items-center gap-2">
-                      <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>check_circle</span>
-                      후기가 등록되었습니다. 감사합니다!
-                    </div>
-                  )}
-                  
-                  {reviewError && (
-                    <div className="mb-4 p-3 rounded-lg bg-red-500/20 text-red-300 text-[14px] flex items-center gap-2">
-                      <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>error</span>
-                      {reviewError}
-                    </div>
-                  )}
-                  
-                  {/* 이름 + 평점 (한 줄) */}
-                  <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                    <div className="flex-1">
-                      <label className="block text-[12px] text-white/50 mb-1.5">작성자</label>
-                      <input
-                        type="text"
-                        value={reviewFormName}
-                        onChange={(e) => setReviewFormName(e.target.value)}
-                        placeholder="닉네임을 입력하세요"
-                        className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-[14px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/20"
-                      />
-                    </div>
-                    <div className="sm:w-[200px]">
-                      <label className="block text-[12px] text-white/50 mb-1.5">평점</label>
-                      <div className="flex items-center gap-0.5 bg-white/5 border border-white/10 rounded-lg px-3 py-2">
-                        {[1, 2, 3, 4, 5].map((star) => (
+              )}
+
+              {/* 추천 리뷰(네이버 느낌: 상단 고정) */}
+              {!reviewPhotoOnly && !reviewVerifiedOnly && reviewSort !== "rating" && featuredReviews.length > 0 && (
+                <div className="mb-6 rounded-2xl border border-white/10 p-4">
+                  <p className="mb-3 text-[14px] font-semibold text-white">추천 리뷰</p>
+                  <div className="space-y-3">
+                    {featuredReviews.map((review) => (
+                      <div key={`featured-${review.id}`} className="rounded-xl border border-white/10 p-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[13px] font-semibold text-white/90">{maskAuthorName(review.name)}</span>
+                            {review.isVerifiedBuyer && (
+                              <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
+                                구매자
+                              </span>
+                            )}
+                            {(review.imageUrls ?? []).length > 0 && (
+                              <span className="rounded-full border border-white/15 bg-white/[0.06] px-2 py-0.5 text-[11px] text-white/70">
+                                사진후기
+                              </span>
+                            )}
+                          </div>
                           <button
-                            key={star}
                             type="button"
-                            onClick={() => setReviewFormRating(star)}
-                            className={`text-[22px] transition-all transform hover:scale-110 ${
-                              star <= reviewFormRating
-                                ? "text-yellow-300"
-                                : "text-white/20"
+                            onClick={() => handleToggleHelpful(review.id)}
+                            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
+                              review.isHelpful
+                                ? "border-white/25 bg-white/10 text-white"
+                                : "border-white/10 bg-white/[0.04] text-white/60 hover:text-white/80"
                             }`}
                           >
-                            ★
-                          </button>
-                        ))}
-                        <span className="ml-2 text-[13px] text-white/60">{reviewFormRating}.0</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* 후기 내용 */}
-                  <div className="mb-4">
-                    <label className="block text-[12px] text-white/50 mb-1.5">상세 후기</label>
-                    <textarea
-                      value={reviewFormContent}
-                      onChange={(e) => setReviewFormContent(e.target.value)}
-                      placeholder={`${product.type === "textbook" ? "교재" : "강의"}에 대한 솔직한 후기를 작성해주세요. (최소 10자)`}
-                      rows={4}
-                      className="w-full px-3 py-3 rounded-lg bg-white/5 border border-white/10 text-[14px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/20 resize-none"
-                    />
-                    <p className="mt-1 text-[11px] text-white/40">{reviewFormContent.length}자 / 최소 10자</p>
-                  </div>
-                  
-                  {/* 이미지 업로드 */}
-                  <div className="mb-5">
-                    <label className="block text-[12px] text-white/50 mb-1.5">사진 첨부 (선택, 최대 5장)</label>
-                    <div className="flex flex-wrap gap-2">
-                      {/* 이미지 미리보기 */}
-                      {reviewImagePreviews.map((preview, idx) => (
-                        <div key={idx} className="relative w-20 h-20 rounded-lg overflow-hidden border border-white/10">
-                          <img src={preview} alt="" className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveImage(idx)}
-                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center text-white hover:bg-black"
-                          >
-                            <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>close</span>
-                          </button>
-                        </div>
-                      ))}
-                      
-                      {/* 업로드 버튼 */}
-                      {reviewFormImages.length < 5 && (
-                        <label className="w-20 h-20 rounded-lg border-2 border-dashed border-white/20 flex flex-col items-center justify-center cursor-pointer hover:border-white/40 hover:bg-white/5 transition-all">
-                          <span className="material-symbols-outlined text-white/40" style={{ fontSize: "24px" }}>add_photo_alternate</span>
-                          <span className="text-[10px] text-white/40 mt-1">추가</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            onChange={handleImageSelect}
-                            className="hidden"
-                          />
-                        </label>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* 등록 버튼 */}
-                  <button
-                    onClick={handleSubmitReview}
-                    disabled={isSubmittingReview || reviewFormContent.length < 10}
-                    className="w-full py-3 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium text-[14px] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-500 disabled:to-gray-600 flex items-center justify-center gap-2"
-                  >
-                    {isSubmittingReview ? (
-                      <>
-                        <span className="animate-spin material-symbols-outlined" style={{ fontSize: "18px" }}>progress_activity</span>
-                        등록 중...
-                      </>
-                    ) : (
-                      <>
-                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>rate_review</span>
-                        후기 등록하기
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* 후기 목록 */}
-              <div className="space-y-4">
-                {reviews.length === 0 ? (
-                  <p className="text-center text-white/40 py-8">아직 등록된 후기가 없습니다. 첫 번째 후기를 작성해보세요!</p>
-                ) : (
-                  reviews.map((review) => {
-                  const isExpanded = expandedReviews.includes(review.id);
-                  const isLong = review.content.length > 150;
-                  
-                  return (
-                    <div
-                      key={review.id}
-                      className="p-5 rounded-xl border border-white/10"
-                    >
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500/30 to-purple-500/30 flex items-center justify-center shrink-0">
-                            <span className="text-[14px] font-medium text-white/80">{review.name.charAt(0)}</span>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[14px] font-medium">{maskAuthorName(review.name)}</span>
-                            <div className="flex">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <span
-                                  key={star}
-                                    className={`text-[12px] ${
-                                      star <= Math.round(review.rating)
-                                        ? "text-yellow-200"
-                                        : "text-white/20"
-                                  }`}
-                                >
-                                    ★
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          <p className="text-[12px] text-white/40 mt-0.5">{review.date}</p>
-                        </div>
-                        {isAdmin && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteReview(review.id)}
-                            className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-rose-500/15 px-2.5 py-1.5 text-[12px] font-semibold text-rose-200 hover:bg-rose-500/20"
-                            title="후기 삭제"
-                          >
-                            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-                              delete
+                            <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
+                              thumb_up
                             </span>
-                            삭제
+                            {Number(review.helpfulCount || 0).toLocaleString("ko-KR")}
                           </button>
+                        </div>
+                        <div className="mt-2 flex items-center gap-1 text-[12px] text-white/60">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <span
+                              key={`${review.id}-feat-star-${star}`}
+                              className={star <= Math.round(review.rating) ? "text-yellow-200" : "text-white/20"}
+                            >
+                              ★
+                            </span>
+                          ))}
+                          <span className="ml-1">{review.rating.toFixed(1)}</span>
+                          <span className="mx-1 text-white/30">·</span>
+                          <span>{review.date}</span>
+                        </div>
+                        <p className="mt-2 text-[13px] text-white/70 line-clamp-2">{review.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 베스트 리뷰 */}
+              {!reviewPhotoOnly && !reviewVerifiedOnly && bestReviews.length > 0 && (
+                <div className="mb-6 rounded-2xl border border-white/10 p-4">
+                  <p className="mb-3 text-[14px] font-semibold text-white">베스트 리뷰</p>
+                  <div className="space-y-3">
+                    {bestReviews.map((review) => (
+                      <div
+                        key={`best-${review.id}`}
+                        className="rounded-xl border border-white/10 p-4"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[13px] font-semibold text-white/90">
+                              {maskAuthorName(review.name)}
+                            </span>
+                            {review.isVerifiedBuyer && (
+                              <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
+                                구매자
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleHelpful(review.id)}
+                            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
+                              review.isHelpful
+                                ? "border-white/25 bg-white/10 text-white"
+                                : "border-white/10 bg-white/[0.04] text-white/60 hover:text-white/80"
+                            }`}
+                            aria-label="도움돼요"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
+                              thumb_up
+                            </span>
+                            {Number(review.helpfulCount || 0).toLocaleString("ko-KR")}
+                          </button>
+                        </div>
+                        <div className="mt-2 flex items-center gap-1 text-[12px] text-white/60">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <span
+                              key={`${review.id}-best-star-${star}`}
+                              className={star <= Math.round(review.rating) ? "text-yellow-200" : "text-white/20"}
+                            >
+                              ★
+                            </span>
+                          ))}
+                          <span className="ml-1">{review.rating.toFixed(1)}</span>
+                          <span className="mx-1 text-white/30">·</span>
+                          <span>{review.date}</span>
+                        </div>
+                        <p className="mt-2 text-[13px] text-white/70 line-clamp-2">{review.content}</p>
+                        {(review.imageUrls ?? []).length > 0 && (
+                          <div className="mt-2 flex gap-2">
+                            {(review.imageUrls ?? []).slice(0, 3).map((url, idx) => (
+                              <img
+                                key={`${review.id}-best-img-${idx}`}
+                                src={url}
+                                alt=""
+                                className="h-12 w-12 rounded-lg border border-white/10 object-cover"
+                              />
+                            ))}
+                          </div>
                         )}
                       </div>
-                      <p className={`text-[14px] text-white/70 leading-relaxed ${!isExpanded && isLong ? "line-clamp-3" : ""}`}>
-                        {review.content}
-                      </p>
-                      {isLong && (
-                        <button
-                          onClick={() => toggleReview(review.id)}
-                          className="text-[13px] text-blue-400 hover:text-blue-300 mt-2 transition-colors"
-                        >
-                          {isExpanded ? "접기" : "더보기"}
-                        </button>
-                      )}
-                      {/* 첨부 이미지 */}
-                      {review.imageUrls && review.imageUrls.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {review.imageUrls.map((url, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => window.open(url, "_blank")}
-                              className="w-16 h-16 rounded-lg overflow-hidden border border-white/10 hover:border-white/30 transition-colors"
-                            >
-                              <img src={url} alt="" className="w-full h-full object-cover" />
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 후기 목록(리스트가 먼저) */}
+              <div className="space-y-3 sm:space-y-4">
+                {filteredReviews.length === 0 ? (
+                  <div className="rounded-2xl border border-white/10 px-6 py-10 text-center">
+                    <p className="text-[14px] text-white/55">아직 등록된 후기가 없습니다.</p>
+                    <p className="mt-1 text-[13px] text-white/35">첫 번째 후기를 남겨주세요.</p>
+                    <div className="mt-5 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={openReviewWriteModal}
+                        className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-[13px] font-semibold text-black hover:bg-white/90"
+                      >
+                        후기 작성
+                      </button>
                     </div>
-                  );
+                  </div>
+                ) : (
+                  filteredReviews
+                    .filter((r) => !(!reviewPhotoOnly && !reviewVerifiedOnly && featuredIds.has(r.id)))
+                    .slice(0, visibleReviewCount)
+                    .map((review) => {
+                    const isExpanded = expandedReviews.includes(review.id);
+                    const isLong = review.content.length > 150;
+
+                    return (
+                      <div
+                        key={review.id}
+                        className="rounded-2xl border border-white/10 p-5 transition-colors hover:border-white/20"
+                      >
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                            <span className="text-[14px] font-medium text-white/80">
+                              {review.name.charAt(0)}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-[14px] font-semibold text-white/90 truncate">
+                                {maskAuthorName(review.name)}
+                              </span>
+                              {review.isVerifiedBuyer && (
+                                <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
+                                  구매자
+                                </span>
+                              )}
+                              {(review.imageUrls ?? []).length > 0 && (
+                                <span className="rounded-full border border-white/15 bg-white/[0.06] px-2 py-0.5 text-[11px] text-white/70">
+                                  사진후기
+                                </span>
+                              )}
+                              <div className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <span
+                                    key={star}
+                                    className={`text-[11px] ${star <= Math.round(review.rating) ? "text-yellow-200" : "text-white/20"}`}
+                                  >
+                                    ★
+                                  </span>
+                                ))}
+                                <span className="text-[11px] text-white/60">{review.rating.toFixed(1)}</span>
+                              </div>
+                            </div>
+                            <div className="mt-1 flex items-center gap-2 text-[12px] text-white/40">
+                              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5">
+                                {review.date}
+                              </span>
+                            </div>
+                          </div>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteReview(review.id)}
+                              className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-rose-500/15 px-3 py-2 text-[12px] font-semibold text-rose-200 hover:bg-rose-500/20"
+                              title="후기 삭제"
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                                delete
+                              </span>
+                              삭제
+                            </button>
+                          )}
+                        </div>
+
+                        <p
+                          className={`text-[14px] text-white/70 leading-relaxed ${
+                            !isExpanded && isLong ? "line-clamp-3" : ""
+                          }`}
+                        >
+                          {review.content}
+                        </p>
+                        {isLong && (
+                          <button
+                            type="button"
+                            onClick={() => toggleReview(review.id)}
+                            className="mt-2 text-[13px] text-white/60 hover:text-white/80 underline underline-offset-4 transition-colors"
+                          >
+                            {isExpanded ? "접기" : "더보기"}
+                          </button>
+                        )}
+
+                        {review.imageUrls && review.imageUrls.length > 0 && (
+                          <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
+                            {review.imageUrls.map((url, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => window.open(url, "_blank")}
+                                className="aspect-square w-full rounded-xl overflow-hidden border border-white/10 hover:border-white/25 transition-colors"
+                              >
+                                <img src={url} alt="" className="w-full h-full object-cover" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="mt-4 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleHelpful(review.id)}
+                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[12px] transition-colors ${
+                              review.isHelpful
+                                ? "border-white/25 bg-white/10 text-white"
+                                : "border-white/10 bg-white/[0.04] text-white/60 hover:text-white/80"
+                            }`}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                              thumb_up
+                            </span>
+                            도움돼요 {Number(review.helpfulCount || 0).toLocaleString("ko-KR")}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setReportTargetId(review.id)}
+                            className="text-[12px] text-white/45 hover:text-white/70"
+                          >
+                            신고
+                          </button>
+                        </div>
+                      </div>
+                    );
                   })
                 )}
               </div>
+
+              {/* 더보기 */}
+              {filteredReviews.length > visibleReviewCount ? (
+                <div className="mt-5 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setVisibleReviewCount((n) => Math.min(filteredReviews.length, n + 10))}
+                    className="rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3 text-[13px] font-semibold text-white/75 hover:bg-white/[0.08] hover:text-white"
+                  >
+                    더보기
+                  </button>
+                </div>
+              ) : null}
+
             </section>
           )}
 
@@ -2042,9 +2630,6 @@ export default function ProductDetailClient({
                 <span className="text-white/65">
                   추가 상품 {selectedRelatedIds.size + selectedAddonCourseIds.size}개
                 </span>
-                <span className="text-white/85 font-semibold">
-                  +{(additionalAmount + additionalCourseAmount).toLocaleString("ko-KR")}원
-                </span>
               </div>
             </div>
           )}
@@ -2100,36 +2685,11 @@ export default function ProductDetailClient({
                 </button>
               )}
 
-              {/* 가격 */}
-              <div className="flex-1 min-w-0">
-                {hasAnyAddonSelection ? (
-                  <div className="flex flex-col items-end leading-tight">
-                    <div className="text-[10px] text-white/45 line-through">{product.formattedPrice}</div>
-                    <div className="text-[15px] font-extrabold text-white tracking-[-0.01em]">
-                      {totalAmount.toLocaleString("ko-KR")}원
-                    </div>
-                  </div>
-                ) : hasBaseProduct ? (
-                  <div className="flex items-center justify-end gap-2">
-                    <span className="text-[15px] font-extrabold text-white tracking-[-0.01em]">
-                      {product.formattedPrice}
-                    </span>
-                    {product.discount && (
-                      <span className="inline-flex items-center justify-center rounded-full bg-rose-500/85 px-2 py-0.5 text-[9px] font-extrabold text-white">
-                        {product.discount}%
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-right text-[11px] text-white/55">가격 준비중</div>
-                )}
-              </div>
-
               {/* 구매 CTA */}
               <button
                 onClick={handleCheckout}
                 disabled={isPaying || product.isSoldOut}
-                className={`h-11 min-w-[168px] px-6 rounded-xl text-[13px] font-extrabold shadow-[0_8px_24px_rgba(0,0,0,0.30)] transition-[transform,filter] active:scale-[0.99] ${
+                className={`h-11 flex-1 px-6 rounded-xl text-[13px] font-extrabold shadow-[0_8px_24px_rgba(0,0,0,0.30)] transition-[transform,filter] active:scale-[0.99] ${
                   product.isSoldOut
                     ? "bg-zinc-600 text-white/90 opacity-70 cursor-not-allowed"
                     : "bg-white text-black"
@@ -2372,6 +2932,133 @@ export default function ProductDetailClient({
 
     {/* 토스 기본 결제창(standard) 호출로 변경되어, 내부 위젯 모달은 사용하지 않습니다. */}
 
+    {/* 후기 작성 모달 */}
+    {isReviewWriteModalOpen && (
+      <div
+        className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 backdrop-blur-sm px-4"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) closeReviewWriteModal();
+        }}
+      >
+        <div className="relative w-full max-w-[560px] animate-in fade-in zoom-in-95 duration-200">
+          <div className="rounded-2xl border border-white/10 bg-[#161616] overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3">
+              <div>
+                <p className="text-[16px] font-semibold tracking-[-0.02em] text-white">후기 작성</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeReviewWriteModal}
+                className="inline-flex items-center justify-center rounded-lg p-2 text-white/70 hover:bg-white/[0.08] hover:text-white"
+                aria-label="닫기"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
+                  close
+                </span>
+              </button>
+            </div>
+
+            <div className="p-5">
+              {reviewError && (
+                <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13px] text-red-200">
+                  {reviewError}
+                </div>
+              )}
+
+              <div className="grid gap-4 sm:grid-cols-[1fr_220px]">
+                <div>
+                  <label className="block text-[12px] font-medium text-white/60">작성자</label>
+                  <input
+                    type="text"
+                    value={reviewFormName}
+                    onChange={(e) => setReviewFormName(e.target.value)}
+                    placeholder="닉네임을 입력하세요"
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-transparent px-4 py-3 text-[14px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/25"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-medium text-white/60">평점</label>
+                  <div className="mt-2 flex items-center justify-between rounded-xl border border-white/10 px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setReviewFormRating(star)}
+                          className={`text-[22px] leading-none ${
+                            star <= reviewFormRating ? "text-yellow-200" : "text-white/15"
+                          }`}
+                          aria-label={`${star}점`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                    <span className="text-[13px] font-semibold text-white/70">{reviewFormRating}.0</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-[12px] font-medium text-white/60">사진 첨부</label>
+                <p className="mt-1 text-[11px] text-white/40">선택 · 최대 5장</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {reviewImagePreviews.map((preview, idx) => (
+                    <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-white/10">
+                      <img src={preview} alt="" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(idx)}
+                        className="absolute top-1 right-1 rounded-lg border border-white/15 bg-black/60 px-2 py-1 text-[12px] text-white/80 hover:bg-black/80"
+                        aria-label="이미지 제거"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  ))}
+
+                  {reviewFormImages.length < 5 && (
+                    <label className="w-20 h-20 rounded-xl border border-white/10 flex items-center justify-center cursor-pointer hover:border-white/25 transition-colors">
+                      <span className="text-[12px] text-white/60">추가</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleImageSelect}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-[12px] font-medium text-white/60">상세 후기</label>
+                <div className="relative mt-2">
+                  <textarea
+                    value={reviewFormContent}
+                    onChange={(e) => setReviewFormContent(e.target.value)}
+                    placeholder={`${product.type === "textbook" ? "교재" : "강의"}에 대한 솔직한 후기를 작성해주세요. (최소 10자)`}
+                    rows={5}
+                    className="w-full resize-none rounded-xl border border-white/10 bg-transparent px-4 py-3 pb-16 text-[14px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/25"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSubmitReview}
+                    disabled={isSubmittingReview || reviewFormContent.length < 10}
+                    className="absolute bottom-4 right-3 rounded-lg bg-white px-4 py-2 text-[13px] font-semibold text-black hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmittingReview ? "등록 중..." : "등록하기"}
+                  </button>
+                </div>
+                <p className="mt-1 text-[11px] text-white/40">{reviewFormContent.length}자 / 최소 10자</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
     {/* 공유하기 모달 */}
     {showShareModal && (
       <div 
@@ -2480,6 +3167,80 @@ export default function ProductDetailClient({
         </div>
       </div>
     )}
+
+    {/* 포토 모달 */}
+    {photoModalUrl && (
+      <div
+        className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setPhotoModalUrl(null);
+        }}
+      >
+        <div className="relative w-full max-w-3xl">
+          <button
+            type="button"
+            onClick={() => setPhotoModalUrl(null)}
+            className="absolute -top-10 right-0 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-[12px] text-white/80 hover:bg-white/15"
+          >
+            닫기
+          </button>
+          <div className="overflow-hidden rounded-2xl border border-white/10 bg-black">
+            <img src={photoModalUrl} alt="" className="max-h-[80vh] w-full object-contain" />
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* 신고 모달(간단) */}
+    {reportTargetId && (
+      <div
+        className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setReportTargetId(null);
+        }}
+      >
+        <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#1a1a1c] p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-[15px] font-semibold text-white">리뷰 신고</p>
+            <button
+              type="button"
+              onClick={() => setReportTargetId(null)}
+              className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[12px] text-white/70 hover:bg-white/[0.08]"
+            >
+              닫기
+            </button>
+          </div>
+          <p className="mt-2 text-[13px] text-white/50">
+            해당 리뷰를 신고하시겠습니까? 사유를 선택하면 접수됩니다.
+          </p>
+          <div className="mt-4 space-y-2">
+            {["광고/스팸", "욕설/비방", "개인정보 노출", "기타"].map((reason) => (
+              <button
+                key={reason}
+                type="button"
+                onClick={() => {
+                  if (!reportTargetId) return;
+                  handleSubmitReport(reportTargetId, reason);
+                }}
+                disabled={isReporting}
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-[13px] text-white/80 hover:bg-white/[0.06] disabled:opacity-60"
+              >
+                {reason}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* 신고 토스트 */}
+    {reportToast ? (
+      <div className="fixed inset-x-0 bottom-6 z-[95] flex justify-center px-4">
+        <div className="rounded-full border border-white/10 bg-black/70 px-4 py-2 text-[13px] text-white/90">
+          {reportToast}
+        </div>
+      </div>
+    ) : null}
 
     </>
   );

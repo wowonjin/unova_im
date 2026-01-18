@@ -224,7 +224,7 @@ function ProductGrid({
           <Link
             key={product.id}
             href={`/store/${product.id}`}
-            className={`group ${product.isSoldOut ? "opacity-90" : ""}`}
+            className={`group block cursor-pointer ${product.isSoldOut ? "opacity-90" : ""}`}
             title={product.isSoldOut ? "준비중인 상품입니다" : undefined}
           >
             {Card}

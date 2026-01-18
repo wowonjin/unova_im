@@ -50,6 +50,7 @@ model User {
   oauthAccounts OAuthAccount[]
   reviews     Review[]
   productLikes ProductLike[]
+  reviewHelpfuls ReviewHelpful[]
 
   @@index([imwebMemberCode])
 }
@@ -529,10 +530,46 @@ model Review {
   user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   course   Course?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   textbook Textbook? @relation(fields: [textbookId], references: [id], onDelete: Cascade)
+  helpfuls ReviewHelpful[]
+  reports ReviewReport[]
 
   @@index([courseId, createdAt])
   @@index([textbookId, createdAt])
   @@index([isApproved, createdAt])
+}
+
+model ReviewReport {
+  id        String   @id @default(cuid())
+  reviewId  String
+  reason    String
+  detail    String?
+  userId    String?
+  visitorId String?
+  createdAt DateTime @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([reviewId, createdAt])
+  @@index([userId, createdAt])
+  @@index([visitorId, createdAt])
+}
+
+model ReviewHelpful {
+  id        String   @id @default(cuid())
+  reviewId  String
+  userId    String?
+  visitorId String?
+  createdAt DateTime @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([reviewId])
+  @@index([userId])
+  @@index([visitorId])
+  @@unique([reviewId, userId])
+  @@unique([reviewId, visitorId])
 }
 
 // 상품 좋아요 모델

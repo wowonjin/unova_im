@@ -26,6 +26,7 @@ async function ensureTeacherTable() {
       "menuBgColor" TEXT,
       "newsBgColor" TEXT,
       "ratingBgColor" TEXT,
+      "accountUserId" TEXT,
       "isActive" BOOLEAN NOT NULL DEFAULT TRUE,
       "position" INTEGER NOT NULL DEFAULT 0,
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -52,6 +53,7 @@ export async function GET() {
 
     await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedCourseIds" JSONB;');
     await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedTextbookIds" JSONB;');
+    await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "accountUserId" TEXT;');
   } catch {
     // ignore
   }
@@ -91,10 +93,13 @@ export async function GET() {
   }
 
   // selected ids are stored as JSONB columns (not in Prisma schema) → load via raw.
-  let selectedById = new Map<string, { selectedCourseIds: string[]; selectedTextbookIds: string[] }>();
+  let selectedById = new Map<
+    string,
+    { selectedCourseIds: string[]; selectedTextbookIds: string[]; accountUserId: string | null }
+  >();
   try {
     const rows = (await prisma.$queryRawUnsafe(
-      'SELECT "id", "selectedCourseIds", "selectedTextbookIds" FROM "Teacher"'
+      'SELECT "id", "selectedCourseIds", "selectedTextbookIds", "accountUserId" FROM "Teacher"'
     )) as any[];
     selectedById = new Map(
       (rows ?? []).map((r) => [
@@ -102,8 +107,24 @@ export async function GET() {
         {
           selectedCourseIds: Array.isArray(r.selectedCourseIds) ? r.selectedCourseIds : [],
           selectedTextbookIds: Array.isArray(r.selectedTextbookIds) ? r.selectedTextbookIds : [],
+          accountUserId: typeof r.accountUserId === "string" && r.accountUserId.trim() ? String(r.accountUserId) : null,
         },
       ])
+    );
+  } catch {
+    // ignore
+  }
+
+  // 연결된 계정 이메일(표시용)
+  let accountEmailByTeacherId = new Map<string, string>();
+  try {
+    const rows = (await prisma.$queryRawUnsafe(
+      'SELECT t."id" as "teacherId", u."email" as "email" FROM "Teacher" t LEFT JOIN "User" u ON u."id" = t."accountUserId"'
+    )) as any[];
+    accountEmailByTeacherId = new Map(
+      (rows ?? [])
+        .filter((r) => r && typeof r.teacherId === "string" && typeof r.email === "string")
+        .map((r) => [String(r.teacherId), String(r.email)])
     );
   } catch {
     // ignore
@@ -118,11 +139,21 @@ export async function GET() {
 
   return NextResponse.json({
     ok: true,
-    teachers: sorted.map((t) => ({
-      ...t,
-      createdAt: new Date(t.createdAt).toISOString(),
-      ...(selectedById.get(String(t.id)) ?? { selectedCourseIds: [], selectedTextbookIds: [] }),
-    })),
+    teachers: sorted.map((t) => {
+      const extra = selectedById.get(String(t.id)) ?? {
+        selectedCourseIds: [],
+        selectedTextbookIds: [],
+        accountUserId: null,
+      };
+      return {
+        ...t,
+        createdAt: new Date(t.createdAt).toISOString(),
+        selectedCourseIds: extra.selectedCourseIds ?? [],
+        selectedTextbookIds: extra.selectedTextbookIds ?? [],
+        accountUserId: extra.accountUserId ?? null,
+        accountEmail: accountEmailByTeacherId.get(String(t.id)) ?? null,
+      };
+    }),
   });
 }
 

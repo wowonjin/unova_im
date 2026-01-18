@@ -13,6 +13,8 @@ type Teacher = {
   promoImageUrl: string | null;
   selectedCourseIds?: string[];
   selectedTextbookIds?: string[];
+  accountUserId?: string | null;
+  accountEmail?: string | null;
   headerSubText: string | null;
   pageBgColor: string | null;
   menuBgColor: string | null;
@@ -35,6 +37,7 @@ export default function TeachersAdminClient() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const teacherTabs = [
     { key: "basic", label: "기본" },
+    { key: "account", label: "계정" },
     { key: "images", label: "이미지" },
     { key: "promo", label: "상세이미지" },
     { key: "products", label: "강좌/교재" },
@@ -48,6 +51,10 @@ export default function TeachersAdminClient() {
   const [courseOptions, setCourseOptions] = useState<Array<{ id: string; title: string; teacherName?: string | null; subjectName?: string | null }>>([]);
   const [textbookOptions, setTextbookOptions] = useState<Array<{ id: string; title: string; teacherName?: string | null; subjectName?: string | null }>>([]);
   const [productSearch, setProductSearch] = useState("");
+  const [accountEmailInput, setAccountEmailInput] = useState("");
+  const [issuedPassword, setIssuedPassword] = useState<string | null>(null);
+  const [isLinkingAccount, setIsLinkingAccount] = useState(false);
+  const [isAssigningProducts, setIsAssigningProducts] = useState(false);
   const [formData, setFormData] = useState({
     slug: "",
     name: "",
@@ -95,6 +102,8 @@ export default function TeachersAdminClient() {
     setEditingId(t.id);
     setShowForm(true);
     setActiveTab("basic");
+    setAccountEmailInput(t.accountEmail || "");
+    setIssuedPassword(null);
     setFormData({
       slug: t.slug,
       name: t.name,
@@ -122,6 +131,8 @@ export default function TeachersAdminClient() {
     setEditingId(null);
     setShowForm(false);
     setActiveTab("basic");
+    setAccountEmailInput("");
+    setIssuedPassword(null);
     setFormData({
       slug: "",
       name: "",
@@ -143,6 +154,78 @@ export default function TeachersAdminClient() {
       position: "0",
       isActive: true,
     });
+  };
+
+  const editingTeacher = useMemo(() => teachers.find((t) => t.id === editingId) ?? null, [teachers, editingId]);
+
+  const linkTeacherAccount = async () => {
+    if (!editingId) {
+      alert("먼저 선생님을 저장한 뒤, 계정을 연결해주세요.");
+      return;
+    }
+    const email = accountEmailInput.trim().toLowerCase();
+    if (!email) {
+      alert("이메일을 입력해주세요.");
+      return;
+    }
+    setIsLinkingAccount(true);
+    setIssuedPassword(null);
+    try {
+      const res = await fetch("/api/admin/teachers/link-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teacherId: editingId, email, generatePassword: true }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        alert("계정 연결에 실패했습니다.");
+        return;
+      }
+      if (typeof json?.password === "string" && json.password.trim()) {
+        setIssuedPassword(json.password.trim());
+      } else {
+        setIssuedPassword(null);
+      }
+      await refresh();
+    } catch {
+      alert("계정 연결 중 오류가 발생했습니다.");
+    } finally {
+      setIsLinkingAccount(false);
+    }
+  };
+
+  const assignSelectedProductsToAccount = async () => {
+    if (!editingId) return;
+    if (!editingTeacher?.accountUserId) {
+      alert("먼저 이 선생님의 계정을 연결해주세요.");
+      setActiveTab("account");
+      return;
+    }
+    const courseIds = Array.isArray(formData.selectedCourseIds) ? formData.selectedCourseIds : [];
+    const textbookIds = Array.isArray(formData.selectedTextbookIds) ? formData.selectedTextbookIds : [];
+    if (courseIds.length === 0 && textbookIds.length === 0) {
+      alert("먼저 강좌/교재를 선택해주세요.");
+      return;
+    }
+    if (!confirm("선택한 강좌/교재의 '소유자(owner)'를 이 선생님 계정으로 설정할까요?")) return;
+    setIsAssigningProducts(true);
+    try {
+      const res = await fetch("/api/admin/teachers/assign-products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teacherId: editingId, courseIds, textbookIds }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        alert("상품 할당에 실패했습니다.");
+        return;
+      }
+      alert(`할당 완료: 강좌 ${json.updated?.courses ?? 0}개, 교재 ${json.updated?.textbooks ?? 0}개`);
+    } catch {
+      alert("상품 할당 중 오류가 발생했습니다.");
+    } finally {
+      setIsAssigningProducts(false);
+    }
   };
 
   const toggleActive = async (id: string, next: boolean) => {
@@ -484,6 +567,111 @@ export default function TeachersAdminClient() {
               </div>
             </div>
 
+            {/* 계정 연결 */}
+            <div className={`${activeTab === "account" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
+              <h3 className="text-[15px] font-semibold mb-2">선생님 계정</h3>
+              <p className="text-[12px] text-white/45">
+                선생님이 로그인해서 <span className="text-white/70">내 상품 / 리뷰 / 매출</span>을 볼 수 있게 계정을 연결합니다.
+              </p>
+
+              {!editingId ? (
+                <div className="mt-4 rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 text-[13px] text-white/60">
+                  먼저 <span className="text-white/80 font-semibold">저장</span>해서 선생님을 생성한 뒤 계정을 연결할 수 있습니다.
+                </div>
+              ) : (
+                <>
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+                      <p className="text-[12px] text-white/45">현재 연결</p>
+                      <p className="mt-1 text-[13px] text-white/85 font-semibold">
+                        {editingTeacher?.accountEmail ? editingTeacher.accountEmail : "미연결"}
+                      </p>
+                      {editingTeacher?.accountUserId ? (
+                        <p className="mt-1 text-[12px] text-white/35">userId: {editingTeacher.accountUserId}</p>
+                      ) : null}
+                    </div>
+                    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+                      <p className="text-[12px] text-white/45">선생님 콘솔</p>
+                      <a
+                        href="/teacher"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex items-center gap-2 rounded-xl bg-white/[0.06] px-4 py-2 text-[13px] text-white/80 hover:bg-white/[0.1]"
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>open_in_new</span>
+                        /teacher 열기
+                      </a>
+                      <p className="mt-2 text-[12px] text-white/35">연결된 계정으로 로그인해야 접근 가능합니다.</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[13px] text-white/50 mb-2">계정 이메일</label>
+                      <input
+                        type="email"
+                        value={accountEmailInput}
+                        onChange={(e) => setAccountEmailInput(e.target.value)}
+                        placeholder="teacher@email.com"
+                        className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                      />
+                      <p className="mt-2 text-[12px] text-white/40">
+                        기존 회원이 있으면 연결만 하고, 없으면 새로 생성합니다.
+                      </p>
+                    </div>
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={linkTeacherAccount}
+                        disabled={isLinkingAccount}
+                        className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-black font-semibold hover:bg-white/90 disabled:opacity-60"
+                      >
+                        {isLinkingAccount ? (
+                          <>
+                            <span className="material-symbols-outlined animate-spin" style={{ fontSize: "18px" }}>progress_activity</span>
+                            연결 중...
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>person_add</span>
+                            계정 생성/연결 + 임시 비밀번호 발급
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {issuedPassword ? (
+                    <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5">
+                      <p className="text-[13px] font-semibold text-emerald-100">임시 비밀번호(1회 표시)</p>
+                      <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2">
+                        <code className="rounded-xl bg-black/30 px-3 py-2 text-[13px] text-emerald-100">
+                          {issuedPassword}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(issuedPassword);
+                              alert("복사했습니다.");
+                            } catch {
+                              alert("복사에 실패했습니다.");
+                            }
+                          }}
+                          className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/25 text-[13px] font-semibold"
+                        >
+                          복사
+                        </button>
+                      </div>
+                      <p className="mt-3 text-[12px] text-emerald-100/70">
+                        선생님은 `로그인`에서 이메일/비밀번호로 로그인할 수 있습니다.
+                      </p>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
+
             {/* 이미지 */}
             <div className={`${activeTab === "images" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
               <h3 className="text-[15px] font-semibold mb-4">이미지</h3>
@@ -536,6 +724,32 @@ export default function TeachersAdminClient() {
             {/* 강좌/교재 선택 */}
             <div className={`${activeTab === "products" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
               <h3 className="text-[15px] font-semibold mb-4">강좌 / 교재 선택</h3>
+              <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2">
+                <button
+                  type="button"
+                  onClick={assignSelectedProductsToAccount}
+                  disabled={isAssigningProducts || !editingId}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-[13px] font-semibold text-black hover:bg-white/90 disabled:opacity-60"
+                  title="선택한 강좌/교재의 ownerId를 이 선생님 계정으로 설정합니다."
+                >
+                  {isAssigningProducts ? (
+                    <>
+                      <span className="material-symbols-outlined animate-spin" style={{ fontSize: "18px" }}>progress_activity</span>
+                      할당 중...
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>assignment_ind</span>
+                      선택 상품을 이 선생님 계정의 '내 상품'으로 추가
+                    </>
+                  )}
+                </button>
+                <p className="text-[12px] text-white/45">
+                  {editingTeacher?.accountEmail
+                    ? `연결 계정: ${editingTeacher.accountEmail}`
+                    : "계정이 미연결이면 먼저 [계정] 탭에서 연결하세요."}
+                </p>
+              </div>
               <div className="flex items-center gap-2 mb-4">
                 <button
                   type="button"

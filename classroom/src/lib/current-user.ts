@@ -10,6 +10,22 @@ export type CurrentUser = {
   isLoggedIn: boolean;
 };
 
+type TeacherAccount = {
+  teacherId: string;
+  teacherSlug: string;
+  teacherName: string;
+};
+
+function allowDevAdminBypass(): boolean {
+  // 기존 프로젝트는 "로그인 없이도 관리자 페이지가 열리는" 흐름을 사용해왔습니다.
+  // 대규모(멀티 계정)로 갈수록 위험하므로, 운영에서는 반드시 세션 기반으로 막고
+  // 개발 편의가 필요하면 아래 플래그로만 허용합니다.
+  if (process.env.ALLOW_DEV_ADMIN_BYPASS === "1") return true;
+  if (process.env.ALLOW_DEV_ADMIN_BYPASS === "0") return false;
+  // 기본값: 개발 환경에서는 허용(기존 동작 유지), 운영에서는 차단
+  return process.env.NODE_ENV !== "production";
+}
+
 async function getDefaultAdminUser(): Promise<CurrentUser> {
   // 관리자 페이지용 고정 관리자 계정
   const email = (process.env.ADMIN_EMAIL || "admin@gmail.com").toLowerCase().trim();
@@ -98,15 +114,65 @@ export async function requireCurrentUser(): Promise<CurrentUser> {
 }
 
 /**
- * 관리자 페이지용 - 항상 고정 관리자 반환
+ * 관리자 페이지용
+ * - 운영: 세션 기반 + ADMIN_EMAIL/ADMIN_EMAILS 체크(= isAdmin)
+ * - 개발: 기존 흐름 호환을 위해 필요 시 bypass 허용
  */
 export async function requireAdminUser(): Promise<CurrentUser> {
-  return await getDefaultAdminUser();
+  const u = await getCurrentUser();
+  if (u?.isAdmin) return u;
+  if (allowDevAdminBypass()) return await getDefaultAdminUser();
+  throw new Error("UNAUTHORIZED");
 }
 
 /**
- * 교사(관리) 기능용 - 항상 고정 관리자 반환
+ * 교사(관리) 기능용
+ * - 운영: 세션 유저(관리자/선생님 모두 가능)를 반환
+ * - 개발: 필요 시 bypass 허용
  */
 export async function getCurrentTeacherUser(): Promise<CurrentUser | null> {
-  return await getDefaultAdminUser();
+  const u = await getCurrentUser();
+  if (u) return u;
+  if (allowDevAdminBypass()) return await getDefaultAdminUser();
+  return null;
+}
+
+async function ensureTeacherAccountColumns() {
+  // Teacher 테이블은 배포/로컬에서 마이그레이션 누락에 대비해 raw 컬럼 추가 패턴을 사용 중입니다.
+  // 선생님 계정 연결용 컬럼도 동일 패턴으로 보강합니다.
+  try {
+    await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "accountUserId" TEXT;');
+  } catch {
+    // ignore
+  }
+}
+
+export async function getTeacherAccountByUserId(userId: string): Promise<TeacherAccount | null> {
+  const uid = (userId || "").trim();
+  if (!uid) return null;
+  await ensureTeacherAccountColumns();
+  try {
+    const rows = (await prisma.$queryRawUnsafe(
+      'SELECT "id", "slug", "name" FROM "Teacher" WHERE "accountUserId" = $1 LIMIT 1',
+      uid
+    )) as any[];
+    const r = rows?.[0];
+    if (!r) return null;
+    return {
+      teacherId: String(r.id),
+      teacherSlug: String(r.slug),
+      teacherName: String(r.name),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function requireTeacherAccountUser(): Promise<{ user: CurrentUser; teacher: TeacherAccount }> {
+  const user = await requireCurrentUser();
+  // 관리자는 선생님 콘솔이 아니라 슈퍼어드민 콘솔(/admin)을 쓰는 게 기본이므로
+  // 여기서는 "연결된 Teacher 계정이 있는 사용자"만 선생님 콘솔에 허용합니다.
+  const teacher = await getTeacherAccountByUserId(user.id);
+  if (!teacher) throw new Error("FORBIDDEN");
+  return { user, teacher };
 }
