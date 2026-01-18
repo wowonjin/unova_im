@@ -15,9 +15,9 @@ type Teacher = {
 };
 
 function subjectBadgeClass(subjectName: string): string {
-  // 전체 다크모드: 과목 배지도 다크 톤으로 통일
+  // 과목 배지: 흰색 배경 + 검정 글씨로 통일
   void subjectName;
-  return "bg-white/10 text-white/80 border-white/10";
+  return "bg-white text-black border-white/20";
 }
 
 export default function TeachersPage() {
@@ -90,26 +90,26 @@ export default function TeachersPage() {
     <div className="min-h-screen bg-[#161616] text-white flex flex-col">
       <LandingHeader backgroundColor="#161616" />
       
-      <main className="flex-1 pt-[70px]">
+      <main className="flex-1 pt-[50px] lg:pt-[70px]">
         {/* 헤더 섹션 */}
-        <section className="py-10 md:py-12">
+        <section className="py-6 md:py-12">
           <div className="mx-auto max-w-6xl px-4 text-left md:text-center">
             <h1 className="text-[22px] md:text-[40px] font-bold tracking-[-0.02em]">
               유노바 선생님
             </h1>
-            <p className="mt-2 text-[13px] md:mt-3 md:text-[16px] text-white/55 md:text-white/50">
+            <p className="mt-1 text-[13px] md:mt-3 md:text-[16px] text-white/55 md:text-white/50">
               문제풀이 실력으로 검증된 유노바 선생님과 함께하세요.
             </p>
           </div>
         </section>
 
         {/* 과목 필터 */}
-        <section className="sticky top-[70px] z-40 bg-[#161616]">
+        <section className="sticky top-[50px] lg:top-[70px] z-40 bg-[#161616]">
           <div className="mx-auto max-w-6xl px-4">
-            {/* 모바일: 탭바(가로 스크롤 + 활성 밑줄) */}
-            <div className="md:hidden -mx-4 px-4">
+            {/* 탭바(가로 스크롤 + 활성 밑줄) */}
+            <div className="-mx-4 px-4">
               <div
-                className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide"
+                className="flex gap-4 md:gap-6 overflow-x-auto border-b border-white/10 pb-2 md:pb-3 scrollbar-hide"
                 role="tablist"
                 aria-label="과목 선택"
               >
@@ -122,36 +122,21 @@ export default function TeachersPage() {
                       onClick={() => setSelectedSubject(subject)}
                       role="tab"
                       aria-selected={active}
-                      className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold transition-colors ${
-                        active ? "text-white" : "text-white/55"
+                      className={`relative shrink-0 px-1 py-2 md:py-3 text-[13px] md:text-[15px] font-semibold transition-colors ${
+                        active ? "text-white" : "text-white/55 hover:text-white/80"
                       }`}
                     >
                       {subject}
                       {active ? (
-                        <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                        <span
+                          className="absolute left-0 right-0 -bottom-2 md:-bottom-3 h-[2px] rounded-full bg-white"
+                          aria-hidden="true"
+                        />
                       ) : null}
                     </button>
                   );
                 })}
               </div>
-            </div>
-
-            {/* 데스크탑: 기존 버튼 UI 유지 */}
-            <div className="hidden md:flex items-center gap-1 py-4 overflow-x-auto scrollbar-hide">
-              {subjects.map((subject) => (
-                <button
-                  key={subject}
-                  type="button"
-                  onClick={() => setSelectedSubject(subject)}
-                  className={`px-4 py-2 rounded-full text-[14px] font-medium transition-all whitespace-nowrap ${
-                    selectedSubject === subject
-                      ? "bg-white/10 text-white"
-                      : "text-white/60 hover:text-white hover:bg-white/[0.06]"
-                  }`}
-                >
-                  {subject}
-                </button>
-              ))}
             </div>
           </div>
         </section>

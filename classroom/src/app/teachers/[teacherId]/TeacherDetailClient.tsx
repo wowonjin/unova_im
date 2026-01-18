@@ -501,32 +501,16 @@ export default function TeacherDetailClient({ teacher }: Props) {
         >
           학력/약력
         </div>
-        {teacher.navigationLinks.curriculum && (
-          <div
-            className="unova-menu-item"
-            onClick={() => handleNavClick(teacher.navigationLinks.curriculum)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handleNavClick(teacher.navigationLinks.curriculum);
-              }
-            }}
-          >
-            커리큘럼
-          </div>
-        )}
         {teacher.navigationLinks.lecture && (
           <div
             className="unova-menu-item"
-            onClick={() => handleNavClick(teacher.navigationLinks.lecture)}
+            onClick={() => handleNavClick("#teacher-pc-courses")}
             role="button"
             tabIndex={0}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
-                handleNavClick(teacher.navigationLinks.lecture);
+                handleNavClick("#teacher-pc-courses");
               }
             }}
           >
@@ -536,13 +520,13 @@ export default function TeacherDetailClient({ teacher }: Props) {
         {teacher.navigationLinks.book && (
           <div
             className="unova-menu-item"
-            onClick={() => handleNavClick(teacher.navigationLinks.book)}
+            onClick={() => handleNavClick("#teacher-pc-textbooks")}
             role="button"
             tabIndex={0}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
-                handleNavClick(teacher.navigationLinks.book);
+                handleNavClick("#teacher-pc-textbooks");
               }
             }}
           >
@@ -737,7 +721,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
           <div className="mega-mobile-hero__content">
             <div className="mega-mobile-hero__info">
               {teacher.headerSub ? (
-                <p className="mega-mobile-hero__catchphrase" style={{ fontWeight: 600 }}>
+                <p className="mega-mobile-hero__catchphrase">
                   {teacher.headerSub}
                 </p>
               ) : null}
@@ -809,12 +793,14 @@ export default function TeacherDetailClient({ teacher }: Props) {
         {/* 모바일: 탭 메뉴 제거 → 강의/교재를 바로 노출 (메인페이지 카드 UI 재사용) */}
         <div id="teacher-tabs" className="mega-mobile-content pb-16">
           {/* 강의/교재 */}
-          <div className="mega-mobile-section">
+          {/* NOTE: StorePreviewTabs 내부에 이미 px-4 컨테이너가 있어, mega-mobile-section(16px)까지 감싸면 좌우 여백이 2배로 커짐 */}
+          <div>
             <StorePreviewTabs
               courses={Array.isArray(teacher.storeCourses) ? teacher.storeCourses : []}
               textbooks={Array.isArray(teacher.storeTextbooks) ? teacher.storeTextbooks : []}
               variant="sections"
               sectionsMode="simple"
+              hideTabMenus
             />
           </div>
         </div>
@@ -1185,6 +1171,8 @@ export default function TeacherDetailClient({ teacher }: Props) {
           textbooks={Array.isArray(teacher.storeTextbooks) ? teacher.storeTextbooks : []}
           variant="sections"
           sectionsMode="simple"
+          hideTabMenus
+          anchorPrefix="teacher-pc"
         />
       </section>
 

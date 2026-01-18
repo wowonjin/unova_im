@@ -349,13 +349,20 @@ function ExpandableProductGrid({
 function StorePreviewSectionsSimple({
   courses,
   textbooks,
+  hideTabMenus = false,
+  anchorPrefix,
 }: {
   courses: StorePreviewProduct[];
   textbooks: StorePreviewProduct[];
+  hideTabMenus?: boolean;
+  /** 스크롤 타겟용 id prefix (예: "teacher-pc" -> "teacher-pc-courses") */
+  anchorPrefix?: string;
 }) {
   const [selectedCourseSubject, setSelectedCourseSubject] = useState<string>("전체");
   const [selectedFreeTextbookSubject, setSelectedFreeTextbookSubject] = useState<string>("전체");
   const [selectedTextbookSubject, setSelectedTextbookSubject] = useState<string>("전체");
+  const coursesAnchorId = anchorPrefix ? `${anchorPrefix}-courses` : undefined;
+  const textbooksAnchorId = anchorPrefix ? `${anchorPrefix}-textbooks` : undefined;
 
   const courseSubjects = useMemo(() => {
     // 홈 "강의 구매하기" 과목 탭 순서(요청 반영)
@@ -387,20 +394,20 @@ function StorePreviewSectionsSimple({
   }, [textbooks]);
 
   const filteredCourses = useMemo(() => {
-    if (selectedCourseSubject === "전체") return courses;
+    if (hideTabMenus || selectedCourseSubject === "전체") return courses;
     return courses.filter((p) => p.subject === selectedCourseSubject);
-  }, [courses, selectedCourseSubject]);
+  }, [courses, hideTabMenus, selectedCourseSubject]);
 
   const filteredFreeTextbooks = useMemo(() => {
-    if (selectedFreeTextbookSubject === "전체") return freeTextbooks;
+    if (hideTabMenus || selectedFreeTextbookSubject === "전체") return freeTextbooks;
     return freeTextbooks.filter((p) => p.subject === selectedFreeTextbookSubject);
-  }, [freeTextbooks, selectedFreeTextbookSubject]);
+  }, [freeTextbooks, hideTabMenus, selectedFreeTextbookSubject]);
 
   const filteredTextbooks = useMemo(() => {
     const paid = textbooks.filter((p) => !p.isFree);
-    if (selectedTextbookSubject === "전체") return paid;
+    if (hideTabMenus || selectedTextbookSubject === "전체") return paid;
     return paid.filter((p) => p.subject === selectedTextbookSubject);
-  }, [textbooks, selectedTextbookSubject]);
+  }, [hideTabMenus, textbooks, selectedTextbookSubject]);
 
   useEffect(() => {
     if (selectedCourseSubject === "전체") return;
@@ -420,8 +427,10 @@ function StorePreviewSectionsSimple({
   return (
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
       <div className="mt-4 md:mt-6">
-        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">강의 구매하기</h2>
-        {courseSubjects.length > 1 ? (
+        <div id={coursesAnchorId} className={coursesAnchorId ? "unova-scroll-target" : undefined}>
+          <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">강의 구매하기</h2>
+        </div>
+        {!hideTabMenus && courseSubjects.length > 1 ? (
           <div className="mt-2 md:mt-8">
             {/* 모바일: 탭 메뉴 스타일 */}
             <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
@@ -481,7 +490,7 @@ function StorePreviewSectionsSimple({
         {freeTextbooks.length > 0 ? (
           <div className="mb-14 md:mb-16">
             <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">무료 자료 다운로드</h2>
-            {freeTextbookSubjects.length > 1 ? (
+            {!hideTabMenus && freeTextbookSubjects.length > 1 ? (
               <div className="mt-2 md:mt-8">
                 {/* 모바일: 탭 메뉴 스타일 */}
                 <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
@@ -542,8 +551,10 @@ function StorePreviewSectionsSimple({
           </div>
         ) : null}
 
-        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">교재 구매하기</h2>
-        {textbookSubjects.length > 1 ? (
+        <div id={textbooksAnchorId} className={textbooksAnchorId ? "unova-scroll-target" : undefined}>
+          <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">교재 구매하기</h2>
+        </div>
+        {!hideTabMenus && textbookSubjects.length > 1 ? (
           <div className="mt-2 md:mt-8">
             {/* 모바일: 탭 메뉴 스타일 */}
             <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
@@ -609,15 +620,22 @@ function StorePreviewSectionsSimple({
 function StorePreviewSections({
   courses,
   textbooks,
+  hideTabMenus = false,
+  anchorPrefix,
 }: {
   courses: StorePreviewProduct[];
   textbooks: StorePreviewProduct[];
+  hideTabMenus?: boolean;
+  /** 스크롤 타겟용 id prefix */
+  anchorPrefix?: string;
 }) {
   const [selectedCourseSubject, setSelectedCourseSubject] = useState<string>("전체");
   const [selectedFreeTextbookSubject, setSelectedFreeTextbookSubject] = useState<string>("전체");
   const [selectedSuneungTextbookSubject, setSelectedSuneungTextbookSubject] = useState<string>("전체");
   const [selectedTransferTextbookSubject, setSelectedTransferTextbookSubject] = useState<string>("전체");
   const [selectedSuneungBookFormat, setSelectedSuneungBookFormat] = useState<BookFormat>("전체");
+  const coursesAnchorId = anchorPrefix ? `${anchorPrefix}-courses` : undefined;
+  const textbooksAnchorId = anchorPrefix ? `${anchorPrefix}-textbooks` : undefined;
 
   const courseSubjects = useMemo(() => {
     // 홈 "강의 구매하기" 과목 탭 순서(요청 반영)
@@ -681,14 +699,14 @@ function StorePreviewSections({
   }, [textbooks]);
 
   const filteredCourses = useMemo(() => {
-    if (selectedCourseSubject === "전체") return courses;
+    if (hideTabMenus || selectedCourseSubject === "전체") return courses;
     return courses.filter((p) => p.subject === selectedCourseSubject);
-  }, [courses, selectedCourseSubject]);
+  }, [courses, hideTabMenus, selectedCourseSubject]);
 
   const filteredFreeTextbooks = useMemo(() => {
-    if (selectedFreeTextbookSubject === "전체") return freeTextbooks;
+    if (hideTabMenus || selectedFreeTextbookSubject === "전체") return freeTextbooks;
     return freeTextbooks.filter((p) => p.subject === selectedFreeTextbookSubject);
-  }, [freeTextbooks, selectedFreeTextbookSubject]);
+  }, [freeTextbooks, hideTabMenus, selectedFreeTextbookSubject]);
 
   const suneungTextbooks = useMemo(() => {
     const subjectAllow = new Set(["국어", "영어", "수학", "물리학I", "물리학II", "사회문화"]);
@@ -710,14 +728,14 @@ function StorePreviewSections({
   }, [textbooks]);
 
   const filteredSuneungTextbooks = useMemo(() => {
-    if (selectedSuneungTextbookSubject === "전체") return suneungTextbooks;
+    if (hideTabMenus || selectedSuneungTextbookSubject === "전체") return suneungTextbooks;
     return suneungTextbooks.filter((p) => p.subject === selectedSuneungTextbookSubject);
-  }, [selectedSuneungTextbookSubject, suneungTextbooks]);
+  }, [hideTabMenus, selectedSuneungTextbookSubject, suneungTextbooks]);
 
   const filteredTransferTextbooks = useMemo(() => {
-    if (selectedTransferTextbookSubject === "전체") return transferTextbooks;
+    if (hideTabMenus || selectedTransferTextbookSubject === "전체") return transferTextbooks;
     return transferTextbooks.filter((p) => p.subject === selectedTransferTextbookSubject);
-  }, [selectedTransferTextbookSubject, transferTextbooks]);
+  }, [hideTabMenus, selectedTransferTextbookSubject, transferTextbooks]);
 
   // 선택 과목이 사라진 경우(상품 구성 변경 등) 안전 리셋
   useEffect(() => {
@@ -749,8 +767,10 @@ function StorePreviewSections({
   return (
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
       <div className="mt-4 md:mt-6">
-        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">강의 구매하기</h2>
-        {courseSubjects.length > 1 ? (
+        <div id={coursesAnchorId} className={coursesAnchorId ? "unova-scroll-target" : undefined}>
+          <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">강의 구매하기</h2>
+        </div>
+        {!hideTabMenus && courseSubjects.length > 1 ? (
           <div className="mt-2 md:mt-8">
             {/* 모바일: 탭 메뉴 스타일 */}
             <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
@@ -810,7 +830,7 @@ function StorePreviewSections({
         {freeTextbooks.length > 0 ? (
           <div className="mb-14 md:mb-16">
             <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">무료 자료 다운로드</h2>
-            {freeTextbookSubjects.length > 1 ? (
+            {!hideTabMenus && freeTextbookSubjects.length > 1 ? (
               <div className="mt-2 md:mt-8">
                 {/* 모바일: 탭 메뉴 스타일 */}
                 <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
@@ -874,37 +894,38 @@ function StorePreviewSections({
         <div className={freeTextbooks.length > 0 ? "mt-10 md:mt-16" : ""}>
           <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">수능 교재 구매하기</h2>
           {/* 전자책/실물책 필터 (과목 탭 위) */}
-          {/* 다른 섹션(과목 탭)과 동일하게, 제목 아래 여백을 충분히 둡니다 */}
-          <div className="mt-4 md:mt-6">
-            {/* 과목 탭과 동일한 탭 메뉴(underline) 스타일 */}
-            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
-              {BOOK_FORMATS.map((fmt) => {
-                const active = selectedSuneungBookFormat === fmt;
-                return (
-                  <button
-                    key={`suneung-bookfmt-${fmt}`}
-                    type="button"
-                    onClick={() => setSelectedSuneungBookFormat((prev) => (prev === fmt ? "전체" : fmt))}
-                    role="tab"
-                    aria-selected={active}
-                    className={`relative shrink-0 px-1 py-2 text-[13px] md:px-1 md:py-2 md:text-[15px] font-semibold ${
-                      active ? "text-white" : "text-white/55"
-                    }`}
-                  >
-                    {fmt}
-                    {active ? (
-                      <span
-                        className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white"
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                  </button>
-                );
-              })}
+          {!hideTabMenus ? (
+            <div className="mt-4 md:mt-6">
+              {/* 과목 탭과 동일한 탭 메뉴(underline) 스타일 */}
+              <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+                {BOOK_FORMATS.map((fmt) => {
+                  const active = selectedSuneungBookFormat === fmt;
+                  return (
+                    <button
+                      key={`suneung-bookfmt-${fmt}`}
+                      type="button"
+                      onClick={() => setSelectedSuneungBookFormat((prev) => (prev === fmt ? "전체" : fmt))}
+                      role="tab"
+                      aria-selected={active}
+                      className={`relative shrink-0 px-1 py-2 text-[13px] md:px-1 md:py-2 md:text-[15px] font-semibold ${
+                        active ? "text-white" : "text-white/55"
+                      }`}
+                    >
+                      {fmt}
+                      {active ? (
+                        <span
+                          className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white"
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          ) : null}
 
-          {suneungTextbookSubjects.length > 1 ? (
+          {!hideTabMenus && suneungTextbookSubjects.length > 1 ? (
             <div className="mt-2 md:mt-4">
             {/* 모바일: 탭 메뉴 스타일 */}
             <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
@@ -954,7 +975,7 @@ function StorePreviewSections({
             </div>
           </div>
           ) : null}
-          <div className="mt-6">
+          <div id={textbooksAnchorId} className={textbooksAnchorId ? "unova-scroll-target mt-6" : "mt-6"}>
             <ExpandableProductGrid
               products={filteredSuneungTextbooks}
               emptyLabel="등록된 교재 상품이 없습니다"
@@ -966,7 +987,7 @@ function StorePreviewSections({
 
         <div className="mt-14 md:mt-16">
           <h3 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">편입 교재 구매하기</h3>
-          {transferTextbookSubjects.length > 1 ? (
+          {!hideTabMenus && transferTextbookSubjects.length > 1 ? (
             <div className="mt-2 md:mt-8">
               {/* 모바일: 탭 메뉴 스타일 */}
               <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
@@ -1036,17 +1057,23 @@ export default function StorePreviewTabs({
   defaultType = "교재",
   variant = "tabs",
   sectionsMode = "home",
+  hideTabMenus = false,
+  anchorPrefix,
 }: {
   courses: StorePreviewProduct[];
   textbooks: StorePreviewProduct[];
   defaultType?: TypeLabel;
   variant?: Variant;
   sectionsMode?: SectionsMode;
+  /** 선생님 상세 페이지 등에서 탭/필터 UI를 숨기고 전체 목록을 바로 보여줄 때 사용 */
+  hideTabMenus?: boolean;
+  /** 스크롤 타겟용 id prefix */
+  anchorPrefix?: string;
 }) {
   if (variant === "sections") {
     return sectionsMode === "simple"
-      ? <StorePreviewSectionsSimple courses={courses} textbooks={textbooks} />
-      : <StorePreviewSections courses={courses} textbooks={textbooks} />;
+      ? <StorePreviewSectionsSimple courses={courses} textbooks={textbooks} hideTabMenus={hideTabMenus} anchorPrefix={anchorPrefix} />
+      : <StorePreviewSections courses={courses} textbooks={textbooks} hideTabMenus={hideTabMenus} anchorPrefix={anchorPrefix} />;
   }
 
   const [selectedType, setSelectedType] = useState<TypeLabel>(defaultType);

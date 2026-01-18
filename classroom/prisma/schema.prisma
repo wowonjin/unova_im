@@ -21,49 +21,50 @@ enum QnaAuthorRole {
 }
 
 model User {
-  id              String   @id @default(cuid())
-  email           String   @unique
-  imwebMemberCode String?  @unique
+  id              String           @id @default(cuid())
+  email           String           @unique
+  imwebMemberCode String?          @unique
   phone           String?
   name            String?
   profileImageUrl String?
   // 이메일(일반) 로그인 비밀번호 해시 (없으면 이메일 로그인 불가)
   emailCredential EmailCredential?
   // 추가 회원 정보
-  address         String?  // 주소
-  addressDetail   String?  // 상세주소
-  birthday        String?  // 생년월일 (YYYY-MM-DD 형식)
-  createdAt       DateTime @default(now())
+  address         String? // 주소
+  addressDetail   String? // 상세주소
+  birthday        String? // 생년월일 (YYYY-MM-DD 형식)
+  createdAt       DateTime         @default(now())
   lastLoginAt     DateTime?
 
-  ownedCourses Course[] @relation("CourseOwner")
-  textbooks   Textbook[]
+  ownedCourses         Course[]              @relation("CourseOwner")
+  textbooks            Textbook[]
   textbookEntitlements TextbookEntitlement[]
-  notices     Notice[]
-  enrollments Enrollment[]
-  progress    Progress[]
-  notes       Note[]
-  qnaPosts    QnaPost[]
-  qnaPinned   QnaPost[] @relation("QnaPinnedBy")
-  sessions    Session[]
-  orders      Order[]
-  oauthAccounts OAuthAccount[]
-  reviews     Review[]
-  productLikes ProductLike[]
-  reviewHelpfuls ReviewHelpful[]
+  notices              Notice[]
+  enrollments          Enrollment[]
+  progress             Progress[]
+  notes                Note[]
+  qnaPosts             QnaPost[]
+  qnaPinned            QnaPost[]             @relation("QnaPinnedBy")
+  sessions             Session[]
+  orders               Order[]
+  oauthAccounts        OAuthAccount[]
+  reviews              Review[]
+  productLikes         ProductLike[]
+  reviewHelpfuls       ReviewHelpful[]
+  reviewReports        ReviewReport[]
 
   @@index([imwebMemberCode])
 }
 
 model EmailCredential {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  passwordHash String
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  passwordHash       String
   // 관리자 화면에서만 복호화하여 "원문 비밀번호"를 보여주기 위한 암호문(AES-GCM)
   // 보안상 키는 서버 환경변수(PASSWORD_VAULT_SECRET 등)로만 관리합니다.
   passwordCiphertext String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -73,7 +74,7 @@ model EmailCredential {
 model OAuthAccount {
   id             String   @id @default(cuid())
   userId         String
-  provider       String   // "kakao" | "naver" etc
+  provider       String // "kakao" | "naver" etc
   providerUserId String
   createdAt      DateTime @default(now())
 
@@ -99,11 +100,11 @@ model Session {
 }
 
 model OtpCode {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   email     String
   codeHash  String
   expiresAt DateTime
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   usedAt    DateTime?
 
   @@index([email])
@@ -111,81 +112,81 @@ model OtpCode {
 }
 
 model Course {
-  id             String   @id @default(cuid())
-  ownerId        String?
-  title          String
-  teacherName    String?
-  subjectName    String?
+  id                    String   @id @default(cuid())
+  ownerId               String?
+  title                 String
+  teacherName           String?
+  subjectName           String?
   // Admin course list ordering within the teacher (owner).
   // Use positive integers (1..N). 0 is reserved for legacy/uninitialized.
-  position       Int      @default(0)
-  slug           String   @unique
-  description    String?
+  position              Int      @default(0)
+  slug                  String   @unique
+  description           String?
   // (legacy) 외부 URL 썸네일을 쓰는 경우를 위해 남겨둠
-  thumbnailUrl   String?
+  thumbnailUrl          String?
   // 업로드 썸네일(권장)
   thumbnailStoredPath   String?
   thumbnailOriginalName String?
   thumbnailMimeType     String?
   thumbnailSizeBytes    Int?
-  isPublished    Boolean  @default(true)
-  isSoldOut      Boolean  @default(false)
-  imwebGroupCode String?  @unique
+  isPublished           Boolean  @default(true)
+  isSoldOut             Boolean  @default(false)
+  imwebGroupCode        String?  @unique
   // 수강 기간 (일 단위, 기본값 365일)
-  enrollmentDays Int      @default(365)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @default(now()) @updatedAt
+  enrollmentDays        Int      @default(365)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @default(now()) @updatedAt
 
   // === 상세 페이지 관련 필드 ===
   // 판매 가격 (원)
-  price          Int?
+  price              Int?
   // 원래 가격 (할인 전, 선택)
-  originalPrice  Int?
+  originalPrice      Int?
   // 하루당 가격 (계산된 값, 캐시용)
-  dailyPrice     Int?
+  dailyPrice         Int?
   // 평점 (1.0~5.0)
-  rating         Float?
+  rating             Float?
   // 후기 수
-  reviewCount    Int      @default(0)
+  reviewCount        Int     @default(0)
   // 좋아요 수
-  likeCount      Int      @default(0)
+  likeCount          Int     @default(0)
   // 태그 (JSON 배열)
-  tags           Json?
+  tags               Json?
   // 수강 혜택 (JSON 배열)
-  benefits       Json?
+  benefits           Json?
   // 강좌 특징 (JSON 배열)
-  features       Json?
+  features           Json?
   // 강사 소개
-  teacherTitle   String?
+  teacherTitle       String?
   teacherDescription String?
   // 맛보기 영상 Vimeo ID
-  previewVimeoId String?
+  previewVimeoId     String?
   // 환불 정책
-  refundPolicy   String?
+  refundPolicy       String?
   // 강의 상세 "교재 함께 구매"에 노출할 교재 ID 목록 (JSON 배열)
   relatedTextbookIds Json?
   // 강의 상세 "추가 상품"에 노출할 강좌 ID 목록 (JSON 배열)
   relatedCourseIds   Json?
 
-  owner       User?    @relation("CourseOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  lessons     Lesson[]
-  enrollments Enrollment[]
-  attachments Attachment[]
+  owner          User?                 @relation("CourseOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  lessons        Lesson[]
+  enrollments    Enrollment[]
+  attachments    Attachment[]
   imwebProdCodes CourseImwebProdCode[]
-  orders      Order[]
-  reviews     Review[]
-  productLikes ProductLike[]
+  orders         Order[]
+  reviews        Review[]
+  productLikes   ProductLike[]
 
+  @@unique([ownerId, position])
   @@index([ownerId])
   @@index([teacherName])
   @@index([subjectName])
-  @@unique([ownerId, position])
 }
 
 model CourseImwebProdCode {
   id        String   @id @default(cuid())
   courseId  String
-  code      String   // @unique 제거: 같은 상품 코드를 여러 강좌에 사용 가능
+  code      String // @unique 제거: 같은 상품 코드를 여러 강좌에 사용 가능
   createdAt DateTime @default(now())
 
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -206,11 +207,11 @@ model Lesson {
   updatedAt       DateTime @default(now()) @updatedAt
 
   // 강의(차시) 설명 블록: 관리자에서 입력 → 수강생 화면의 "설명" 탭에 노출
-  description     String?
-  goals           Json?
-  outline         Json?
+  description String?
+  goals       Json?
+  outline     Json?
 
-  course      Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   progress    Progress[]
   notes       Note[]
   attachments Attachment[]
@@ -238,14 +239,14 @@ model Enrollment {
 }
 
 model Progress {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
   lessonId    String
-  lastSeconds Float    @default(0)
-  percent     Float    @default(0)
+  lastSeconds Float     @default(0)
+  percent     Float     @default(0)
   completedAt DateTime?
-  updatedAt   DateTime @updatedAt
-  createdAt   DateTime @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now())
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -291,7 +292,7 @@ model Attachment {
 }
 
 model QnaPost {
-  id         String   @id @default(cuid())
+  id         String        @id @default(cuid())
   lessonId   String
   userId     String
   body       String
@@ -300,15 +301,15 @@ model QnaPost {
   deletedAt  DateTime?
   pinnedAt   DateTime?
   pinnedById String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
-  lesson    Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  pinnedBy  User?     @relation("QnaPinnedBy", fields: [pinnedById], references: [id], onDelete: SetNull)
-  parent    QnaPost?  @relation("QnaThread", fields: [parentId], references: [id], onDelete: Cascade)
-  replies   QnaPost[] @relation("QnaThread")
-  images    QnaImage[]
+  lesson   Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pinnedBy User?      @relation("QnaPinnedBy", fields: [pinnedById], references: [id], onDelete: SetNull)
+  parent   QnaPost?   @relation("QnaThread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  QnaPost[]  @relation("QnaThread")
+  images   QnaImage[]
 
   @@index([lessonId, pinnedAt, createdAt])
   @@index([userId, createdAt])
@@ -329,13 +330,13 @@ model QnaImage {
 }
 
 model OrderEvent {
-  id              String   @id @default(cuid())
-  provider        String   @default("imweb")
+  id              String    @id @default(cuid())
+  provider        String    @default("imweb")
   eventType       String
   payload         Json
   orderNo         String?
   memberCode      String?
-  receivedAt      DateTime @default(now())
+  receivedAt      DateTime  @default(now())
   processedAt     DateTime?
   processingError String?
 
@@ -345,73 +346,73 @@ model OrderEvent {
 }
 
 model Textbook {
-  id           String   @id @default(cuid())
-  ownerId      String
+  id                 String   @id @default(cuid())
+  ownerId            String
   // Admin ordering within the teacher (owner). Use positive integers (1..N). 0 is legacy/uninitialized.
-  position     Int      @default(0)
-  title        String
+  position           Int      @default(0)
+  title              String
   // 스토어/상세 페이지에 노출할 "출판한 선생님 이름"
-  teacherName  String?
+  teacherName        String?
   // 선생님 프로필 이미지 URL (동그란 아바타로 표시)
-  teacherImageUrl String?
+  teacherImageUrl    String?
   // 선생님 한 줄 소개(선택): 카드/상세 상단에 작은 텍스트로 노출
-  teacherTitle String?
+  teacherTitle       String?
   // 선생님 소개(선택): 상세 페이지 소개 영역에 노출
   teacherDescription String?
-  subjectName  String?  // 과목명 (예: 수학, 물리, 국어 등)
-  storedPath   String
-  originalName String
-  mimeType     String
-  sizeBytes    Int
+  subjectName        String? // 과목명 (예: 수학, 물리, 국어 등)
+  storedPath         String
+  originalName       String
+  mimeType           String
+  sizeBytes          Int
   // PDF 페이지 수(옵션). 외부 URL 교재는 업로드 시 서버가 계산하여 저장합니다.
-  pageCount    Int?
-  isPublished  Boolean  @default(true)
-  isSoldOut    Boolean  @default(false)
+  pageCount          Int?
+  isPublished        Boolean  @default(true)
+  isSoldOut          Boolean  @default(false)
   // 아임웹 상품 매핑(옵션): 설정되면 수강생은 구매(Entitlement)가 있어야 접근 가능
   // @unique 제거: 같은 상품 코드를 여러 교재에 사용 가능
-  imwebProdCode String?
+  imwebProdCode      String?
   // 썸네일 (PDF 첫 페이지 이미지) - GCS URL 또는 data URL
-  thumbnailUrl  String?
+  thumbnailUrl       String?
   // 이용 기간 (일 단위, 기본값 365일)
-  entitlementDays Int    @default(365)
+  entitlementDays    Int      @default(365)
   // 스토어 상세 페이지의 "구성"에 노출할 텍스트 (예: PDF 교재, PDF+해설, 2권 세트 등)
-  composition  String?
+  composition        String?
   // 교재 구매하기(리스트) 썸네일 좌측 상단에 노출할 "교재 종류" 배지 텍스트 (예: 실전서, 기출, N제 등)
-  textbookType String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  textbookType       String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   // === 상세 페이지 관련 필드 ===
   // 판매 가격 (원)
-  price          Int?
+  price              Int?
   // 원래 가격 (할인 전, 선택)
-  originalPrice  Int?
+  originalPrice      Int?
   // 평점 (1.0~5.0)
-  rating         Float?
+  rating             Float?
   // 후기 수
-  reviewCount    Int      @default(0)
+  reviewCount        Int     @default(0)
   // 좋아요 수
-  likeCount      Int      @default(0)
+  likeCount          Int     @default(0)
   // 태그 (JSON 배열)
-  tags           Json?
+  tags               Json?
   // 교재 혜택 (JSON 배열)
-  benefits       Json?
+  benefits           Json?
   // 교재 특징 (JSON 배열)
-  features       Json?
+  features           Json?
   // 상세 페이지의 "추가 옵션" (예: [{"name":"구성","value":"PDF+해설"}])
-  extraOptions   Json?
+  extraOptions       Json?
   // 상세 설명
-  description    String?
+  description        String?
   // 추가 교재 구매에 표시할 교재 ID 목록 (JSON 배열)
   relatedTextbookIds Json?
   // 한 교재에 여러 파일(여러 권) 등록 지원 (예: PDF 1권+해설 1권)
   // [{"storedPath": "...", "originalName": "...", "mimeType": "...", "sizeBytes": 123, "pageCount": 200}]
-  files         Json?
+  files              Json?
 
-  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner        User                  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   entitlements TextbookEntitlement[]
-  orders      Order[]
-  reviews     Review[]
+  orders       Order[]
+  reviews      Review[]
   productLikes ProductLike[]
 
   @@index([ownerId, createdAt])
@@ -421,14 +422,14 @@ model Textbook {
 }
 
 model TextbookEntitlement {
-  id        String           @id @default(cuid())
-  userId    String
+  id         String           @id @default(cuid())
+  userId     String
   textbookId String
-  status    EnrollmentStatus @default(ACTIVE)
-  startAt   DateTime
-  endAt     DateTime
-  orderNo   String?
-  createdAt DateTime         @default(now())
+  status     EnrollmentStatus @default(ACTIVE)
+  startAt    DateTime
+  endAt      DateTime
+  orderNo    String?
+  createdAt  DateTime         @default(now())
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   textbook Textbook @relation(fields: [textbookId], references: [id], onDelete: Cascade)
@@ -459,10 +460,10 @@ model Notice {
 
 // 주문 상태
 enum OrderStatus {
-  PENDING     // 결제 대기
-  COMPLETED   // 결제 완료
-  CANCELLED   // 취소됨
-  REFUNDED    // 환불됨
+  PENDING // 결제 대기
+  COMPLETED // 결제 완료
+  CANCELLED // 취소됨
+  REFUNDED // 환불됨
   PARTIALLY_REFUNDED // 부분 환불됨
 }
 
@@ -474,31 +475,31 @@ enum ProductType {
 
 // 주문 모델
 model Order {
-  id            String      @id @default(cuid())
-  userId        String
+  id                 String      @id @default(cuid())
+  userId             String
   // 상품 타입 및 ID
-  productType   ProductType
-  courseId      String?
-  textbookId    String?
+  productType        ProductType
+  courseId           String?
+  textbookId         String?
   // 주문 정보
-  orderNo       String      @unique  // 주문 번호
-  productName   String                // 상품명 (스냅샷)
-  amount        Int                   // 결제 금액
-  status        OrderStatus @default(PENDING)
-  paymentMethod String?               // 결제 수단
-  refundedAmount Int      @default(0) // 환불된 금액(부분환불 누적)
+  orderNo            String      @unique // 주문 번호
+  productName        String // 상품명 (스냅샷)
+  amount             Int // 결제 금액
+  status             OrderStatus @default(PENDING)
+  paymentMethod      String? // 결제 수단
+  refundedAmount     Int         @default(0) // 환불된 금액(부분환불 누적)
   // 결제사 정보 (예: "toss")
-  provider      String?
+  provider           String?
   // 결제사 paymentKey (토스페이먼츠 등)
   providerPaymentKey String?
   // 결제사 응답 원문(디버깅용, 필요 시)
-  providerPayload Json?
+  providerPayload    Json?
   // 자동 등록 여부
-  enrolled      Boolean     @default(false)
-  enrolledAt    DateTime?
+  enrolled           Boolean     @default(false)
+  enrolledAt         DateTime?
   // 시간
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   course   Course?   @relation(fields: [courseId], references: [id], onDelete: SetNull)
@@ -518,20 +519,20 @@ model Review {
   productType ProductType
   courseId    String?
   textbookId  String?
-  userId      String?     // 로그인한 사용자 (선택)
-  authorName  String      // 작성자 이름 (비로그인 허용)
-  rating      Int         // 1~5 평점
-  content     String      // 후기 내용
-  imageUrls   Json?       // 이미지 URL 배열 (JSON)
+  userId      String? // 로그인한 사용자 (선택)
+  authorName  String // 작성자 이름 (비로그인 허용)
+  rating      Int // 1~5 평점
+  content     String // 후기 내용
+  imageUrls   Json? // 이미지 URL 배열 (JSON)
   isApproved  Boolean     @default(true) // 관리자 승인 여부
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  course   Course?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  textbook Textbook? @relation(fields: [textbookId], references: [id], onDelete: Cascade)
+  user     User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  course   Course?         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  textbook Textbook?       @relation(fields: [textbookId], references: [id], onDelete: Cascade)
   helpfuls ReviewHelpful[]
-  reports ReviewReport[]
+  reports  ReviewReport[]
 
   @@index([courseId, createdAt])
   @@index([textbookId, createdAt])
@@ -548,7 +549,7 @@ model ReviewReport {
   createdAt DateTime @default(now())
 
   review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([reviewId, createdAt])
   @@index([userId, createdAt])
@@ -563,13 +564,13 @@ model ReviewHelpful {
   createdAt DateTime @default(now())
 
   review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  @@unique([reviewId, userId])
+  @@unique([reviewId, visitorId])
   @@index([reviewId])
   @@index([userId])
   @@index([visitorId])
-  @@unique([reviewId, userId])
-  @@unique([reviewId, visitorId])
 }
 
 // 상품 좋아요 모델
@@ -578,8 +579,8 @@ model ProductLike {
   productType ProductType
   courseId    String?
   textbookId  String?
-  visitorId   String      // 비로그인 사용자는 브라우저 ID로 구분
-  userId      String?     // 로그인한 사용자 (선택)
+  visitorId   String // 비로그인 사용자는 브라우저 ID로 구분
+  userId      String? // 로그인한 사용자 (선택)
   createdAt   DateTime    @default(now())
 
   user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -593,19 +594,19 @@ model ProductLike {
 }
 
 model Popup {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   title     String
   imageUrl  String
   linkUrl   String?
   // 관리자에서 on/off
-  isActive  Boolean  @default(true)
+  isActive  Boolean   @default(true)
   // 노출 기간(선택). 둘 다 null이면 항상 허용(활성화 전제)
   startAt   DateTime?
   endAt     DateTime?
   // "center" | "bottom-right"
-  position  String   @default("center")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  position  String    @default("center")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([isActive, startAt, endAt])
   @@index([createdAt])
@@ -613,16 +614,16 @@ model Popup {
 
 // 홈 메인 슬라이드(캐러셀) 설정
 model HomeSlide {
-  id        String   @id @default(cuid())
+  id       String  @id @default(cuid())
   // 정렬(내림차순). 0은 레거시/미설정
-  position  Int      @default(0)
-  isActive  Boolean  @default(true)
+  position Int     @default(0)
+  isActive Boolean @default(true)
 
   imageUrl  String
   linkUrl   String?
-  tag       String?  // 예: "27학년도 수능대비"
-  titleHtml String   // 예: "한 권으로 끝내는<br>..."
-  subtitle  String?  // 예: "CONNECT PHYSICS I, II"
+  tag       String? // 예: "27학년도 수능대비"
+  titleHtml String // 예: "한 권으로 끝내는<br>..."
+  subtitle  String? // 예: "CONNECT PHYSICS I, II"
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -633,14 +634,14 @@ model HomeSlide {
 
 // 홈 바로가기 아이콘 설정
 model HomeShortcut {
-  id        String   @id @default(cuid())
-  position  Int      @default(0)
-  isActive  Boolean  @default(true)
+  id       String  @id @default(cuid())
+  position Int     @default(0)
+  isActive Boolean @default(true)
 
-  label     String   // 아이콘 이름
-  imageUrl  String
-  linkUrl   String
-  bgColor   String?  // 예: "#FFFFFF" / "#7c4ff5"
+  label    String // 아이콘 이름
+  imageUrl String
+  linkUrl  String
+  bgColor  String? // 예: "#FFFFFF" / "#7c4ff5"
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -651,20 +652,20 @@ model HomeShortcut {
 
 // 선생님(Teachers 페이지 노출용) - 관리자에서 관리
 model Teacher {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  name        String
-  subjectName String
+  id            String  @id @default(cuid())
+  slug          String  @unique
+  name          String
+  subjectName   String
   // Teachers 목록/헤더 등에서 사용할 대표 썸네일
-  imageUrl    String?
+  imageUrl      String?
   // 선생님 개인 페이지(상단 중앙)에 사용할 메인 이미지
-  mainImageUrl String?
+  mainImageUrl  String?
   // 선생님 상세 상단 섹터 아래에 노출할 광고/프로모션 이미지 (가로 배너)
   promoImageUrl String?
   // 커리큘럼 소개용 유튜브 주소(단일)
-  youtubeUrl   String?
+  youtubeUrl    String?
   // SNS 링크(선생님 페이지 상단 아이콘)
-  instagramUrl String?
+  instagramUrl  String?
   // 선생님 개인 페이지 "학력/약력" (관리자 입력)
   // educationText: 줄바꿈 포함 자유 텍스트(표시 시 pre-line)
   educationText String?
@@ -684,11 +685,11 @@ model Teacher {
   newsBgColor   String?
   // 우측 패널 "총 강의 평점" 컨테이너 배경색
   ratingBgColor String?
-  isActive    Boolean  @default(true)
+  isActive      Boolean  @default(true)
   // 정렬(오름차순). 0은 레거시/미설정
-  position    Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  position      Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([isActive, position, createdAt])
   @@index([subjectName])

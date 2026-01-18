@@ -1134,12 +1134,14 @@ a.unova-menu-item:active {
   font-size: 16px;
   color: #fff;
   margin-bottom: 5px;
-  font-weight: 300;
+  /* 요청사항: '문장 구조를 읽는...' 상단 문구를 살짝 굵게 */
+  font-weight: 500;
 }
 
 .unova-header-sub--accent {
   color: #fff !important;
-  font-weight: 300 !important; /* 상단 문구(몸통 문장) 굵게 효과 제거 */
+  /* 기존엔 300을 강제해서(important) 굵게가 적용되지 않았음 → 살짝 굵게로 통일 */
+  font-weight: 500 !important;
 }
 
 .unova-header-title {
@@ -1406,6 +1408,14 @@ a.unova-menu-item:active {
   overflow: visible;
 }
 
+/* 선생님 이미지 뒤/주변 그림자 제거(요청사항)
+ * - 다른 스타일/유틸리티가 나중에 주입되어도 항상 그림자가 생기지 않도록 강제합니다.
+ */
+.unova-teacher-area::before,
+.unova-teacher-area::after {
+  content: none !important;
+}
+
 /* PC: 선생님(중앙 이미지) 섹션이 스크롤에 같이 밀리지 않게 고정 */
 @media (min-width: 1001px) {
   .unova-teacher-area {
@@ -1423,21 +1433,6 @@ a.unova-menu-item:active {
   }
 }
 
-.unova-teacher-area::after {
-  /* 선생님 이미지 뒤 은은한 그림자(배경 레이어) */
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 10px;
-  width: min(420px, 86%);
-  height: 160px;
-  transform: translateX(-50%);
-  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0));
-  filter: blur(26px);
-  opacity: 1;
-  z-index: 0;
-}
-
 .unova-teacher-img {
   /* 항상 컨테이너 바닥에 '붙여서' 보이도록 고정 */
   position: absolute;
@@ -1452,10 +1447,8 @@ a.unova-menu-item:active {
   /* 중앙에서 살짝 왼쪽으로 이동 */
   transform: translateX(-50%) scale(1.04);
   display: block;
-  /* 이미지 자체에도 아주 약한 그림자 */
-  filter:
-    drop-shadow(0 26px 46px rgba(0, 0, 0, 0.38))
-    drop-shadow(0 10px 20px rgba(0, 0, 0, 0.22));
+  filter: none !important;
+  box-shadow: none !important;
 }
 
 /* 선생님 슬로건(메가스터디 스타일 카피) */
@@ -3153,7 +3146,8 @@ a.unova-menu-item:active {
     font-size: 13px;
     color: #fff;
     margin: 0 0 8px;
-    font-weight: 400; /* 상단 문구(몸통 문장) 굵게 효과 제거 */
+    /* 요청사항: 모바일은 얇게 */
+    font-weight: 400;
   }
 
   .mega-mobile-hero__name {
@@ -3249,6 +3243,8 @@ a.unova-menu-item:active {
     height: auto;
     object-fit: contain;
     display: block;
+    filter: none !important;
+    box-shadow: none !important;
   }
 
   .mega-mobile-hero__slogan {
