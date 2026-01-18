@@ -1979,7 +1979,7 @@ export default function ProductDetailClient({
               {/* 후기 목록(리스트가 먼저) */}
               <div className={isSimpleReviewUi ? "divide-y divide-white/10" : "space-y-3 sm:space-y-4"}>
                 {filteredReviews.length === 0 ? (
-                  <div className="rounded-2xl border border-white/10 px-6 py-10 text-center">
+                  <div className="rounded-2xl px-6 py-10 text-center">
                     <p className="text-[14px] text-white/55">아직 등록된 후기가 없습니다.</p>
                     <p className="mt-1 text-[13px] text-white/35">첫 번째 후기를 남겨주세요.</p>
                     <div className="mt-5 flex justify-center">
