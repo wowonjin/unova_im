@@ -528,6 +528,7 @@ model Review {
   teacherReply   String?
   teacherReplyAt DateTime?
   teacherReplyIsSecret Boolean @default(false) // 비밀 답글 여부 (작성자만 확인)
+  teacherReplyReadAt DateTime? // 답글 확인 시각(= 알림 읽음)
   isApproved  Boolean     @default(true) // 관리자 승인 여부
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt

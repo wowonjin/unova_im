@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS "Review" (
   "teacherReply" TEXT,
   "teacherReplyAt" TIMESTAMP(3),
   "teacherReplyIsSecret" BOOLEAN NOT NULL DEFAULT false,
+  "teacherReplyReadAt" TIMESTAMP(3),
   "isApproved" BOOLEAN NOT NULL DEFAULT true,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -86,6 +87,7 @@ CREATE TABLE IF NOT EXISTS "Review" (
 
 -- existing DBs may miss newer columns
 ALTER TABLE "Review" ADD COLUMN IF NOT EXISTS "teacherReplyIsSecret" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Review" ADD COLUMN IF NOT EXISTS "teacherReplyReadAt" TIMESTAMP(3);
 
 CREATE INDEX IF NOT EXISTS "Review_courseId_createdAt_idx" ON "Review" ("courseId", "createdAt");
 CREATE INDEX IF NOT EXISTS "Review_textbookId_createdAt_idx" ON "Review" ("textbookId", "createdAt");

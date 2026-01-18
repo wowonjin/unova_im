@@ -64,6 +64,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ reviewId: strin
         teacherReply: replyTrim.length > 0 ? replyTrim : null,
         teacherReplyAt: replyTrim.length > 0 ? new Date() : null,
         teacherReplyIsSecret: replyTrim.length > 0 ? Boolean(isSecret) : false,
+        // 새 답글이 달리면 리뷰 작성자 입장에서는 "미확인 알림"이 되도록 readAt을 초기화합니다.
+        teacherReplyReadAt: replyTrim.length > 0 ? null : null,
       },
       select: { id: true },
     });

@@ -48,6 +48,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
         teacherReply: true,
         teacherReplyAt: true,
         teacherReplyIsSecret: true,
+        teacherReplyReadAt: true,
       },
     });
 
@@ -101,6 +102,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
       canViewTeacherReply,
       teacherReply: shouldMask ? null : (r.teacherReply ?? null),
       teacherReplyAtISO: shouldMask ? null : (r.teacherReplyAt ? r.teacherReplyAt.toISOString() : null),
+      teacherReplyReadAtISO: r.teacherReplyReadAt ? r.teacherReplyReadAt.toISOString() : null,
       };
     });
 
@@ -175,11 +177,28 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
       teacherReplyAtISO: r.teacherReplyAtISO,
       teacherReplyIsSecret: r.teacherReplyIsSecret,
       canViewTeacherReply: r.canViewTeacherReply,
+      teacherReplyReadAtISO: r.teacherReplyReadAtISO,
     }));
 
     if (verifiedOnly) {
       const verifiedIds = new Set(formatted.filter((r) => r.isVerifiedBuyer).map((r) => r.id));
       const next = formatted.filter((r) => verifiedIds.has(r.id));
+      // 답글을 실제로 확인할 수 있는(=작성자) 경우에만 "읽음 처리"
+      if (viewerUserId) {
+        const toMark = next
+          .filter((r) => r.canViewTeacherReply && r.teacherReplyAtISO && !r.teacherReplyReadAtISO)
+          .map((r) => r.id);
+        if (toMark.length > 0) {
+          try {
+            await prisma.review.updateMany({
+              where: { id: { in: toMark }, userId: viewerUserId },
+              data: { teacherReplyReadAt: new Date() },
+            });
+          } catch {
+            // ignore
+          }
+        }
+      }
       return NextResponse.json({
         ok: true,
         summary: {
@@ -191,6 +210,23 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
         },
         reviews: next,
       });
+    }
+
+    // 답글을 실제로 확인할 수 있는(=작성자) 경우에만 "읽음 처리"
+    if (viewerUserId) {
+      const toMark = formatted
+        .filter((r) => r.canViewTeacherReply && r.teacherReplyAtISO && !r.teacherReplyReadAtISO)
+        .map((r) => r.id);
+      if (toMark.length > 0) {
+        try {
+          await prisma.review.updateMany({
+            where: { id: { in: toMark }, userId: viewerUserId },
+            data: { teacherReplyReadAt: new Date() },
+          });
+        } catch {
+          // ignore
+        }
+      }
     }
 
     return NextResponse.json({

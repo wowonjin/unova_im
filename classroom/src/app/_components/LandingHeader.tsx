@@ -22,6 +22,15 @@ type TeacherAccount = {
   teacherName: string;
 };
 
+type ReviewReplyNotification = {
+  id: string;
+  productId: string | null;
+  productTitle: string;
+  teacherName: string;
+  isSecret: boolean;
+  repliedAtISO: string | null;
+};
+
 type LandingHeaderProps = {
   showMobileMenu?: boolean;
   fullWidth?: boolean;
@@ -102,6 +111,10 @@ export default function LandingHeader({
   const [user, setUser] = useState<User | null>(null);
   const [teacherAccount, setTeacherAccount] = useState<TeacherAccount | null>(null);
   const [loading, setLoading] = useState(true);
+  const [replyNotifCount, setReplyNotifCount] = useState(0);
+  const [replyNotifs, setReplyNotifs] = useState<ReviewReplyNotification[]>([]);
+  const [replyNotifOpen, setReplyNotifOpen] = useState(false);
+  const replyNotifRef = useRef<HTMLDivElement | null>(null);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState<Record<string, boolean>>({});
@@ -352,6 +365,81 @@ export default function LandingHeader({
     };
     checkAuth();
   }, []);
+
+  // 답글 알림(미확인) 확인
+  useEffect(() => {
+    if (!user) {
+      setReplyNotifCount(0);
+      setReplyNotifs([]);
+      return;
+    }
+    let cancelled = false;
+    const fetchNotifs = async () => {
+      try {
+        const res = await fetch("/api/notifications/review-replies", { cache: "no-store" });
+        const data = await res.json().catch(() => null);
+        if (cancelled) return;
+        if (res.ok && data?.ok) {
+          setReplyNotifCount(Number(data.unreadCount || 0));
+          setReplyNotifs(Array.isArray(data.notifications) ? data.notifications : []);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    fetchNotifs();
+    // 가벼운 폴링(다른 서비스들처럼 주기적 갱신)
+    const t = window.setInterval(fetchNotifs, 30000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [user?.id]);
+
+  // 알림 드롭다운: 바깥 클릭으로 닫기
+  useEffect(() => {
+    if (!replyNotifOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const el = replyNotifRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && el.contains(e.target)) return;
+      setReplyNotifOpen(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [replyNotifOpen]);
+
+  const markAllReplyNotifsRead = async () => {
+    try {
+      const res = await fetch("/api/notifications/review-replies", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ all: true }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) throw new Error("MARK_READ_FAILED");
+      setReplyNotifCount(0);
+      setReplyNotifs([]);
+    } catch {
+      // ignore
+    }
+  };
+
+  const openReplyNotification = async (n: ReviewReplyNotification) => {
+    try {
+      await fetch("/api/notifications/review-replies", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ reviewIds: [n.id] }),
+      });
+    } catch {
+      // ignore
+    }
+    setReplyNotifCount((c) => Math.max(0, c - 1));
+    setReplyNotifs((prev) => prev.filter((x) => x.id !== n.id));
+    setReplyNotifOpen(false);
+    if (n.productId) router.push(`/store/${n.productId}`);
+  };
 
   const openMenu = () => {
     // AppShell 컨텍스트가 있으면(대시보드 등) 기존 사이드바를 열고,
@@ -620,6 +708,79 @@ export default function LandingHeader({
                     <span className="hidden sm:inline">선생님 콘솔</span>
                   </Link>
                 ) : null}
+
+                {/* 답글 알림(선생님 답글) */}
+                <div ref={replyNotifRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setReplyNotifOpen((v) => !v)}
+                    className={`relative inline-flex h-10 w-10 items-center justify-center rounded-xl ${hoverSoftBgClass} transition-colors ${fgClass}`}
+                    aria-label="알림"
+                    title="알림"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "20px" }} aria-hidden="true">
+                      notifications
+                    </span>
+                    {replyNotifCount > 0 ? (
+                      <span className="absolute -right-1 -top-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[11px] font-bold flex items-center justify-center">
+                        {replyNotifCount > 99 ? "99+" : replyNotifCount}
+                      </span>
+                    ) : null}
+                  </button>
+
+                  {replyNotifOpen ? (
+                    <div
+                      className={`absolute right-0 top-full mt-2 w-[320px] rounded-2xl shadow-lg z-[1300] overflow-hidden ${
+                        isLight ? "bg-white border border-black/[0.08]" : "bg-[#1C1C1C] border border-white/10"
+                      }`}
+                    >
+                      <div className={`flex items-center justify-between px-4 py-3 ${isLight ? "border-b border-black/10" : "border-b border-white/10"}`}>
+                        <p className={`text-[13px] font-semibold ${isLight ? "text-black" : "text-white"}`}>알림</p>
+                        <button
+                          type="button"
+                          onClick={markAllReplyNotifsRead}
+                          className={`text-[12px] ${isLight ? "text-black/60 hover:text-black/80" : "text-white/60 hover:text-white/80"}`}
+                        >
+                          모두 읽음
+                        </button>
+                      </div>
+
+                      {replyNotifs.length === 0 ? (
+                        <div className={`px-4 py-6 text-[13px] ${isLight ? "text-black/60" : "text-white/60"}`}>
+                          새로운 알림이 없습니다.
+                        </div>
+                      ) : (
+                        <div className="max-h-[360px] overflow-y-auto">
+                          {replyNotifs.map((n) => {
+                            const dateText = n.repliedAtISO ? n.repliedAtISO.slice(0, 10).replace(/-/g, ".") : "";
+                            return (
+                              <button
+                                key={n.id}
+                                type="button"
+                                onClick={() => openReplyNotification(n)}
+                                className={`w-full text-left px-4 py-3 transition-colors ${
+                                  isLight ? "hover:bg-black/[0.04]" : "hover:bg-white/[0.06]"
+                                }`}
+                              >
+                                <p className={`text-[13px] font-semibold ${isLight ? "text-black/90" : "text-white/90"}`}>
+                                  {n.teacherName} 답글
+                                  {n.isSecret ? <span className={`ml-2 text-[11px] ${isLight ? "text-black/50" : "text-white/50"}`}>비밀</span> : null}
+                                </p>
+                                <p className={`mt-0.5 text-[12px] ${isLight ? "text-black/60" : "text-white/60"} line-clamp-1`}>
+                                  {n.productTitle}
+                                </p>
+                                {dateText ? (
+                                  <p className={`mt-1 text-[11px] ${isLight ? "text-black/45" : "text-white/45"}`}>{dateText}</p>
+                                ) : null}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+
                 <div className="relative group">
                   <button className={`flex items-center gap-3 py-2 px-3 rounded-xl ${hoverSoftBgClass} transition-colors ${fgClass}`}>
                     {/* 프로필 이미지 */}
