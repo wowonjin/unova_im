@@ -12,6 +12,7 @@ import TextbookAddonsClient from "@/app/_components/TextbookAddonsClient";
 import TextbookFileSelectClient from "@/app/_components/TextbookFileSelectClient";
 import TextbookReviewFormClient from "@/app/_components/TextbookReviewFormClient";
 import ConfirmDeleteButton, { ConfirmDeleteIconButton } from "@/app/_components/ConfirmDeleteButton";
+import type { TextbookGradeCategory } from "@/app/_components/TextbookBasicInfoClient";
 
 export default async function AdminTextbookPage({
   params,
@@ -55,6 +56,7 @@ export default async function AdminTextbookPage({
             features?: unknown;
             description?: string | null;
             entitlementDays?: number | null;
+            gradeCategory?: unknown;
             teacherName?: string | null;
             teacherTitle?: string | null;
             teacherDescription?: string | null;
@@ -82,6 +84,7 @@ export default async function AdminTextbookPage({
             features?: unknown;
             description?: string | null;
             entitlementDays?: number | null;
+            gradeCategory?: unknown;
             teacherName?: string | null;
             teacherTitle?: string | null;
             teacherDescription?: string | null;
@@ -129,6 +132,7 @@ export default async function AdminTextbookPage({
         description: true,
         // optional fields (may be missing if migration not applied yet)
         entitlementDays: true,
+        gradeCategory: true,
         teacherName: true,
         teacherImageUrl: true,
         teacherTitle: true,
@@ -184,7 +188,7 @@ export default async function AdminTextbookPage({
   if (!textbook) {
     return (
       <AppShell>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6">교재를 찾을 수 없습니다.</div>
+        <div className="rounded-2xl border border-white/10 bg-transparent p-6">교재를 찾을 수 없습니다.</div>
       </AppShell>
     );
   }
@@ -320,6 +324,8 @@ export default async function AdminTextbookPage({
 
   // entitlementDays 필드 안전 처리 (마이그레이션 미적용 시 기본값)
   const entitlementDays = (textbook as { entitlementDays?: number }).entitlementDays ?? 30;
+  const gradeCategory =
+    ((textbook as { gradeCategory?: unknown }).gradeCategory as TextbookGradeCategory | undefined) ?? "G1_2";
 
   // 후기 목록 조회 (reviews 탭에서만)
   const reviews =
@@ -369,11 +375,11 @@ export default async function AdminTextbookPage({
         ]}
       />
 
-      <div className="mt-6">
+      <div className="mt-6 [&_input]:bg-transparent [&_textarea]:bg-transparent [&_select]:bg-transparent">
         {activeTab === "settings" ? (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-start">
             {/* 왼쪽: 기본 정보 */}
-            <Card className="lg:col-span-5">
+            <Card className="lg:col-span-5 bg-transparent">
               <CardHeader
                 title="기본 정보"
                 right={
@@ -393,6 +399,7 @@ export default async function AdminTextbookPage({
                   initialIsbn={(textbook as { imwebProdCode?: string | null }).imwebProdCode ?? ""}
                   initialSubjectName={textbook.subjectName || ""}
                   initialEntitlementDays={entitlementDays}
+                  initialGradeCategory={gradeCategory}
                   initialComposition={(textbook as { composition?: string | null }).composition ?? ""}
                 />
 
@@ -435,7 +442,7 @@ export default async function AdminTextbookPage({
             </Card>
 
             {/* 오른쪽: 상세 페이지 설정 */}
-            <Card className="lg:col-span-7 min-w-0">
+            <Card className="lg:col-span-7 min-w-0 bg-transparent">
               <CardHeader
                 title="상세 페이지 설정"
                 description="스토어에 표시되는 교재 상세 페이지의 내용을 설정합니다."
@@ -463,7 +470,7 @@ export default async function AdminTextbookPage({
             </Card>
           </div>
         ) : activeTab === "addons" ? (
-          <Card>
+          <Card className="bg-transparent">
             <CardHeader title="추가 상품" description="이 교재 상세 페이지에 함께 노출할 추가 교재를 선택합니다." />
             <CardBody>
               <TextbookAddonsClient
@@ -476,7 +483,7 @@ export default async function AdminTextbookPage({
             </CardBody>
           </Card>
         ) : activeTab === "users" ? (
-          <Card>
+          <Card className="bg-transparent">
             <CardHeader
               title="이용자 목록"
               description="이 교재에 대한 권한이 있는 사용자 목록입니다."
@@ -506,7 +513,7 @@ export default async function AdminTextbookPage({
                       type="email"
                       required
                       placeholder="이메일 주소 입력 후 Enter"
-                      className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 pr-20 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                      className="w-full rounded-lg border border-white/15 bg-transparent px-4 py-2.5 pr-20 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
                     />
                     <button
                       type="submit"
@@ -561,7 +568,7 @@ export default async function AdminTextbookPage({
             </CardBody>
           </Card>
         ) : activeTab === "reviews" ? (
-          <Card>
+          <Card className="bg-transparent">
             <CardHeader
               title="후기 관리"
               description="이 교재에 등록된 후기를 관리합니다."

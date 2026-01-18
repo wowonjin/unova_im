@@ -32,7 +32,13 @@ export default async function AdminTextbooksPage() {
     saleItems = await prisma.textbook.findMany({
       where: {
         ownerId: teacher.id,
-        OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+        // NOTE:
+        // 기본적으로 "판매 물품"은 가격/정가가 설정된 교재만 보여줍니다.
+        // 다만 운영 중 실수로 price/originalPrice가 null로 저장되면(가격 입력 비움),
+        // 스토어/홈/판매목록에서 동시에 "사라진 것처럼" 보이면서 복구가 어려워집니다.
+        // 그래서 "공개(isPublished=true)인데 가격이 미설정"인 항목도 판매 목록에 포함시켜
+        // 관리자 화면에서 다시 가격을 설정할 수 있게 합니다.
+        OR: [{ price: { not: null } }, { originalPrice: { not: null } }, { isPublished: true }],
       },
       orderBy: [{ position: "desc" }, { createdAt: "desc" }],
       select: {
@@ -59,7 +65,7 @@ export default async function AdminTextbooksPage() {
     saleItems = await prisma.textbook.findMany({
       where: {
         ownerId: teacher.id,
-        OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+        OR: [{ price: { not: null } }, { originalPrice: { not: null } }, { isPublished: true }],
       },
       orderBy: [{ createdAt: "desc" }],
       select: {

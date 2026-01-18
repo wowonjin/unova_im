@@ -375,6 +375,8 @@ model Textbook {
   thumbnailUrl       String?
   // 이용 기간 (일 단위, 기본값 365일)
   entitlementDays    Int      @default(365)
+  // 학년/타겟 분류 (홈 섹션 노출에 사용)
+  gradeCategory      TextbookGradeCategory @default(G1_2)
   // 스토어 상세 페이지의 "구성"에 노출할 텍스트 (예: PDF 교재, PDF+해설, 2권 세트 등)
   composition        String?
   // 교재 구매하기(리스트) 썸네일 좌측 상단에 노출할 "교재 종류" 배지 텍스트 (예: 실전서, 기출, N제 등)
@@ -419,6 +421,15 @@ model Textbook {
   @@index([ownerId, position])
   @@index([teacherName])
   @@index([imwebProdCode]) // 조회 성능을 위한 인덱스
+}
+
+enum TextbookGradeCategory {
+  // 고1/2
+  G1_2
+  // 수능
+  SUNEUNG
+  // 편입
+  TRANSFER
 }
 
 model TextbookEntitlement {

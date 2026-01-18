@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Badge, Field, Input } from "@/app/_components/ui";
 
+export type TextbookGradeCategory = "G1_2" | "SUNEUNG" | "TRANSFER";
+
 type Props = {
   textbookId: string;
   initialTitle: string;
@@ -12,6 +14,7 @@ type Props = {
   initialIsbn: string;
   initialSubjectName: string;
   initialEntitlementDays: number;
+  initialGradeCategory: TextbookGradeCategory;
   initialComposition: string;
 };
 
@@ -23,6 +26,7 @@ export default function TextbookBasicInfoClient({
   initialIsbn,
   initialSubjectName,
   initialEntitlementDays,
+  initialGradeCategory,
   initialComposition,
 }: Props) {
   const router = useRouter();
@@ -32,6 +36,7 @@ export default function TextbookBasicInfoClient({
   const [isbn, setIsbn] = useState(initialIsbn);
   const [subjectName, setSubjectName] = useState(initialSubjectName);
   const [entitlementDays, setEntitlementDays] = useState(initialEntitlementDays);
+  const [gradeCategory, setGradeCategory] = useState<TextbookGradeCategory>(initialGradeCategory);
   const [composition, setComposition] = useState(initialComposition);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   
@@ -50,6 +55,7 @@ export default function TextbookBasicInfoClient({
       formData.append("isbn", isbn);
       formData.append("subjectName", subjectName);
       formData.append("entitlementDays", entitlementDays.toString());
+      formData.append("gradeCategory", gradeCategory);
       formData.append("composition", composition);
 
       const res = await fetch("/api/admin/textbooks/update", {
@@ -71,7 +77,7 @@ export default function TextbookBasicInfoClient({
       console.error("Save error:", error);
       setSaveStatus("error");
     }
-  }, [textbookId, title, teacherName, isbn, subjectName, entitlementDays, composition]);
+  }, [textbookId, title, teacherName, isbn, subjectName, entitlementDays, gradeCategory, composition]);
 
   // 입력 변경 시 자동 저장 (디바운스)
   useEffect(() => {
@@ -96,7 +102,7 @@ export default function TextbookBasicInfoClient({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [title, teacherName, isbn, subjectName, entitlementDays, composition, saveData]);
+  }, [title, teacherName, isbn, subjectName, entitlementDays, gradeCategory, composition, saveData]);
 
   // 선생님 이름이 있고(입력됨), 이미지가 비어있으면 Teachers 테이블에서 자동 매칭해서 채움
   useEffect(() => {
@@ -210,16 +216,37 @@ export default function TextbookBasicInfoClient({
         </Field>
       </div>
 
-      <Field label="이용 기간(일)" hint="구매 후 교재를 이용할 수 있는 기간입니다.">
-        <Input
-          type="number"
-          value={entitlementDays}
-          onChange={(e) => setEntitlementDays(Math.max(1, parseInt(e.target.value) || 30))}
-          min={1}
-          max={3650}
-          className="bg-transparent"
-        />
-      </Field>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="이용 기간(일)" hint="구매 후 교재를 이용할 수 있는 기간입니다.">
+          <Input
+            type="number"
+            value={entitlementDays}
+            onChange={(e) => setEntitlementDays(Math.max(1, parseInt(e.target.value) || 30))}
+            min={1}
+            max={3650}
+            className="bg-transparent"
+          />
+        </Field>
+        <Field label="학년 선택" hint="홈 메인에서 수능/편입 섹션 노출에 사용됩니다.">
+          <select
+            value={gradeCategory}
+            onChange={(e) => setGradeCategory(e.target.value as TextbookGradeCategory)}
+            style={{ colorScheme: "dark" }}
+            className="w-full rounded-lg border border-white/10 bg-transparent px-4 py-2.5 text-sm text-white outline-none focus:border-white/20 transition-all"
+            aria-label="학년 선택"
+          >
+            <option value="G1_2" className="bg-[#141416] text-white">
+              고1/2
+            </option>
+            <option value="SUNEUNG" className="bg-[#141416] text-white">
+              수능
+            </option>
+            <option value="TRANSFER" className="bg-[#141416] text-white">
+              편입
+            </option>
+          </select>
+        </Field>
+      </div>
     </div>
   );
 }

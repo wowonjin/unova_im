@@ -112,6 +112,7 @@ export default async function HomePage() {
       originalPrice: true;
       tags: true;
         textbookType: true;
+      gradeCategory: true;
       thumbnailUrl: true;
       updatedAt: true;
       rating: true;
@@ -171,6 +172,7 @@ export default async function HomePage() {
             originalPrice: true,
             tags: true,
             textbookType: true,
+            gradeCategory: true,
             thumbnailUrl: true,
             updatedAt: true,
             isSoldOut: true,
@@ -197,6 +199,7 @@ export default async function HomePage() {
             originalPrice: true,
             tags: true,
             textbookType: true,
+            gradeCategory: true,
             thumbnailUrl: true,
             updatedAt: true,
             isSoldOut: true,
@@ -259,6 +262,7 @@ export default async function HomePage() {
       isSoldOut: Boolean((t as any).isSoldOut),
       tags,
       textbookType: (t as { textbookType?: string | null }).textbookType ?? null,
+      gradeCategory: (t as { gradeCategory?: "G1_2" | "SUNEUNG" | "TRANSFER" | null }).gradeCategory ?? null,
       type: "textbook" as const,
       // StorePreviewTabs는 썸네일을 항상 /api/.../thumbnail로 가져오므로
       // 여기서는 "썸네일이 있는지"만 나타내는 작은 값만 유지합니다(베이스64 payload 방지).

@@ -26,6 +26,10 @@ const Schema = z.object({
       const n = parseInt(v, 10);
       return Number.isFinite(n) && n > 0 ? n : undefined;
     }),
+  gradeCategory: z
+    .enum(["G1_2", "SUNEUNG", "TRANSFER"])
+    .optional()
+    .transform((v) => v || undefined),
   composition: z.string().optional().transform((v) => (typeof v === "string" ? v.trim() : "") || null),
 });
 
@@ -53,6 +57,7 @@ export async function POST(req: Request) {
     isbn: raw.get("isbn"),
     subjectName: raw.get("subjectName"),
     entitlementDays: raw.get("entitlementDays"),
+    gradeCategory: raw.get("gradeCategory"),
     composition: raw.get("composition"),
   });
 
@@ -63,7 +68,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "VALIDATION_ERROR" }, { status: 400 });
   }
 
-  const { textbookId, title, teacherName, isbn, subjectName, entitlementDays, composition } = parsed.data;
+  const { textbookId, title, teacherName, isbn, subjectName, entitlementDays, gradeCategory, composition } = parsed.data;
 
   // 소유권 확인
   const existing = await prisma.textbook.findFirst({
@@ -85,6 +90,7 @@ export async function POST(req: Request) {
       ...(isbn !== undefined && { imwebProdCode: isbn }),
       ...(subjectName !== undefined && { subjectName }),
       ...(entitlementDays !== undefined && { entitlementDays }),
+      ...(gradeCategory !== undefined && { gradeCategory }),
       ...(composition !== undefined && { composition }),
     };
 
@@ -93,6 +99,30 @@ export async function POST(req: Request) {
       // composition 컬럼이 없을 수 있음
       {
         label: "no-composition",
+        data: {
+          ...(title !== undefined && { title }),
+          ...(teacherName !== undefined && { teacherName }),
+          ...(isbn !== undefined && { imwebProdCode: isbn }),
+          ...(subjectName !== undefined && { subjectName }),
+          ...(entitlementDays !== undefined && { entitlementDays }),
+          ...(gradeCategory !== undefined && { gradeCategory }),
+        },
+      },
+      // gradeCategory 컬럼이 없을 수 있음
+      {
+        label: "no-gradeCategory",
+        data: {
+          ...(title !== undefined && { title }),
+          ...(teacherName !== undefined && { teacherName }),
+          ...(isbn !== undefined && { imwebProdCode: isbn }),
+          ...(subjectName !== undefined && { subjectName }),
+          ...(entitlementDays !== undefined && { entitlementDays }),
+          ...(composition !== undefined && { composition }),
+        },
+      },
+      // composition + gradeCategory 둘 다 없을 수 있음
+      {
+        label: "no-composition-no-gradeCategory",
         data: {
           ...(title !== undefined && { title }),
           ...(teacherName !== undefined && { teacherName }),

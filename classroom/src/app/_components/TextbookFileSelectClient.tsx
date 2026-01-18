@@ -145,7 +145,8 @@ export default function TextbookFileSelectClient({
             const next = Array.from(e.currentTarget.selectedOptions).map((o) => o.value);
             setSelectedIds(next);
           }}
-          className="min-h-[140px] w-full rounded-xl border border-white/10 bg-[#131315] px-3 py-2 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
+          style={{ colorScheme: "dark" }}
+          className="min-h-[140px] w-full rounded-xl border border-white/10 bg-transparent px-3 py-2 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
         >
           {options.map((o) => (
             <option key={o.id} value={o.id}>

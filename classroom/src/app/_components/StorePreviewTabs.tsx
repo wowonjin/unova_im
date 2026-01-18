@@ -15,6 +15,8 @@ export type StorePreviewProduct = {
   isSoldOut?: boolean;
   tags: string[];
   textbookType: string | null;
+  // 교재 학년/타겟 분류: 홈 섹션(수능/편입) 노출에 사용
+  gradeCategory?: "G1_2" | "SUNEUNG" | "TRANSFER" | null;
   type: "course" | "textbook";
   thumbnailUrl: string | null;
   // course 레거시(파일 저장) 썸네일 지원: thumbnailUrl이 비어도 storedPath가 있으면 API로 서빙 가능
@@ -711,9 +713,24 @@ function StorePreviewSections({
   const suneungTextbooks = useMemo(() => {
     const subjectAllow = new Set(["국어", "영어", "수학", "물리학I", "물리학II", "사회문화"]);
     const paid = textbooks.filter((p) => !p.isFree);
-    const filtered = paid.filter((p) => subjectAllow.has(p.subject));
-    // 폴백: 수능 과목으로 분류된 교재가 0개면, 유료 교재를 그대로 보여준다(섹션이 빈 화면으로 보이는 문제 방지)
-    const baseSource = filtered.length > 0 ? filtered : paid;
+
+    // 명시 분류 우선: "수능"은 반드시 수능 섹션에 노출
+    const explicit = paid.filter((p) => p.gradeCategory === "SUNEUNG");
+
+    // 편입으로 명시된 교재는 수능 섹션에서 제외(중복/혼선 방지)
+    const paidNonTransfer = paid.filter((p) => p.gradeCategory !== "TRANSFER");
+
+    const heuristic = paidNonTransfer.filter((p) => subjectAllow.has(p.subject));
+
+    const seen = new Set<string>();
+    const merged = [...explicit, ...heuristic].filter((p) => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+
+    // 폴백: 수능 후보가 0개면, 유료 교재(단, 편입 제외) 또는 전체 유료 교재를 보여준다(빈 화면 방지)
+    const baseSource = merged.length > 0 ? merged : paidNonTransfer.length > 0 ? paidNonTransfer : paid;
     if (selectedSuneungBookFormat === "전체") return baseSource;
     return baseSource.filter((p) => {
       const tt = normalizeTextbookType(p.textbookType);
@@ -724,7 +741,19 @@ function StorePreviewSections({
 
   const transferTextbooks = useMemo(() => {
     const subjectAllow = new Set(["미적분학", "대학물리학"]);
-    return textbooks.filter((p) => subjectAllow.has(p.subject) && !p.isFree);
+    const paid = textbooks.filter((p) => !p.isFree);
+    // 명시 분류 우선: "편입"은 반드시 편입 섹션에 노출
+    const explicit = paid.filter((p) => p.gradeCategory === "TRANSFER");
+    // 수능으로 명시된 교재는 편입 섹션에서 제외
+    const paidNonSuneung = paid.filter((p) => p.gradeCategory !== "SUNEUNG");
+    const heuristic = paidNonSuneung.filter((p) => subjectAllow.has(p.subject));
+
+    const seen = new Set<string>();
+    return [...explicit, ...heuristic].filter((p) => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
   }, [textbooks]);
 
   const filteredSuneungTextbooks = useMemo(() => {

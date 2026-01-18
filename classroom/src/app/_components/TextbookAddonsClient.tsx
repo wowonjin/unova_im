@@ -89,7 +89,7 @@ export default function TextbookAddonsClient({ textbookId, otherTextbooks, initi
               <label
                 key={tb.id}
                 className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                  isSelected ? "border-amber-400/50 bg-amber-500/10" : "border-white/10 hover:border-white/20 bg-white/5"
+                  isSelected ? "border-amber-400/50 bg-amber-500/10" : "border-white/10 hover:border-white/20 bg-transparent hover:bg-white/[0.03]"
                 }`}
               >
                 <input
