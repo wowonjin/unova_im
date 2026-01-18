@@ -27,11 +27,35 @@ export default async function TeacherReviewsPage() {
     );
   }
 
-  const reviews = await prisma.review.findMany({
-    where: {
-      isApproved: true,
-      OR: [{ course: { ownerId: user.id } }, { textbook: { ownerId: user.id } }],
-    },
+  // NOTE:
+  // 스토어 후기(Review)는 Course/Textbook의 ownerId(판매 등록 계정)와 무관하게
+  // teacherName 기반으로 선생님에게 귀속되는 경우가 많습니다.
+  // 따라서 선생님 콘솔(/teacher/reviews)은 "내 계정이 owner"가 아니라
+  // Teacher.accountUserId로 연결된 Teacher.name과 상품의 teacherName 매칭으로 리뷰를 조회합니다.
+  const teacherNameKey = (teacher.teacherName || "").replace(/선생님/g, "").trim();
+  const teacherNameCandidates = Array.from(
+    new Set(
+      [teacherNameKey, `${teacherNameKey} 선생님`, `${teacherNameKey}선생님`]
+        .map((s) => s.trim())
+        .filter(Boolean)
+    )
+  );
+
+  const whereBase = { isApproved: true } as const;
+  const whereExact = teacherNameCandidates.length
+    ? {
+        ...whereBase,
+        OR: [
+          { course: { OR: teacherNameCandidates.map((t) => ({ teacherName: { equals: t, mode: "insensitive" as const } })) } },
+          {
+            textbook: { OR: teacherNameCandidates.map((t) => ({ teacherName: { equals: t, mode: "insensitive" as const } })) },
+          },
+        ],
+      }
+    : { ...whereBase };
+
+  let reviews = await prisma.review.findMany({
+    where: whereExact as any,
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -41,11 +65,37 @@ export default async function TeacherReviewsPage() {
       createdAt: true,
       teacherReply: true,
       teacherReplyAt: true,
-      course: { select: { id: true, title: true } },
-      textbook: { select: { id: true, title: true } },
+      course: { select: { id: true, title: true, teacherName: true, ownerId: true } },
+      textbook: { select: { id: true, title: true, teacherName: true, ownerId: true } },
     },
     take: 100,
   });
+
+  // 폴백: exact 매칭이 하나도 없으면 contains로 한번 더(레거시 표기/공백 차이 대비)
+  if (reviews.length === 0 && teacherNameKey) {
+    reviews = await prisma.review.findMany({
+      where: {
+        ...whereBase,
+        OR: [
+          { course: { teacherName: { contains: teacherNameKey, mode: "insensitive" } } },
+          { textbook: { teacherName: { contains: teacherNameKey, mode: "insensitive" } } },
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        authorName: true,
+        rating: true,
+        content: true,
+        createdAt: true,
+        teacherReply: true,
+        teacherReplyAt: true,
+        course: { select: { id: true, title: true, teacherName: true, ownerId: true } },
+        textbook: { select: { id: true, title: true, teacherName: true, ownerId: true } },
+      },
+      take: 100,
+    });
+  }
 
   const items: TeacherReviewItem[] = reviews.map((r) => {
     const productTitle = r.course?.title ?? r.textbook?.title ?? "상품";
