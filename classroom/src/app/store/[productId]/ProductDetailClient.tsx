@@ -2086,30 +2086,32 @@ export default function ProductDetailClient({
                           </div>
                         )}
 
-                        <div className="mt-4 flex items-center justify-between">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleHelpful(review.id)}
-                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[12px] transition-colors ${
-                              review.isHelpful
-                                ? "border-white/25 bg-white/10 text-white"
-                                : "border-white/10 bg-white/[0.04] text-white/60 hover:text-white/80"
-                            }`}
-                          >
-                            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-                              thumb_up
-                            </span>
-                            도움돼요 {Number(review.helpfulCount || 0).toLocaleString("ko-KR")}
-                          </button>
+                        {!isSimpleReviewUi ? (
+                          <div className="mt-4 flex items-center justify-between">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleHelpful(review.id)}
+                              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[12px] transition-colors ${
+                                review.isHelpful
+                                  ? "border-white/25 bg-white/10 text-white"
+                                  : "border-white/10 bg-white/[0.04] text-white/60 hover:text-white/80"
+                              }`}
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                                thumb_up
+                              </span>
+                              도움돼요 {Number(review.helpfulCount || 0).toLocaleString("ko-KR")}
+                            </button>
 
-                          <button
-                            type="button"
-                            onClick={() => setReportTargetId(review.id)}
-                            className="text-[12px] text-white/45 hover:text-white/70"
-                          >
-                            신고
-                          </button>
-                        </div>
+                            <button
+                              type="button"
+                              onClick={() => setReportTargetId(review.id)}
+                              className="text-[12px] text-white/45 hover:text-white/70"
+                            >
+                              신고
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
                     );
                   })
