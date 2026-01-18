@@ -91,6 +91,11 @@ const TRANSFER_SUBJECTS = [
 ];
 const HIDDEN_SUBJECTS = new Set<string>(TRANSFER_SUBJECTS);
 
+// 편입 과목별 오른쪽 보조 라벨(요청사항)
+const TRANSFER_SUBJECT_RIGHT_LABEL: Partial<Record<string, string>> = {
+  "대학물리학": "연세대학교 · 고려대학교 · 중앙대학교",
+};
+
 // 입시 유형별 과목 정의
 // 내신/수능: 고등학교 교과목 (수학, 물리학I/II 등)
 const EXAM_SUBJECTS: Record<ExamType, string[]> = {
@@ -267,7 +272,15 @@ export default function StoreFilterClient({
                 <h3 className="sr-only">과목</h3>
                 <UnderlineTabBar
                   ariaLabel="과목 선택"
-                  items={availableSubjects.map((s) => ({ key: s, label: s }))}
+                  items={availableSubjects.map((s) => {
+                    const rightLabel =
+                      selectedExamType === "편입" ? TRANSFER_SUBJECT_RIGHT_LABEL[s] : undefined;
+                    return {
+                      key: s,
+                      // 모바일 탭바는 공간이 좁아도 가로 스크롤이 가능하므로 텍스트로 결합
+                      label: rightLabel ? `${s}  ${rightLabel}` : s,
+                    };
+                  })}
                   activeKey={selectedSubject}
                   onSelect={(k) => handleSubjectChange(k)}
                 />
@@ -346,19 +359,34 @@ export default function StoreFilterClient({
             <div>
               <h3 className="text-[13px] font-medium text-white/50 mb-3">과목</h3>
               <div className="flex flex-wrap gap-2">
-                {subjectsWithoutAll.map((subject) => (
-                  <button
-                    key={subject}
-                    onClick={() => handleSubjectChange(subject)}
-                    className={`text-[12px] font-medium rounded-md min-w-16 px-3 py-1.5 text-center ${
-                      selectedSubject === subject
-                        ? "bg-white text-black"
-                        : "bg-white/[0.08] text-white/70 hover:bg-white/[0.12] hover:text-white"
-                    }`}
-                  >
-                    {subject}
-                  </button>
-                ))}
+                {subjectsWithoutAll.map((subject) => {
+                  const active = selectedSubject === subject;
+                  const rightLabel =
+                    selectedExamType === "편입" ? TRANSFER_SUBJECT_RIGHT_LABEL[subject] : undefined;
+
+                  return (
+                    <button
+                      key={subject}
+                      onClick={() => handleSubjectChange(subject)}
+                      className={`text-[12px] font-medium rounded-md px-3 py-1.5 ${
+                        active
+                          ? "bg-white text-black"
+                          : "bg-white/[0.08] text-white/70 hover:bg-white/[0.12] hover:text-white"
+                      } ${rightLabel ? "min-w-[220px] text-left" : "min-w-16 text-center"}`}
+                    >
+                      {rightLabel ? (
+                        <span className="flex w-full items-center justify-between gap-3">
+                          <span className="shrink-0">{subject}</span>
+                          <span className={`text-[11px] ${active ? "text-black/60" : "text-white/40"}`}>
+                            {rightLabel}
+                          </span>
+                        </span>
+                      ) : (
+                        subject
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
