@@ -2003,7 +2003,7 @@ export default function ProductDetailClient({
                               <span className="text-[14px] font-semibold text-white/90 truncate">
                                 {maskAuthorName(review.name)}
                               </span>
-                              {review.isVerifiedBuyer && (
+                              {!isSimpleReviewUi && review.isVerifiedBuyer && (
                                 <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
                                   구매자
                                 </span>
