@@ -74,7 +74,7 @@ async function buildTeacherLectureAndBookSetsByTeacherName(teacherNameRaw: strin
   const baseSellable = {
     isPublished: true,
     OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
-  } as const;
+  };
 
   // 1) 선생님 이름 정확 일치 → 2) 그래도 없으면 부분 일치(공백/접미어 등으로 인한 미스매치 완화)
   let [coursesRaw, textbooksRaw] = await Promise.all([
