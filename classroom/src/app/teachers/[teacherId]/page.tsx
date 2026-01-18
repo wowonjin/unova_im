@@ -21,42 +21,19 @@ function toPublicGcsUrl(input?: string | null) {
   return s;
 }
 
-async function getTeacherSelectedProductIdsBySlug(teacherSlug: string): Promise<{
-  courseIds: string[];
-  textbookIds: string[];
-}> {
-  try {
-    const rows = (await prisma.$queryRawUnsafe(
-      'SELECT "selectedCourseIds", "selectedTextbookIds" FROM "Teacher" WHERE "slug" = $1 LIMIT 1',
-      teacherSlug
-    )) as any[];
-    const row = Array.isArray(rows) ? rows[0] : null;
-    return {
-      courseIds: Array.isArray(row?.selectedCourseIds) ? row.selectedCourseIds.filter((x: any) => typeof x === "string") : [],
-      textbookIds: Array.isArray(row?.selectedTextbookIds) ? row.selectedTextbookIds.filter((x: any) => typeof x === "string") : [],
-    };
-  } catch {
-    return { courseIds: [], textbookIds: [] };
-  }
-}
-
-async function buildTeacherLectureAndBookSets({
-  courseIds,
-  textbookIds,
-}: {
-  courseIds: string[];
-  textbookIds: string[];
-}): Promise<{
+async function buildTeacherLectureAndBookSetsByTeacherName(teacherNameRaw: string): Promise<{
   lectureSets: LectureSet[];
   bookSets: BookSet[];
   storeCourses: StorePreviewProduct[];
   storeTextbooks: StorePreviewProduct[];
 }> {
-  const [courses, textbooks] = await Promise.all([
-    courseIds.length
-      ? prisma.course.findMany({
-          where: { id: { in: courseIds }, isPublished: true },
-          select: {
+  const teacherName = (teacherNameRaw || "").trim();
+  if (!teacherName) {
+    return { lectureSets: [], bookSets: [], storeCourses: [], storeTextbooks: [] };
+  }
+
+  // 판매하기(스토어 등록) 기준과 유사하게: 공개 + 판매가/정가 중 하나라도 있는 상품만 노출
+  const courseSelect = {
             id: true,
             slug: true,
             title: true,
@@ -70,14 +47,12 @@ async function buildTeacherLectureAndBookSets({
             thumbnailUrl: true,
             thumbnailStoredPath: true,
             updatedAt: true,
+    createdAt: true,
+    position: true,
             isSoldOut: true,
-          },
-        })
-      : Promise.resolve([]),
-    textbookIds.length
-      ? prisma.textbook.findMany({
-          where: { id: { in: textbookIds }, isPublished: true },
-          select: {
+  } as const;
+
+  const textbookSelect = {
             id: true,
             title: true,
             teacherName: true,
@@ -91,14 +66,56 @@ async function buildTeacherLectureAndBookSets({
             composition: true,
             textbookType: true,
             updatedAt: true,
+    createdAt: true,
+    position: true,
             isSoldOut: true,
-          },
-        })
-      : Promise.resolve([]),
+  } as const;
+
+  const baseSellable = {
+    isPublished: true,
+    OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+  } as const;
+
+  // 1) 선생님 이름 정확 일치 → 2) 그래도 없으면 부분 일치(공백/접미어 등으로 인한 미스매치 완화)
+  let [coursesRaw, textbooksRaw] = await Promise.all([
+    prisma.course.findMany({
+      where: { ...baseSellable, teacherName },
+      select: courseSelect,
+      take: 200,
+    }),
+    prisma.textbook.findMany({
+      where: { ...baseSellable, teacherName },
+      select: textbookSelect,
+      take: 200,
+    }),
   ]);
 
-  const courseById = new Map(courses.map((c) => [c.id, c]));
-  const orderedCourses = courseIds.map((id) => courseById.get(id)).filter(Boolean) as typeof courses;
+  if (coursesRaw.length === 0) {
+    coursesRaw = await prisma.course.findMany({
+      where: { ...baseSellable, teacherName: { contains: teacherName, mode: "insensitive" } },
+      select: courseSelect,
+      take: 200,
+    });
+  }
+  if (textbooksRaw.length === 0) {
+    textbooksRaw = await prisma.textbook.findMany({
+      where: { ...baseSellable, teacherName: { contains: teacherName, mode: "insensitive" } },
+      select: textbookSelect,
+      take: 200,
+    });
+  }
+
+  const orderedCourses = coursesRaw
+    .slice()
+    .sort((a, b) => {
+      const ap = a.position === 0 ? Number.MAX_SAFE_INTEGER : a.position;
+      const bp = b.position === 0 ? Number.MAX_SAFE_INTEGER : b.position;
+      if (ap !== bp) return ap - bp;
+      const au = a.updatedAt?.getTime?.() ? a.updatedAt.getTime() : 0;
+      const bu = b.updatedAt?.getTime?.() ? b.updatedAt.getTime() : 0;
+      if (au !== bu) return bu - au;
+      return b.createdAt.getTime() - a.createdAt.getTime();
+    });
 
   const single: Lecture[] = [];
   const pack: Lecture[] = [];
@@ -134,8 +151,17 @@ async function buildTeacherLectureAndBookSets({
     reviewCount: typeof c.reviewCount === "number" ? c.reviewCount : null,
   }));
 
-  const textbookById = new Map(textbooks.map((t) => [t.id, t]));
-  const orderedTextbooks = textbookIds.map((id) => textbookById.get(id)).filter(Boolean) as typeof textbooks;
+  const orderedTextbooks = textbooksRaw
+    .slice()
+    .sort((a, b) => {
+      const ap = a.position === 0 ? Number.MAX_SAFE_INTEGER : a.position;
+      const bp = b.position === 0 ? Number.MAX_SAFE_INTEGER : b.position;
+      if (ap !== bp) return ap - bp;
+      const au = a.updatedAt?.getTime?.() ? a.updatedAt.getTime() : 0;
+      const bu = b.updatedAt?.getTime?.() ? b.updatedAt.getTime() : 0;
+      if (au !== bu) return bu - au;
+      return b.createdAt.getTime() - a.createdAt.getTime();
+    });
   const books: Book[] = orderedTextbooks.map((t) => ({
     title: t.title,
     sub: (t.composition || t.textbookType || "교재") as string,
@@ -884,9 +910,8 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
         ? dbTeacher.headerSubText.trim()
         : "";
 
-    // 관리자에서 선택한 강좌/교재를 선생님 페이지에 연동 (더미 데이터 제거)
-    const selected = await getTeacherSelectedProductIdsBySlug(dbTeacher.slug);
-    const { lectureSets, bookSets, storeCourses, storeTextbooks } = await buildTeacherLectureAndBookSets(selected);
+    // 판매하기(강좌/교재)에서 입력된 teacherName(선생님 이름) 기준으로 자동 연동
+    const { lectureSets, bookSets, storeCourses, storeTextbooks } = await buildTeacherLectureAndBookSetsByTeacherName(dbTeacher.name);
 
     const normalizeLines = (v: unknown): string[] => {
       if (typeof v !== "string") return [];
@@ -1023,9 +1048,10 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
         ? "막연한 국어의 끝"
         : (teacher as any)?.headerSub;
 
-    // 관리자에서 선택한 강좌/교재를 선생님 페이지에 연동 (더미 데이터 제거)
-    const selected = await getTeacherSelectedProductIdsBySlug(teacherId);
-    const { lectureSets, bookSets, storeCourses, storeTextbooks } = await buildTeacherLectureAndBookSets(selected);
+    // 판매하기(강좌/교재)에서 입력된 teacherName(선생님 이름) 기준으로 자동 연동
+    const { lectureSets, bookSets, storeCourses, storeTextbooks } = await buildTeacherLectureAndBookSetsByTeacherName(
+      (teacher as any)?.name ?? ""
+    );
 
     const teacherWithLiveData: TeacherDetailTeacher = {
       ...(teacher as any),

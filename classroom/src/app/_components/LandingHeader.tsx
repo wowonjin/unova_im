@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
+import { useSidebarOptional } from "@/app/_components/SidebarContext";
+// SidebarProvider 밖에서도 렌더될 수 있어 optional hook 사용
 
 type User = {
   id: string;
@@ -12,6 +14,12 @@ type User = {
   name: string | null;
   isAdmin?: boolean;
   profileImageUrl?: string | null;
+};
+
+type TeacherAccount = {
+  teacherId: string;
+  teacherSlug: string;
+  teacherName: string;
 };
 
 type LandingHeaderProps = {
@@ -74,17 +82,6 @@ const menuItems: MenuItem[] = [
   },
 ];
 
-// Optional hook for sidebar context (may not be available outside AppShell)
-function useSidebarOptional() {
-  try {
-    // Dynamic import to avoid errors when context is not available
-    const { useSidebar } = require("@/app/_components/SidebarContext");
-    return useSidebar();
-  } catch {
-    return null;
-  }
-}
-
 export default function LandingHeader({
   showMobileMenu = false,
   fullWidth = false,
@@ -103,6 +100,7 @@ export default function LandingHeader({
   const [isDesktop, setIsDesktop] = useState(false);
   const [dynamicScrolledOpacity, setDynamicScrolledOpacity] = useState<number | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [teacherAccount, setTeacherAccount] = useState<TeacherAccount | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -110,8 +108,10 @@ export default function LandingHeader({
   const [mobileProfileExpanded, setMobileProfileExpanded] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [eventBannerVisible] = useState(true);
-  const sidebar = showMobileMenu ? useSidebarOptional() : null;
+  const sidebarContext = useSidebarOptional();
+  const sidebar = showMobileMenu ? sidebarContext : null;
   const pathname = usePathname();
+  const isTeacherConsole = pathname?.startsWith("/teacher");
   const [rawSearch, setRawSearch] = useState<string>("");
   const [teacherSubItems, setTeacherSubItems] = useState<SubMenuItem[] | null>(null);
   const currentVariant = scrolled ? scrolledVariant ?? variant : variant;
@@ -340,10 +340,12 @@ export default function LandingHeader({
           const data = await res.json();
           if (data.ok && data.user) {
             setUser(data.user);
+            setTeacherAccount(data.teacherAccount ?? null);
           }
         }
       } catch {
         // 로그인 안됨
+        setTeacherAccount(null);
       } finally {
         setLoading(false);
       }
@@ -366,14 +368,14 @@ export default function LandingHeader({
 
 
   // 스크롤 시 배너 숨김
-  const showEventBanner = eventBannerVisible && !scrolled;
+  const showEventBanner = eventBannerVisible && !scrolled && !isTeacherConsole;
   // 모바일/PC 높이를 CSS 변수로 관리 (모바일에서 더 낮게)
   const eventBannerOffset = showEventBanner ? "var(--unova-event-banner-h)" : "0px";
 
   return (
     <div className="unova-event-banner-vars" style={{ ["--unova-event-banner-offset" as any]: eventBannerOffset } as any}>
       {/* ❄️ 겨울 이벤트 배너 - 게임 스타일 */}
-      {eventBannerVisible && (
+      {eventBannerVisible && !isTeacherConsole && (
         <div
           className={`fixed top-0 left-0 right-0 z-[1001] h-[var(--unova-event-banner-h)] overflow-hidden transition-all duration-300 ease-out ${
             scrolled ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"
@@ -590,6 +592,34 @@ export default function LandingHeader({
                   </Link>
                 )}
                 {/* 사용자 프로필 드롭다운 */}
+                {teacherAccount ? (
+                  <Link
+                    href="/teacher"
+                    className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[14px] transition-colors ${
+                      isActiveHref("/teacher")
+                        ? isLight
+                          ? "text-black bg-black/[0.06]"
+                          : "text-white bg-white/[0.10]"
+                        : isLight
+                          ? "text-black/80 hover:bg-black/[0.06]"
+                          : "text-white/80 hover:bg-white/[0.06]"
+                    }`}
+                    aria-label="선생님 콘솔"
+                    title="선생님 콘솔"
+                  >
+                    <span
+                      className="material-symbols-outlined"
+                      style={{
+                        fontSize: "18px",
+                        fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
+                      }}
+                      aria-hidden="true"
+                    >
+                      badge
+                    </span>
+                    <span className="hidden sm:inline">선생님 콘솔</span>
+                  </Link>
+                ) : null}
                 <div className="relative group">
                   <button className={`flex items-center gap-3 py-2 px-3 rounded-xl ${hoverSoftBgClass} transition-colors ${fgClass}`}>
                     {/* 프로필 이미지 */}
@@ -840,6 +870,15 @@ export default function LandingHeader({
                         }`}
                       >
                         <div className="grid grid-cols-2 gap-2">
+                          <Link
+                            href="/teacher"
+                            onClick={closeMenu}
+                            className={`col-span-2 rounded-lg px-3 py-2 text-center text-sm transition-colors ${
+                              isLight ? "text-black/80 hover:bg-[rgba(94,91,92,0.2)]" : "text-white/80 hover:bg-white/[0.06]"
+                            }`}
+                          >
+                            선생님 콘솔
+                          </Link>
                           <Link
                             href="/mypage/orders"
                             onClick={closeMenu}

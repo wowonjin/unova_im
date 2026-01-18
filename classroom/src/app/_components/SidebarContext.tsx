@@ -37,3 +37,8 @@ export function useSidebar() {
   return context;
 }
 
+// LandingHeader 등에서 SidebarProvider 밖에서도 안전하게 쓰기 위한 optional hook
+export function useSidebarOptional() {
+  return useContext(SidebarContext);
+}
+

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type Teacher = {
@@ -35,26 +34,19 @@ export default function TeachersAdminClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const teacherTabs = [
     { key: "basic", label: "기본" },
-    { key: "account", label: "계정" },
-    { key: "images", label: "이미지" },
-    { key: "promo", label: "상세이미지" },
-    { key: "products", label: "강좌/교재" },
-    { key: "links", label: "링크" },
     { key: "career", label: "학력/약력" },
+    { key: "account", label: "계정" },
     { key: "design", label: "디자인" },
   ] as const;
   type TeacherTabKey = (typeof teacherTabs)[number]["key"];
   const [activeTab, setActiveTab] = useState<TeacherTabKey>("basic");
-  const [productTab, setProductTab] = useState<"courses" | "textbooks">("courses");
-  const [courseOptions, setCourseOptions] = useState<Array<{ id: string; title: string; teacherName?: string | null; subjectName?: string | null }>>([]);
-  const [textbookOptions, setTextbookOptions] = useState<Array<{ id: string; title: string; teacherName?: string | null; subjectName?: string | null }>>([]);
-  const [productSearch, setProductSearch] = useState("");
   const [accountEmailInput, setAccountEmailInput] = useState("");
   const [issuedPassword, setIssuedPassword] = useState<string | null>(null);
   const [isLinkingAccount, setIsLinkingAccount] = useState(false);
-  const [isAssigningProducts, setIsAssigningProducts] = useState(false);
   const [formData, setFormData] = useState({
     slug: "",
     name: "",
@@ -62,9 +54,6 @@ export default function TeachersAdminClient() {
     headerSubText: "",
     imageUrl: "",
     mainImageUrl: "",
-    promoImageUrl: "",
-    selectedCourseIds: [] as string[],
-    selectedTextbookIds: [] as string[],
     pageBgColor: "",
     menuBgColor: "",
     newsBgColor: "",
@@ -73,9 +62,28 @@ export default function TeachersAdminClient() {
     careerText: "",
     instagramUrl: "",
     youtubeUrl: "",
-    position: "0",
     isActive: true,
   });
+
+  const moveTeacher = (list: Teacher[], fromId: string, toId: string) => {
+    const fromIdx = list.findIndex((t) => t.id === fromId);
+    const toIdx = list.findIndex((t) => t.id === toId);
+    if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return list;
+    const next = list.slice();
+    const [item] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, item);
+    return next;
+  };
+
+  const persistTeacherOrder = async (nextList: Teacher[]) => {
+    const teacherIds = nextList.map((t) => t.id);
+    const res = await fetch("/api/admin/teachers/reorder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teacherIds }),
+    });
+    if (!res.ok) throw new Error("REORDER_FAILED");
+  };
 
   const refresh = async () => {
     setIsLoading(true);
@@ -111,9 +119,6 @@ export default function TeachersAdminClient() {
       headerSubText: t.headerSubText || "",
       imageUrl: t.imageUrl || "",
       mainImageUrl: t.mainImageUrl || "",
-      promoImageUrl: t.promoImageUrl || "",
-      selectedCourseIds: Array.isArray(t.selectedCourseIds) ? t.selectedCourseIds : [],
-      selectedTextbookIds: Array.isArray(t.selectedTextbookIds) ? t.selectedTextbookIds : [],
       pageBgColor: t.pageBgColor || "",
       menuBgColor: t.menuBgColor || "",
       newsBgColor: t.newsBgColor || "",
@@ -122,7 +127,6 @@ export default function TeachersAdminClient() {
       careerText: t.careerText || "",
       instagramUrl: t.instagramUrl || "",
       youtubeUrl: t.youtubeUrl || "",
-      position: String(t.position ?? 0),
       isActive: Boolean(t.isActive),
     });
   };
@@ -140,9 +144,6 @@ export default function TeachersAdminClient() {
       headerSubText: "",
       imageUrl: "",
       mainImageUrl: "",
-      promoImageUrl: "",
-      selectedCourseIds: [],
-      selectedTextbookIds: [],
       pageBgColor: "",
       menuBgColor: "",
       newsBgColor: "",
@@ -151,7 +152,6 @@ export default function TeachersAdminClient() {
       careerText: "",
       instagramUrl: "",
       youtubeUrl: "",
-      position: "0",
       isActive: true,
     });
   };
@@ -194,40 +194,6 @@ export default function TeachersAdminClient() {
     }
   };
 
-  const assignSelectedProductsToAccount = async () => {
-    if (!editingId) return;
-    if (!editingTeacher?.accountUserId) {
-      alert("먼저 이 선생님의 계정을 연결해주세요.");
-      setActiveTab("account");
-      return;
-    }
-    const courseIds = Array.isArray(formData.selectedCourseIds) ? formData.selectedCourseIds : [];
-    const textbookIds = Array.isArray(formData.selectedTextbookIds) ? formData.selectedTextbookIds : [];
-    if (courseIds.length === 0 && textbookIds.length === 0) {
-      alert("먼저 강좌/교재를 선택해주세요.");
-      return;
-    }
-    if (!confirm("선택한 강좌/교재의 '소유자(owner)'를 이 선생님 계정으로 설정할까요?")) return;
-    setIsAssigningProducts(true);
-    try {
-      const res = await fetch("/api/admin/teachers/assign-products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teacherId: editingId, courseIds, textbookIds }),
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.ok) {
-        alert("상품 할당에 실패했습니다.");
-        return;
-      }
-      alert(`할당 완료: 강좌 ${json.updated?.courses ?? 0}개, 교재 ${json.updated?.textbooks ?? 0}개`);
-    } catch {
-      alert("상품 할당 중 오류가 발생했습니다.");
-    } finally {
-      setIsAssigningProducts(false);
-    }
-  };
-
   const toggleActive = async (id: string, next: boolean) => {
     const t = teachers.find((x) => x.id === id);
     if (!t) return;
@@ -239,9 +205,6 @@ export default function TeachersAdminClient() {
     fd.append("headerSubText", t.headerSubText || "");
     fd.append("imageUrl", t.imageUrl || "");
     fd.append("mainImageUrl", t.mainImageUrl || "");
-    fd.append("promoImageUrl", t.promoImageUrl || "");
-    fd.append("selectedCourseIds", JSON.stringify(Array.isArray(t.selectedCourseIds) ? t.selectedCourseIds : []));
-    fd.append("selectedTextbookIds", JSON.stringify(Array.isArray(t.selectedTextbookIds) ? t.selectedTextbookIds : []));
     fd.append("pageBgColor", t.pageBgColor || "");
     fd.append("menuBgColor", t.menuBgColor || "");
     fd.append("newsBgColor", t.newsBgColor || "");
@@ -250,7 +213,6 @@ export default function TeachersAdminClient() {
     fd.append("careerText", t.careerText || "");
     fd.append("instagramUrl", t.instagramUrl || "");
     fd.append("youtubeUrl", t.youtubeUrl || "");
-    fd.append("position", String(t.position ?? 0));
     fd.append("isActive", next ? "1" : "0");
     const res = await fetch("/api/admin/teachers/update", { method: "POST", body: fd });
     if (!res.ok) {
@@ -288,9 +250,6 @@ export default function TeachersAdminClient() {
     fd.append("headerSubText", formData.headerSubText.trim());
     fd.append("imageUrl", formData.imageUrl.trim());
     fd.append("mainImageUrl", formData.mainImageUrl.trim());
-    fd.append("promoImageUrl", formData.promoImageUrl.trim());
-    fd.append("selectedCourseIds", JSON.stringify(formData.selectedCourseIds));
-    fd.append("selectedTextbookIds", JSON.stringify(formData.selectedTextbookIds));
     fd.append("pageBgColor", formData.pageBgColor.trim());
     fd.append("menuBgColor", formData.menuBgColor.trim());
     fd.append("newsBgColor", formData.newsBgColor.trim());
@@ -299,7 +258,6 @@ export default function TeachersAdminClient() {
     fd.append("careerText", formData.careerText);
     fd.append("instagramUrl", formData.instagramUrl.trim());
     fd.append("youtubeUrl", formData.youtubeUrl.trim());
-    fd.append("position", formData.position);
     fd.append("isActive", formData.isActive ? "1" : "0");
 
     const url = editingId ? "/api/admin/teachers/update" : "/api/admin/teachers/create";
@@ -317,44 +275,6 @@ export default function TeachersAdminClient() {
 
   const formTitle = useMemo(() => (editingId ? "선생님 수정" : "새 선생님 등록"), [editingId]);
   const teacherSlug = formData.slug.trim();
-
-  // 강좌/교재 옵션 로드 (1회)
-  useEffect(() => {
-    if (!showForm) return;
-    (async () => {
-      try {
-        const [cRes, tRes] = await Promise.all([
-          // 강좌/교재 선택 옵션은 "판매하기" 기준으로만 노출
-          fetch("/api/admin/courses/list?scope=teacher-picker", { cache: "no-store" }),
-          fetch("/api/admin/textbooks/list?scope=teacher-picker", { cache: "no-store" }),
-        ]);
-        const cJson = await cRes.json().catch(() => null);
-        const tJson = await tRes.json().catch(() => null);
-        if (cRes.ok && cJson?.ok && Array.isArray(cJson.courses)) {
-          setCourseOptions(
-            cJson.courses.map((c: any) => ({
-              id: String(c.id),
-              title: String(c.title ?? "강좌"),
-              teacherName: typeof c.teacherName === "string" ? c.teacherName : null,
-              subjectName: typeof c.subjectName === "string" ? c.subjectName : null,
-            }))
-          );
-        }
-        if (tRes.ok && tJson?.ok && Array.isArray(tJson.textbooks)) {
-          setTextbookOptions(
-            tJson.textbooks.map((t: any) => ({
-              id: String(t.id),
-              title: String(t.title ?? "교재"),
-              teacherName: typeof t.teacherName === "string" ? t.teacherName : null,
-              subjectName: typeof t.subjectName === "string" ? t.subjectName : null,
-            }))
-          );
-        }
-      } catch {
-        // ignore
-      }
-    })();
-  }, [showForm]);
 
   const isHexColor = (v: string) => /^#([0-9a-fA-F]{6})$/.test((v || "").trim());
   const toHexOrFallback = (v: string, fallback: string) => (isHexColor(v) ? v.trim() : fallback);
@@ -381,7 +301,7 @@ export default function TeachersAdminClient() {
             type="color"
             value={colorValue}
             onChange={(e) => onChange(e.target.value)}
-            className="h-[44px] w-[44px] rounded-xl border border-white/[0.12] bg-white/[0.04] p-1"
+            className="h-[44px] w-[44px] rounded-xl border border-white/[0.12] bg-transparent p-1"
             aria-label={label}
           />
           <input
@@ -389,7 +309,7 @@ export default function TeachersAdminClient() {
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
-            className="flex-1 px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+            className="flex-1 px-4 py-3 rounded-xl bg-transparent border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
           />
         </div>
         <p className="mt-2 text-[12px] text-white/40">권장: <span className="text-white/60">#RRGGBB</span></p>
@@ -403,30 +323,10 @@ export default function TeachersAdminClient() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <Link href="/admin" className="text-white/50 hover:text-white transition-colors">
-              <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
-                arrow_back
-              </span>
-            </Link>
             <h1 className="text-[28px] font-bold tracking-tight">선생님 관리</h1>
           </div>
           <p className="text-white/50">Teachers 페이지에 노출할 선생님 목록을 관리합니다.</p>
         </div>
-        <button
-          onClick={() => {
-            if (showForm) resetForm();
-            else {
-              setShowForm(true);
-              setActiveTab("basic");
-            }
-          }}
-          className="flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
-            add
-          </span>
-          새 선생님 등록
-        </button>
       </div>
 
       {error && (
@@ -437,29 +337,16 @@ export default function TeachersAdminClient() {
 
       {/* 등록/수정 폼 */}
       {showForm && (
-        <div className="mb-8 p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+        <div className="mb-8 p-6 rounded-2xl bg-transparent border border-white/[0.06]">
           <div className="flex items-center justify-between gap-3 mb-6">
             <h2 className="text-[18px] font-semibold">{formTitle}</h2>
-            {teacherSlug ? (
-              <div className="flex items-center gap-2">
-                <a
-                  href={`/teachers/${encodeURIComponent(teacherSlug)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 rounded-xl bg-white/[0.06] text-white/80 hover:bg-white/[0.1] transition-colors text-[13px]"
-                >
-                  페이지 미리보기
-                </a>
-                <a
-                  href={`/teachers/${encodeURIComponent(teacherSlug)}?customize=1`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 rounded-xl bg-white/[0.06] text-white/80 hover:bg-white/[0.1] transition-colors text-[13px]"
-                >
-                  디자인 수정(라이브)
-                </a>
-              </div>
-            ) : null}
+            <button
+              type="submit"
+              form="teacher-admin-form"
+              className="px-4 py-2 rounded-xl bg-blue-500 text-white font-semibold hover:bg-blue-600 transition-colors text-[13px]"
+            >
+              저장
+            </button>
           </div>
 
           {/* 탭 메뉴 */}
@@ -488,9 +375,9 @@ export default function TeachersAdminClient() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form id="teacher-admin-form" onSubmit={handleSubmit} className="space-y-6">
             {/* 기본 정보 */}
-            <div className={`${activeTab === "basic" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
+            <div className={`${activeTab === "basic" ? "" : "hidden"} space-y-4`}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-[15px] font-semibold">기본 정보</h3>
                 <label className="inline-flex items-center gap-2 text-[13px] text-white/70 select-none">
@@ -503,424 +390,136 @@ export default function TeachersAdminClient() {
                   Teachers 페이지에 노출
                 </label>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[13px] text-white/50 mb-2">페이지 주소(slug)</label>
-                  <input
-                    type="text"
-                    value={formData.slug}
-                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                    placeholder="예: lee-sangyeob"
-                    className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
-                    required
-                  />
-                  <p className="mt-2 text-[12px] text-white/40">영문 소문자/숫자/하이픈만 허용됩니다.</p>
-                </div>
-
-                <div>
-                  <label className="block text-[13px] text-white/50 mb-2">선생님 성함</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="예: 이상엽"
-                    className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[13px] text-white/50 mb-2">과목</label>
-                  <input
-                    type="text"
-                    value={formData.subjectName}
-                    onChange={(e) => setFormData({ ...formData, subjectName: e.target.value })}
-                    placeholder="예: 국어"
-                    className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
-                    required
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-[13px] text-white/50 mb-2">몸통 문장 (상단 문구)</label>
-                  <input
-                    type="text"
-                    value={formData.headerSubText}
-                    onChange={(e) => setFormData({ ...formData, headerSubText: e.target.value })}
-                    placeholder="예: 문장 구조를 읽는 알고리즘 독해"
-                    className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
-                  />
-                  <p className="mt-2 text-[12px] text-white/40">비워두면 선생님 페이지에서 문장이 아예 표시되지 않습니다.</p>
-                </div>
-
-                <div>
-                  <label className="block text-[13px] text-white/50 mb-2">정렬(position)</label>
-                  <input
-                    type="number"
-                    value={formData.position}
-                    onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                    min={0}
-                    className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
-                  />
-                  <p className="mt-2 text-[12px] text-white/40">오름차순으로 정렬됩니다. (0은 미설정)</p>
-                </div>
-              </div>
-            </div>
-
-            {/* 계정 연결 */}
-            <div className={`${activeTab === "account" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
-              <h3 className="text-[15px] font-semibold mb-2">선생님 계정</h3>
-              <p className="text-[12px] text-white/45">
-                선생님이 로그인해서 <span className="text-white/70">내 상품 / 리뷰 / 매출</span>을 볼 수 있게 계정을 연결합니다.
-              </p>
-
-              {!editingId ? (
-                <div className="mt-4 rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 text-[13px] text-white/60">
-                  먼저 <span className="text-white/80 font-semibold">저장</span>해서 선생님을 생성한 뒤 계정을 연결할 수 있습니다.
-                </div>
-              ) : (
-                <>
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
-                      <p className="text-[12px] text-white/45">현재 연결</p>
-                      <p className="mt-1 text-[13px] text-white/85 font-semibold">
-                        {editingTeacher?.accountEmail ? editingTeacher.accountEmail : "미연결"}
-                      </p>
-                      {editingTeacher?.accountUserId ? (
-                        <p className="mt-1 text-[12px] text-white/35">userId: {editingTeacher.accountUserId}</p>
-                      ) : null}
-                    </div>
-                    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
-                      <p className="text-[12px] text-white/45">선생님 콘솔</p>
-                      <a
-                        href="/teacher"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-2 inline-flex items-center gap-2 rounded-xl bg-white/[0.06] px-4 py-2 text-[13px] text-white/80 hover:bg-white/[0.1]"
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>open_in_new</span>
-                        /teacher 열기
-                      </a>
-                      <p className="mt-2 text-[12px] text-white/35">연결된 계정으로 로그인해야 접근 가능합니다.</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* 왼쪽: 기본 정보 */}
+                <div className="lg:col-span-7 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[13px] text-white/50 mb-2">계정 이메일</label>
+                      <label className="block text-[13px] text-white/50 mb-2">페이지 주소(slug)</label>
                       <input
-                        type="email"
-                        value={accountEmailInput}
-                        onChange={(e) => setAccountEmailInput(e.target.value)}
-                        placeholder="teacher@email.com"
-                        className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                        type="text"
+                        value={formData.slug}
+                        onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                        placeholder="예: lee-sangyeob"
+                        className="w-full px-4 py-3 rounded-xl bg-transparent border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                        required
                       />
-                      <p className="mt-2 text-[12px] text-white/40">
-                        기존 회원이 있으면 연결만 하고, 없으면 새로 생성합니다.
-                      </p>
+                      <p className="mt-2 text-[12px] text-white/40">영문 소문자/숫자/하이픈만 허용됩니다.</p>
                     </div>
-                    <div className="flex items-end">
-                      <button
-                        type="button"
-                        onClick={linkTeacherAccount}
-                        disabled={isLinkingAccount}
-                        className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-black font-semibold hover:bg-white/90 disabled:opacity-60"
-                      >
-                        {isLinkingAccount ? (
-                          <>
-                            <span className="material-symbols-outlined animate-spin" style={{ fontSize: "18px" }}>progress_activity</span>
-                            연결 중...
-                          </>
-                        ) : (
-                          <>
-                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>person_add</span>
-                            계정 생성/연결 + 임시 비밀번호 발급
-                          </>
-                        )}
-                      </button>
+
+                    <div>
+                      <label className="block text-[13px] text-white/50 mb-2">선생님 성함</label>
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="예: 이상엽"
+                        className="w-full px-4 py-3 rounded-xl bg-transparent border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                        required
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-[13px] text-white/50 mb-2">과목</label>
+                      <input
+                        type="text"
+                        value={formData.subjectName}
+                        onChange={(e) => setFormData({ ...formData, subjectName: e.target.value })}
+                        placeholder="예: 국어"
+                        className="w-full px-4 py-3 rounded-xl bg-transparent border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                        required
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-[13px] text-white/50 mb-2">몸통 문장 (상단 문구)</label>
+                      <input
+                        type="text"
+                        value={formData.headerSubText}
+                        onChange={(e) => setFormData({ ...formData, headerSubText: e.target.value })}
+                        placeholder="예: 문장 구조를 읽는 알고리즘 독해"
+                        className="w-full px-4 py-3 rounded-xl bg-transparent border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                      />
+                      <p className="mt-2 text-[12px] text-white/40">비워두면 선생님 페이지에서 문장이 아예 표시되지 않습니다.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 오른쪽: 이미지 -> 링크 */}
+                <div className="lg:col-span-5 space-y-4">
+                  {/* 이미지 */}
+                  <div className="rounded-2xl border border-white/[0.06] bg-transparent p-5 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-white/45" style={{ fontSize: "18px" }}>
+                        image
+                      </span>
+                      <h4 className="text-[14px] font-semibold text-white/85">이미지</h4>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <label className="block text-[13px] text-white/50 mb-2">Teachers 목록 이미지 URL</label>
+                        <input
+                          type="text"
+                          value={formData.imageUrl}
+                          onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                          placeholder="https://storage.googleapis.com/..."
+                          className="w-full px-4 py-3 rounded-xl bg-transparent border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                        />
+                        <p className="mt-2 text-[12px] text-white/40">Teachers 목록/헤더 등에서 사용되는 대표 이미지입니다.</p>
+                      </div>
+                      <div>
+                        <label className="block text-[13px] text-white/50 mb-2">선생님 메인 이미지 URL (개인 페이지 중앙)</label>
+                        <input
+                          type="text"
+                          value={formData.mainImageUrl}
+                          onChange={(e) => setFormData({ ...formData, mainImageUrl: e.target.value })}
+                          placeholder="https://storage.googleapis.com/..."
+                          className="w-full px-4 py-3 rounded-xl bg-transparent border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                        />
+                        <p className="mt-2 text-[12px] text-white/40">선생님 개인 페이지 상단 중앙 프로필 이미지로 노출됩니다.</p>
+                      </div>
                     </div>
                   </div>
 
-                  {issuedPassword ? (
-                    <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5">
-                      <p className="text-[13px] font-semibold text-emerald-100">임시 비밀번호(1회 표시)</p>
-                      <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2">
-                        <code className="rounded-xl bg-black/30 px-3 py-2 text-[13px] text-emerald-100">
-                          {issuedPassword}
-                        </code>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(issuedPassword);
-                              alert("복사했습니다.");
-                            } catch {
-                              alert("복사에 실패했습니다.");
-                            }
-                          }}
-                          className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/25 text-[13px] font-semibold"
-                        >
-                          복사
-                        </button>
-                      </div>
-                      <p className="mt-3 text-[12px] text-emerald-100/70">
-                        선생님은 `로그인`에서 이메일/비밀번호로 로그인할 수 있습니다.
-                      </p>
+                  {/* 링크 */}
+                  <div className="rounded-2xl border border-white/[0.06] bg-transparent p-5 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-white/45" style={{ fontSize: "18px" }}>
+                        link
+                      </span>
+                      <h4 className="text-[14px] font-semibold text-white/85">링크</h4>
                     </div>
-                  ) : null}
-                </>
-              )}
-            </div>
 
-            {/* 이미지 */}
-            <div className={`${activeTab === "images" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
-              <h3 className="text-[15px] font-semibold mb-4">이미지</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[13px] text-white/50 mb-2">Teachers 목록 이미지 URL</label>
-                  <input
-                    type="text"
-                    value={formData.imageUrl}
-                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                    placeholder="https://storage.googleapis.com/..."
-                    className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
-                  />
-                  <p className="mt-2 text-[12px] text-white/40">Teachers 목록/헤더 등에서 사용되는 대표 이미지입니다.</p>
-                </div>
-                <div>
-                  <label className="block text-[13px] text-white/50 mb-2">선생님 메인 이미지 URL (개인 페이지 중앙)</label>
-                  <input
-                    type="text"
-                    value={formData.mainImageUrl}
-                    onChange={(e) => setFormData({ ...formData, mainImageUrl: e.target.value })}
-                    placeholder="https://storage.googleapis.com/..."
-                    className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
-                  />
-                  <p className="mt-2 text-[12px] text-white/40">선생님 개인 페이지 상단 중앙 프로필 이미지로 노출됩니다.</p>
-                </div>
-              </div>
-            </div>
+                    <div>
+                      <label className="block text-[13px] text-white/50 mb-2">커리큘럼 유튜브 URL</label>
+                      <input
+                        type="text"
+                        value={formData.youtubeUrl}
+                        onChange={(e) => setFormData({ ...formData, youtubeUrl: e.target.value })}
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        className="w-full px-4 py-3 rounded-xl bg-transparent border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                      />
+                      <p className="mt-2 text-[12px] text-white/40">선생님 페이지 우측 패널에 임베드됩니다 (단일 URL).</p>
+                    </div>
 
-            {/* 상세페이지 이미지 */}
-            <div className={`${activeTab === "promo" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
-              <h3 className="text-[15px] font-semibold mb-4">상세페이지 이미지</h3>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-[13px] text-white/50 mb-2">상세페이지 이미지 URL</label>
-                  <input
-                    type="text"
-                    value={formData.promoImageUrl}
-                    onChange={(e) => setFormData({ ...formData, promoImageUrl: e.target.value })}
-                    placeholder="https://storage.googleapis.com/..."
-                    className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
-                  />
-                  <p className="mt-2 text-[12px] text-white/40">
-                    모바일: 선생님 페이지 <span className="text-white/60">커리큘럼</span> 탭에 노출 · PC: 선생님 페이지 하단에 노출
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* 강좌/교재 선택 */}
-            <div className={`${activeTab === "products" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
-              <h3 className="text-[15px] font-semibold mb-4">강좌 / 교재 선택</h3>
-              <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2">
-                <button
-                  type="button"
-                  onClick={assignSelectedProductsToAccount}
-                  disabled={isAssigningProducts || !editingId}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-[13px] font-semibold text-black hover:bg-white/90 disabled:opacity-60"
-                  title="선택한 강좌/교재의 ownerId를 이 선생님 계정으로 설정합니다."
-                >
-                  {isAssigningProducts ? (
-                    <>
-                      <span className="material-symbols-outlined animate-spin" style={{ fontSize: "18px" }}>progress_activity</span>
-                      할당 중...
-                    </>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>assignment_ind</span>
-                      선택 상품을 이 선생님 계정의 '내 상품'으로 추가
-                    </>
-                  )}
-                </button>
-                <p className="text-[12px] text-white/45">
-                  {editingTeacher?.accountEmail
-                    ? `연결 계정: ${editingTeacher.accountEmail}`
-                    : "계정이 미연결이면 먼저 [계정] 탭에서 연결하세요."}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 mb-4">
-                <button
-                  type="button"
-                  onClick={() => setProductTab("courses")}
-                  className={`px-4 py-2 rounded-xl text-[13px] font-semibold border transition ${
-                    productTab === "courses"
-                      ? "bg-white/10 border-white/20 text-white"
-                      : "bg-white/[0.03] border-white/[0.08] text-white/60 hover:bg-white/[0.06]"
-                  }`}
-                >
-                  강좌
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setProductTab("textbooks")}
-                  className={`px-4 py-2 rounded-xl text-[13px] font-semibold border transition ${
-                    productTab === "textbooks"
-                      ? "bg-white/10 border-white/20 text-white"
-                      : "bg-white/[0.03] border-white/[0.08] text-white/60 hover:bg-white/[0.06]"
-                  }`}
-                >
-                  교재
-                </button>
-                <div className="ml-auto text-[12px] text-white/45">
-                  선택됨:{" "}
-                  {productTab === "courses" ? formData.selectedCourseIds.length : formData.selectedTextbookIds.length}개
-                </div>
-              </div>
-
-              <div className="mb-3">
-                <input
-                  type="text"
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  placeholder="검색: 제목/선생님/과목"
-                  className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              {productTab === "courses" ? (
-                <div className="space-y-2">
-                  {courseOptions
-                    .filter((c) => {
-                      const q = productSearch.trim().toLowerCase();
-                      if (!q) return true;
-                      const hay = `${c.title} ${c.teacherName ?? ""} ${c.subjectName ?? ""}`.toLowerCase();
-                      return hay.includes(q);
-                    })
-                    .map((c) => {
-                      const checked = formData.selectedCourseIds.includes(c.id);
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              selectedCourseIds: checked
-                                ? prev.selectedCourseIds.filter((x) => x !== c.id)
-                                : [...prev.selectedCourseIds, c.id],
-                            }));
-                          }}
-                          className={`w-full flex items-center gap-3 text-left p-3 rounded-xl border transition ${
-                            checked
-                              ? "bg-blue-500/10 border-blue-400/30"
-                              : "bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.05]"
-                          }`}
-                        >
-                          <input type="checkbox" checked={checked} readOnly className="accent-blue-500" />
-                          <div className="flex-1">
-                            <div className="text-[13px] font-semibold text-white/90">{c.title}</div>
-                            <div className="text-[12px] text-white/45">
-                              {c.teacherName ? `${c.teacherName}` : "선생님 미지정"}
-                              {c.subjectName ? ` · ${c.subjectName}` : ""}
-                            </div>
-                          </div>
-                          <span className={`text-[12px] font-semibold ${checked ? "text-blue-300" : "text-white/45"}`}>
-                            {checked ? "선택됨" : "선택"}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  {courseOptions.length === 0 ? (
-                    <div className="py-10 text-center text-white/45 text-[13px]">게시된 강좌가 없습니다.</div>
-                  ) : null}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {textbookOptions
-                    .filter((t) => {
-                      const q = productSearch.trim().toLowerCase();
-                      if (!q) return true;
-                      const hay = `${t.title} ${t.teacherName ?? ""} ${t.subjectName ?? ""}`.toLowerCase();
-                      return hay.includes(q);
-                    })
-                    .map((t) => {
-                      const checked = formData.selectedTextbookIds.includes(t.id);
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              selectedTextbookIds: checked
-                                ? prev.selectedTextbookIds.filter((x) => x !== t.id)
-                                : [...prev.selectedTextbookIds, t.id],
-                            }));
-                          }}
-                          className={`w-full flex items-center gap-3 text-left p-3 rounded-xl border transition ${
-                            checked
-                              ? "bg-purple-500/10 border-purple-400/30"
-                              : "bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.05]"
-                          }`}
-                        >
-                          <input type="checkbox" checked={checked} readOnly className="accent-purple-500" />
-                          <div className="flex-1">
-                            <div className="text-[13px] font-semibold text-white/90">{t.title}</div>
-                            <div className="text-[12px] text-white/45">
-                              {t.teacherName ? `${t.teacherName}` : "선생님 미지정"}
-                              {t.subjectName ? ` · ${t.subjectName}` : ""}
-                            </div>
-                          </div>
-                          <span className={`text-[12px] font-semibold ${checked ? "text-purple-300" : "text-white/45"}`}>
-                            {checked ? "선택됨" : "선택"}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  {textbookOptions.length === 0 ? (
-                    <div className="py-10 text-center text-white/45 text-[13px]">게시된 교재가 없습니다.</div>
-                  ) : null}
-                </div>
-              )}
-
-              <p className="mt-4 text-[12px] text-white/40">
-                선생님 페이지의 <span className="text-white/60">강좌 및 교재</span> 탭(모바일) / 강좌·교재 섹션(PC)에 이 선택값이 그대로 반영됩니다.
-              </p>
-            </div>
-
-            {/* SNS/유튜브 */}
-            <div className={`${activeTab === "links" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
-              <h3 className="text-[15px] font-semibold mb-4">링크</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[13px] text-white/50 mb-2">커리큘럼 유튜브 URL</label>
-                  <input
-                    type="text"
-                    value={formData.youtubeUrl}
-                    onChange={(e) => setFormData({ ...formData, youtubeUrl: e.target.value })}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
-                  />
-                  <p className="mt-2 text-[12px] text-white/40">선생님 페이지 우측 패널에 임베드됩니다 (단일 URL).</p>
-                </div>
-                <div>
-                  <label className="block text-[13px] text-white/50 mb-2">인스타그램 URL</label>
-                  <input
-                    type="text"
-                    value={formData.instagramUrl}
-                    onChange={(e) => setFormData({ ...formData, instagramUrl: e.target.value })}
-                    placeholder="https://instagram.com/..."
-                    className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
-                  />
-                  <p className="mt-2 text-[12px] text-white/40">선생님 페이지 상단 아이콘에서 해당 URL로 이동합니다.</p>
+                    <div>
+                      <label className="block text-[13px] text-white/50 mb-2">인스타그램 URL</label>
+                      <input
+                        type="text"
+                        value={formData.instagramUrl}
+                        onChange={(e) => setFormData({ ...formData, instagramUrl: e.target.value })}
+                        placeholder="https://instagram.com/..."
+                        className="w-full px-4 py-3 rounded-xl bg-transparent border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                      />
+                      <p className="mt-2 text-[12px] text-white/40">선생님 페이지 상단 아이콘에서 해당 URL로 이동합니다.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* 학력/약력 */}
-            <div className={`${activeTab === "career" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
+            <div className={`${activeTab === "career" ? "" : "hidden"} space-y-4`}>
               <h3 className="text-[15px] font-semibold mb-4">학력 / 약력</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -929,7 +528,7 @@ export default function TeachersAdminClient() {
                     value={formData.educationText}
                     onChange={(e) => setFormData({ ...formData, educationText: e.target.value })}
                     placeholder={"예)\\n서울대학교 국어교육과 졸업\\n(전) ○○고등학교 교사"}
-                    className="w-full min-h-[140px] px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                    className="w-full min-h-[140px] px-4 py-3 rounded-xl bg-transparent border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
                   />
                   <p className="mt-2 text-[12px] text-white/40">줄바꿈이 그대로 표시됩니다.</p>
                 </div>
@@ -939,15 +538,77 @@ export default function TeachersAdminClient() {
                     value={formData.careerText}
                     onChange={(e) => setFormData({ ...formData, careerText: e.target.value })}
                     placeholder={"예)\\n현) 유노바 국어 강사\\n전) ○○학원 대표강사"}
-                    className="w-full min-h-[140px] px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                    className="w-full min-h-[140px] px-4 py-3 rounded-xl bg-transparent border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
                   />
                   <p className="mt-2 text-[12px] text-white/40">줄바꿈 단위로 리스트로 표시됩니다.</p>
                 </div>
               </div>
             </div>
 
+            {/* 계정 연결 */}
+            <div className={`${activeTab === "account" ? "" : "hidden"} space-y-4`}>
+              <h3 className="text-[15px] font-semibold mb-2">선생님 계정</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[13px] text-white/50 mb-2">계정 이메일</label>
+                  <input
+                    type="email"
+                    value={accountEmailInput}
+                    onChange={(e) => setAccountEmailInput(e.target.value)}
+                    placeholder="teacher@email.com"
+                    className="w-full px-4 py-3 rounded-xl bg-transparent border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={linkTeacherAccount}
+                    disabled={isLinkingAccount || !editingId}
+                    className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-black font-semibold hover:bg-white/90 disabled:opacity-60"
+                  >
+                    {isLinkingAccount ? (
+                      <>
+                        <span className="material-symbols-outlined animate-spin" style={{ fontSize: "18px" }}>progress_activity</span>
+                        설정 중...
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>key</span>
+                        비밀번호를 unovaadmin으로 설정
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {issuedPassword ? (
+                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5">
+                  <p className="text-[13px] font-semibold text-emerald-100">비밀번호</p>
+                  <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2">
+                    <code className="rounded-xl bg-black/30 px-3 py-2 text-[13px] text-emerald-100">
+                      {issuedPassword}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(issuedPassword);
+                          alert("복사했습니다.");
+                        } catch {
+                          alert("복사에 실패했습니다.");
+                        }
+                      }}
+                      className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/25 text-[13px] font-semibold"
+                    >
+                      복사
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
             {/* 디자인(색상) */}
-            <div className={`${activeTab === "design" ? "" : "hidden"} rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5`}>
+            <div className={`${activeTab === "design" ? "" : "hidden"} space-y-4`}>
               <h3 className="text-[15px] font-semibold mb-4">디자인(색상)</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <ColorField
@@ -979,7 +640,7 @@ export default function TeachersAdminClient() {
                   fallback="#2A263D"
                 />
               </div>
-              <div className="mt-4 rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+              <div className="mt-4 rounded-xl border border-white/[0.08] bg-transparent p-4">
                 <div className="text-[12px] text-white/60 mb-2">간단 미리보기</div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[12px] text-white/70">페이지</span>
@@ -993,35 +654,29 @@ export default function TeachersAdminClient() {
                 </div>
               </div>
             </div>
-
-            <div className="flex items-center gap-3 pt-1">
-              <button
-                type="submit"
-                className="px-6 py-3 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
-              >
-                저장
-              </button>
-              <button
-                type="button"
-                onClick={resetForm}
-                className="px-6 py-3 rounded-xl bg-white/[0.06] text-white/80 hover:bg-white/[0.1] transition-colors"
-              >
-                취소
-              </button>
-            </div>
           </form>
         </div>
       )}
 
       {/* 목록 */}
-      <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+      <div className="p-6 rounded-2xl bg-transparent border border-white/[0.06]">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-[18px] font-semibold">선생님 목록</h2>
           <button
-            onClick={refresh}
-            className="px-4 py-2 rounded-xl bg-white/[0.06] text-white/80 hover:bg-white/[0.1] transition-colors text-[13px]"
+            type="button"
+            onClick={() => {
+              if (showForm) resetForm();
+              else {
+                setShowForm(true);
+                setActiveTab("basic");
+              }
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-[12px] font-semibold text-black hover:bg-white/90 transition-colors"
           >
-            새로고침
+            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+              add
+            </span>
+            새 선생님 등록
           </button>
         </div>
 
@@ -1034,10 +689,45 @@ export default function TeachersAdminClient() {
             {teachers.map((t) => (
               <div
                 key={t.id}
-                className="flex flex-col gap-3 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06]"
+                draggable
+                onDragStart={() => setDraggingId(t.id)}
+                onDragEnd={() => {
+                  setDraggingId(null);
+                  setDragOverId(null);
+                }}
+                onDragOver={(e) => {
+                  if (!draggingId) return;
+                  e.preventDefault();
+                  setDragOverId(t.id);
+                }}
+                onDrop={async (e) => {
+                  e.preventDefault();
+                  if (!draggingId) return;
+                  const fromId = draggingId;
+                  const toId = t.id;
+                  const prev = teachers;
+                  const nextList = moveTeacher(prev, fromId, toId);
+                  setTeachers(nextList);
+                  setDraggingId(null);
+                  setDragOverId(null);
+                  try {
+                    await persistTeacherOrder(nextList);
+                    await refresh();
+                  } catch {
+                    alert("순서 저장에 실패했습니다.");
+                    setTeachers(prev);
+                  }
+                }}
+                className="flex flex-col gap-3 p-4 rounded-2xl bg-transparent border border-white/[0.06]"
+                style={{
+                  opacity: draggingId === t.id ? 0.6 : 1,
+                  outline: dragOverId === t.id && draggingId !== t.id ? "2px solid rgba(255,255,255,0.35)" : "none",
+                  outlineOffset: "2px",
+                  cursor: "grab",
+                }}
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-white/[0.06] border border-white/[0.06] overflow-hidden shrink-0 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-xl bg-transparent border border-white/[0.06] overflow-hidden shrink-0 flex items-center justify-center">
                     {t.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={t.imageUrl} alt={t.name} className="w-full h-full object-cover" />
@@ -1052,11 +742,18 @@ export default function TeachersAdminClient() {
                     </p>
                     <p className="mt-0.5 text-[12px] text-white/30 truncate">/{t.slug}</p>
                   </div>
+                  <span
+                    className="material-symbols-outlined text-white/35"
+                    style={{ fontSize: "18px" }}
+                    title="드래그해서 순서 변경"
+                  >
+                    drag_indicator
+                  </span>
                 </div>
 
                 <div className="min-w-0">
                   <p className="mt-1 text-[12px] text-white/40">
-                    position: {t.position ?? 0} · created: {t.createdAt.slice(0, 10)}
+                    created: {t.createdAt.slice(0, 10)}
                   </p>
                   {t.mainImageUrl ? (
                     <p className="mt-1 text-[12px] text-emerald-200/80">메인 이미지: 설정됨</p>

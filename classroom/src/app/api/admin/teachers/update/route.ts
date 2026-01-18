@@ -22,11 +22,13 @@ const Schema = z.object({
   menuBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   newsBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   ratingBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
+  // position은 "관리자 목록 순서(드래그앤드랍)"로만 관리합니다.
+  // 수정 폼에서는 입력을 없앴으므로, 제출에 position이 없으면 기존 값을 유지해야 합니다.
   position: z
     .string()
     .optional()
-    .transform((v) => (typeof v === "string" && v.trim() !== "" ? Number(v) : 0))
-    .refine((v) => Number.isFinite(v) && v >= 0, { message: "INVALID_POSITION" }),
+    .transform((v) => (typeof v === "string" && v.trim() !== "" ? Number(v) : undefined))
+    .refine((v) => v === undefined || (Number.isFinite(v) && v >= 0), { message: "INVALID_POSITION" }),
   isActive: z
     .string()
     .optional()
@@ -81,26 +83,30 @@ export async function POST(req: Request) {
       // ignore
     }
 
+    const data: any = {
+      slug: parsed.data.slug,
+      name: parsed.data.name,
+      subjectName: parsed.data.subjectName,
+      imageUrl: parsed.data.imageUrl,
+      mainImageUrl: parsed.data.mainImageUrl,
+      promoImageUrl: parsed.data.promoImageUrl,
+      instagramUrl: parsed.data.instagramUrl,
+      youtubeUrl: parsed.data.youtubeUrl,
+      educationText: parsed.data.educationText,
+      careerText: parsed.data.careerText,
+      headerSubText: parsed.data.headerSubText,
+      pageBgColor: parsed.data.pageBgColor,
+      menuBgColor: parsed.data.menuBgColor,
+      newsBgColor: parsed.data.newsBgColor,
+      ratingBgColor: parsed.data.ratingBgColor,
+      isActive: parsed.data.isActive ?? true,
+    };
+    if (typeof parsed.data.position === "number") data.position = parsed.data.position;
+
     await prisma.teacher.update({
       where: { id: parsed.data.id },
       data: {
-        slug: parsed.data.slug,
-        name: parsed.data.name,
-        subjectName: parsed.data.subjectName,
-        imageUrl: parsed.data.imageUrl,
-        mainImageUrl: parsed.data.mainImageUrl,
-        promoImageUrl: parsed.data.promoImageUrl,
-        instagramUrl: parsed.data.instagramUrl,
-        youtubeUrl: parsed.data.youtubeUrl,
-        educationText: parsed.data.educationText,
-        careerText: parsed.data.careerText,
-        headerSubText: parsed.data.headerSubText,
-        pageBgColor: parsed.data.pageBgColor,
-        menuBgColor: parsed.data.menuBgColor,
-        newsBgColor: parsed.data.newsBgColor,
-        ratingBgColor: parsed.data.ratingBgColor,
-        position: parsed.data.position,
-        isActive: parsed.data.isActive ?? true,
+        ...data,
       } as any,
     });
 

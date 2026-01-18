@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { requireAdminUser } from "@/lib/current-user";
 import { encryptPassword } from "@/lib/password-vault";
 
 export const runtime = "nodejs";
+
+const DEFAULT_TEACHER_PASSWORD = "unovaadmin";
 
 const Schema = z.object({
   teacherId: z.string().min(1),
@@ -14,15 +15,6 @@ const Schema = z.object({
   // true면 임시 비밀번호를 생성해 반환 (1회)
   generatePassword: z.boolean().optional(),
 });
-
-function generateTempPassword() {
-  // URL-safe, 전달하기 쉬운 임시 비밀번호
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-  const bytes = crypto.randomBytes(14);
-  let out = "";
-  for (const b of bytes) out += alphabet[b % alphabet.length];
-  return out;
-}
 
 async function ensureTeacherAccountColumns() {
   try {
@@ -74,7 +66,8 @@ export async function POST(req: Request) {
     // 필요 시 임시 비밀번호 생성/세팅
     let issuedPassword: string | null = null;
     if (generatePassword) {
-      issuedPassword = generateTempPassword();
+      // 선생님 계정 비밀번호는 고정값으로 통일
+      issuedPassword = DEFAULT_TEACHER_PASSWORD;
       const passwordHash = await bcrypt.hash(issuedPassword, 10);
       const passwordCiphertext = encryptPassword(issuedPassword);
       await prisma.emailCredential.upsert({

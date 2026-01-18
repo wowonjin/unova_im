@@ -524,6 +524,9 @@ model Review {
   rating      Int // 1~5 평점
   content     String // 후기 내용
   imageUrls   Json? // 이미지 URL 배열 (JSON)
+  // 선생님 답글
+  teacherReply   String?
+  teacherReplyAt DateTime?
   isApproved  Boolean     @default(true) // 관리자 승인 여부
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt

@@ -1,12 +1,43 @@
 import AppShell from "@/app/_components/AppShell";
 import { PageHeader, Card, CardBody } from "@/app/_components/ui";
-import { requireTeacherAccountUser } from "@/lib/current-user";
+import { getCurrentUser, getTeacherAccountByUserId } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
+import type { OrderStatus } from "@prisma/client";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 function formatWon(v: number) {
   return `${Math.max(0, Math.round(v)).toLocaleString("ko-KR")}원`;
+}
+
+const CARD_FEE_RATE = 0.034; // 3.4%
+const VAT_RATE = 0.1; // 부가세 10%
+const TEXTBOOK_PLATFORM_FEE_RATE = 0.25; // 교재 정산비 25%
+const COURSE_PLATFORM_FEE_RATE = 0.5; // 강의 정산비 50%
+const PDF_TEXTBOOK_PLATFORM_FEE_RATE = 0.5; // 전자책(PDF) 교재 정산비 50%
+const SALES_STATUSES: OrderStatus[] = ["COMPLETED", "PARTIALLY_REFUNDED"];
+
+function settleNetPayout(netSales: number, platformFeeRate: number) {
+  const base = Math.max(0, netSales);
+  const platformFee = base * platformFeeRate;
+  const cardFeeWithVat = base * CARD_FEE_RATE * (1 + VAT_RATE);
+  return Math.max(0, base - platformFee - cardFeeWithVat);
+}
+
+function isPdfTextbook(tb: { composition?: string | null; textbookType?: string | null } | null | undefined) {
+  const a = (tb?.composition ?? "").toString().toLowerCase();
+  const b = (tb?.textbookType ?? "").toString().toLowerCase();
+  return a.includes("pdf") || b.includes("pdf");
+}
+
+function payoutRateOfOrder(o: {
+  productType: "COURSE" | "TEXTBOOK";
+  textbook?: { composition?: string | null; textbookType?: string | null } | null;
+}) {
+  if (o.productType === "COURSE") return COURSE_PLATFORM_FEE_RATE;
+  // TEXTBOOK: PDF 전자책은 50%, 그 외는 25%
+  return isPdfTextbook(o.textbook) ? PDF_TEXTBOOK_PLATFORM_FEE_RATE : TEXTBOOK_PLATFORM_FEE_RATE;
 }
 
 function kstBoundaryUtc(kind: "week" | "month") {
@@ -24,7 +55,24 @@ function kstBoundaryUtc(kind: "week" | "month") {
 }
 
 export default async function TeacherSalesPage() {
-  const { user } = await requireTeacherAccountUser();
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?next=%2Fteacher%2Fsales");
+  const teacher = await getTeacherAccountByUserId(user.id);
+  if (!teacher) {
+    return (
+      <AppShell>
+        <PageHeader title="선생님 콘솔" description="이 계정은 아직 선생님 계정으로 연결되지 않았습니다." />
+        <div className="mt-6">
+          <Card className="bg-transparent">
+            <CardBody>
+              <p className="text-sm text-white/70">관리자에게 선생님 계정 연결을 요청해주세요.</p>
+              <p className="mt-3 rounded-xl border border-white/10 bg-transparent px-4 py-3 text-sm text-white/85">{user.email}</p>
+            </CardBody>
+          </Card>
+        </div>
+      </AppShell>
+    );
+  }
 
   const now = new Date();
   const weekStart = kstBoundaryUtc("week");
@@ -33,21 +81,34 @@ export default async function TeacherSalesPage() {
   const [weekOrders, monthOrders] = await Promise.all([
     prisma.order.findMany({
       where: {
-        status: { in: ["COMPLETED", "PARTIALLY_REFUNDED"] },
+        status: { in: SALES_STATUSES },
         createdAt: { gte: weekStart, lte: now },
         OR: [{ course: { ownerId: user.id } }, { textbook: { ownerId: user.id } }],
       },
-      select: { amount: true, refundedAmount: true, createdAt: true, productName: true, orderNo: true },
+      select: {
+        productType: true,
+        amount: true,
+        refundedAmount: true,
+        createdAt: true,
+        productName: true,
+        orderNo: true,
+        textbook: { select: { composition: true, textbookType: true } },
+      },
       orderBy: { createdAt: "desc" },
       take: 200,
     }),
     prisma.order.findMany({
       where: {
-        status: { in: ["COMPLETED", "PARTIALLY_REFUNDED"] },
+        status: { in: SALES_STATUSES },
         createdAt: { gte: monthStart, lte: now },
         OR: [{ course: { ownerId: user.id } }, { textbook: { ownerId: user.id } }],
       },
-      select: { amount: true, refundedAmount: true },
+      select: {
+        productType: true,
+        amount: true,
+        refundedAmount: true,
+        textbook: { select: { composition: true, textbookType: true } },
+      },
       take: 20000,
     }),
   ]);
@@ -55,27 +116,52 @@ export default async function TeacherSalesPage() {
   const weekSales = weekOrders.reduce((acc, o) => acc + (o.amount - (o.refundedAmount || 0)), 0);
   const monthSales = monthOrders.reduce((acc, o) => acc + (o.amount - (o.refundedAmount || 0)), 0);
 
+  // NOTE: 교재는 PDF 여부에 따라 정산비가 달라서(25% vs 50%)
+  // 정산액은 "주문 단위"로 계산합니다.
+  const weekPayoutTotal = weekOrders.reduce((acc, o) => {
+    const net = (o.amount ?? 0) - (o.refundedAmount ?? 0);
+    const rate = payoutRateOfOrder({ productType: o.productType, textbook: o.textbook });
+    return acc + settleNetPayout(net, rate);
+  }, 0);
+  const monthPayoutTotal = monthOrders.reduce((acc, o) => {
+    const net = (o.amount ?? 0) - (o.refundedAmount ?? 0);
+    const rate = payoutRateOfOrder({ productType: o.productType, textbook: o.textbook });
+    return acc + settleNetPayout(net, rate);
+  }, 0);
+
   return (
     <AppShell>
       <PageHeader title="매출" description="주/월 기준(한국시간) 판매액을 확인합니다." />
 
-      <div className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <Card>
+      <div className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-4">
+        <Card className="bg-transparent">
           <CardBody>
             <p className="text-sm text-white/60">이번주 판매액 (KST)</p>
             <p className="mt-1 text-2xl font-semibold text-white">{formatWon(weekSales)}</p>
           </CardBody>
         </Card>
-        <Card>
+        <Card className="bg-transparent">
           <CardBody>
             <p className="text-sm text-white/60">이번달 판매액 (KST)</p>
             <p className="mt-1 text-2xl font-semibold text-white">{formatWon(monthSales)}</p>
           </CardBody>
         </Card>
+        <Card className="bg-transparent">
+          <CardBody>
+            <p className="text-sm text-white/60">이번주 정산액 (KST)</p>
+            <p className="mt-1 text-2xl font-semibold text-white">{formatWon(weekPayoutTotal)}</p>
+          </CardBody>
+        </Card>
+        <Card className="bg-transparent">
+          <CardBody>
+            <p className="text-sm text-white/60">이번달 정산액 (KST)</p>
+            <p className="mt-1 text-2xl font-semibold text-white">{formatWon(monthPayoutTotal)}</p>
+          </CardBody>
+        </Card>
       </div>
 
       <div className="mt-6">
-        <Card>
+        <Card className="bg-transparent">
           <CardBody>
             <p className="text-sm font-semibold text-white">이번주 주문 (최근 200건)</p>
             {weekOrders.length === 0 ? (

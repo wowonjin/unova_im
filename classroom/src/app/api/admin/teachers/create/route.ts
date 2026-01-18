@@ -21,11 +21,13 @@ const Schema = z.object({
   menuBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   newsBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   ratingBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
+  // position은 "관리자 목록 순서(드래그앤드랍)"로만 관리합니다.
+  // 생성 폼에서는 입력을 없앴으므로, 제출에 position이 없으면 맨 뒤로 자동 배치합니다.
   position: z
     .string()
     .optional()
-    .transform((v) => (typeof v === "string" && v.trim() !== "" ? Number(v) : 0))
-    .refine((v) => Number.isFinite(v) && v >= 0, { message: "INVALID_POSITION" }),
+    .transform((v) => (typeof v === "string" && v.trim() !== "" ? Number(v) : undefined))
+    .refine((v) => v === undefined || (Number.isFinite(v) && v >= 0), { message: "INVALID_POSITION" }),
   isActive: z
     .string()
     .optional()
@@ -79,6 +81,12 @@ export async function POST(req: Request) {
       // ignore
     }
 
+    let position = typeof parsed.data.position === "number" ? parsed.data.position : undefined;
+    if (position === undefined) {
+      const maxPos = await prisma.teacher.aggregate({ _max: { position: true } });
+      position = (maxPos._max.position ?? 0) + 1;
+    }
+
     const created = await prisma.teacher.create({
       data: {
         slug: parsed.data.slug,
@@ -96,7 +104,7 @@ export async function POST(req: Request) {
         menuBgColor: parsed.data.menuBgColor,
         newsBgColor: parsed.data.newsBgColor,
         ratingBgColor: parsed.data.ratingBgColor,
-        position: parsed.data.position,
+        position,
         isActive: parsed.data.isActive ?? true,
       } as any,
       select: { id: true },
