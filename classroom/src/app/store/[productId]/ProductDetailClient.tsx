@@ -1595,7 +1595,7 @@ export default function ProductDetailClient({
                   <div className="flex items-start gap-4">
                     <div
                       className={`rounded-2xl px-4 py-3 text-center min-w-[140px] ${
-                        totalReviews <= 0 ? "" : "border border-white/10"
+                        totalReviews <= 0 || isSimpleReviewUi ? "" : "border border-white/10"
                       }`}
                     >
                       <p className="text-[28px] sm:text-[32px] font-semibold tracking-[-0.02em] text-white">
