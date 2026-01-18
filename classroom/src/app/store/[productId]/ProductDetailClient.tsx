@@ -1961,7 +1961,7 @@ export default function ProductDetailClient({
               )}
 
               {/* 후기 목록(리스트가 먼저) */}
-              <div className="space-y-3 sm:space-y-4">
+              <div className={isSimpleReviewUi ? "divide-y divide-white/10" : "space-y-3 sm:space-y-4"}>
                 {filteredReviews.length === 0 ? (
                   <div className="rounded-2xl border border-white/10 px-6 py-10 text-center">
                     <p className="text-[14px] text-white/55">아직 등록된 후기가 없습니다.</p>
@@ -1990,7 +1990,11 @@ export default function ProductDetailClient({
                     return (
                       <div
                         key={review.id}
-                        className="rounded-2xl border border-white/10 p-5 transition-colors hover:border-white/20"
+                        className={
+                          isSimpleReviewUi
+                            ? "py-6"
+                            : "rounded-2xl border border-white/10 p-5 transition-colors hover:border-white/20"
+                        }
                       >
                         <div className="flex items-start gap-3 mb-3">
                           <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
