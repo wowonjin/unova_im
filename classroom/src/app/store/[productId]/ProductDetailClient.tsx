@@ -1118,6 +1118,8 @@ export default function ProductDetailClient({
   const reviewTabKey: TabKey = product.type === "textbook" ? "교재후기" : "강의후기";
   const introTabKey: TabKey = product.type === "textbook" ? "교재소개" : "강의소개";
   const detailPageTabKey: TabKey = "상세 페이지";
+  // 특정 상품(요청 페이지)은 후기 UI를 단순화: 키워드/추천/베스트 섹션 숨김
+  const isSimpleReviewUi = product.id === "cmkfcr810002a3uip4c8d2gzb";
 
   return (
     <>
@@ -1715,7 +1717,7 @@ export default function ProductDetailClient({
               </div>
 
               {/* 키워드 요약(네이버 느낌) */}
-              {keywordStats.length > 0 ? (
+              {!isSimpleReviewUi && keywordStats.length > 0 ? (
                 <div className="mb-6 rounded-2xl border border-white/10 px-4 py-3">
                   <div className="flex items-center justify-between">
                     <p className="text-[13px] font-semibold text-white/90">키워드</p>
@@ -1821,7 +1823,11 @@ export default function ProductDetailClient({
               )}
 
               {/* 추천 리뷰(네이버 느낌: 상단 고정) */}
-              {!reviewPhotoOnly && !reviewVerifiedOnly && reviewSort !== "rating" && featuredReviews.length > 0 && (
+              {!isSimpleReviewUi &&
+                !reviewPhotoOnly &&
+                !reviewVerifiedOnly &&
+                reviewSort !== "rating" &&
+                featuredReviews.length > 0 && (
                 <div className="mb-6 rounded-2xl border border-white/10 p-4">
                   <p className="mb-3 text-[14px] font-semibold text-white">추천 리뷰</p>
                   <div className="space-y-3">
@@ -1877,7 +1883,7 @@ export default function ProductDetailClient({
               )}
 
               {/* 베스트 리뷰 */}
-              {!reviewPhotoOnly && !reviewVerifiedOnly && bestReviews.length > 0 && (
+              {!isSimpleReviewUi && !reviewPhotoOnly && !reviewVerifiedOnly && bestReviews.length > 0 && (
                 <div className="mb-6 rounded-2xl border border-white/10 p-4">
                   <p className="mb-3 text-[14px] font-semibold text-white">베스트 리뷰</p>
                   <div className="space-y-3">
@@ -1963,7 +1969,10 @@ export default function ProductDetailClient({
                   </div>
                 ) : (
                   filteredReviews
-                    .filter((r) => !(!reviewPhotoOnly && !reviewVerifiedOnly && featuredIds.has(r.id)))
+                    // 추천 리뷰 섹션을 따로 보여주는 경우에만 중복 제거 (단순 UI에서는 전체 리스트 그대로 노출)
+                    .filter((r) =>
+                      isSimpleReviewUi ? true : !(!reviewPhotoOnly && !reviewVerifiedOnly && featuredIds.has(r.id))
+                    )
                     .slice(0, visibleReviewCount)
                     .map((review) => {
                     const isExpanded = expandedReviews.includes(review.id);
