@@ -26,6 +26,8 @@ type Review = {
   helpfulCount?: number;
   isHelpful?: boolean;
   isVerifiedBuyer?: boolean;
+  teacherReply?: string | null;
+  teacherReplyAtISO?: string | null;
 };
 
 type ReviewSummary = {
@@ -2076,6 +2078,18 @@ export default function ProductDetailClient({
                         >
                           {review.content}
                         </p>
+
+                        {(review.teacherReply ?? "").trim() ? (
+                          <div className={`mt-3 ${isSimpleReviewUi ? "" : "rounded-xl border border-white/10 bg-transparent px-4 py-3"}`}>
+                            <p className="text-[12px] font-semibold text-white/60">선생님 답글</p>
+                            <p className="mt-1 text-[13px] text-white/80 whitespace-pre-line">{review.teacherReply}</p>
+                            {review.teacherReplyAtISO ? (
+                              <p className="mt-2 text-[11px] text-white/35">
+                                {new Date(review.teacherReplyAtISO).toISOString().slice(0, 10).replace(/-/g, ".")}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
                         {isLong && (
                           <button
                             type="button"

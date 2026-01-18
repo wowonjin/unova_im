@@ -45,6 +45,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
         imageUrls: true,
         createdAt: true,
         userId: true,
+        teacherReply: true,
+        teacherReplyAt: true,
       },
     });
 
@@ -90,6 +92,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
       createdAtISO: r.createdAt.toISOString(),
       userId: r.userId,
       helpfulCount: helpfulCountByReviewId.get(r.id) ?? 0,
+      teacherReply: r.teacherReply ?? null,
+      teacherReplyAtISO: r.teacherReplyAt ? r.teacherReplyAt.toISOString() : null,
     }));
 
     let filtered = normalized;
@@ -159,6 +163,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
       helpfulCount: r.helpfulCount,
       isHelpful: helpfulByViewer.has(r.id),
       isVerifiedBuyer: r.userId ? verifiedBuyerIds.has(r.userId) : false,
+      teacherReply: r.teacherReply,
+      teacherReplyAtISO: r.teacherReplyAtISO,
     }));
 
     if (verifiedOnly) {
