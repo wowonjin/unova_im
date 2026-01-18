@@ -1122,6 +1122,10 @@ export default function ProductDetailClient({
   const detailPageTabKey: TabKey = "상세 페이지";
   // 특정 상품(요청 페이지)은 후기 UI를 단순화: 키워드/추천/베스트 섹션 숨김
   const isSimpleReviewUi = product.id === "cmkfcr810002a3uip4c8d2gzb";
+  const reviewTeacherDisplayName = useMemo(() => {
+    const raw = String(product.teacher || "").replace(/선생님/g, "").trim();
+    return raw ? `${raw} 선생님` : "선생님";
+  }, [product.teacher]);
 
   // 단순 후기 UI에서는 "구매자" 탭이 없으므로, 상태가 켜져 있으면 꺼줍니다.
   useEffect(() => {
@@ -2080,14 +2084,21 @@ export default function ProductDetailClient({
                         </p>
 
                         {(review.teacherReply ?? "").trim() ? (
-                          <div className={`mt-3 ${isSimpleReviewUi ? "" : "rounded-xl border border-white/10 bg-transparent px-4 py-3"}`}>
-                            <p className="text-[12px] font-semibold text-white/60">선생님 답글</p>
+                          <div className="mt-3 ml-12 border-l border-white/10 pl-4">
+                            <div className="flex flex-wrap items-center gap-2 text-[12px] text-white/55">
+                              <span className="font-semibold text-white/75">{reviewTeacherDisplayName}</span>
+                              <span className="text-white/30">·</span>
+                              <span>답글</span>
+                              {review.teacherReplyAtISO ? (
+                                <>
+                                  <span className="text-white/30">·</span>
+                                  <span className="text-white/40">
+                                    {new Date(review.teacherReplyAtISO).toISOString().slice(0, 10).replace(/-/g, ".")}
+                                  </span>
+                                </>
+                              ) : null}
+                            </div>
                             <p className="mt-1 text-[13px] text-white/80 whitespace-pre-line">{review.teacherReply}</p>
-                            {review.teacherReplyAtISO ? (
-                              <p className="mt-2 text-[11px] text-white/35">
-                                {new Date(review.teacherReplyAtISO).toISOString().slice(0, 10).replace(/-/g, ".")}
-                              </p>
-                            ) : null}
                           </div>
                         ) : null}
                         {isLong && (
