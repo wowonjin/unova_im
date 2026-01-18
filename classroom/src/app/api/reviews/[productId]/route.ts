@@ -28,6 +28,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
         ...(type === "TEXTBOOK" ? { textbookId: productId } : { courseId: productId }),
         isApproved: true,
       },
+      // Stable ordering: ensure newest reviews appear first even when multiple reviews share the same date.
+      orderBy: { createdAt: "desc" },
       select: {
         id: true,
         authorName: true,
@@ -59,6 +61,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
       content: r.content,
       imageUrls: (r.imageUrls as string[] | null) || [],
       date: r.createdAt.toISOString().slice(0, 10).replace(/-/g, "."),
+      createdAtISO: r.createdAt.toISOString(),
       userId: r.userId,
       helpfulCount: r._count.helpfuls ?? 0,
     }));
@@ -71,17 +74,17 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
     if (sort === "rating") {
       filtered = [...filtered].sort((a, b) => {
         if (b.rating !== a.rating) return b.rating - a.rating;
-        return b.date.localeCompare(a.date);
+        return b.createdAtISO.localeCompare(a.createdAtISO);
       });
     } else if (sort === "helpful") {
       filtered = [...filtered].sort((a, b) => {
         if ((b.helpfulCount ?? 0) !== (a.helpfulCount ?? 0)) {
           return (b.helpfulCount ?? 0) - (a.helpfulCount ?? 0);
         }
-        return b.date.localeCompare(a.date);
+        return b.createdAtISO.localeCompare(a.createdAtISO);
       });
     } else {
-      filtered = [...filtered].sort((a, b) => b.date.localeCompare(a.date));
+      filtered = [...filtered].sort((a, b) => b.createdAtISO.localeCompare(a.createdAtISO));
     }
 
     filtered = filtered.slice(0, 100);
