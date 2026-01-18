@@ -682,14 +682,13 @@ export default function ProductDetailClient({
         setReviewError(null);
       } else {
         setReviews([]);
-        setReviewSummary({ totalCount: 0, averageRating: 0, ratingCounts: [0, 0, 0, 0, 0], photoCount: 0 });
+        setReviewSummary({ totalCount: 0, averageRating: 0, ratingCounts: [0, 0, 0, 0, 0], photoCount: 0, verifiedCount: 0 });
         setReviewCount(0);
         setAverageRating(0);
       }
     } catch (err) {
       console.error("Failed to fetch reviews:", err);
       setReviews([]);
-      setReviewSummary({ totalCount: 0, averageRating: 0, ratingCounts: [0, 0, 0, 0, 0], photoCount: 0, verifiedCount: 0 });
       setReviewSummary({ totalCount: 0, averageRating: 0, ratingCounts: [0, 0, 0, 0, 0], photoCount: 0, verifiedCount: 0 });
       setReviewCount(0);
       setAverageRating(0);
