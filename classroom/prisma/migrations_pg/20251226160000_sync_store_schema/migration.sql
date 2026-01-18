@@ -75,6 +75,8 @@ CREATE TABLE IF NOT EXISTS "Review" (
   "rating" INTEGER NOT NULL,
   "content" TEXT NOT NULL,
   "imageUrls" JSONB,
+  "teacherReply" TEXT,
+  "teacherReplyAt" TIMESTAMP(3),
   "isApproved" BOOLEAN NOT NULL DEFAULT true,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -112,6 +114,94 @@ BEGIN
       ADD CONSTRAINT "Review_textbookId_fkey"
       FOREIGN KEY ("textbookId") REFERENCES "Textbook"("id")
       ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+-- === ReviewReport table (store review reports) ===
+CREATE TABLE IF NOT EXISTS "ReviewReport" (
+  "id" TEXT NOT NULL,
+  "reviewId" TEXT NOT NULL,
+  "reason" TEXT NOT NULL,
+  "detail" TEXT,
+  "userId" TEXT,
+  "visitorId" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "ReviewReport_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX IF NOT EXISTS "ReviewReport_reviewId_createdAt_idx" ON "ReviewReport" ("reviewId", "createdAt");
+CREATE INDEX IF NOT EXISTS "ReviewReport_userId_createdAt_idx" ON "ReviewReport" ("userId", "createdAt");
+CREATE INDEX IF NOT EXISTS "ReviewReport_visitorId_createdAt_idx" ON "ReviewReport" ("visitorId", "createdAt");
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ReviewReport_reviewId_fkey') THEN
+    ALTER TABLE "ReviewReport"
+      ADD CONSTRAINT "ReviewReport_reviewId_fkey"
+      FOREIGN KEY ("reviewId") REFERENCES "Review"("id")
+      ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ReviewReport_userId_fkey') THEN
+    ALTER TABLE "ReviewReport"
+      ADD CONSTRAINT "ReviewReport_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "User"("id")
+      ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+-- === ReviewHelpful table (store review helpfuls) ===
+CREATE TABLE IF NOT EXISTS "ReviewHelpful" (
+  "id" TEXT NOT NULL,
+  "reviewId" TEXT NOT NULL,
+  "userId" TEXT,
+  "visitorId" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "ReviewHelpful_pkey" PRIMARY KEY ("id")
+);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ReviewHelpful_reviewId_userId_key') THEN
+    ALTER TABLE "ReviewHelpful"
+      ADD CONSTRAINT "ReviewHelpful_reviewId_userId_key"
+      UNIQUE ("reviewId", "userId");
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ReviewHelpful_reviewId_visitorId_key') THEN
+    ALTER TABLE "ReviewHelpful"
+      ADD CONSTRAINT "ReviewHelpful_reviewId_visitorId_key"
+      UNIQUE ("reviewId", "visitorId");
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS "ReviewHelpful_reviewId_idx" ON "ReviewHelpful" ("reviewId");
+CREATE INDEX IF NOT EXISTS "ReviewHelpful_userId_idx" ON "ReviewHelpful" ("userId");
+CREATE INDEX IF NOT EXISTS "ReviewHelpful_visitorId_idx" ON "ReviewHelpful" ("visitorId");
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ReviewHelpful_reviewId_fkey') THEN
+    ALTER TABLE "ReviewHelpful"
+      ADD CONSTRAINT "ReviewHelpful_reviewId_fkey"
+      FOREIGN KEY ("reviewId") REFERENCES "Review"("id")
+      ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ReviewHelpful_userId_fkey') THEN
+    ALTER TABLE "ReviewHelpful"
+      ADD CONSTRAINT "ReviewHelpful_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "User"("id")
+      ON DELETE SET NULL ON UPDATE CASCADE;
   END IF;
 END $$;
 

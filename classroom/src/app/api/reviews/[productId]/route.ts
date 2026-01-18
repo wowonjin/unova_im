@@ -19,8 +19,15 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
     const photoOnly = url.searchParams.get("photoOnly") === "1";
     const verifiedOnly = url.searchParams.get("verifiedOnly") === "1";
     const visitorId = url.searchParams.get("visitorId") || null;
-    const viewer = await getCurrentUser();
-    const viewerUserId = viewer?.id || null;
+    // NOTE: 운영 DB가 스키마 누락(예: ReviewHelpful/ReviewReport 테이블 없음) 상태여도
+    // 후기 목록 자체는 보여줄 수 있어야 합니다. viewer 조회도 실패할 수 있어 안전하게 처리합니다.
+    let viewerUserId: string | null = null;
+    try {
+      const viewer = await getCurrentUser();
+      viewerUserId = viewer?.id || null;
+    } catch {
+      viewerUserId = null;
+    }
 
     const reviews = await prisma.review.findMany({
       where: {
@@ -38,7 +45,6 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
         imageUrls: true,
         createdAt: true,
         userId: true,
-        _count: { select: { helpfuls: true } },
       },
     });
 
@@ -54,6 +60,26 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
     const averageRating =
       totalCount > 0 ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / totalCount) * 10) / 10 : 0;
 
+    const reviewIds = reviews.map((r) => r.id);
+    const userIds = Array.from(new Set(reviews.map((r) => r.userId).filter(Boolean))) as string[];
+
+    // helpfulCount: ReviewHelpful 테이블이 없을 수 있으므로 best-effort로만 계산
+    const helpfulCountByReviewId = new Map<string, number>();
+    if (reviewIds.length > 0) {
+      try {
+        const rows = await prisma.reviewHelpful.groupBy({
+          by: ["reviewId"],
+          where: { reviewId: { in: reviewIds } },
+          _count: { _all: true },
+        });
+        for (const row of rows) {
+          helpfulCountByReviewId.set(row.reviewId, row._count._all ?? 0);
+        }
+      } catch {
+        // ignore (missing table or restricted DB)
+      }
+    }
+
     const normalized = reviews.map((r) => ({
       id: r.id,
       name: r.authorName,
@@ -63,7 +89,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
       date: r.createdAt.toISOString().slice(0, 10).replace(/-/g, "."),
       createdAtISO: r.createdAt.toISOString(),
       userId: r.userId,
-      helpfulCount: r._count.helpfuls ?? 0,
+      helpfulCount: helpfulCountByReviewId.get(r.id) ?? 0,
     }));
 
     let filtered = normalized;
@@ -89,32 +115,38 @@ export async function GET(req: Request, ctx: { params: Promise<{ productId: stri
 
     filtered = filtered.slice(0, 100);
 
-    const reviewIds = filtered.map((r) => r.id);
-    const userIds = Array.from(new Set(filtered.map((r) => r.userId).filter(Boolean))) as string[];
     let verifiedBuyerIds = new Set<string>();
     if (userIds.length > 0) {
-      const orders = await prisma.order.findMany({
-        where: {
-          userId: { in: userIds },
-          status: "COMPLETED",
-          ...(type === "TEXTBOOK" ? { textbookId: productId } : { courseId: productId }),
-        },
-        select: { userId: true },
-      });
-      verifiedBuyerIds = new Set(orders.map((o) => o.userId));
+      try {
+        const orders = await prisma.order.findMany({
+          where: {
+            userId: { in: userIds },
+            status: "COMPLETED",
+            ...(type === "TEXTBOOK" ? { textbookId: productId } : { courseId: productId }),
+          },
+          select: { userId: true },
+        });
+        verifiedBuyerIds = new Set(orders.map((o) => o.userId));
+      } catch {
+        verifiedBuyerIds = new Set<string>();
+      }
     }
     const verifiedCount = normalized.reduce((acc, r) => (r.userId && verifiedBuyerIds.has(r.userId) ? acc + 1 : acc), 0);
 
     let helpfulByViewer = new Set<string>();
     if (reviewIds.length > 0 && (viewerUserId || visitorId)) {
-      const helpfulRows = await prisma.reviewHelpful.findMany({
-        where: {
-          reviewId: { in: reviewIds },
-          ...(viewerUserId ? { userId: viewerUserId } : { visitorId }),
-        },
-        select: { reviewId: true },
-      });
-      helpfulByViewer = new Set(helpfulRows.map((r) => r.reviewId));
+      try {
+        const helpfulRows = await prisma.reviewHelpful.findMany({
+          where: {
+            reviewId: { in: reviewIds },
+            ...(viewerUserId ? { userId: viewerUserId } : { visitorId }),
+          },
+          select: { reviewId: true },
+        });
+        helpfulByViewer = new Set(helpfulRows.map((r) => r.reviewId));
+      } catch {
+        helpfulByViewer = new Set<string>();
+      }
     }
 
     const formatted = filtered.map((r) => ({
