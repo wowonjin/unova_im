@@ -688,17 +688,42 @@ function StorePreviewSections({
     return [...ordered, ...other];
   }, [freeTextbooks]);
 
-  const transferTextbookSubjects = useMemo(() => {
-    const preferred = ["전체", "미적분학", "대학물리학"];
+  const transferTextbooks = useMemo(() => {
     const subjectAllow = new Set(["미적분학", "대학물리학"]);
+    const paid = textbooks.filter((p) => !p.isFree);
+    // 명시 분류 우선: "편입"은 반드시 편입 섹션에 노출
+    const explicit = paid.filter((p) => p.gradeCategory === "TRANSFER");
+    // 수능으로 명시된 교재는 편입 섹션에서 제외
+    const paidNonSuneung = paid.filter((p) => p.gradeCategory !== "SUNEUNG");
+    const heuristic = paidNonSuneung.filter((p) => subjectAllow.has(p.subject));
+
+    const seen = new Set<string>();
+    return [...explicit, ...heuristic].filter((p) => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+  }, [textbooks]);
+
+  const transferTextbookSubjects = useMemo(() => {
+    // NOTE: 편입 탭은 과거에 "미적분학/대학물리학"으로 고정(allowlist)되어 있었는데,
+    // 실제 운영에서는 편입 교재의 subjectName(예: 고려대학교/연세대학교/중앙대학교 등)이 추가될 수 있습니다.
+    // 따라서 편입 섹션에 노출되는 교재(transferTextbooks)에서 실제 존재하는 과목/분류를 모두 탭으로 노출합니다.
     const subjectSet = new Set(
-      textbooks
-        .filter((p) => subjectAllow.has(p.subject) && !p.isFree)
+      transferTextbooks
+        .filter((p) => !p.isFree)
         .map((p) => p.subject)
         .filter(Boolean)
     );
-    return preferred.filter((s) => s === "전체" || subjectSet.has(s));
-  }, [textbooks]);
+
+    const preferred = ["미적분학", "대학물리학"];
+    const orderedPreferred = preferred.filter((s) => subjectSet.has(s));
+    const other = Array.from(subjectSet)
+      .filter((s) => !preferred.includes(s))
+      .sort((a, b) => a.localeCompare(b, "ko"));
+
+    return ["전체", ...orderedPreferred, ...other];
+  }, [transferTextbooks]);
 
   const filteredCourses = useMemo(() => {
     if (hideTabMenus || selectedCourseSubject === "전체") return courses;
@@ -738,23 +763,6 @@ function StorePreviewSections({
       return tt === normalizeTextbookType("실물책+PDF");
     });
   }, [selectedSuneungBookFormat, textbooks]);
-
-  const transferTextbooks = useMemo(() => {
-    const subjectAllow = new Set(["미적분학", "대학물리학"]);
-    const paid = textbooks.filter((p) => !p.isFree);
-    // 명시 분류 우선: "편입"은 반드시 편입 섹션에 노출
-    const explicit = paid.filter((p) => p.gradeCategory === "TRANSFER");
-    // 수능으로 명시된 교재는 편입 섹션에서 제외
-    const paidNonSuneung = paid.filter((p) => p.gradeCategory !== "SUNEUNG");
-    const heuristic = paidNonSuneung.filter((p) => subjectAllow.has(p.subject));
-
-    const seen = new Set<string>();
-    return [...explicit, ...heuristic].filter((p) => {
-      if (seen.has(p.id)) return false;
-      seen.add(p.id);
-      return true;
-    });
-  }, [textbooks]);
 
   const filteredSuneungTextbooks = useMemo(() => {
     if (hideTabMenus || selectedSuneungTextbookSubject === "전체") return suneungTextbooks;
