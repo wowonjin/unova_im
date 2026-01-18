@@ -1121,6 +1121,13 @@ export default function ProductDetailClient({
   // 특정 상품(요청 페이지)은 후기 UI를 단순화: 키워드/추천/베스트 섹션 숨김
   const isSimpleReviewUi = product.id === "cmkfcr810002a3uip4c8d2gzb";
 
+  // 단순 후기 UI에서는 "구매자" 탭이 없으므로, 상태가 켜져 있으면 꺼줍니다.
+  useEffect(() => {
+    if (!isSimpleReviewUi) return;
+    if (reviewVerifiedOnly) setReviewVerifiedOnly(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSimpleReviewUi]);
+
   return (
     <>
     <div className="flex flex-col md:flex-row gap-10 py-8">
@@ -1680,24 +1687,26 @@ export default function ProductDetailClient({
                         <span className="absolute inset-x-0 -bottom-[1px] h-[2px] bg-white" aria-hidden="true" />
                       ) : null}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setReviewVerifiedOnly(true);
-                        setReviewPhotoOnly(false);
-                      }}
-                      className={`relative pb-3 text-[13px] font-semibold transition-colors ${
-                        reviewVerifiedOnly ? "text-white" : "text-white/50 hover:text-white/75"
-                      }`}
-                    >
-                      구매자
-                      <span className="ml-2 text-[12px] font-medium text-white/45">
-                        {reviewSummary.verifiedCount.toLocaleString("ko-KR")}
-                      </span>
-                      {reviewVerifiedOnly ? (
-                        <span className="absolute inset-x-0 -bottom-[1px] h-[2px] bg-white" aria-hidden="true" />
-                      ) : null}
-                    </button>
+                    {!isSimpleReviewUi ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReviewVerifiedOnly(true);
+                          setReviewPhotoOnly(false);
+                        }}
+                        className={`relative pb-3 text-[13px] font-semibold transition-colors ${
+                          reviewVerifiedOnly ? "text-white" : "text-white/50 hover:text-white/75"
+                        }`}
+                      >
+                        구매자
+                        <span className="ml-2 text-[12px] font-medium text-white/45">
+                          {reviewSummary.verifiedCount.toLocaleString("ko-KR")}
+                        </span>
+                        {reviewVerifiedOnly ? (
+                          <span className="absolute inset-x-0 -bottom-[1px] h-[2px] bg-white" aria-hidden="true" />
+                        ) : null}
+                      </button>
+                    ) : null}
                   </div>
 
                   {/* 정렬 드롭다운 */}
@@ -2004,7 +2013,11 @@ export default function ProductDetailClient({
                                   사진후기
                                 </span>
                               )}
-                              <div className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5">
+                              <div
+                                className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 ${
+                                  isSimpleReviewUi ? "" : "border border-white/10 bg-white/[0.06]"
+                                }`}
+                              >
                                 {[1, 2, 3, 4, 5].map((star) => (
                                   <span
                                     key={star}
@@ -2017,7 +2030,11 @@ export default function ProductDetailClient({
                               </div>
                             </div>
                             <div className="mt-1 flex items-center gap-2 text-[12px] text-white/40">
-                              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5">
+                              <span
+                                className={`rounded-full px-2 py-0.5 ${
+                                  isSimpleReviewUi ? "" : "border border-white/10 bg-white/[0.04]"
+                                }`}
+                              >
                                 {review.date}
                               </span>
                             </div>
