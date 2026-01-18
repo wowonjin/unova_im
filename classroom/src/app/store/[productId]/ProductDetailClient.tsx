@@ -2013,31 +2013,42 @@ export default function ProductDetailClient({
                                   사진후기
                                 </span>
                               )}
-                              <div
-                                className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 ${
-                                  isSimpleReviewUi ? "" : "border border-white/10 bg-white/[0.06]"
-                                }`}
-                              >
+                              {/* 단순 후기 UI에서는 평점을 "이름 아래"로 내립니다. */}
+                              {!isSimpleReviewUi ? (
+                                <div className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <span
+                                      key={star}
+                                      className={`text-[11px] ${star <= Math.round(review.rating) ? "text-yellow-200" : "text-white/20"}`}
+                                    >
+                                      ★
+                                    </span>
+                                  ))}
+                                  <span className="text-[11px] text-white/60">{review.rating.toFixed(1)}</span>
+                                </div>
+                              ) : null}
+                            </div>
+                            {!isSimpleReviewUi ? (
+                              <div className="mt-1 flex items-center gap-2 text-[12px] text-white/40">
+                                <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5">
+                                  {review.date}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="mt-1 flex items-center gap-1 text-[12px] text-white/60">
                                 {[1, 2, 3, 4, 5].map((star) => (
                                   <span
-                                    key={star}
-                                    className={`text-[11px] ${star <= Math.round(review.rating) ? "text-yellow-200" : "text-white/20"}`}
+                                    key={`${review.id}-simple-star-${star}`}
+                                    className={star <= Math.round(review.rating) ? "text-yellow-200" : "text-white/20"}
                                   >
                                     ★
                                   </span>
                                 ))}
-                                <span className="text-[11px] text-white/60">{review.rating.toFixed(1)}</span>
+                                <span className="ml-1">{review.rating.toFixed(1)}</span>
+                                <span className="mx-1 text-white/30">·</span>
+                                <span className="text-white/40">{review.date}</span>
                               </div>
-                            </div>
-                            <div className="mt-1 flex items-center gap-2 text-[12px] text-white/40">
-                              <span
-                                className={`rounded-full px-2 py-0.5 ${
-                                  isSimpleReviewUi ? "" : "border border-white/10 bg-white/[0.04]"
-                                }`}
-                              >
-                                {review.date}
-                              </span>
-                            </div>
+                            )}
                           </div>
                           {isAdmin && (
                             <button
