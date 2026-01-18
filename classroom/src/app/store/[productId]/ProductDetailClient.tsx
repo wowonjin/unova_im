@@ -883,15 +883,11 @@ export default function ProductDetailClient({
       setReviewFormImages([]);
       reviewImagePreviews.forEach((url) => URL.revokeObjectURL(url));
       setReviewImagePreviews([]);
-      setReviewSuccess(true);
-      
       // 후기 목록 새로고침
       await fetchReviews();
 
       // 작성 완료 후 모달 닫기
       closeReviewWriteModal();
-      
-      setTimeout(() => setReviewSuccess(false), 3000);
     } catch (err) {
       setReviewError("후기 등록에 실패했습니다. 다시 시도해주세요.");
     } finally {
@@ -1652,14 +1648,7 @@ export default function ProductDetailClient({
                   </div>
                 </div>
 
-                {reviewSuccess && (
-                  <div className="mt-4 rounded-xl border border-green-500/25 bg-green-500/10 px-4 py-3 text-[13px] text-green-200 flex items-center gap-2">
-                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                      check_circle
-                    </span>
-                    후기가 등록되었습니다. 감사합니다!
-                  </div>
-                )}
+                {/* 후기 등록 성공 토스트(요청사항: 표시하지 않음) */}
               </div>
 
               {/* 필터/정렬 (네이버 스타일: 탭 + 드롭다운) */}
