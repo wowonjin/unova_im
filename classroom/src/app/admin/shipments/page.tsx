@@ -53,6 +53,48 @@ function parseCsvIds(v: string | string[] | undefined): string[] {
     .slice(0, 50);
 }
 
+function normalizePhone(v: unknown): string {
+  if (typeof v !== "string") return "";
+  // remove '-', spaces, etc. Keep digits only so UI/Excel don't show hyphens.
+  return v.replace(/\D/g, "");
+}
+
+function normalizeAddress(v: unknown): string {
+  if (typeof v !== "string") return "";
+  // Remove postal-code tokens like "[61409]" (common in KR addresses)
+  return v
+    .replace(/\[\s*\d{5}\s*\]\s*/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isDateKey(v: string | null): v is string {
+  if (!v) return false;
+  // YYYY-MM-DD (KST date key)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const [y, m, d] = v.split("-").map((x) => parseInt(x, 10));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return false;
+  if (m < 1 || m > 12) return false;
+  if (d < 1 || d > 31) return false;
+  return true;
+}
+
+function clampDateRange(fromKey: string, toKey: string, maxDays: number): { fromKey: string; toKey: string } {
+  // ensure from <= to (lex compare works for YYYY-MM-DD)
+  let from = fromKey;
+  let to = toKey;
+  if (from > to) [from, to] = [to, from];
+
+  // clamp long ranges (defensive - still has take limit, but avoids surprising filters)
+  const fromStart = kstStartOfDay(from);
+  const toStart = kstStartOfDay(to);
+  const days = Math.floor((toStart.getTime() - fromStart.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+  if (days <= maxDays) return { fromKey: from, toKey: to };
+
+  const clampedTo = addDaysKst(from, maxDays - 1);
+  return { fromKey: from, toKey: clampedTo };
+}
+
 function isPromiseLike<T>(v: unknown): v is Promise<T> {
   return Boolean(v) && typeof v === "object" && typeof (v as any).then === "function";
 }
@@ -66,7 +108,13 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
   const textbookIds = parseCsvIds(sp.textbookIds);
   const legacyOne = firstString(sp.textbookId) || "";
   const selectedIds = (textbookIds.length ? textbookIds : (legacyOne ? [legacyOne] : [])).slice(0, 50);
-  const dateFilter = (firstString(sp.date) || "today").toLowerCase();
+  const dateFilterRaw = (firstString(sp.date) || "today").toLowerCase();
+  const dateFilter: "today" | "all" | "range" = dateFilterRaw === "all" ? "all" : dateFilterRaw === "range" ? "range" : "today";
+  const dateFromRaw = firstString(sp.dateFrom);
+  const dateToRaw = firstString(sp.dateTo);
+  const dateFrom = isDateKey(dateFromRaw) ? dateFromRaw : todayKey;
+  const dateTo = isDateKey(dateToRaw) ? dateToRaw : todayKey;
+  const clamped = dateFilter === "range" ? clampDateRange(dateFrom, dateTo, 366) : { fromKey: dateFrom, toKey: dateTo };
 
   const shippingFee = Number(firstString(sp.shippingFee) || "3000");
   const freightCode = (firstString(sp.freightCode) || "030").trim();
@@ -79,8 +127,18 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
   });
   const selectedTextbooks = selectedIds.map((id) => textbooks.find((t) => t.id === id)).filter(Boolean) as Array<{ id: string; title: string }>;
 
-  const start = dateFilter === "today" ? kstStartOfDay(todayKey) : null;
-  const end = dateFilter === "today" ? kstStartOfDay(addDaysKst(todayKey, 1)) : null;
+  const start =
+    dateFilter === "today"
+      ? kstStartOfDay(todayKey)
+      : dateFilter === "range"
+        ? kstStartOfDay(clamped.fromKey)
+        : null;
+  const end =
+    dateFilter === "today"
+      ? kstStartOfDay(addDaysKst(todayKey, 1))
+      : dateFilter === "range"
+        ? kstStartOfDay(addDaysKst(clamped.toKey, 1))
+        : null;
 
   const orders = await prisma.order.findMany({
     where: {
@@ -116,9 +174,9 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
       orderNo: o.orderNo,
       orderedAt: o.createdAt,
       recipientName: o.user.name || o.user.email,
-      address: [o.user.address || "", o.user.addressDetail || ""].join(" ").trim(),
-      tel: o.user.phone || "",
-      mobile: o.user.phone || "",
+      address: normalizeAddress([o.user.address || "", o.user.addressDetail || ""].join(" ").trim()),
+      tel: normalizePhone(o.user.phone),
+      mobile: normalizePhone(o.user.phone),
       qty: 1,
       shippingFee: Number.isFinite(shippingFee) ? shippingFee : 3000,
       freightCode,
@@ -150,7 +208,13 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
 
   const downloadUrl =
     selectedIds.length
-      ? `/api/admin/shipments/export?textbookIds=${encodeURIComponent(selectedIds.join(","))}&date=${encodeURIComponent(dateFilter)}&shippingFee=${encodeURIComponent(String(Number.isFinite(shippingFee) ? shippingFee : 3000))}&freightCode=${encodeURIComponent(freightCode)}&message=${encodeURIComponent(defaultMessage)}`
+      ? `/api/admin/shipments/export?textbookIds=${encodeURIComponent(selectedIds.join(","))}&date=${encodeURIComponent(dateFilter)}${
+          dateFilter === "range"
+            ? `&dateFrom=${encodeURIComponent(clamped.fromKey)}&dateTo=${encodeURIComponent(clamped.toKey)}`
+            : ""
+        }&shippingFee=${encodeURIComponent(String(Number.isFinite(shippingFee) ? shippingFee : 3000))}&freightCode=${encodeURIComponent(
+          freightCode
+        )}&message=${encodeURIComponent(defaultMessage)}`
       : null;
 
   return (
@@ -231,7 +295,7 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
               <div>
                 <p className="text-[12px] text-white/40">조회 기간</p>
                 <p className="text-[14px] font-medium text-white mt-1">
-                  {dateFilter === "today" ? todayKey : "전체"}
+                  {dateFilter === "today" ? todayKey : dateFilter === "range" ? `${clamped.fromKey} ~ ${clamped.toKey}` : "전체"}
                 </p>
               </div>
             </div>
@@ -259,7 +323,9 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
           textbooks={textbooks}
           initial={{
             textbookIds: selectedIds,
-            date: dateFilter === "all" ? "all" : "today",
+            date: dateFilter,
+            dateFrom: clamped.fromKey,
+            dateTo: clamped.toKey,
             shippingFee: String(Number.isFinite(shippingFee) ? shippingFee : 3000),
             freightCode,
             message: defaultMessage,
@@ -339,8 +405,8 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
                       <tr key={`${r.orderNo}-${idx}`} className="hover:bg-white/[0.02] transition-colors">
                         <td className="px-4 py-3 text-white/90 font-medium">{r.recipientName}</td>
                         <td className="px-4 py-3 text-white/70 max-w-[280px] truncate" title={r.address}>{r.address || <span className="text-white/30">-</span>}</td>
-                        <td className="px-4 py-3 text-white/60 font-mono text-[12px]">{r.tel || <span className="text-white/30">-</span>}</td>
-                        <td className="px-4 py-3 text-white/60 font-mono text-[12px]">{r.mobile || <span className="text-white/30">-</span>}</td>
+                        <td className="px-4 py-3 text-white/60 font-mono text-[12px]">{r.tel || <span className="text-white/30">미입력</span>}</td>
+                        <td className="px-4 py-3 text-white/60 font-mono text-[12px]">{r.mobile || <span className="text-white/30">미입력</span>}</td>
                         <td className="px-4 py-3 text-right text-white/70">{r.qty}</td>
                         <td className="px-4 py-3 text-right text-white/70">{r.shippingFee.toLocaleString()}</td>
                         <td className="px-4 py-3">

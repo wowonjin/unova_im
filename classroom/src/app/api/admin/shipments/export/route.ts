@@ -3,6 +3,8 @@ import { z } from "zod";
 import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import * as XLSX from "xlsx";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
 export const runtime = "nodejs";
 
@@ -47,13 +49,122 @@ function parseCsvIds(s: string | null): string[] {
     .slice(0, 50);
 }
 
+function normalizePhone(v: unknown): string {
+  if (typeof v !== "string") return "";
+  // Keep digits only so exported excel doesn't include hyphens/spaces.
+  return v.replace(/\D/g, "");
+}
+
+function normalizeAddress(v: unknown): string {
+  if (typeof v !== "string") return "";
+  // Remove postal-code tokens like "[61409]" (common in KR addresses)
+  return v
+    .replace(/\[\s*\d{5}\s*\]\s*/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isDateKey(v: string | null): v is string {
+  if (!v) return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const [y, m, d] = v.split("-").map((x) => parseInt(x, 10));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return false;
+  if (m < 1 || m > 12) return false;
+  if (d < 1 || d > 31) return false;
+  return true;
+}
+
+function clampDateRange(fromKey: string, toKey: string, maxDays: number): { fromKey: string; toKey: string } {
+  let from = fromKey;
+  let to = toKey;
+  if (from > to) [from, to] = [to, from];
+
+  const fromStart = kstStartOfDay(from);
+  const toStart = kstStartOfDay(to);
+  const days = Math.floor((toStart.getTime() - fromStart.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+  if (days <= maxDays) return { fromKey: from, toKey: to };
+  return { fromKey: from, toKey: addDaysKst(from, maxDays - 1) };
+}
+
+async function loadDeliveryMainTemplateWb(): Promise<XLSX.WorkBook | null> {
+  const candidates = [
+    // preferred: keep template under classroom/public so it is packaged for deployment
+    path.join(process.cwd(), "public", "_templates", "deliverymain.xls"),
+    path.join(process.cwd(), "public", "_templates", "deliverymain.xlsx"),
+    // local dev fallbacks (repo root)
+    path.join(process.cwd(), "..", "deliverymain.xls"),
+    path.join(process.cwd(), "..", "deliverymain.xlsx"),
+    path.join(process.cwd(), "deliverymain.xls"),
+    path.join(process.cwd(), "deliverymain.xlsx"),
+  ];
+
+  for (const p of candidates) {
+    try {
+      const buf = await readFile(p);
+      return XLSX.read(buf, { type: "buffer" });
+    } catch {
+      // ignore and try next
+    }
+  }
+  return null;
+}
+
+function ensureDeliveryMainHeader(ws: XLSX.WorkSheet) {
+  // A~K (B,J intentionally blank) - match deliverymain.xls layout
+  const header: Array<string> = [
+    "수하인명",
+    "",
+    "수하인 주소",
+    "수하인전화번호",
+    "수하인핸드폰번호",
+    "택배수량",
+    "택배운임",
+    "운임구분",
+    "품목명",
+    "",
+    "배송메시지",
+  ];
+  for (let c = 0; c <= 10; c++) {
+    const addr = XLSX.utils.encode_cell({ r: 0, c });
+    // don't overwrite existing styled header cells if present
+    if (ws[addr]) continue;
+    ws[addr] = { t: "s", v: header[c] ?? "" };
+  }
+
+  if (!ws["!cols"]) {
+    ws["!cols"] = [
+      { wch: 12 }, // A 수하인명
+      { wch: 2 },  // B 빈칸
+      { wch: 60 }, // C 수하인 주소
+      { wch: 16 }, // D 수하인전화번호
+      { wch: 16 }, // E 수하인핸드폰번호
+      { wch: 10 }, // F 택배수량
+      { wch: 10 }, // G 택배운임
+      { wch: 10 }, // H 운임구분
+      { wch: 30 }, // I 품목명
+      { wch: 2 },  // J 빈칸
+      { wch: 30 }, // K 배송메시지
+    ];
+  }
+}
+
 const QuerySchema = z.object({
   // multi(권장): textbookIds=aaa,bbb / legacy: textbookId=aaa
   textbookIds: z.array(z.string().min(1)).min(1).max(50),
-  date: z.enum(["today", "all"]).optional().default("today"),
+  date: z.enum(["today", "all", "range"]).optional().default("today"),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
   shippingFee: z.coerce.number().int().min(0).optional().default(3000),
   freightCode: z.string().min(1).max(20).optional().default("030"),
   message: z.string().max(200).optional().default("친절 배송 부탁드립니다."),
+}).superRefine((v, ctx) => {
+  if (v.date !== "range") return;
+  if (!isDateKey(v.dateFrom ?? null)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["dateFrom"], message: "dateFrom must be YYYY-MM-DD when date=range" });
+  }
+  if (!isDateKey(v.dateTo ?? null)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["dateTo"], message: "dateTo must be YYYY-MM-DD when date=range" });
+  }
 });
 
 export async function GET(req: Request) {
@@ -66,6 +177,8 @@ export async function GET(req: Request) {
     const parsed = QuerySchema.safeParse({
       textbookIds,
       date: (url.searchParams.get("date") ?? undefined) as any,
+      dateFrom: url.searchParams.get("dateFrom") ?? undefined,
+      dateTo: url.searchParams.get("dateTo") ?? undefined,
       shippingFee: url.searchParams.get("shippingFee") ?? undefined,
       freightCode: url.searchParams.get("freightCode") ?? undefined,
       message: url.searchParams.get("message") ?? undefined,
@@ -74,11 +187,14 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "INVALID_REQUEST", details: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { textbookIds: selectedIds, date, shippingFee, freightCode, message } = parsed.data;
+    const { textbookIds: selectedIds, date, dateFrom, dateTo, shippingFee, freightCode, message } = parsed.data;
 
     const todayKey = kstDateKey(new Date());
-    const start = date === "today" ? kstStartOfDay(todayKey) : null;
-    const end = date === "today" ? kstStartOfDay(addDaysKst(todayKey, 1)) : null;
+    const clamped = date === "range" ? clampDateRange(dateFrom!, dateTo!, 366) : null;
+    const start =
+      date === "today" ? kstStartOfDay(todayKey) : date === "range" ? kstStartOfDay(clamped!.fromKey) : null;
+    const end =
+      date === "today" ? kstStartOfDay(addDaysKst(todayKey, 1)) : date === "range" ? kstStartOfDay(addDaysKst(clamped!.toKey, 1)) : null;
 
     const textbooks = await prisma.textbook.findMany({
       where: { ownerId: teacher.id },
@@ -113,9 +229,9 @@ export async function GET(req: Request) {
 
       const base = {
         수하인명: o.user.name || o.user.email,
-        수하인주소: [o.user.address || "", o.user.addressDetail || ""].join(" ").trim(),
-        수하인전화번호: o.user.phone || "",
-        수하인핸드폰번호: o.user.phone || "",
+        수하인주소: normalizeAddress([o.user.address || "", o.user.addressDetail || ""].join(" ").trim()),
+        수하인전화번호: normalizePhone(o.user.phone),
+        수하인핸드폰번호: normalizePhone(o.user.phone),
         택배수량: 1,
         택배운임: shippingFee,
         운임구분: freightCode,
@@ -145,23 +261,56 @@ export async function GET(req: Request) {
       return out;
     });
 
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = (await loadDeliveryMainTemplateWb()) ?? XLSX.utils.book_new();
+    const sheetName = wb.SheetNames[0] ?? "택배목록";
+    const ws: XLSX.WorkSheet = wb.Sheets[sheetName] ?? XLSX.utils.aoa_to_sheet([]);
 
-    // 열 너비(대략)
-    ws["!cols"] = [
-      { wch: 12 }, // 수하인명
-      { wch: 60 }, // 주소
-      { wch: 16 }, // 전화
-      { wch: 16 }, // 핸드폰
-      { wch: 10 }, // 수량
-      { wch: 10 }, // 운임
-      { wch: 10 }, // 운임구분
-      { wch: 30 }, // 품목명
-      { wch: 30 }, // 배송메시지
-    ];
+    ensureDeliveryMainHeader(ws);
 
-    XLSX.utils.book_append_sheet(wb, ws, "택배목록");
+    // Write rows into fixed columns A~K; keep B and J empty.
+    // Data starts from row 2 (index 1). Row 1 (index 0) is header.
+    for (let i = 0; i < rows.length; i++) {
+      const r = i + 1;
+      const row = rows[i] as any;
+      const aoaRow: Array<string | number> = [
+        String(row.수하인명 ?? ""),
+        "", // B blank
+        String(row.수하인주소 ?? ""),
+        String(row.수하인전화번호 ?? ""), // keep as string to preserve leading zeros
+        String(row.수하인핸드폰번호 ?? ""), // keep as string to preserve leading zeros
+        Number(row.택배수량 ?? 1),
+        Number(row.택배운임 ?? shippingFee),
+        String(row.운임구분 ?? freightCode),
+        String(row.품목명 ?? ""),
+        "", // J blank
+        String(row.배송메시지 ?? message),
+      ];
+
+      for (let c = 0; c <= 10; c++) {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        const v = aoaRow[c];
+        // Force phone columns to be text
+        if (c === 3 || c === 4) {
+          ws[addr] = { t: "s", v: String(v ?? "") };
+          continue;
+        }
+        if (typeof v === "number" && Number.isFinite(v)) {
+          ws[addr] = { t: "n", v };
+        } else {
+          ws[addr] = { t: "s", v: String(v ?? "") };
+        }
+      }
+    }
+
+    // Update sheet range to include A1:K{n}
+    const endRow = Math.max(0, rows.length); // 0-based end row index
+    ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: endRow, c: 10 } });
+
+    if (!wb.Sheets[sheetName]) {
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    } else {
+      wb.Sheets[sheetName] = ws;
+    }
     const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
     const dateStr = kstDateKey(new Date()).replace(/-/g, "");

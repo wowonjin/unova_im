@@ -7,13 +7,15 @@ type TextbookOption = { id: string; title: string };
 
 type Filters = {
   textbookIds: string[];
-  date: "today" | "all";
+  date: "today" | "range" | "all";
+  dateFrom: string; // YYYY-MM-DD (KST)
+  dateTo: string; // YYYY-MM-DD (KST)
   shippingFee: string;
   freightCode: string;
   message: string;
 };
 
-const STORAGE_KEY = "unova.admin.shipments.filters.v1";
+const STORAGE_KEY = "unova.admin.shipments.filters.v2";
 
 function safeParseJson(s: string | null): any {
   if (!s) return null;
@@ -34,7 +36,7 @@ function readStoredFilters(): Filters | null {
   if (typeof window === "undefined") return null;
   const raw = safeParseJson(window.localStorage.getItem(STORAGE_KEY));
   if (!raw || typeof raw !== "object") return null;
-  const date = raw.date === "all" ? "all" : "today";
+  const date = raw.date === "all" ? "all" : raw.date === "range" ? "range" : "today";
   const textbookIdsRaw = Array.isArray((raw as any).textbookIds) ? (raw as any).textbookIds : [];
   const textbookIds = textbookIdsRaw
     .map((x: any) => (typeof x === "string" ? x.trim() : ""))
@@ -43,6 +45,8 @@ function readStoredFilters(): Filters | null {
   return {
     textbookIds,
     date,
+    dateFrom: clampString((raw as any).dateFrom, 10),
+    dateTo: clampString((raw as any).dateTo, 10),
     shippingFee: clampString(raw.shippingFee, 10),
     freightCode: clampString(raw.freightCode, 20) || "030",
     message: clampString(raw.message, 200) || "친절 배송 부탁드립니다.",
@@ -56,6 +60,8 @@ function writeStoredFilters(f: Filters) {
     JSON.stringify({
       textbookIds: f.textbookIds,
       date: f.date,
+      dateFrom: f.dateFrom,
+      dateTo: f.dateTo,
       shippingFee: f.shippingFee,
       freightCode: f.freightCode,
       message: f.message,
@@ -68,10 +74,22 @@ function buildQuery(f: Filters) {
   const sp = new URLSearchParams();
   if (f.textbookIds.length > 0) sp.set("textbookIds", f.textbookIds.join(","));
   sp.set("date", f.date);
+  if (f.date === "range") {
+    if (f.dateFrom) sp.set("dateFrom", f.dateFrom);
+    if (f.dateTo) sp.set("dateTo", f.dateTo);
+  }
   if (f.shippingFee) sp.set("shippingFee", f.shippingFee);
   if (f.freightCode) sp.set("freightCode", f.freightCode);
   if (f.message) sp.set("message", f.message);
   return sp;
+}
+
+function kstDateKey(d: Date): string {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+}
+
+function isDateKey(v: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(v);
 }
 
 export default function ShipmentsFiltersClient({
@@ -108,7 +126,9 @@ export default function ShipmentsFiltersClient({
     const safe: Filters = {
       ...form,
       textbookIds: (Array.isArray(form.textbookIds) ? form.textbookIds : []).filter((id) => validTextbookIds.has(id)).slice(0, 50),
-      date: form.date === "all" ? "all" : "today",
+      date: form.date === "all" ? "all" : form.date === "range" ? "range" : "today",
+      dateFrom: isDateKey(form.dateFrom) ? form.dateFrom : kstDateKey(new Date()),
+      dateTo: isDateKey(form.dateTo) ? form.dateTo : kstDateKey(new Date()),
     };
     writeStoredFilters(safe);
   }, [form, validTextbookIds, searchParams]);
@@ -129,7 +149,12 @@ export default function ShipmentsFiltersClient({
     const merged: Filters = {
       ...stored,
       textbookIds: restoredIds,
-      date: (searchParams.get("date") === "all" ? "all" : stored.date) as "today" | "all",
+      date: (searchParams.get("date") === "all" ? "all" : searchParams.get("date") === "range" ? "range" : stored.date) as
+        | "today"
+        | "range"
+        | "all",
+      dateFrom: searchParams.get("dateFrom") ?? stored.dateFrom,
+      dateTo: searchParams.get("dateTo") ?? stored.dateTo,
       shippingFee: searchParams.get("shippingFee") ?? stored.shippingFee,
       freightCode: searchParams.get("freightCode") ?? stored.freightCode,
       message: searchParams.get("message") ?? stored.message,
@@ -181,7 +206,9 @@ export default function ShipmentsFiltersClient({
     const safe: Filters = {
       ...form,
       textbookIds: (Array.isArray(form.textbookIds) ? form.textbookIds : []).filter((id) => validTextbookIds.has(id)).slice(0, 50),
-      date: form.date === "all" ? "all" : "today",
+      date: form.date === "all" ? "all" : form.date === "range" ? "range" : "today",
+      dateFrom: isDateKey(form.dateFrom) ? form.dateFrom : kstDateKey(new Date()),
+      dateTo: isDateKey(form.dateTo) ? form.dateTo : kstDateKey(new Date()),
     };
 
     const next = buildQuery(safe).toString();
@@ -197,8 +224,25 @@ export default function ShipmentsFiltersClient({
   }, [form, pathname, router, searchParams, validTextbookIds]);
 
   const onChange = (key: keyof Omit<Filters, "textbookIds">) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const next = { ...form, [key]: e.target.value } as Filters;
-    setForm(next);
+    const value = e.target.value;
+    setForm((prev) => {
+      if (key === "date") {
+        const nextDate = (value === "all" ? "all" : value === "range" ? "range" : "today") as Filters["date"];
+        if (nextDate !== "range") return { ...prev, date: nextDate };
+        const today = kstDateKey(new Date());
+        return {
+          ...prev,
+          date: "range",
+          dateFrom: isDateKey(prev.dateFrom) ? prev.dateFrom : today,
+          dateTo: isDateKey(prev.dateTo) ? prev.dateTo : today,
+        };
+      }
+      if (key === "dateFrom" || key === "dateTo") {
+        const next = value || kstDateKey(new Date());
+        return { ...prev, [key]: next } as Filters;
+      }
+      return { ...prev, [key]: value } as Filters;
+    });
   };
 
   const filtered = useMemo(() => {
@@ -376,8 +420,34 @@ export default function ShipmentsFiltersClient({
               className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[13px] text-white outline-none focus:border-white/20 transition-all"
             >
               <option value="today" className="bg-[#141416] text-white">오늘 (KST)</option>
+              <option value="range" className="bg-[#141416] text-white">기간 직접 선택</option>
               <option value="all" className="bg-[#141416] text-white">전체 기간</option>
             </select>
+          </div>
+
+          <div className="col-span-2 md:col-span-2">
+            <label className="block text-[11px] font-medium text-white/50 mb-1.5 uppercase tracking-wide">기간 (KST)</label>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                name="dateFrom"
+                type="date"
+                disabled={form.date !== "range"}
+                value={form.dateFrom}
+                onChange={onChange("dateFrom")}
+                className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[13px] text-white outline-none focus:border-white/20 transition-all disabled:opacity-40"
+              />
+              <input
+                name="dateTo"
+                type="date"
+                disabled={form.date !== "range"}
+                value={form.dateTo}
+                onChange={onChange("dateTo")}
+                className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[13px] text-white outline-none focus:border-white/20 transition-all disabled:opacity-40"
+              />
+            </div>
+            <p className="mt-1 text-[11px] text-white/30">
+              “기간 직접 선택”을 고르면 해당 기간(포함)으로 주문을 조회합니다.
+            </p>
           </div>
 
           <div>
