@@ -14,22 +14,31 @@ function formatWon(v: number) {
 
 const CARD_FEE_RATE = 0.034; // 3.4%
 const VAT_RATE = 0.1; // 부가세 10%
-const TEXTBOOK_PLATFORM_FEE_RATE = 0.25; // 교재 정산비 25%
-const COURSE_PLATFORM_FEE_RATE = 0.5; // 강의 정산비 50%
-const PDF_TEXTBOOK_PLATFORM_FEE_RATE = 0.5; // 전자책(PDF) 교재 정산비 50%
+// NOTE:
+// 여기서의 RATE는 "플랫폼 수수료율"이 아니라 "선생님 정산률"입니다.
+// 예) 교재 25% 정산이면 정산액의 기본값은 (매출 * 0.25) 입니다.
+const TEXTBOOK_PLATFORM_FEE_RATE = 0.25; // 교재 정산률 25%
+const COURSE_PLATFORM_FEE_RATE = 0.5; // 강의 정산률 50%
+const PDF_TEXTBOOK_PLATFORM_FEE_RATE = 0.5; // 전자책(PDF) 교재 정산률 50%
 const SALES_STATUSES: OrderStatus[] = ["COMPLETED", "PARTIALLY_REFUNDED"];
 
 function settleNetPayout(netSales: number, platformFeeRate: number) {
   const base = Math.max(0, netSales);
-  const platformFee = base * platformFeeRate;
+  const payoutBeforeFees = base * platformFeeRate;
   const cardFeeWithVat = base * CARD_FEE_RATE * (1 + VAT_RATE);
-  return Math.max(0, base - platformFee - cardFeeWithVat);
+  return Math.max(0, payoutBeforeFees - cardFeeWithVat);
 }
 
-function isPdfTextbook(tb: { composition?: string | null; textbookType?: string | null } | null | undefined) {
-  const a = (tb?.composition ?? "").toString().toLowerCase();
-  const b = (tb?.textbookType ?? "").toString().toLowerCase();
-  return a.includes("pdf") || b.includes("pdf");
+function normalizeTextbookType(v: unknown): string {
+  return String(v ?? "")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+}
+
+function isPdfTextbook(tb: { textbookType?: string | null } | null | undefined) {
+  // 요구사항: "PDF로 써져있는(=입력된) 것만" 전자책으로 집계
+  // -> textbookType이 정확히 "PDF"인 항목만 전자책으로 처리
+  return normalizeTextbookType(tb?.textbookType) === "PDF";
 }
 
 function payoutRateOfOrder(o: {
@@ -81,6 +90,18 @@ function kstWeekdayKo(dateUtc: Date) {
   return ["일", "월", "화", "수", "목", "금", "토"][wd] ?? "";
 }
 
+function kstDateYmd(dateUtc: Date) {
+  const kst = new Date(dateUtc.getTime() + 9 * 60 * 60 * 1000);
+  const y = kst.getUTCFullYear();
+  const m = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(kst.getUTCDate()).padStart(2, "0");
+  return `${y}.${m}.${d}`;
+}
+
+function kstRangeLabel(startUtc: Date, endUtc: Date) {
+  return `${kstDateYmd(startUtc)} ~ ${kstDateYmd(endUtc)}`;
+}
+
 function storeLink(type: "course" | "textbook", id: string, slug?: string | null) {
   // 스토어 상세는 id/slug 모두 받지만, 교재는 id 기반이 확실하므로 id로 고정
   if (type === "course") return `/store/${encodeURIComponent(slug?.trim() ? slug.trim() : id)}`;
@@ -129,6 +150,9 @@ export default async function TeacherDashboardPage() {
   const day = kstRangeUtc("day");
   const week = kstRangeUtc("week");
   const month = kstRangeUtc("month");
+  const dayMs = 24 * 60 * 60 * 1000;
+  const lastWeekStartUtc = new Date(week.startUtc.getTime() - 7 * dayMs);
+  const lastWeekEndUtc = new Date(week.startUtc.getTime() - 1);
 
   const salesWhereBase = {
     status: { in: SALES_STATUSES },
@@ -153,7 +177,7 @@ export default async function TeacherDashboardPage() {
     let textbookSales = 0; // non-PDF
     let payoutTotal = 0;
     let netSalesTotal = 0;
-    let platformFeeTotal = 0;
+    let platformFeeTotal = 0; // 플랫폼 수수료(=총매출 - 정산기본액)
     let cardFeeWithVatTotal = 0;
 
     for (const o of rows) {
@@ -166,19 +190,21 @@ export default async function TeacherDashboardPage() {
         else textbookSales += net;
       }
       const rate = payoutRateOfOrder({ productType: o.productType, textbook: o.textbook });
-      const platformFee = base * rate;
+      const payoutBeforeFees = base * rate;
+      const platformFee = base - payoutBeforeFees;
       const cardFeeWithVat = base * CARD_FEE_RATE * (1 + VAT_RATE);
       platformFeeTotal += platformFee;
       cardFeeWithVatTotal += cardFeeWithVat;
-      payoutTotal += Math.max(0, base - platformFee - cardFeeWithVat);
+      payoutTotal += Math.max(0, payoutBeforeFees - cardFeeWithVat);
     }
 
     return { courseSales, ebookSales, textbookSales, payoutTotal, netSalesTotal, platformFeeTotal, cardFeeWithVatTotal };
   }
 
-  const [daySum, weekSum, monthSum, reviewCount, reviews] = await Promise.all([
+  const [daySum, weekSum, lastWeekSum, monthSum, reviewCount, reviews] = await Promise.all([
     summarizeRange(day.startUtc, day.endUtc),
     summarizeRange(week.startUtc, week.endUtc),
+    summarizeRange(lastWeekStartUtc, lastWeekEndUtc),
     summarizeRange(month.startUtc, month.endUtc),
     prisma.review.count({
       where: {
@@ -212,6 +238,9 @@ export default async function TeacherDashboardPage() {
   const weekCourseSales = weekSum.courseSales;
   const weekEbookSales = weekSum.ebookSales;
   const weekTextbookSales = weekSum.textbookSales;
+  const lastWeekCourseSales = lastWeekSum.courseSales;
+  const lastWeekEbookSales = lastWeekSum.ebookSales;
+  const lastWeekTextbookSales = lastWeekSum.textbookSales;
   const monthCourseSales = monthSum.courseSales;
   const monthEbookSales = monthSum.ebookSales;
   const monthTextbookSales = monthSum.textbookSales;
@@ -220,11 +249,11 @@ export default async function TeacherDashboardPage() {
   // day/week/month 정산액은 aggregate가 아니라 "주문 단위"로 계산합니다.
   const dayPayoutTotal = daySum.payoutTotal;
   const weekPayoutTotal = weekSum.payoutTotal;
+  const lastWeekPayoutTotal = lastWeekSum.payoutTotal;
   const monthPayoutTotal = monthSum.payoutTotal;
 
   // 최근 21일(3주, 오늘 포함) 판매액 추이 (KST 기준 일자)
   const TREND_DAYS = 21;
-  const dayMs = 24 * 60 * 60 * 1000;
   const now = new Date();
   const todayStartUtcMs = day.startUtc.getTime();
   const trendStartUtc = new Date(todayStartUtcMs - (TREND_DAYS - 1) * dayMs);
@@ -334,9 +363,38 @@ export default async function TeacherDashboardPage() {
   const trendPayoutValues = trendKeys.map((k) => payoutByDayAccurate.get(k) ?? 0);
 
   const salesRows = [
-    { key: "today", label: "오늘", textbook: dayTextbookSales, ebook: dayEbookSales, course: dayCourseSales },
-    { key: "week", label: "이번주", textbook: weekTextbookSales, ebook: weekEbookSales, course: weekCourseSales },
-    { key: "month", label: "이번달", textbook: monthTextbookSales, ebook: monthEbookSales, course: monthCourseSales },
+    {
+      key: "today",
+      label: "오늘",
+      range: kstRangeLabel(day.startUtc, day.endUtc),
+      textbook: dayTextbookSales,
+      ebook: dayEbookSales,
+      course: dayCourseSales,
+    },
+    {
+      key: "week",
+      label: "이번주",
+      range: kstRangeLabel(week.startUtc, week.endUtc),
+      textbook: weekTextbookSales,
+      ebook: weekEbookSales,
+      course: weekCourseSales,
+    },
+    {
+      key: "lastWeek",
+      label: "저번주",
+      range: kstRangeLabel(lastWeekStartUtc, lastWeekEndUtc),
+      textbook: lastWeekTextbookSales,
+      ebook: lastWeekEbookSales,
+      course: lastWeekCourseSales,
+    },
+    {
+      key: "month",
+      label: "이번달",
+      range: kstRangeLabel(month.startUtc, month.endUtc),
+      textbook: monthTextbookSales,
+      ebook: monthEbookSales,
+      course: monthCourseSales,
+    },
   ] as const;
 
   const payoutRows = [
@@ -344,6 +402,7 @@ export default async function TeacherDashboardPage() {
       key: "today",
       label: "오늘",
       payout: dayPayoutTotal,
+      range: kstRangeLabel(day.startUtc, day.endUtc),
       netSalesTotal: daySum.netSalesTotal,
       platformFeeTotal: daySum.platformFeeTotal,
       cardFeeWithVatTotal: daySum.cardFeeWithVatTotal,
@@ -352,14 +411,25 @@ export default async function TeacherDashboardPage() {
       key: "week",
       label: "이번주",
       payout: weekPayoutTotal,
+      range: kstRangeLabel(week.startUtc, week.endUtc),
       netSalesTotal: weekSum.netSalesTotal,
       platformFeeTotal: weekSum.platformFeeTotal,
       cardFeeWithVatTotal: weekSum.cardFeeWithVatTotal,
     },
     {
+      key: "lastWeek",
+      label: "저번주",
+      payout: lastWeekPayoutTotal,
+      range: kstRangeLabel(lastWeekStartUtc, lastWeekEndUtc),
+      netSalesTotal: lastWeekSum.netSalesTotal,
+      platformFeeTotal: lastWeekSum.platformFeeTotal,
+      cardFeeWithVatTotal: lastWeekSum.cardFeeWithVatTotal,
+    },
+    {
       key: "month",
       label: "이번달",
       payout: monthPayoutTotal,
+      range: kstRangeLabel(month.startUtc, month.endUtc),
       netSalesTotal: monthSum.netSalesTotal,
       platformFeeTotal: monthSum.platformFeeTotal,
       cardFeeWithVatTotal: monthSum.cardFeeWithVatTotal,
@@ -379,7 +449,7 @@ export default async function TeacherDashboardPage() {
 
             <div className="mt-4 overflow-x-auto">
               <div className="w-full overflow-hidden rounded-xl border border-white/10">
-                <div className="grid grid-cols-[72px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] bg-white/[0.03] px-3 py-2 text-[11px] text-white/55">
+                <div className="grid grid-cols-[92px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] bg-white/[0.03] px-3 py-2 text-[11px] text-white/55">
                   <div className="font-medium whitespace-nowrap">기간</div>
                   <div className="text-right font-medium whitespace-nowrap">교재</div>
                   <div className="text-right font-medium whitespace-nowrap">전자책</div>
@@ -389,9 +459,12 @@ export default async function TeacherDashboardPage() {
                   {salesRows.map((r) => (
                     <div
                       key={r.key}
-                      className="grid grid-cols-[72px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] px-3 py-2.5"
+                      className="grid grid-cols-[92px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] px-3 py-2.5"
                     >
-                      <div className="text-[12px] text-white/55 whitespace-nowrap">{r.label}</div>
+                      <div className="min-w-0">
+                        <div className="text-[12px] text-white/55 whitespace-nowrap">{r.label}</div>
+                        <div className="mt-0.5 text-[10px] text-white/35 whitespace-nowrap">{r.range}</div>
+                      </div>
                       <div className="text-right text-[13px] font-semibold text-white tabular-nums whitespace-nowrap">
                         {formatWon(r.textbook)}
                       </div>
@@ -409,13 +482,16 @@ export default async function TeacherDashboardPage() {
 
             <div className="mt-4 rounded-xl border border-white/10">
               <div className="flex items-center justify-between gap-3 rounded-t-xl bg-white/[0.03] px-3 py-2">
-                <p className="text-[11px] font-medium text-white/55">예상 정산액</p>
+                <p className="text-[11px] font-medium text-white/55">토탈 예상 정산액</p>
                 <p className="text-[11px] text-white/45">정산비/카드수수료 반영</p>
               </div>
               <div className="divide-y divide-white/10">
                 {payoutRows.map((r) => (
                   <div key={r.key} className="flex items-baseline justify-between gap-3 px-3 py-2.5">
-                    <span className="text-[12px] text-white/55">{r.label}</span>
+                    <span className="min-w-0">
+                      <span className="block text-[12px] text-white/55 whitespace-nowrap">{r.label}</span>
+                      <span className="mt-0.5 block text-[10px] text-white/35 whitespace-nowrap">{r.range}</span>
+                    </span>
                     <span className="relative inline-flex justify-end tabular-nums group">
                       <span className="text-[13px] font-semibold text-white/90 whitespace-nowrap">
                         {formatWon(r.payout)}
@@ -425,13 +501,14 @@ export default async function TeacherDashboardPage() {
                           <span className="font-semibold text-white/90">정산 계산</span>
                           <span className="text-white/50">{r.label}</span>
                         </div>
+                        <div className="mt-0.5 text-[10px] text-white/40">{r.range}</div>
                         <div className="mt-2 space-y-1">
                           <div className="flex items-baseline justify-between gap-3">
                             <span className="text-white/60">총 매출</span>
                             <span className="font-semibold text-white/90 tabular-nums">{formatWon(r.netSalesTotal)}</span>
                           </div>
                           <div className="flex items-baseline justify-between gap-3">
-                            <span className="text-white/60">정산비(상품수수료)</span>
+                            <span className="text-white/60">플랫폼 수수료(차감)</span>
                             <span className="font-semibold text-white/90 tabular-nums">-{formatWon(r.platformFeeTotal)}</span>
                           </div>
                           <div className="flex items-baseline justify-between gap-3">
@@ -444,7 +521,7 @@ export default async function TeacherDashboardPage() {
                           </div>
                         </div>
                         <p className="mt-2 text-[10px] text-white/45 leading-relaxed">
-                          정산비: 교재 {Math.round(TEXTBOOK_PLATFORM_FEE_RATE * 100)}% · PDF {Math.round(PDF_TEXTBOOK_PLATFORM_FEE_RATE * 100)}% · 강의{" "}
+                          정산률: 교재 {Math.round(TEXTBOOK_PLATFORM_FEE_RATE * 100)}% · PDF {Math.round(PDF_TEXTBOOK_PLATFORM_FEE_RATE * 100)}% · 강의{" "}
                           {Math.round(COURSE_PLATFORM_FEE_RATE * 100)}% / 카드 {Math.round(CARD_FEE_RATE * 1000) / 10}% + VAT {Math.round(VAT_RATE * 100)}%
                         </p>
                       </span>
@@ -460,7 +537,7 @@ export default async function TeacherDashboardPage() {
               </summary>
               <div className="mt-2 text-[11px] text-white/45 leading-relaxed">
                 <p>
-                  정산비: 교재 {Math.round(TEXTBOOK_PLATFORM_FEE_RATE * 100)}% (PDF {Math.round(PDF_TEXTBOOK_PLATFORM_FEE_RATE * 100)}%) ·
+                  정산률: 교재 {Math.round(TEXTBOOK_PLATFORM_FEE_RATE * 100)}% (PDF {Math.round(PDF_TEXTBOOK_PLATFORM_FEE_RATE * 100)}%) ·
                   강의 {Math.round(COURSE_PLATFORM_FEE_RATE * 100)}%
                 </p>
                 <p className="mt-1">

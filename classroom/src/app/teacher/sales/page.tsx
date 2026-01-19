@@ -13,22 +13,28 @@ function formatWon(v: number) {
 
 const CARD_FEE_RATE = 0.034; // 3.4%
 const VAT_RATE = 0.1; // 부가세 10%
-const TEXTBOOK_PLATFORM_FEE_RATE = 0.25; // 교재 정산비 25%
-const COURSE_PLATFORM_FEE_RATE = 0.5; // 강의 정산비 50%
-const PDF_TEXTBOOK_PLATFORM_FEE_RATE = 0.5; // 전자책(PDF) 교재 정산비 50%
+// NOTE: RATE는 "선생님 정산률"입니다.
+const TEXTBOOK_PLATFORM_FEE_RATE = 0.25; // 교재 정산률 25%
+const COURSE_PLATFORM_FEE_RATE = 0.5; // 강의 정산률 50%
+const PDF_TEXTBOOK_PLATFORM_FEE_RATE = 0.5; // 전자책(PDF) 교재 정산률 50%
 const SALES_STATUSES: OrderStatus[] = ["COMPLETED", "PARTIALLY_REFUNDED"];
 
 function settleNetPayout(netSales: number, platformFeeRate: number) {
   const base = Math.max(0, netSales);
-  const platformFee = base * platformFeeRate;
+  const payoutBeforeFees = base * platformFeeRate;
   const cardFeeWithVat = base * CARD_FEE_RATE * (1 + VAT_RATE);
-  return Math.max(0, base - platformFee - cardFeeWithVat);
+  return Math.max(0, payoutBeforeFees - cardFeeWithVat);
 }
 
-function isPdfTextbook(tb: { composition?: string | null; textbookType?: string | null } | null | undefined) {
-  const a = (tb?.composition ?? "").toString().toLowerCase();
-  const b = (tb?.textbookType ?? "").toString().toLowerCase();
-  return a.includes("pdf") || b.includes("pdf");
+function normalizeTextbookType(v: unknown): string {
+  return String(v ?? "")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+}
+
+function isPdfTextbook(tb: { textbookType?: string | null } | null | undefined) {
+  // 요구사항: "PDF로 써져있는(=입력된) 것만" 전자책으로 집계
+  return normalizeTextbookType(tb?.textbookType) === "PDF";
 }
 
 function payoutRateOfOrder(o: {

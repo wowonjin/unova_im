@@ -1,10 +1,11 @@
 import AppShell from "@/app/_components/AppShell";
-import { PageHeader, Card, CardBody, Button } from "@/app/_components/ui";
+import { PageHeader, Card, CardBody } from "@/app/_components/ui";
 import { getCurrentUser, getTeacherAccountByUserId } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import type { OrderStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
 import styles from "./TeacherProducts.module.scss";
+import TeacherProductsToolbarClient from "./TeacherProductsToolbarClient";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,12 @@ function storeLink(type: "course" | "textbook", id: string) {
 
 function formatWon(v: number) {
   return `${Math.max(0, Math.round(v)).toLocaleString("ko-KR")}원`;
+}
+
+function normalizeTextbookType(v: unknown): string {
+  return String(v ?? "")
+    .replace(/\s+/g, "")
+    .toUpperCase();
 }
 
 function kstRangeUtc(kind: "all" | "day" | "week" | "month") {
@@ -93,7 +100,17 @@ export default async function TeacherProductsPage({ searchParams }: { searchPara
     prisma.textbook.findMany({
       where: { ownerId: user.id },
       orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-      select: { id: true, title: true, isPublished: true, isSoldOut: true, reviewCount: true, rating: true },
+      select: {
+        id: true,
+        title: true,
+        isPublished: true,
+        isSoldOut: true,
+        reviewCount: true,
+        rating: true,
+        // 전자책 분리용
+        textbookType: true,
+        composition: true,
+      },
       take: 100,
     }),
   ]);
@@ -101,6 +118,17 @@ export default async function TeacherProductsPage({ searchParams }: { searchPara
   const qNorm = q.toLowerCase();
   const courses = qNorm ? coursesAll.filter((c) => (c.title ?? "").toLowerCase().includes(qNorm)) : coursesAll;
   const textbooks = qNorm ? textbooksAll.filter((t) => (t.title ?? "").toLowerCase().includes(qNorm)) : textbooksAll;
+
+  const isEbook = (t: (typeof textbooksAll)[number]) => {
+    // 전자책 정의: textbookType이 "PDF"인 항목
+    // (스토어 필터 로직과 동일한 기준)
+    if (normalizeTextbookType((t as any).textbookType) === "PDF") return true;
+    // 폴백: composition에 PDF가 들어간 케이스도 전자책으로 취급 (데이터 편차 대응)
+    if (String((t as any).composition ?? "").toUpperCase().includes("PDF")) return true;
+    return false;
+  };
+  const ebooks = textbooks.filter(isEbook);
+  const textbooksPhysical = textbooks.filter((t) => !isEbook(t));
 
   const rangeUtc = kstRangeUtc(range);
   const salesStatuses: OrderStatus[] = ["COMPLETED", "PARTIALLY_REFUNDED", "REFUNDED"];
@@ -161,41 +189,15 @@ export default async function TeacherProductsPage({ searchParams }: { searchPara
   };
 
   const coursesSorted = sort === "updated_desc" ? courses : sortItems(courses, courseSalesById);
-  const textbooksSorted = sort === "updated_desc" ? textbooks : sortItems(textbooks, textbookSalesById);
+  const textbooksSorted = sort === "updated_desc" ? textbooksPhysical : sortItems(textbooksPhysical as any, textbookSalesById);
+  const ebooksSorted = sort === "updated_desc" ? ebooks : sortItems(ebooks as any, textbookSalesById);
 
   return (
     <AppShell>
       <PageHeader title="내 상품" description="스토어 링크와 기본 지표를 확인하세요." />
 
       <div className={`mt-6 ${styles.wrap}`}>
-        <form action="/teacher/products" method="get" className={styles.toolbar}>
-          <div className={styles.toolbarLeft}>
-            <div className={styles.seg} role="group" aria-label="기간 필터">
-              <button type="submit" name="range" value="all" className={`${styles.segBtn} ${range === "all" ? styles.segBtnActive : ""}`}>
-                전체
-              </button>
-              <button type="submit" name="range" value="day" className={`${styles.segBtn} ${range === "day" ? styles.segBtnActive : ""}`}>
-                오늘
-              </button>
-              <button type="submit" name="range" value="week" className={`${styles.segBtn} ${range === "week" ? styles.segBtnActive : ""}`}>
-                이번주
-              </button>
-              <button type="submit" name="range" value="month" className={`${styles.segBtn} ${range === "month" ? styles.segBtnActive : ""}`}>
-                이번달
-              </button>
-            </div>
-          </div>
-
-          <div className={styles.toolbarRight}>
-              <input className={styles.input} type="text" name="q" defaultValue={q} placeholder="상품명 검색" />
-            <select className={styles.select} name="sort" defaultValue={sort} aria-label="정렬">
-              <option value="revenue_desc">매출 높은 순</option>
-              <option value="count_desc">판매횟수 많은 순</option>
-              <option value="updated_desc">최근 수정 순</option>
-              <option value="title_asc">이름 오름차순</option>
-            </select>
-          </div>
-        </form>
+        <TeacherProductsToolbarClient initialQ={q} initialRange={range} initialSort={sort} />
 
         <p className="text-xs text-white/45">
           판매 횟수/매출은 주문 상태가 <span className="text-white/70 font-semibold">결제완료/부분환불/환불</span>인 주문을 기준으로 집계되며, 매출은{" "}
@@ -207,123 +209,143 @@ export default async function TeacherProductsPage({ searchParams }: { searchPara
         </p>
 
         <div className={styles.grid}>
-        <Card className={`${styles.panelCard} bg-transparent rounded-none border-white/10`}>
-          <CardBody className="px-0 py-0">
-            <div className={styles.panelHeader}>
-              <p className={styles.panelTitle}>강좌</p>
-              <p className={styles.panelMeta}>{coursesSorted.length.toLocaleString("ko-KR")}개</p>
-            </div>
-
-            {coursesSorted.length === 0 ? (
-              <div className={styles.empty}>아직 내 강좌가 없습니다. 관리자에게 상품 할당을 요청하세요.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className={styles.table}>
-                  <thead className={styles.thead}>
-                    <tr>
-                      <th className={styles.th}>상품</th>
-                      <th className={`${styles.th} ${styles.right}`}>판매 횟수</th>
-                      <th className={`${styles.th} ${styles.right}`}>총 매출액</th>
-                      <th className={`${styles.th} ${styles.right}`}>링크</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {coursesSorted.map((c) => {
-                      const s = courseSalesById.get(c.id) ?? { count: 0, revenue: 0 };
-                      return (
-                        <tr key={c.id} className={styles.tr}>
-                          <td className={styles.td}>
-                            <div className={styles.name}>{c.title}</div>
-                            <div className={styles.badgeRow}>
-                              <span className={styles.badge}>
-                                <span className={styles.badgeDot} aria-hidden="true" />
-                                {c.isPublished ? "공개" : "비공개"}
-                              </span>
-                              <span className={styles.badge}>
-                                <span className={styles.badgeDot} aria-hidden="true" />
-                                {c.isSoldOut ? "준비중" : "판매중"}
-                              </span>
-                              <span className={styles.badge}>평점 {(c.rating ?? 0).toFixed(1)}</span>
-                              <span className={styles.badge}>후기 {(c.reviewCount ?? 0).toLocaleString("ko-KR")}</span>
-                            </div>
-                          </td>
-                          <td className={`${styles.td} ${styles.right}`}>{s.count.toLocaleString("ko-KR")}회</td>
-                          <td className={`${styles.td} ${styles.right}`}>{formatWon(s.revenue)}</td>
-                          <td className={`${styles.td} ${styles.right}`}>
-                            <div className={styles.actions}>
-                              <Button variant="secondary" href={storeLink("course", c.id)}>
-                                링크
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+          {/* 1) 교재 (비-PDF) */}
+          <Card className={`${styles.panelCard} bg-transparent rounded-none border-white/10`}>
+            <CardBody className="px-0 py-0">
+              <div className={styles.panelHeader}>
+                <p className={styles.panelTitle}>교재</p>
+                <p className={styles.panelMeta}>{textbooksSorted.length.toLocaleString("ko-KR")}개</p>
               </div>
-            )}
-          </CardBody>
-        </Card>
 
-        <Card className={`${styles.panelCard} bg-transparent rounded-none border-white/10`}>
-          <CardBody className="px-0 py-0">
-            <div className={styles.panelHeader}>
-              <p className={styles.panelTitle}>교재</p>
-              <p className={styles.panelMeta}>{textbooksSorted.length.toLocaleString("ko-KR")}개</p>
-            </div>
+              {textbooksSorted.length === 0 ? (
+                <div className={styles.empty}>아직 내 교재가 없습니다. 관리자에게 상품 할당을 요청하세요.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className={styles.table}>
+                    <thead className={styles.thead}>
+                      <tr>
+                        <th className={styles.th}>상품</th>
+                        <th className={`${styles.th} ${styles.right}`}>판매 횟수</th>
+                        <th className={`${styles.th} ${styles.right}`}>총 매출액</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {textbooksSorted.map((t) => {
+                        const s = textbookSalesById.get(t.id) ?? { count: 0, revenue: 0 };
+                        return (
+                          <tr key={t.id} className={styles.tr}>
+                            <td className={styles.td}>
+                              <a className={styles.nameLink} href={storeLink("textbook", t.id)}>
+                                {t.title}
+                              </a>
+                              <div className={styles.badgeRow}>
+                                <span className={styles.badge}>평점 {(t.rating ?? 0).toFixed(1)}</span>
+                                <span className={styles.badge}>후기 {(t.reviewCount ?? 0).toLocaleString("ko-KR")}</span>
+                              </div>
+                            </td>
+                            <td className={`${styles.td} ${styles.right}`}>{s.count.toLocaleString("ko-KR")}회</td>
+                            <td className={`${styles.td} ${styles.right}`}>{formatWon(s.revenue)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardBody>
+          </Card>
 
-            {textbooksSorted.length === 0 ? (
-              <div className={styles.empty}>아직 내 교재가 없습니다. 관리자에게 상품 할당을 요청하세요.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className={styles.table}>
-                  <thead className={styles.thead}>
-                    <tr>
-                      <th className={styles.th}>상품</th>
-                      <th className={`${styles.th} ${styles.right}`}>판매 횟수</th>
-                      <th className={`${styles.th} ${styles.right}`}>총 매출액</th>
-                      <th className={`${styles.th} ${styles.right}`}>링크</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {textbooksSorted.map((t) => {
-                      const s = textbookSalesById.get(t.id) ?? { count: 0, revenue: 0 };
-                      return (
-                        <tr key={t.id} className={styles.tr}>
-                          <td className={styles.td}>
-                            <div className={styles.name}>{t.title}</div>
-                            <div className={styles.badgeRow}>
-                              <span className={styles.badge}>
-                                <span className={styles.badgeDot} aria-hidden="true" />
-                                {t.isPublished ? "공개" : "비공개"}
-                              </span>
-                              <span className={styles.badge}>
-                                <span className={styles.badgeDot} aria-hidden="true" />
-                                {t.isSoldOut ? "준비중" : "판매중"}
-                              </span>
-                              <span className={styles.badge}>평점 {(t.rating ?? 0).toFixed(1)}</span>
-                              <span className={styles.badge}>후기 {(t.reviewCount ?? 0).toLocaleString("ko-KR")}</span>
-                            </div>
-                          </td>
-                          <td className={`${styles.td} ${styles.right}`}>{s.count.toLocaleString("ko-KR")}회</td>
-                          <td className={`${styles.td} ${styles.right}`}>{formatWon(s.revenue)}</td>
-                          <td className={`${styles.td} ${styles.right}`}>
-                            <div className={styles.actions}>
-                              <Button variant="secondary" href={storeLink("textbook", t.id)}>
-                                링크
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+          {/* 2) 전자책 (PDF) */}
+          <Card className={`${styles.panelCard} bg-transparent rounded-none border-white/10`}>
+            <CardBody className="px-0 py-0">
+              <div className={styles.panelHeader}>
+                <p className={styles.panelTitle}>전자책</p>
+                <p className={styles.panelMeta}>{ebooksSorted.length.toLocaleString("ko-KR")}개</p>
               </div>
-            )}
-          </CardBody>
-        </Card>
+
+              {ebooksSorted.length === 0 ? (
+                <div className={styles.empty}>아직 내 전자책(PDF)이 없습니다. 상품의 교재 종류를 PDF로 설정했는지 확인하세요.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className={styles.table}>
+                    <thead className={styles.thead}>
+                      <tr>
+                        <th className={styles.th}>상품</th>
+                        <th className={`${styles.th} ${styles.right}`}>판매 횟수</th>
+                        <th className={`${styles.th} ${styles.right}`}>총 매출액</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ebooksSorted.map((t) => {
+                        const s = textbookSalesById.get(t.id) ?? { count: 0, revenue: 0 };
+                        return (
+                          <tr key={t.id} className={styles.tr}>
+                            <td className={styles.td}>
+                              <a className={styles.nameLink} href={storeLink("textbook", t.id)}>
+                                {t.title}
+                              </a>
+                              <div className={styles.badgeRow}>
+                                <span className={styles.badge}>평점 {(t.rating ?? 0).toFixed(1)}</span>
+                                <span className={styles.badge}>후기 {(t.reviewCount ?? 0).toLocaleString("ko-KR")}</span>
+                              </div>
+                            </td>
+                            <td className={`${styles.td} ${styles.right}`}>{s.count.toLocaleString("ko-KR")}회</td>
+                            <td className={`${styles.td} ${styles.right}`}>{formatWon(s.revenue)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+
+          {/* 3) 강좌 */}
+          <Card className={`${styles.panelCard} bg-transparent rounded-none border-white/10`}>
+            <CardBody className="px-0 py-0">
+              <div className={styles.panelHeader}>
+                <p className={styles.panelTitle}>강좌</p>
+                <p className={styles.panelMeta}>{coursesSorted.length.toLocaleString("ko-KR")}개</p>
+              </div>
+
+              {coursesSorted.length === 0 ? (
+                <div className={styles.empty}>아직 내 강좌가 없습니다. 관리자에게 상품 할당을 요청하세요.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className={styles.table}>
+                    <thead className={styles.thead}>
+                      <tr>
+                        <th className={styles.th}>상품</th>
+                        <th className={`${styles.th} ${styles.right}`}>판매 횟수</th>
+                        <th className={`${styles.th} ${styles.right}`}>총 매출액</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {coursesSorted.map((c) => {
+                        const s = courseSalesById.get(c.id) ?? { count: 0, revenue: 0 };
+                        return (
+                          <tr key={c.id} className={styles.tr}>
+                            <td className={styles.td}>
+                              <a className={styles.nameLink} href={storeLink("course", c.id)}>
+                                {c.title}
+                              </a>
+                              <div className={styles.badgeRow}>
+                                <span className={styles.badge}>평점 {(c.rating ?? 0).toFixed(1)}</span>
+                                <span className={styles.badge}>후기 {(c.reviewCount ?? 0).toLocaleString("ko-KR")}</span>
+                              </div>
+                            </td>
+                            <td className={`${styles.td} ${styles.right}`}>{s.count.toLocaleString("ko-KR")}회</td>
+                            <td className={`${styles.td} ${styles.right}`}>{formatWon(s.revenue)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardBody>
+          </Card>
         </div>
       </div>
     </AppShell>

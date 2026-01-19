@@ -26,7 +26,7 @@ async function ensureTeacherAccountColumns() {
 
 export async function POST(req: Request) {
   try {
-    await requireAdminUser();
+    const admin = await requireAdminUser();
 
     const raw = await req.json().catch(() => null);
     const parsed = Schema.safeParse(raw);
@@ -80,6 +80,36 @@ export async function POST(req: Request) {
     await ensureTeacherAccountColumns();
     // Teacher -> User 연결
     await prisma.$executeRawUnsafe('UPDATE "Teacher" SET "accountUserId" = $2 WHERE "id" = $1', teacherId, user.id);
+
+    // =========================
+    // 자동 상품 연동 (이름 기준)
+    // - 기존 데이터는 admin이 ownerId로 소유하고, teacherName만 채워진 채로 남아있을 수 있음
+    // - 선생님 계정 연결 직후, teacherName이 Teacher.name과 일치하는 상품의 ownerId를 선생님 계정(User.id)로 이관
+    // =========================
+    try {
+      const teacherName = (teacher.name || "").trim();
+      if (teacherName) {
+        // 강좌: legacy로 ownerId가 NULL인 케이스가 있어 함께 커버
+        await prisma.course.updateMany({
+          where: {
+            teacherName,
+            OR: [{ ownerId: admin.id }, { ownerId: null }],
+          },
+          data: { ownerId: user.id },
+        });
+
+        // 교재: ownerId 필수 컬럼이지만, 기존 운영 데이터는 admin 소유로 들어간 경우가 많음
+        await prisma.textbook.updateMany({
+          where: {
+            teacherName,
+            ownerId: admin.id,
+          },
+          data: { ownerId: user.id },
+        });
+      }
+    } catch (e) {
+      console.warn("[admin/teachers/link-account] auto-assign-by-name skipped:", e);
+    }
 
     return NextResponse.json({
       ok: true,
