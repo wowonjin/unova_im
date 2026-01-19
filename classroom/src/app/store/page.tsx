@@ -27,6 +27,7 @@ type Product = {
   tag: string | null;
   tags: string[];
   textbookType: string | null;
+  gradeCategory?: "G1_2" | "SUNEUNG" | "TRANSFER" | null;
   type: "course" | "textbook";
   thumbnailUrl: string | null;
   isSoldOut: boolean;
@@ -114,6 +115,7 @@ const getCachedTextbooksForStore = unstable_cache(
           originalPrice: true,
           tags: true,
           textbookType: true,
+          gradeCategory: true,
           thumbnailUrl: true,
           updatedAt: true,
           isSoldOut: true,
@@ -148,6 +150,7 @@ const getCachedTextbooksForStore = unstable_cache(
           originalPrice: true,
           tags: true,
           textbookType: true,
+          gradeCategory: true,
           thumbnailUrl: true,
           updatedAt: true,
           isSoldOut: true,
@@ -163,7 +166,7 @@ const getCachedTextbooksForStore = unstable_cache(
       });
     }
   },
-  ["store:textbooks:v4"],
+  ["store:textbooks:v5"],
   { revalidate: 60 }
 );
 
@@ -272,6 +275,7 @@ async function StoreProducts({
           tag: tags[0] || null,
           tags,
           textbookType: (t as any).textbookType ?? null,
+          gradeCategory: (t as any).gradeCategory ?? null,
           type: "textbook" as const,
           thumbnailUrl: (t as any).hasThumbnail ? "__thumb__" : null,
           isSoldOut: Boolean((t as any).isSoldOut),

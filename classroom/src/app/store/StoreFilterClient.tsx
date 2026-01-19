@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 
 function UnderlineTabBar({
@@ -59,6 +59,7 @@ type Product = {
   tag: string | null;
   tags: string[];
   textbookType: string | null;
+  gradeCategory?: "G1_2" | "SUNEUNG" | "TRANSFER" | null;
   type: "course" | "textbook";
   thumbnailUrl: string | null;
   isSoldOut: boolean;
@@ -78,8 +79,6 @@ type ExamType = (typeof EXAM_TYPES)[number];
 const BOOK_FORMATS = ["전체", "실물책", "전자책"] as const;
 type BookFormat = (typeof BOOK_FORMATS)[number];
 
-// 편입학(대학 과목) 관련 과목
-// 기본 스토어(내신/수능/전체)에서는 숨기되, "편입" 선택 시에는 노출합니다.
 const TRANSFER_SUBJECTS = [
   "미적분학",
   "대학물리학",
@@ -89,7 +88,6 @@ const TRANSFER_SUBJECTS = [
   "선형대수학",
   "공업수학",
 ];
-const HIDDEN_SUBJECTS = new Set<string>(TRANSFER_SUBJECTS);
 
 // 편입 과목별 오른쪽 보조 라벨(요청사항)
 const TRANSFER_SUBJECT_RIGHT_LABEL: Partial<Record<string, string>> = {
@@ -103,6 +101,12 @@ const EXAM_SUBJECTS: Record<ExamType, string[]> = {
   "내신": ["수학", "수학I", "수학II", "미적분", "확률과 통계", "기하", "물리학I", "물리학II", "화학I", "화학II", "생명과학I", "생명과학II", "지구과학I", "지구과학II"],
   "수능": ["수학", "수학I", "수학II", "미적분", "확률과 통계", "기하", "물리학I", "물리학II", "화학I", "화학II", "생명과학I", "생명과학II", "지구과학I", "지구과학II"],
   "편입": TRANSFER_SUBJECTS,
+};
+
+const EXAM_TO_GRADE_CATEGORY: Record<Exclude<ExamType, "전체">, "G1_2" | "SUNEUNG" | "TRANSFER"> = {
+  내신: "G1_2",
+  수능: "SUNEUNG",
+  편입: "TRANSFER",
 };
 
 function formatPrice(price: number): string {
@@ -139,37 +143,62 @@ export default function StoreFilterClient({
     initialExamTypeNormalized
   );
   const [selectedSubject, setSelectedSubject] = useState(
-    initialExamTypeNormalized !== "편입" && initialSubject !== "전체" && HIDDEN_SUBJECTS.has(initialSubject)
-      ? "전체"
-      : initialSubject
+    initialSubject
   );
   const [selectedBookFormat, setSelectedBookFormat] = useState<BookFormat>("전체");
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const visibleProducts = useMemo(() => {
-    // 편입 탭에서는 편입(대학 과목) 상품을 포함해서 보여줍니다.
-    if (selectedExamType === "편입") return products;
-    // 그 외(전체/내신/수능)는 기존 정책대로 편입 과목은 숨깁니다.
-    return products.filter((p) => !HIDDEN_SUBJECTS.has(p.subject));
-  }, [products, selectedExamType]);
+    // 교재 페이지에서는 DB의 gradeCategory 기준으로 입시(내신/수능/편입)를 나눕니다.
+    if (selectedType === "교재" && selectedExamType !== "전체") {
+      const target = EXAM_TO_GRADE_CATEGORY[selectedExamType];
+      return products.filter((p) => p.type === "textbook" && (p.gradeCategory ?? "G1_2") === target);
+    }
+
+    // 강의 페이지(또는 전체): 기존처럼 과목 기반 필터를 유지합니다.
+    if (selectedType !== "교재" && selectedExamType !== "전체") {
+      const examSubjects = EXAM_SUBJECTS[selectedExamType];
+      return products.filter((p) => examSubjects.includes(p.subject));
+    }
+
+    return products;
+  }, [products, selectedExamType, selectedType]);
 
   // 현재 입시 유형에서 사용 가능한 과목 목록 계산
   const availableSubjects = useMemo(() => {
-    if (selectedExamType === "전체") {
-      // 전체인 경우 모든 상품의 과목을 수집
-      const subjectSet = new Set(visibleProducts.map((p) => p.subject));
-      const subjectOrder = ["전체", "수학", "물리학I", "물리학II", "화학I", "화학II", "생명과학I", "생명과학II", "지구과학I", "지구과학II"];
-      const orderedSubjects = subjectOrder.filter((s) => s === "전체" || subjectSet.has(s));
-      const otherSubjects = Array.from(subjectSet).filter((s) => !subjectOrder.includes(s));
-      return [...orderedSubjects, ...otherSubjects];
-    }
-    // 특정 입시 유형이 선택된 경우 해당 과목만 표시
-    const examSubjects = EXAM_SUBJECTS[selectedExamType];
     const subjectSet = new Set(visibleProducts.map((p) => p.subject));
-    const availableFromExam = examSubjects.filter((s) => subjectSet.has(s));
-    return ["전체", ...availableFromExam];
+    // "해당 입시"에 맞는 과목만 보이게: 현재 visibleProducts(=입시 필터 적용 결과)에서 과목을 뽑습니다.
+    const order =
+      selectedExamType === "편입"
+        ? ["전체", ...TRANSFER_SUBJECTS]
+        : ["전체", "수학", "물리학I", "물리학II", "화학I", "화학II", "생명과학I", "생명과학II", "지구과학I", "지구과학II"];
+
+    const ordered = order.filter((s) => s === "전체" || subjectSet.has(s));
+    const other = Array.from(subjectSet).filter((s) => !order.includes(s));
+    return [...ordered, ...other];
   }, [selectedExamType, visibleProducts]);
+
+  // UX: 입시(내신/수능/편입) 선택 시 과목을 자동으로 "첫 번째 과목"으로 맞춤
+  // - 전체(토글 해제)로 돌아가면 과목도 전체로 유지
+  useEffect(() => {
+    if (selectedExamType === "전체") return;
+    if (selectedSubject !== "전체") return;
+    const first = availableSubjects.find((s) => s !== "전체") ?? "전체";
+    if (first !== "전체") setSelectedSubject(first);
+  }, [availableSubjects, selectedExamType, selectedSubject]);
+
+  const availableBookFormats = useMemo(() => {
+    if (selectedType !== "교재") return BOOK_FORMATS as unknown as string[];
+    const hasPdf = visibleProducts.some((p) => p.type === "textbook" && normalizeTextbookType(p.textbookType) === "PDF");
+    const hasPhysical = visibleProducts.some(
+      (p) => p.type === "textbook" && normalizeTextbookType(p.textbookType) === normalizeTextbookType("실물책+PDF")
+    );
+    const out: string[] = ["전체"];
+    if (hasPhysical) out.push("실물책");
+    if (hasPdf) out.push("전자책");
+    return out;
+  }, [selectedType, visibleProducts]);
 
   // 입시 유형 변경 시 과목 초기화 (토글 기능)
   const handleExamTypeChange = useCallback((examType: ExamType) => {
@@ -214,11 +243,7 @@ export default function StoreFilterClient({
       }
     }
 
-    // 입시 유형 필터
-    if (selectedExamType !== "전체") {
-      const examSubjects = EXAM_SUBJECTS[selectedExamType];
-      result = result.filter((p) => examSubjects.includes(p.subject));
-    }
+    // 입시 유형 필터는 visibleProducts 단계에서 이미 적용됨
 
     // 과목 필터
     if (selectedSubject !== "전체") {
@@ -244,7 +269,7 @@ export default function StoreFilterClient({
   const examTypesWithoutAll = EXAM_TYPES.filter((t) => t !== "전체");
   // 전체를 제외한 과목 목록
   const subjectsWithoutAll = availableSubjects.filter((s) => s !== "전체");
-  const bookFormatsWithoutAll = BOOK_FORMATS.filter((t) => t !== "전체");
+  const bookFormatsWithoutAll = availableBookFormats.filter((t) => t !== "전체") as BookFormat[];
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24">
@@ -292,7 +317,7 @@ export default function StoreFilterClient({
                   <h3 className="sr-only">종류</h3>
                   <UnderlineTabBar
                     ariaLabel="교재 종류 선택"
-                    items={BOOK_FORMATS.map((fmt) => ({ key: fmt, label: fmt }))}
+                    items={availableBookFormats.map((fmt) => ({ key: fmt, label: fmt }))}
                     activeKey={selectedBookFormat}
                     onSelect={(k) => handleBookFormatChange(k as BookFormat)}
                   />

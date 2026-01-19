@@ -1406,14 +1406,27 @@ export default function ProductDetailClient({
                     <div key={tab} className="relative">
                   {/* FREE 말풍선 - 커리큘럼 탭 위에 (탭이 sticky 상태가 아닐 때만 표시) */}
                   {product.type === "course" && tab === "커리큘럼" && !isTabSticky && (
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-10">
-                      <div className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[11px] font-bold shadow-lg shadow-blue-500/30 animate-bounce whitespace-nowrap">
-                        <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
+                    <div className="absolute -top-7 sm:-top-8 left-1/2 -translate-x-1/2 z-10">
+                      <div className="relative inline-flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] sm:text-[11px] font-bold shadow-lg shadow-blue-500/30 animate-bounce whitespace-nowrap">
+                        <span className="material-symbols-outlined text-[12px] sm:text-[14px]">
                           play_circle
                         </span>
-                        FREE
+                        맛보기 파일
                         {/* 말풍선 꼬리 */}
-                        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-cyan-500" />
+                        <div className="absolute -bottom-1 sm:-bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] sm:border-l-[6px] border-l-transparent border-r-[5px] sm:border-r-[6px] border-r-transparent border-t-[5px] sm:border-t-[6px] border-t-cyan-500" />
+                      </div>
+                    </div>
+                  )}
+                  {/* 맛보기 파일 말풍선 - 교재소개 탭 위에 (탭이 sticky 상태가 아닐 때만 표시) */}
+                  {product.type === "textbook" && tab === "교재소개" && Boolean(previewDownloadUrl) && !isTabSticky && (
+                    <div className="absolute -top-7 sm:-top-8 left-1/2 -translate-x-1/2 z-10">
+                      <div className="relative inline-flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] sm:text-[11px] font-bold shadow-lg shadow-blue-500/30 animate-bounce whitespace-nowrap">
+                        <span className="material-symbols-outlined text-[12px] sm:text-[14px]">
+                          download
+                        </span>
+                        맛보기 파일
+                        {/* 말풍선 꼬리 */}
+                        <div className="absolute -bottom-1 sm:-bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] sm:border-l-[6px] border-l-transparent border-r-[5px] sm:border-r-[6px] border-r-transparent border-t-[5px] sm:border-t-[6px] border-t-cyan-500" />
                       </div>
                     </div>
                   )}
@@ -1475,53 +1488,53 @@ export default function ProductDetailClient({
             <section>
               {/* 수강기간/구성 컨테이너는 강좌/교재 모두 유지 */}
               <div className="rounded-xl border border-white/10 overflow-hidden mb-8">
-                <table className="w-full text-[14px]">
-                  <tbody>
-                    <tr className="border-b border-white/10">
-                      <td className="px-5 py-4 bg-white/[0.02] text-white/50 w-32 font-medium whitespace-nowrap">
-                        {product.type === "textbook" ? "다운로드 기간" : "수강 기간"}
-                      </td>
-                      <td className="px-5 py-4 text-white/90">
-                        {product.studyPeriod.regular + product.studyPeriod.review}일
-                      </td>
-                    </tr>
-                    {product.type === "textbook" && previewDownloadUrl && (
+                  <table className="w-full text-[14px]">
+                    <tbody>
                       <tr className="border-b border-white/10">
-                        <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium whitespace-nowrap">
-                          맛보기 파일
+                        <td className="px-5 py-4 bg-white/[0.02] text-white/50 w-32 font-medium whitespace-nowrap">
+                          {product.type === "textbook" ? "다운로드 기간" : "수강 기간"}
                         </td>
                         <td className="px-5 py-4 text-white/90">
-                          <a
-                            href={previewDownloadUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-[13px] font-semibold text-white/80 hover:bg-white/10"
-                          >
-                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                              download
-                            </span>
-                            다운로드
-                          </a>
+                          {product.studyPeriod.regular + product.studyPeriod.review}일
                         </td>
                       </tr>
-                    )}
-                    <tr>
-                      <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">구성</td>
-                      <td className="px-5 py-4 text-white/90">
-                        {product.type === "textbook" ? (product.composition || "PDF 교재") : `총 ${totalLessons}개 수업`}
-                      </td>
-                    </tr>
-                    {product.type === "textbook" &&
-                      (product.extraOptions ?? []).map((opt, i) => (
-                        // NOTE: 맛보기 파일 URL은 전용 row로 노출하므로 중복 표시는 막습니다.
-                        (opt?.name ?? "").replace(/\s+/g, "").toLowerCase() === "맛보기파일url" ? null :
-                        <tr key={`${opt.name}-${i}`} className="border-t border-white/10">
-                          <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">{opt.name}</td>
-                          <td className="px-5 py-4 text-white/90 whitespace-pre-line">{opt.value}</td>
+                      {product.type === "textbook" && previewDownloadUrl && (
+                        <tr className="border-b border-white/10">
+                          <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium whitespace-nowrap">
+                            맛보기 파일
+                          </td>
+                          <td className="px-5 py-4 text-white/90">
+                            <a
+                              href={previewDownloadUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-[13px] font-semibold text-white/80 hover:bg-white/10"
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                                download
+                              </span>
+                              다운로드
+                            </a>
+                          </td>
                         </tr>
-                      ))}
-                  </tbody>
-                </table>
+                      )}
+                      <tr>
+                        <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">구성</td>
+                        <td className="px-5 py-4 text-white/90">
+                          {product.type === "textbook" ? (product.composition || "PDF 교재") : `총 ${totalLessons}개 수업`}
+                        </td>
+                      </tr>
+                      {product.type === "textbook" &&
+                        (product.extraOptions ?? []).map((opt, i) => (
+                          // NOTE: 맛보기 파일 URL은 전용 row로 노출하므로 중복 표시는 막습니다.
+                          (opt?.name ?? "").replace(/\s+/g, "").toLowerCase() === "맛보기파일url" ? null :
+                          <tr key={`${opt.name}-${i}`} className="border-t border-white/10">
+                            <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">{opt.name}</td>
+                            <td className="px-5 py-4 text-white/90 whitespace-pre-line">{opt.value}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
               </div>
             </section>
           )}
