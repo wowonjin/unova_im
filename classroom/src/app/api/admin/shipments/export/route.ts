@@ -151,7 +151,7 @@ function ensureDeliveryMainHeader(ws: XLSX.WorkSheet) {
 const QuerySchema = z.object({
   // multi(권장): textbookIds=aaa,bbb / legacy: textbookId=aaa
   textbookIds: z.array(z.string().min(1)).min(1).max(50),
-  date: z.enum(["today", "all", "range"]).optional().default("today"),
+  date: z.enum(["today", "yesterday", "all", "range"]).optional().default("today"),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
   shippingFee: z.coerce.number().int().min(0).optional().default(3000),
@@ -190,11 +190,24 @@ export async function GET(req: Request) {
     const { textbookIds: selectedIds, date, dateFrom, dateTo, shippingFee, freightCode, message } = parsed.data;
 
     const todayKey = kstDateKey(new Date());
+    const yesterdayKey = addDaysKst(todayKey, -1);
     const clamped = date === "range" ? clampDateRange(dateFrom!, dateTo!, 366) : null;
     const start =
-      date === "today" ? kstStartOfDay(todayKey) : date === "range" ? kstStartOfDay(clamped!.fromKey) : null;
+      date === "today"
+        ? kstStartOfDay(todayKey)
+        : date === "yesterday"
+          ? kstStartOfDay(yesterdayKey)
+          : date === "range"
+            ? kstStartOfDay(clamped!.fromKey)
+            : null;
     const end =
-      date === "today" ? kstStartOfDay(addDaysKst(todayKey, 1)) : date === "range" ? kstStartOfDay(addDaysKst(clamped!.toKey, 1)) : null;
+      date === "today"
+        ? kstStartOfDay(addDaysKst(todayKey, 1))
+        : date === "yesterday"
+          ? kstStartOfDay(todayKey)
+          : date === "range"
+            ? kstStartOfDay(addDaysKst(clamped!.toKey, 1))
+            : null;
 
     const textbooks = await prisma.textbook.findMany({
       where: { ownerId: teacher.id },

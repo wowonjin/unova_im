@@ -7,7 +7,7 @@ type TextbookOption = { id: string; title: string };
 
 type Filters = {
   textbookIds: string[];
-  date: "today" | "range" | "all";
+  date: "today" | "yesterday" | "range" | "all";
   dateFrom: string; // YYYY-MM-DD (KST)
   dateTo: string; // YYYY-MM-DD (KST)
   shippingFee: string;
@@ -36,7 +36,8 @@ function readStoredFilters(): Filters | null {
   if (typeof window === "undefined") return null;
   const raw = safeParseJson(window.localStorage.getItem(STORAGE_KEY));
   if (!raw || typeof raw !== "object") return null;
-  const date = raw.date === "all" ? "all" : raw.date === "range" ? "range" : "today";
+  const date =
+    raw.date === "all" ? "all" : raw.date === "range" ? "range" : raw.date === "yesterday" ? "yesterday" : "today";
   const textbookIdsRaw = Array.isArray((raw as any).textbookIds) ? (raw as any).textbookIds : [];
   const textbookIds = textbookIdsRaw
     .map((x: any) => (typeof x === "string" ? x.trim() : ""))
@@ -103,13 +104,14 @@ export default function ShipmentsFiltersClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const pendingScrollYRef = useRef<number | null>(null);
-  const autoScrollToResultsRef = useRef(false);
   const didInitStorageRef = useRef(false);
   const didRestoreFromStorageRef = useRef(false);
 
   const validTextbookIds = useMemo(() => new Set(textbooks.map((t) => t.id)), [textbooks]);
 
   const [form, setForm] = useState<Filters>(initial);
+  // 상품 선택은 즉시 반영하지 않고, "선택 저장" 버튼으로만 적용되도록 draft로 분리
+  const [draftTextbookIds, setDraftTextbookIds] = useState<string[]>(initial.textbookIds);
   const [q, setQ] = useState("");
   const [productPanelOpen, setProductPanelOpen] = useState(true);
 
@@ -126,7 +128,7 @@ export default function ShipmentsFiltersClient({
     const safe: Filters = {
       ...form,
       textbookIds: (Array.isArray(form.textbookIds) ? form.textbookIds : []).filter((id) => validTextbookIds.has(id)).slice(0, 50),
-      date: form.date === "all" ? "all" : form.date === "range" ? "range" : "today",
+      date: form.date === "all" ? "all" : form.date === "range" ? "range" : form.date === "yesterday" ? "yesterday" : "today",
       dateFrom: isDateKey(form.dateFrom) ? form.dateFrom : kstDateKey(new Date()),
       dateTo: isDateKey(form.dateTo) ? form.dateTo : kstDateKey(new Date()),
     };
@@ -149,10 +151,13 @@ export default function ShipmentsFiltersClient({
     const merged: Filters = {
       ...stored,
       textbookIds: restoredIds,
-      date: (searchParams.get("date") === "all" ? "all" : searchParams.get("date") === "range" ? "range" : stored.date) as
-        | "today"
-        | "range"
-        | "all",
+      date: (searchParams.get("date") === "all"
+        ? "all"
+        : searchParams.get("date") === "range"
+          ? "range"
+          : searchParams.get("date") === "yesterday"
+            ? "yesterday"
+            : stored.date) as "today" | "yesterday" | "range" | "all",
       dateFrom: searchParams.get("dateFrom") ?? stored.dateFrom,
       dateTo: searchParams.get("dateTo") ?? stored.dateTo,
       shippingFee: searchParams.get("shippingFee") ?? stored.shippingFee,
@@ -161,6 +166,7 @@ export default function ShipmentsFiltersClient({
     };
 
     setForm(merged);
+    setDraftTextbookIds(merged.textbookIds);
     const q = buildQuery(merged);
     pendingScrollYRef.current = window.scrollY;
 
@@ -187,18 +193,6 @@ export default function ShipmentsFiltersClient({
     });
   }, [searchParams]);
 
-  // 상품 선택 시: 자동으로 "택배 내역" 영역으로 이동
-  useEffect(() => {
-    if (!autoScrollToResultsRef.current) return;
-    autoScrollToResultsRef.current = false;
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        document.getElementById("shipments-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    });
-  }, [searchParams]);
-
   // 폼 변경 시 자동으로 URL에 반영 (필터 적용 버튼 제거)
   // - 스크롤이 아래로 튕기는 문제를 방지하기 위해 scroll: false 사용
   // - 입력(메시지/운임 등) 중 과도한 네비게이션을 막기 위해 짧게 디바운스
@@ -206,7 +200,7 @@ export default function ShipmentsFiltersClient({
     const safe: Filters = {
       ...form,
       textbookIds: (Array.isArray(form.textbookIds) ? form.textbookIds : []).filter((id) => validTextbookIds.has(id)).slice(0, 50),
-      date: form.date === "all" ? "all" : form.date === "range" ? "range" : "today",
+      date: form.date === "all" ? "all" : form.date === "range" ? "range" : form.date === "yesterday" ? "yesterday" : "today",
       dateFrom: isDateKey(form.dateFrom) ? form.dateFrom : kstDateKey(new Date()),
       dateTo: isDateKey(form.dateTo) ? form.dateTo : kstDateKey(new Date()),
     };
@@ -227,7 +221,13 @@ export default function ShipmentsFiltersClient({
     const value = e.target.value;
     setForm((prev) => {
       if (key === "date") {
-        const nextDate = (value === "all" ? "all" : value === "range" ? "range" : "today") as Filters["date"];
+        const nextDate = (value === "all"
+          ? "all"
+          : value === "range"
+            ? "range"
+            : value === "yesterday"
+              ? "yesterday"
+              : "today") as Filters["date"];
         if (nextDate !== "range") return { ...prev, date: nextDate };
         const today = kstDateKey(new Date());
         return {
@@ -251,7 +251,24 @@ export default function ShipmentsFiltersClient({
     return textbooks.filter((t) => t.title.toLowerCase().includes(query));
   }, [q, textbooks]);
 
-  const selectedSet = useMemo(() => new Set(form.textbookIds), [form.textbookIds]);
+  const restoreScrollNextFrame = () => {
+    if (typeof window === "undefined") return;
+    const y = window.scrollY;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo(0, y);
+      });
+    });
+  };
+
+  const selectedSet = useMemo(() => new Set(draftTextbookIds), [draftTextbookIds]);
+  const hasUnsavedSelection = useMemo(() => {
+    const safeDraft = (Array.isArray(draftTextbookIds) ? draftTextbookIds : []).filter((id) => validTextbookIds.has(id)).slice(0, 50);
+    const safeApplied = (Array.isArray(form.textbookIds) ? form.textbookIds : []).filter((id) => validTextbookIds.has(id)).slice(0, 50);
+    if (safeDraft.length !== safeApplied.length) return true;
+    const applied = new Set(safeApplied);
+    return safeDraft.some((id) => !applied.has(id));
+  }, [draftTextbookIds, form.textbookIds, validTextbookIds]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -271,9 +288,9 @@ export default function ShipmentsFiltersClient({
             <div className="text-left">
               <p className="text-[14px] font-medium text-white">상품 선택</p>
               <p className="text-[12px] text-white/50">
-                {form.textbookIds.length === 0
+                {draftTextbookIds.length === 0
                   ? "선택된 상품 없음"
-                  : `${form.textbookIds.length}개 상품 선택됨`}
+                  : `${draftTextbookIds.length}개 상품 선택됨`}
               </p>
             </div>
           </div>
@@ -301,30 +318,29 @@ export default function ShipmentsFiltersClient({
                 />
               </div>
 
-              {/* 빠른 선택 버튼 */}
+              {/* 선택 저장 */}
               <div className="mt-3 flex items-center gap-2">
                 <button
                   type="button"
+                  disabled={!hasUnsavedSelection}
                   onClick={() => {
-                    const ids = textbooks.map((t) => t.id);
+                    restoreScrollNextFrame();
+                    const ids = (Array.isArray(draftTextbookIds) ? draftTextbookIds : [])
+                      .filter((id) => validTextbookIds.has(id))
+                      .slice(0, 50);
                     setForm((prev) => ({ ...prev, textbookIds: ids }));
                   }}
-                  className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 hover:bg-white/[0.06] hover:text-white transition-all"
+                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] transition-all ${
+                    hasUnsavedSelection
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/15"
+                      : "border-white/10 bg-white/[0.02] text-white/30 cursor-not-allowed"
+                  }`}
+                  title={hasUnsavedSelection ? "현재 선택을 저장하고 적용합니다" : "저장할 변경사항이 없습니다"}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
-                    select_all
+                    save
                   </span>
-                  전체 선택
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, textbookIds: [] }))}
-                  className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 hover:bg-white/[0.06] hover:text-white transition-all"
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
-                    deselect
-                  </span>
-                  선택 해제
+                  선택 저장
                 </button>
               </div>
 
@@ -365,15 +381,13 @@ export default function ShipmentsFiltersClient({
                             type="checkbox"
                             checked={checked}
                             onChange={(e) => {
+                              restoreScrollNextFrame();
                               const nextChecked = e.target.checked;
-                              setForm((prev) => {
-                                const cur = new Set(prev.textbookIds);
-                                // 요구사항: 상품 선택을 취소(언체크)해도 체크가 유지되도록 (해제는 '선택 해제' 버튼만)
-                                if (nextChecked) {
-                                  cur.add(t.id);
-                                  autoScrollToResultsRef.current = true;
-                                }
-                                return { ...prev, textbookIds: Array.from(cur) };
+                              setDraftTextbookIds((prev) => {
+                                const cur = new Set(Array.isArray(prev) ? prev : []);
+                                if (nextChecked) cur.add(t.id);
+                                else cur.delete(t.id);
+                                return Array.from(cur);
                               });
                             }}
                             className="sr-only"
@@ -420,6 +434,7 @@ export default function ShipmentsFiltersClient({
               className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[13px] text-white outline-none focus:border-white/20 transition-all"
             >
               <option value="today" className="bg-[#141416] text-white">오늘 (KST)</option>
+              <option value="yesterday" className="bg-[#141416] text-white">어제 (KST)</option>
               <option value="range" className="bg-[#141416] text-white">기간 직접 선택</option>
               <option value="all" className="bg-[#141416] text-white">전체 기간</option>
             </select>

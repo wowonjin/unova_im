@@ -109,7 +109,8 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
   const legacyOne = firstString(sp.textbookId) || "";
   const selectedIds = (textbookIds.length ? textbookIds : (legacyOne ? [legacyOne] : [])).slice(0, 50);
   const dateFilterRaw = (firstString(sp.date) || "today").toLowerCase();
-  const dateFilter: "today" | "all" | "range" = dateFilterRaw === "all" ? "all" : dateFilterRaw === "range" ? "range" : "today";
+  const dateFilter: "today" | "yesterday" | "all" | "range" =
+    dateFilterRaw === "all" ? "all" : dateFilterRaw === "range" ? "range" : dateFilterRaw === "yesterday" ? "yesterday" : "today";
   const dateFromRaw = firstString(sp.dateFrom);
   const dateToRaw = firstString(sp.dateTo);
   const dateFrom = isDateKey(dateFromRaw) ? dateFromRaw : todayKey;
@@ -122,23 +123,29 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
 
   const textbooks = await prisma.textbook.findMany({
     where: { ownerId: teacher.id, isPublished: true, price: { gt: 0 } },
-    orderBy: { createdAt: "desc" },
+    // "교재 판매하기"(/admin/textbooks) 리스트와 동일한 정렬
+    orderBy: [{ position: "desc" }, { createdAt: "desc" }],
     select: { id: true, title: true },
   });
   const selectedTextbooks = selectedIds.map((id) => textbooks.find((t) => t.id === id)).filter(Boolean) as Array<{ id: string; title: string }>;
 
+  const yesterdayKey = addDaysKst(todayKey, -1);
   const start =
     dateFilter === "today"
       ? kstStartOfDay(todayKey)
-      : dateFilter === "range"
-        ? kstStartOfDay(clamped.fromKey)
-        : null;
+      : dateFilter === "yesterday"
+        ? kstStartOfDay(yesterdayKey)
+        : dateFilter === "range"
+          ? kstStartOfDay(clamped.fromKey)
+          : null;
   const end =
     dateFilter === "today"
       ? kstStartOfDay(addDaysKst(todayKey, 1))
-      : dateFilter === "range"
-        ? kstStartOfDay(addDaysKst(clamped.toKey, 1))
-        : null;
+      : dateFilter === "yesterday"
+        ? kstStartOfDay(todayKey)
+        : dateFilter === "range"
+          ? kstStartOfDay(addDaysKst(clamped.toKey, 1))
+          : null;
 
   const orders = await prisma.order.findMany({
     where: {
