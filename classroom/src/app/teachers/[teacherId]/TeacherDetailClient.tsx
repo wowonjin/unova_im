@@ -55,9 +55,9 @@ export type TeacherDetailTeacher = {
   promoImageUrl?: string;
   // 선생님 개인 페이지 커스터마이징(테마)
   pageBgColor?: string;
-  menuBgColor?: string;
   newsBgColor?: string;
-  ratingBgColor?: string;
+  // 선생님 개인 페이지: 과목명 텍스트 색상
+  subjectTextColor?: string;
   banners: Banner[];
   reviews: Review[];
   ratingSummary?: {
@@ -163,9 +163,8 @@ export default function TeacherDetailClient({ teacher }: Props) {
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [subjectDraft, setSubjectDraft] = useState<string>(teacher.subject || "");
   const [pageBgDraft, setPageBgDraft] = useState<string>(teacher.pageBgColor || "");
-  const [menuBgDraft, setMenuBgDraft] = useState<string>(teacher.menuBgColor || "");
   const [newsBgDraft, setNewsBgDraft] = useState<string>(teacher.newsBgColor || "");
-  const [ratingBgDraft, setRatingBgDraft] = useState<string>(teacher.ratingBgColor || "");
+  const [subjectColorDraft, setSubjectColorDraft] = useState<string>(teacher.subjectTextColor || "");
   const [isSavingTheme, setIsSavingTheme] = useState(false);
 
   useEffect(() => {
@@ -173,11 +172,15 @@ export default function TeacherDetailClient({ teacher }: Props) {
     setShowCustomizer(sp.get("customize") === "1");
   }, []);
 
+  // NOTE: 요청사항(관리자 디자인): "최근 소식 배경색(newsBgColor)"을 설정하면
+  // 선생님 페이지의 "학력/약력 컨테이너"와 "실시간 리뷰 컨테이너"도 동일한 배경색을 사용해야 합니다.
+  // → newsBgColor를 공통 패널 배경으로 취급하여 --u-news-bg / --u-rating-bg 둘 다에 주입합니다.
+  const effectiveNewsBg = (newsBgDraft || teacher.newsBgColor || "") || undefined;
   const themeVars = {
     ["--u-page-bg" as any]: (pageBgDraft || teacher.pageBgColor || "") || undefined,
-    ["--u-menu-bg" as any]: (menuBgDraft || teacher.menuBgColor || "") || undefined,
-    ["--u-news-bg" as any]: (newsBgDraft || teacher.newsBgColor || "") || undefined,
-    ["--u-rating-bg" as any]: (ratingBgDraft || teacher.ratingBgColor || "") || undefined,
+    ["--u-news-bg" as any]: effectiveNewsBg,
+    ["--u-rating-bg" as any]: effectiveNewsBg,
+    ["--u-subject-color" as any]: (subjectColorDraft || teacher.subjectTextColor || "") || undefined,
   } as React.CSSProperties;
 
   const effectiveSubject = (subjectDraft || teacher.subject || "").trim();
@@ -615,15 +618,6 @@ export default function TeacherDetailClient({ teacher }: Props) {
                     />
                   </label>
                   <label style={{ display: "grid", gap: 6, fontSize: 12, opacity: 0.92 }}>
-                    메뉴 배경(좌측)
-                    <input
-                      type="color"
-                      value={(menuBgDraft && menuBgDraft.startsWith("#")) ? menuBgDraft : "#2f232b"}
-                      onChange={(e) => setMenuBgDraft(e.target.value)}
-                      style={{ width: "100%", height: 40, background: "transparent", border: 0, padding: 0 }}
-                    />
-                  </label>
-                  <label style={{ display: "grid", gap: 6, fontSize: 12, opacity: 0.92 }}>
                     최근 소식 컨테이너
                     <input
                       type="color"
@@ -633,11 +627,11 @@ export default function TeacherDetailClient({ teacher }: Props) {
                     />
                   </label>
                   <label style={{ display: "grid", gap: 6, fontSize: 12, opacity: 0.92 }}>
-                    총 강의 평점 컨테이너
+                    과목명 색상
                     <input
                       type="color"
-                      value={(ratingBgDraft && ratingBgDraft.startsWith("#")) ? ratingBgDraft : "#2A263D"}
-                      onChange={(e) => setRatingBgDraft(e.target.value)}
+                      value={(subjectColorDraft && subjectColorDraft.startsWith("#")) ? subjectColorDraft : "#957FF3"}
+                      onChange={(e) => setSubjectColorDraft(e.target.value)}
                       style={{ width: "100%", height: 40, background: "transparent", border: 0, padding: 0 }}
                     />
                   </label>
@@ -656,9 +650,8 @@ export default function TeacherDetailClient({ teacher }: Props) {
                             slug: teacher.slug,
                             subjectName: subjectDraft.trim(),
                             pageBgColor: pageBgDraft || null,
-                            menuBgColor: menuBgDraft || null,
                             newsBgColor: newsBgDraft || null,
-                            ratingBgColor: ratingBgDraft || null,
+                            subjectTextColor: subjectColorDraft || null,
                           }),
                         });
                         const json = await res.json().catch(() => null);
@@ -686,9 +679,8 @@ export default function TeacherDetailClient({ teacher }: Props) {
                     disabled={isSavingTheme}
                     onClick={() => {
                       setPageBgDraft("");
-                      setMenuBgDraft("");
                       setNewsBgDraft("");
-                      setRatingBgDraft("");
+                      setSubjectColorDraft("");
                     }}
                     style={{
                       padding: "10px 12px",
@@ -849,15 +841,6 @@ export default function TeacherDetailClient({ teacher }: Props) {
                     />
                   </label>
                   <label style={{ display: "grid", gap: 6, fontSize: 12, opacity: 0.92 }}>
-                    메뉴 배경
-                    <input
-                      type="color"
-                      value={(menuBgDraft && menuBgDraft.startsWith("#")) ? menuBgDraft : "#2f232b"}
-                      onChange={(e) => setMenuBgDraft(e.target.value)}
-                      style={{ width: "100%", height: 40, background: "transparent", border: 0, padding: 0 }}
-                    />
-                  </label>
-                  <label style={{ display: "grid", gap: 6, fontSize: 12, opacity: 0.92 }}>
                     최근 소식
                     <input
                       type="color"
@@ -867,11 +850,11 @@ export default function TeacherDetailClient({ teacher }: Props) {
                     />
                   </label>
                   <label style={{ display: "grid", gap: 6, fontSize: 12, opacity: 0.92 }}>
-                    총 강의 평점
+                    과목명 색상
                     <input
                       type="color"
-                      value={(ratingBgDraft && ratingBgDraft.startsWith("#")) ? ratingBgDraft : "#2A263D"}
-                      onChange={(e) => setRatingBgDraft(e.target.value)}
+                      value={(subjectColorDraft && subjectColorDraft.startsWith("#")) ? subjectColorDraft : "#957FF3"}
+                      onChange={(e) => setSubjectColorDraft(e.target.value)}
                       style={{ width: "100%", height: 40, background: "transparent", border: 0, padding: 0 }}
                     />
                   </label>
@@ -890,9 +873,8 @@ export default function TeacherDetailClient({ teacher }: Props) {
                             slug: teacher.slug,
                             subjectName: subjectDraft.trim(),
                             pageBgColor: pageBgDraft || null,
-                            menuBgColor: menuBgDraft || null,
                             newsBgColor: newsBgDraft || null,
-                            ratingBgColor: ratingBgDraft || null,
+                            subjectTextColor: subjectColorDraft || null,
                           }),
                         });
                         const json = await res.json().catch(() => null);
@@ -919,9 +901,8 @@ export default function TeacherDetailClient({ teacher }: Props) {
                     disabled={isSavingTheme}
                     onClick={() => {
                       setPageBgDraft("");
-                      setMenuBgDraft("");
                       setNewsBgDraft("");
-                      setRatingBgDraft("");
+                      setSubjectColorDraft("");
                     }}
                     style={{
                       padding: "10px 14px",

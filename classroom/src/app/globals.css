@@ -601,7 +601,8 @@ a.unova-menu-item:active {
 }
 
 .unova-rating-card {
-  background: var(--u-rating-bg, #2A263D);
+  /* 요청사항: "최근 소식 배경색"을 실시간 리뷰 컨테이너에도 동일 적용 */
+  background: var(--u-news-bg, #2A263D);
 }
 
 /* 요청사항: 최근 소식/총 강의 평점 컨테이너 내부 텍스트를 전부 흰색으로 */
@@ -1005,7 +1006,8 @@ a.unova-menu-item:active {
   /* 메뉴 컨테이너: 배경/테두리 + 폭(절반) */
   width: min(275px, 50%);
   /* 이전의 어두운 톤으로 복구 */
-  background: #2a263d;
+  /* 요청사항: "최근 소식 배경색"을 학력/약력 컨테이너에도 동일 적용 */
+  background: var(--u-news-bg, #2A263D);
   border: none;
   border-radius: 0; /* 둥글기 제거 */
   overflow: hidden; /* 구분선이 깔끔하게 보이도록 */
@@ -1163,7 +1165,7 @@ a.unova-menu-item:active {
 
 .unova-header-title .unova-subject {
   /* 과목명 */
-  color: #957FF3;
+  color: var(--u-subject-color, #957FF3);
   background: transparent;
   padding: 0;
   border-radius: 0;
@@ -3110,7 +3112,7 @@ a.unova-menu-item:active {
   .mega-mobile-titlebar__subject {
     font-size: 14px;
     font-weight: 500;
-    color: #a78bfa;
+    color: var(--u-subject-color, #a78bfa);
   }
 
   .mega-mobile-titlebar__name {
@@ -3159,12 +3161,13 @@ a.unova-menu-item:active {
   }
 
   .mega-mobile-hero__subject {
-    color: #a78bfa;
+    color: var(--u-subject-color, #a78bfa);
   }
 
   .mega-mobile-hero__profile-btn {
     align-self: flex-start;
-    background: #2A263D !important;
+    /* 학력/약력 버튼도 최근 소식과 동일 톤으로 */
+    background: var(--u-news-bg, #2A263D) !important;
     color: #fff !important;
     border: none;
     padding: 6px 14px;

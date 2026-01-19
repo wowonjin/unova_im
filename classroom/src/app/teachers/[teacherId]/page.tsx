@@ -881,6 +881,7 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
         slug: true,
         name: true,
         subjectName: true,
+        subjectTextColor: true,
         imageUrl: true,
         mainImageUrl: true,
         promoImageUrl: true,
@@ -890,9 +891,7 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
         careerText: true,
         headerSubText: true,
         pageBgColor: true,
-        menuBgColor: true,
         newsBgColor: true,
-        ratingBgColor: true,
       },
     } as any);
     if (!dbTeacher) notFound();
@@ -950,9 +949,8 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
       imageUrl: dbTeacher.mainImageUrl || dbTeacher.imageUrl || yooYerinTemplate.imageUrl || "",
       promoImageUrl: dbTeacher.promoImageUrl || undefined,
       pageBgColor: typeof dbTeacher.pageBgColor === "string" ? dbTeacher.pageBgColor : undefined,
-      menuBgColor: typeof dbTeacher.menuBgColor === "string" ? dbTeacher.menuBgColor : undefined,
       newsBgColor: typeof dbTeacher.newsBgColor === "string" ? dbTeacher.newsBgColor : undefined,
-      ratingBgColor: typeof dbTeacher.ratingBgColor === "string" ? dbTeacher.ratingBgColor : undefined,
+      subjectTextColor: typeof dbTeacher.subjectTextColor === "string" ? dbTeacher.subjectTextColor : undefined,
       banners: yooYerinTemplate.banners || [],
       reviews: ratingSummary.recentReviews.map((r) => ({
         text: r.content,

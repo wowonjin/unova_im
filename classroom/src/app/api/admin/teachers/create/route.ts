@@ -9,6 +9,7 @@ const Schema = z.object({
   slug: z.string().min(1).max(128).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "INVALID_SLUG"),
   name: z.string().min(1).max(64),
   subjectName: z.string().min(1).max(64),
+  subjectTextColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   imageUrl: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   mainImageUrl: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   promoImageUrl: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
@@ -18,9 +19,7 @@ const Schema = z.object({
   careerText: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   headerSubText: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   pageBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
-  menuBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   newsBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
-  ratingBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   // position은 "관리자 목록 순서(드래그앤드랍)"로만 관리합니다.
   // 생성 폼에서는 입력을 없앴으므로, 제출에 position이 없으면 맨 뒤로 자동 배치합니다.
   position: z
@@ -55,6 +54,7 @@ export async function POST(req: Request) {
     slug: typeof form.get("slug") === "string" ? form.get("slug") : "",
     name: typeof form.get("name") === "string" ? form.get("name") : "",
     subjectName: typeof form.get("subjectName") === "string" ? form.get("subjectName") : "",
+    subjectTextColor: typeof form.get("subjectTextColor") === "string" ? form.get("subjectTextColor") : undefined,
     imageUrl: typeof form.get("imageUrl") === "string" ? form.get("imageUrl") : undefined,
     mainImageUrl: typeof form.get("mainImageUrl") === "string" ? form.get("mainImageUrl") : undefined,
     promoImageUrl: typeof form.get("promoImageUrl") === "string" ? form.get("promoImageUrl") : undefined,
@@ -64,9 +64,7 @@ export async function POST(req: Request) {
     careerText: typeof form.get("careerText") === "string" ? form.get("careerText") : undefined,
     headerSubText: typeof form.get("headerSubText") === "string" ? form.get("headerSubText") : undefined,
     pageBgColor: typeof form.get("pageBgColor") === "string" ? form.get("pageBgColor") : undefined,
-    menuBgColor: typeof form.get("menuBgColor") === "string" ? form.get("menuBgColor") : undefined,
     newsBgColor: typeof form.get("newsBgColor") === "string" ? form.get("newsBgColor") : undefined,
-    ratingBgColor: typeof form.get("ratingBgColor") === "string" ? form.get("ratingBgColor") : undefined,
     position: typeof form.get("position") === "string" ? form.get("position") : undefined,
     isActive: typeof form.get("isActive") === "string" ? form.get("isActive") : undefined,
   });
@@ -77,6 +75,7 @@ export async function POST(req: Request) {
     try {
       await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedCourseIds" JSONB;');
       await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedTextbookIds" JSONB;');
+      await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "subjectTextColor" TEXT;');
     } catch {
       // ignore
     }
@@ -92,6 +91,7 @@ export async function POST(req: Request) {
         slug: parsed.data.slug,
         name: parsed.data.name,
         subjectName: parsed.data.subjectName,
+        subjectTextColor: parsed.data.subjectTextColor,
         imageUrl: parsed.data.imageUrl,
         mainImageUrl: parsed.data.mainImageUrl,
         promoImageUrl: parsed.data.promoImageUrl,
@@ -101,9 +101,7 @@ export async function POST(req: Request) {
         careerText: parsed.data.careerText,
         headerSubText: parsed.data.headerSubText,
         pageBgColor: parsed.data.pageBgColor,
-        menuBgColor: parsed.data.menuBgColor,
         newsBgColor: parsed.data.newsBgColor,
-        ratingBgColor: parsed.data.ratingBgColor,
         position,
         isActive: parsed.data.isActive ?? true,
       } as any,

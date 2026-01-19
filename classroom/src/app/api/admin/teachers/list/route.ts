@@ -14,6 +14,7 @@ async function ensureTeacherTable() {
       "slug" TEXT NOT NULL,
       "name" TEXT NOT NULL,
       "subjectName" TEXT NOT NULL,
+      "subjectTextColor" TEXT,
       "imageUrl" TEXT,
       "mainImageUrl" TEXT,
       "promoImageUrl" TEXT,
@@ -23,9 +24,7 @@ async function ensureTeacherTable() {
       "careerText" TEXT,
       "headerSubText" TEXT,
       "pageBgColor" TEXT,
-      "menuBgColor" TEXT,
       "newsBgColor" TEXT,
-      "ratingBgColor" TEXT,
       "accountUserId" TEXT,
       "isActive" BOOLEAN NOT NULL DEFAULT TRUE,
       "position" INTEGER NOT NULL DEFAULT 0,
@@ -54,6 +53,7 @@ export async function GET() {
     await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedCourseIds" JSONB;');
     await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedTextbookIds" JSONB;');
     await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "accountUserId" TEXT;');
+    await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "subjectTextColor" TEXT;');
   } catch {
     // ignore
   }
@@ -68,6 +68,7 @@ export async function GET() {
         slug: true,
         name: true,
         subjectName: true,
+        subjectTextColor: true,
         imageUrl: true,
         mainImageUrl: true,
         promoImageUrl: true,
@@ -77,9 +78,7 @@ export async function GET() {
         careerText: true,
         headerSubText: true,
         pageBgColor: true,
-        menuBgColor: true,
         newsBgColor: true,
-        ratingBgColor: true,
         isActive: true,
         position: true,
         createdAt: true,

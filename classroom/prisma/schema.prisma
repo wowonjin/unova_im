@@ -672,6 +672,8 @@ model Teacher {
   slug          String  @unique
   name          String
   subjectName   String
+  // 선생님 개인 페이지 "과목명" 텍스트 색상 (예: "#957FF3")
+  subjectTextColor String?
   // Teachers 목록/헤더 등에서 사용할 대표 썸네일
   imageUrl      String?
   // 선생님 개인 페이지(상단 중앙)에 사용할 메인 이미지
@@ -695,12 +697,8 @@ model Teacher {
   // =========================
   // 페이지 전체 배경색(예: "#464065")
   pageBgColor   String?
-  // 좌측 메뉴(학력/약력, 커리큘럼 등) 컨테이너 배경색
-  menuBgColor   String?
   // 우측 패널 "최근 소식" 컨테이너 배경색
   newsBgColor   String?
-  // 우측 패널 "총 강의 평점" 컨테이너 배경색
-  ratingBgColor String?
   isActive      Boolean  @default(true)
   // 정렬(오름차순). 0은 레거시/미설정
   position      Int      @default(0)

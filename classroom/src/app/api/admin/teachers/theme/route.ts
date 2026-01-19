@@ -9,10 +9,10 @@ const Schema = z.object({
   slug: z.string().min(1).max(128),
   // 과목명도 개인 페이지에서 같이 바꿀 수 있게 지원
   subjectName: z.string().trim().min(1).max(64).optional(),
+  // 과목명 텍스트 색상
+  subjectTextColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   pageBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
-  menuBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   newsBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
-  ratingBgColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
 });
 
 export async function POST(req: Request) {
@@ -23,14 +23,19 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ ok: false, error: "INVALID_REQUEST" }, { status: 400 });
 
   try {
+    // Ensure optional column exists (deployment-safe; avoids Prisma migrations).
+    try {
+      await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "subjectTextColor" TEXT;');
+    } catch {
+      // ignore
+    }
     await prisma.teacher.update({
       where: { slug: parsed.data.slug },
       data: {
         ...(typeof parsed.data.subjectName === "string" ? { subjectName: parsed.data.subjectName } : {}),
+        subjectTextColor: parsed.data.subjectTextColor,
         pageBgColor: parsed.data.pageBgColor,
-        menuBgColor: parsed.data.menuBgColor,
         newsBgColor: parsed.data.newsBgColor,
-        ratingBgColor: parsed.data.ratingBgColor,
       } as any,
     });
     return NextResponse.json({ ok: true });

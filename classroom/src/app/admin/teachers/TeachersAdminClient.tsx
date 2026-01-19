@@ -7,6 +7,7 @@ type Teacher = {
   slug: string;
   name: string;
   subjectName: string;
+  subjectTextColor: string | null;
   imageUrl: string | null;
   mainImageUrl: string | null;
   promoImageUrl: string | null;
@@ -16,9 +17,7 @@ type Teacher = {
   accountEmail?: string | null;
   headerSubText: string | null;
   pageBgColor: string | null;
-  menuBgColor: string | null;
   newsBgColor: string | null;
-  ratingBgColor: string | null;
   educationText: string | null;
   careerText: string | null;
   instagramUrl: string | null;
@@ -38,6 +37,7 @@ export default function TeachersAdminClient() {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const teacherTabs = [
     { key: "basic", label: "기본" },
+    { key: "subjectColor", label: "과목색" },
     { key: "career", label: "학력/약력" },
     { key: "account", label: "계정" },
     { key: "design", label: "디자인" },
@@ -53,13 +53,12 @@ export default function TeachersAdminClient() {
     slug: "",
     name: "",
     subjectName: "",
+    subjectTextColor: "",
     headerSubText: "",
     imageUrl: "",
     mainImageUrl: "",
     pageBgColor: "",
-    menuBgColor: "",
     newsBgColor: "",
-    ratingBgColor: "",
     educationText: "",
     careerText: "",
     instagramUrl: "",
@@ -119,13 +118,12 @@ export default function TeachersAdminClient() {
       slug: t.slug,
       name: t.name,
       subjectName: t.subjectName,
+      subjectTextColor: t.subjectTextColor || "",
       headerSubText: t.headerSubText || "",
       imageUrl: t.imageUrl || "",
       mainImageUrl: t.mainImageUrl || "",
       pageBgColor: t.pageBgColor || "",
-      menuBgColor: t.menuBgColor || "",
       newsBgColor: t.newsBgColor || "",
-      ratingBgColor: t.ratingBgColor || "",
       educationText: t.educationText || "",
       careerText: t.careerText || "",
       instagramUrl: t.instagramUrl || "",
@@ -145,13 +143,12 @@ export default function TeachersAdminClient() {
       slug: "",
       name: "",
       subjectName: "",
+      subjectTextColor: "",
       headerSubText: "",
       imageUrl: "",
       mainImageUrl: "",
       pageBgColor: "",
-      menuBgColor: "",
       newsBgColor: "",
-      ratingBgColor: "",
       educationText: "",
       careerText: "",
       instagramUrl: "",
@@ -233,13 +230,12 @@ export default function TeachersAdminClient() {
     fd.append("slug", t.slug);
     fd.append("name", t.name);
     fd.append("subjectName", t.subjectName);
+    fd.append("subjectTextColor", t.subjectTextColor || "");
     fd.append("headerSubText", t.headerSubText || "");
     fd.append("imageUrl", t.imageUrl || "");
     fd.append("mainImageUrl", t.mainImageUrl || "");
     fd.append("pageBgColor", t.pageBgColor || "");
-    fd.append("menuBgColor", t.menuBgColor || "");
     fd.append("newsBgColor", t.newsBgColor || "");
-    fd.append("ratingBgColor", t.ratingBgColor || "");
     fd.append("educationText", t.educationText || "");
     fd.append("careerText", t.careerText || "");
     fd.append("instagramUrl", t.instagramUrl || "");
@@ -278,13 +274,12 @@ export default function TeachersAdminClient() {
     fd.append("slug", formData.slug.trim());
     fd.append("name", formData.name.trim());
     fd.append("subjectName", formData.subjectName.trim());
+    fd.append("subjectTextColor", formData.subjectTextColor.trim());
     fd.append("headerSubText", formData.headerSubText.trim());
     fd.append("imageUrl", formData.imageUrl.trim());
     fd.append("mainImageUrl", formData.mainImageUrl.trim());
     fd.append("pageBgColor", formData.pageBgColor.trim());
-    fd.append("menuBgColor", formData.menuBgColor.trim());
     fd.append("newsBgColor", formData.newsBgColor.trim());
-    fd.append("ratingBgColor", formData.ratingBgColor.trim());
     fd.append("educationText", formData.educationText);
     fd.append("careerText", formData.careerText);
     fd.append("instagramUrl", formData.instagramUrl.trim());
@@ -683,23 +678,9 @@ export default function TeachersAdminClient() {
                   fallback="#464065"
                 />
                 <ColorField
-                  label="좌측 메뉴 배경색 (menuBgColor)"
-                  value={formData.menuBgColor}
-                  onChange={(next) => setFormData({ ...formData, menuBgColor: next })}
-                  placeholder="예: #2f232b"
-                  fallback="#2f232b"
-                />
-                <ColorField
                   label="최근 소식 배경색 (newsBgColor)"
                   value={formData.newsBgColor}
                   onChange={(next) => setFormData({ ...formData, newsBgColor: next })}
-                  placeholder="예: #2A263D"
-                  fallback="#2A263D"
-                />
-                <ColorField
-                  label="총 강의 평점 배경색 (ratingBgColor)"
-                  value={formData.ratingBgColor}
-                  onChange={(next) => setFormData({ ...formData, ratingBgColor: next })}
                   placeholder="예: #2A263D"
                   fallback="#2A263D"
                 />
@@ -709,12 +690,31 @@ export default function TeachersAdminClient() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[12px] text-white/70">페이지</span>
                   <span className="h-5 w-5 rounded border border-white/20" style={{ background: toHexOrFallback(formData.pageBgColor, "#464065") }} />
-                  <span className="text-[12px] text-white/70 ml-2">메뉴</span>
-                  <span className="h-5 w-5 rounded border border-white/20" style={{ background: toHexOrFallback(formData.menuBgColor, "#2f232b") }} />
                   <span className="text-[12px] text-white/70 ml-2">최근소식</span>
                   <span className="h-5 w-5 rounded border border-white/20" style={{ background: toHexOrFallback(formData.newsBgColor, "#2A263D") }} />
-                  <span className="text-[12px] text-white/70 ml-2">평점</span>
-                  <span className="h-5 w-5 rounded border border-white/20" style={{ background: toHexOrFallback(formData.ratingBgColor, "#2A263D") }} />
+                </div>
+              </div>
+            </div>
+
+            {/* 과목명 색상 */}
+            <div className={`${activeTab === "subjectColor" ? "" : "hidden"} space-y-4`}>
+              <h3 className="text-[15px] font-semibold mb-4">과목색</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <ColorField
+                  label="과목명 색상 (subjectTextColor)"
+                  value={formData.subjectTextColor}
+                  onChange={(next) => setFormData({ ...formData, subjectTextColor: next })}
+                  placeholder="예: #957FF3"
+                  fallback="#957FF3"
+                />
+              </div>
+              <div className="mt-4 rounded-xl border border-white/[0.08] bg-transparent p-4">
+                <div className="text-[12px] text-white/60 mb-2">미리보기</div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[12px] text-white/70">과목명</span>
+                  <span className="text-[14px] font-semibold" style={{ color: toHexOrFallback(formData.subjectTextColor, "#957FF3") }}>
+                    {formData.subjectName || "과목"}
+                  </span>
                 </div>
               </div>
             </div>
