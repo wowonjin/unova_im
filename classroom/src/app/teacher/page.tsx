@@ -142,10 +142,17 @@ export default async function TeacherDashboardPage() {
     );
   }
 
-  const [coursesCount, textbooksCount] = await Promise.all([
-    prisma.course.count({ where: { ownerId: user.id } }),
-    prisma.textbook.count({ where: { ownerId: user.id } }),
+  const teacherName = (teacher.teacherName || "").trim();
+  const [courseIds, textbookIds] = await Promise.all([
+    teacherName.length
+      ? prisma.course.findMany({ where: { teacherName }, select: { id: true }, take: 2000 }).then((xs) => xs.map((x) => x.id))
+      : Promise.resolve([] as string[]),
+    teacherName.length
+      ? prisma.textbook.findMany({ where: { teacherName }, select: { id: true }, take: 2000 }).then((xs) => xs.map((x) => x.id))
+      : Promise.resolve([] as string[]),
   ]);
+  const coursesCount = courseIds.length;
+  const textbooksCount = textbookIds.length;
 
   const day = kstRangeUtc("day");
   const week = kstRangeUtc("week");
@@ -154,10 +161,12 @@ export default async function TeacherDashboardPage() {
   const lastWeekStartUtc = new Date(week.startUtc.getTime() - 7 * dayMs);
   const lastWeekEndUtc = new Date(week.startUtc.getTime() - 1);
 
-  const salesWhereBase = {
-    status: { in: SALES_STATUSES },
-    OR: [{ course: { ownerId: user.id } }, { textbook: { ownerId: user.id } }],
-  };
+  const scopeOr: any[] = [];
+  if (courseIds.length) scopeOr.push({ courseId: { in: courseIds } });
+  if (textbookIds.length) scopeOr.push({ textbookId: { in: textbookIds } });
+  const salesWhereBase = scopeOr.length
+    ? ({ status: { in: SALES_STATUSES }, OR: scopeOr } as const)
+    : ({ status: { in: SALES_STATUSES }, id: "__NO_MATCH__" } as const);
 
   async function summarizeRange(startUtc: Date, endUtc: Date) {
     const rows = await prisma.order.findMany({
@@ -209,13 +218,19 @@ export default async function TeacherDashboardPage() {
     prisma.review.count({
       where: {
         isApproved: true,
-        OR: [{ course: { ownerId: user.id } }, { textbook: { ownerId: user.id } }],
+        OR: [
+          ...(courseIds.length ? [{ courseId: { in: courseIds } }] : []),
+          ...(textbookIds.length ? [{ textbookId: { in: textbookIds } }] : []),
+        ],
       },
     }),
     prisma.review.findMany({
       where: {
         isApproved: true,
-        OR: [{ course: { ownerId: user.id } }, { textbook: { ownerId: user.id } }],
+        OR: [
+          ...(courseIds.length ? [{ courseId: { in: courseIds } }] : []),
+          ...(textbookIds.length ? [{ textbookId: { in: textbookIds } }] : []),
+        ],
       },
       orderBy: { createdAt: "desc" },
       take: 8,
@@ -265,8 +280,7 @@ export default async function TeacherDashboardPage() {
       by: ["courseId"],
       where: {
         status: { in: salesStatuses },
-        courseId: { not: null },
-        course: { ownerId: user.id },
+        courseId: courseIds.length ? { in: courseIds } : { equals: "__NO_MATCH__" },
       },
       _count: { _all: true },
       _sum: { amount: true, refundedAmount: true },
@@ -275,8 +289,7 @@ export default async function TeacherDashboardPage() {
       by: ["textbookId"],
       where: {
         status: { in: salesStatuses },
-        textbookId: { not: null },
-        textbook: { ownerId: user.id },
+        textbookId: textbookIds.length ? { in: textbookIds } : { equals: "__NO_MATCH__" },
       },
       _count: { _all: true },
       _sum: { amount: true, refundedAmount: true },

@@ -17,6 +17,12 @@ async function ensureTeacherAccountColumns() {
   } catch {
     // ignore
   }
+  try {
+    await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedCourseIds" JSONB;');
+    await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedTextbookIds" JSONB;');
+  } catch {
+    // ignore
+  }
 }
 
 export async function POST(req: Request) {
@@ -34,31 +40,23 @@ export async function POST(req: Request) {
 
     await ensureTeacherAccountColumns();
 
-    const rows = (await prisma.$queryRawUnsafe(
-      'SELECT "accountUserId" FROM "Teacher" WHERE "id" = $1 LIMIT 1',
-      teacherId
-    )) as any[];
-    const accountUserId = String(rows?.[0]?.accountUserId ?? "").trim();
-    if (!accountUserId) {
-      return NextResponse.json({ ok: false, error: "TEACHER_ACCOUNT_NOT_LINKED" }, { status: 400 });
-    }
+    // 정책 변경:
+    // - 상품 소유권(ownerId)은 admin에 유지
+    // - 선생님 콘솔은 Teacher.selectedCourseIds/selectedTextbookIds 기준으로 데이터(주문/정산)만 연동
+    const normalizedCourses = Array.from(new Set(courseIds.map((x) => x.trim()).filter(Boolean)));
+    const normalizedTextbooks = Array.from(new Set(textbookIds.map((x) => x.trim()).filter(Boolean)));
 
-    const [courses, textbooks] = await Promise.all([
-      courseIds.length
-        ? prisma.course.updateMany({
-            where: { id: { in: courseIds } },
-            data: { ownerId: accountUserId },
-          })
-        : Promise.resolve({ count: 0 }),
-      textbookIds.length
-        ? prisma.textbook.updateMany({
-            where: { id: { in: textbookIds } },
-            data: { ownerId: accountUserId },
-          })
-        : Promise.resolve({ count: 0 }),
-    ]);
+    await prisma.$executeRawUnsafe(
+      'UPDATE "Teacher" SET "selectedCourseIds" = $2::jsonb, "selectedTextbookIds" = $3::jsonb WHERE "id" = $1',
+      teacherId,
+      JSON.stringify(normalizedCourses),
+      JSON.stringify(normalizedTextbooks)
+    );
 
-    return NextResponse.json({ ok: true, updated: { courses: courses.count, textbooks: textbooks.count } });
+    return NextResponse.json({
+      ok: true,
+      updated: { courses: normalizedCourses.length, textbooks: normalizedTextbooks.length },
+    });
   } catch (e) {
     console.error("[admin/teachers/assign-products] error:", e);
     return NextResponse.json({ ok: false, error: "ASSIGN_FAILED" }, { status: 500 });

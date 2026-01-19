@@ -24,6 +24,15 @@ function normalizeTextbookType(v: unknown): string {
     .toUpperCase();
 }
 
+async function getAdminOwnerId(): Promise<string | null> {
+  // admin/courses는 "관리자 계정(ownerId=admin.id)"의 강좌만 노출합니다.
+  // teacher/products에서도 동일 기준으로 "관리자 소유 강좌"만 보여주기 위해 admin user id를 조회합니다.
+  const email = (process.env.ADMIN_EMAIL || "admin@gmail.com").toLowerCase().trim();
+  if (!email) return null;
+  const u = await prisma.user.findUnique({ where: { email }, select: { id: true } }).catch(() => null);
+  return u?.id ?? null;
+}
+
 function kstRangeUtc(kind: "all" | "day" | "week" | "month") {
   const now = new Date();
   if (kind === "all") return { startUtc: null as Date | null, endUtc: null as Date | null };
@@ -90,15 +99,22 @@ export default async function TeacherProductsPage({ searchParams }: { searchPara
     ["revenue_desc", "count_desc", "updated_desc", "title_asc"].includes(sortRaw) ? sortRaw : "revenue_desc"
   ) as "revenue_desc" | "count_desc" | "updated_desc" | "title_asc";
 
+  // 정책: 상품 소유권(ownerId)은 admin에 유지하고, 선생님 콘솔은 teacherName/선택된 상품 기준으로 데이터만 연동
+  const teacherName = (teacher.teacherName || "").trim();
+  const adminOwnerId = await getAdminOwnerId();
+  const courseWhere =
+    adminOwnerId && teacherName.length ? ({ ownerId: adminOwnerId, teacherName } as const) : ({ id: "__NO_MATCH__" } as const);
+
   const [coursesAll, textbooksAll] = await Promise.all([
     prisma.course.findMany({
-      where: { ownerId: user.id },
+      // 강좌는 admin/courses에 있는(=admin 소유) 상품만 노출
+      where: courseWhere as any,
       orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
       select: { id: true, title: true, slug: true, isPublished: true, isSoldOut: true, reviewCount: true, rating: true },
-      take: 100,
+      take: 200,
     }),
     prisma.textbook.findMany({
-      where: { ownerId: user.id },
+      where: teacherName.length ? { teacherName } : undefined,
       orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
       select: {
         id: true,
@@ -111,7 +127,7 @@ export default async function TeacherProductsPage({ searchParams }: { searchPara
         textbookType: true,
         composition: true,
       },
-      take: 100,
+      take: 200,
     }),
   ]);
 
@@ -132,13 +148,14 @@ export default async function TeacherProductsPage({ searchParams }: { searchPara
 
   const rangeUtc = kstRangeUtc(range);
   const salesStatuses: OrderStatus[] = ["COMPLETED", "PARTIALLY_REFUNDED", "REFUNDED"];
+  const courseIdsForSales = coursesAll.map((c) => c.id);
+  const textbookIdsForSales = textbooksAll.map((t) => t.id);
   const [courseSales, textbookSales] = await Promise.all([
     prisma.order.groupBy({
       by: ["courseId"],
       where: {
         status: { in: salesStatuses },
-        courseId: { not: null },
-        course: { ownerId: user.id },
+        courseId: courseIdsForSales.length ? { in: courseIdsForSales } : { equals: "__NO_MATCH__" },
         ...(rangeUtc.startUtc && rangeUtc.endUtc ? { createdAt: { gte: rangeUtc.startUtc, lte: rangeUtc.endUtc } } : {}),
       },
       _count: { _all: true },
@@ -148,8 +165,7 @@ export default async function TeacherProductsPage({ searchParams }: { searchPara
       by: ["textbookId"],
       where: {
         status: { in: salesStatuses },
-        textbookId: { not: null },
-        textbook: { ownerId: user.id },
+        textbookId: textbookIdsForSales.length ? { in: textbookIdsForSales } : { equals: "__NO_MATCH__" },
         ...(rangeUtc.startUtc && rangeUtc.endUtc ? { createdAt: { gte: rangeUtc.startUtc, lte: rangeUtc.endUtc } } : {}),
       },
       _count: { _all: true },

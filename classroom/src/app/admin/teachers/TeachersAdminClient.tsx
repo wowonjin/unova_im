@@ -47,8 +47,8 @@ export default function TeachersAdminClient() {
   const [accountEmailInput, setAccountEmailInput] = useState("");
   const [issuedPassword, setIssuedPassword] = useState<string | null>(null);
   const [isLinkingAccount, setIsLinkingAccount] = useState(false);
-  const [isAutoAssigning, setIsAutoAssigning] = useState(false);
-  const [autoAssignResult, setAutoAssignResult] = useState<{ courses: number; textbooks: number } | null>(null);
+  const [isRestoringOwnership, setIsRestoringOwnership] = useState(false);
+  const [restoreResult, setRestoreResult] = useState<{ courses: number; textbooks: number } | null>(null);
   const [formData, setFormData] = useState({
     slug: "",
     name: "",
@@ -114,7 +114,7 @@ export default function TeachersAdminClient() {
     setActiveTab("basic");
     setAccountEmailInput(t.accountEmail || "");
     setIssuedPassword(null);
-    setAutoAssignResult(null);
+    setRestoreResult(null);
     setFormData({
       slug: t.slug,
       name: t.name,
@@ -140,7 +140,7 @@ export default function TeachersAdminClient() {
     setActiveTab("basic");
     setAccountEmailInput("");
     setIssuedPassword(null);
-    setAutoAssignResult(null);
+    setRestoreResult(null);
     setFormData({
       slug: "",
       name: "",
@@ -174,7 +174,7 @@ export default function TeachersAdminClient() {
     }
     setIsLinkingAccount(true);
     setIssuedPassword(null);
-    setAutoAssignResult(null);
+    setRestoreResult(null);
     try {
       const res = await fetch("/api/admin/teachers/link-account", {
         method: "POST",
@@ -199,29 +199,29 @@ export default function TeachersAdminClient() {
     }
   };
 
-  const autoAssignProductsByName = async () => {
+  const restoreAdminOwnership = async () => {
     if (!editingId) return;
-    setIsAutoAssigning(true);
-    setAutoAssignResult(null);
+    setIsRestoringOwnership(true);
+    setRestoreResult(null);
     try {
-      const res = await fetch("/api/admin/teachers/auto-assign-by-name", {
+      const res = await fetch("/api/admin/teachers/restore-admin-ownership", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ teacherId: editingId }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) {
-        alert("자동 연동에 실패했습니다. (선생님 계정이 연결되어 있는지 확인해주세요.)");
+        alert("복구에 실패했습니다. (선생님 계정이 연결되어 있는지 확인해주세요.)");
         return;
       }
       const courses = Number(json?.updated?.courses ?? 0);
       const textbooks = Number(json?.updated?.textbooks ?? 0);
-      setAutoAssignResult({ courses, textbooks });
+      setRestoreResult({ courses, textbooks });
       await refresh();
     } catch {
-      alert("자동 연동 중 오류가 발생했습니다.");
+      alert("복구 중 오류가 발생했습니다.");
     } finally {
-      setIsAutoAssigning(false);
+      setIsRestoringOwnership(false);
     }
   };
 
@@ -638,33 +638,33 @@ export default function TeachersAdminClient() {
               ) : null}
 
               <div className="rounded-2xl border border-white/[0.06] bg-transparent p-5">
-                <p className="text-[13px] font-semibold text-white/80">상품 자동 연동</p>
+                <p className="text-[13px] font-semibold text-white/80">상품 소유권 복구(관리자)</p>
                 <p className="mt-1 text-[12px] text-white/45">
-                  관리자 계정 소유로 등록된 상품 중, <span className="text-white/70 font-semibold">상품의 선생님 이름(teacherName)</span>이 현재 선생님 이름과 일치하는 항목을
-                  선생님 계정으로 자동 이관합니다.
+                  운영 정책: 상품은 <span className="text-white/70 font-semibold">관리자 소유(ownerId)</span>로 유지하고, 선생님 콘솔은 데이터(주문/정산)만 연동합니다.
+                  이전에 실수로 소유권이 선생님 계정으로 이동된 경우, 여기서 관리자 소유로 되돌릴 수 있습니다.
                 </p>
                 <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-2">
                   <button
                     type="button"
-                    onClick={autoAssignProductsByName}
-                    disabled={isAutoAssigning || !editingId}
+                    onClick={restoreAdminOwnership}
+                    disabled={isRestoringOwnership || !editingId}
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/[0.08] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-white/[0.12] disabled:opacity-60"
                   >
-                    {isAutoAssigning ? (
+                    {isRestoringOwnership ? (
                       <>
                         <span className="material-symbols-outlined animate-spin" style={{ fontSize: "18px" }}>progress_activity</span>
-                        연동 중...
+                        복구 중...
                       </>
                     ) : (
                       <>
-                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>sync</span>
-                        이름 기준으로 자동 연동 실행
+                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>settings_backup_restore</span>
+                        관리자 소유로 복구
                       </>
                     )}
                   </button>
-                  {autoAssignResult ? (
+                  {restoreResult ? (
                     <p className="text-[12px] text-emerald-200/80">
-                      완료: 강좌 {autoAssignResult.courses}개, 교재 {autoAssignResult.textbooks}개 이관
+                      완료: 강좌 {restoreResult.courses}개, 교재 {restoreResult.textbooks}개 복구
                     </p>
                   ) : null}
                 </div>

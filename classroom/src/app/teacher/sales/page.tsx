@@ -84,12 +84,27 @@ export default async function TeacherSalesPage() {
   const weekStart = kstBoundaryUtc("week");
   const monthStart = kstBoundaryUtc("month");
 
+  const teacherName = (teacher.teacherName || "").trim();
+  const [courseIds, textbookIds] = await Promise.all([
+    teacherName.length
+      ? prisma.course.findMany({ where: { teacherName }, select: { id: true }, take: 1000 }).then((xs) => xs.map((x) => x.id))
+      : Promise.resolve([] as string[]),
+    teacherName.length
+      ? prisma.textbook.findMany({ where: { teacherName }, select: { id: true }, take: 1000 }).then((xs) => xs.map((x) => x.id))
+      : Promise.resolve([] as string[]),
+  ]);
+
+  const scopeOr: any[] = [];
+  if (courseIds.length) scopeOr.push({ courseId: { in: courseIds } });
+  if (textbookIds.length) scopeOr.push({ textbookId: { in: textbookIds } });
+  const scopeWhere = scopeOr.length ? ({ OR: scopeOr } as const) : ({ id: "__NO_MATCH__" } as const);
+
   const [weekOrders, monthOrders] = await Promise.all([
     prisma.order.findMany({
       where: {
         status: { in: SALES_STATUSES },
         createdAt: { gte: weekStart, lte: now },
-        OR: [{ course: { ownerId: user.id } }, { textbook: { ownerId: user.id } }],
+        ...(scopeWhere as any),
       },
       select: {
         productType: true,
@@ -107,7 +122,7 @@ export default async function TeacherSalesPage() {
       where: {
         status: { in: SALES_STATUSES },
         createdAt: { gte: monthStart, lte: now },
-        OR: [{ course: { ownerId: user.id } }, { textbook: { ownerId: user.id } }],
+        ...(scopeWhere as any),
       },
       select: {
         productType: true,
