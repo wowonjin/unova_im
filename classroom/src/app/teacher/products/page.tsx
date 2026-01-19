@@ -173,8 +173,11 @@ export default async function TeacherProductsPage({ searchParams }: { searchPara
     textbookSalesById.set(id, { count: row._count._all ?? 0, revenue });
   }
 
-  const sortItems = <T extends { id: string; title: string }>(items: T[], salesMap: Map<string, { count: number; revenue: number }>) => {
-    const copy = [...items];
+  const sortItems = <T extends { id: string; title: string }>(
+    items: readonly T[],
+    salesMap: Map<string, { count: number; revenue: number }>
+  ) => {
+    const copy = [...items] as T[];
     const get = (id: string) => salesMap.get(id) ?? { count: 0, revenue: 0 };
     copy.sort((a, b) => {
       const sa = get(a.id);
@@ -188,9 +191,11 @@ export default async function TeacherProductsPage({ searchParams }: { searchPara
     return copy;
   };
 
-  const coursesSorted = sort === "updated_desc" ? courses : sortItems(courses, courseSalesById);
-  const textbooksSorted = sort === "updated_desc" ? textbooksPhysical : sortItems(textbooksPhysical as any, textbookSalesById);
-  const ebooksSorted = sort === "updated_desc" ? ebooks : sortItems(ebooks as any, textbookSalesById);
+  // 조건식(삼항 연산자)에서 타입이 공통 타입으로 과도하게 좁혀지는 것을 방지하기 위해 명시 타입을 부여합니다.
+  const coursesSorted: typeof courses = sort === "updated_desc" ? courses : sortItems(courses, courseSalesById);
+  const textbooksSorted: typeof textbooksPhysical =
+    sort === "updated_desc" ? textbooksPhysical : sortItems(textbooksPhysical, textbookSalesById);
+  const ebooksSorted: typeof ebooks = sort === "updated_desc" ? ebooks : sortItems(ebooks, textbookSalesById);
 
   return (
     <AppShell>
