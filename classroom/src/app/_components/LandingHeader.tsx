@@ -257,9 +257,32 @@ export default function LandingHeader({
 
   // "유노바 선생님" 서브메뉴: DB(어드민 등록) 기반으로 동적 생성
   useEffect(() => {
-    // 선생님 상세 페이지는 개발 중이므로, 헤더 서브메뉴(드롭다운)는 숨깁니다.
-    // 메뉴 자체(/teachers)는 유지됩니다.
-    setTeacherSubItems([]);
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const res = await fetch("/api/teachers/list", { cache: "force-cache" });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.ok) throw new Error("FETCH_TEACHERS_FAILED");
+        const list = Array.isArray(json.teachers) ? json.teachers : [];
+        const items: SubMenuItem[] = list
+          .filter((t: any) => typeof t?.slug === "string" && typeof t?.name === "string")
+          .map((t: any) => ({
+            label: `${String(t.name).trim()} 선생님`,
+            href: `/teachers/${encodeURIComponent(String(t.slug).trim())}`,
+          }));
+
+        // 상단에 "전체 보기"를 항상 제공
+        const withAll: SubMenuItem[] = [{ label: "선생님 전체", href: "/teachers" }, ...items];
+        if (!cancelled) setTeacherSubItems(withAll);
+      } catch {
+        // 실패 시에도 메뉴는 깨지지 않게: 서브메뉴만 숨김(기본 /teachers 링크는 유지)
+        if (!cancelled) setTeacherSubItems([]);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const mergedMenuItems = useMemo(() => {
@@ -627,7 +650,7 @@ export default function LandingHeader({
                   >
                     {/* 서브 메뉴 컨테이너: 원래처럼 흰 배경 */}
                     <div
-                      className={`animate-[fadeIn_150ms_ease-out] rounded-xl p-2 shadow-lg ${
+                      className={`animate-[fadeIn_150ms_ease-out] rounded-xl p-2 shadow-lg max-h-[60vh] overflow-y-auto ${
                         isLight ? "border border-black/10 bg-white" : "border border-white/10 bg-[#1C1C1C]"
                       }`}
                     >

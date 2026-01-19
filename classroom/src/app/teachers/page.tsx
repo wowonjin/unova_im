@@ -25,7 +25,6 @@ export default function TeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   const subjects = useMemo(() => {
     // 과목 탭 정렬: "각 과목에 속한 선생님 중 최소 position" 기준(오름차순)
@@ -54,18 +53,7 @@ export default function TeachersPage() {
       setLoading(true);
       setError(null);
       try {
-        const [teachersRes, meRes] = await Promise.all([
-          fetch("/api/teachers/list"),
-          fetch("/api/me"),
-        ]);
-
-        // 관리자 여부 (실패/비로그인 시 false 유지)
-        if (meRes.ok) {
-          const me = await meRes.json().catch(() => null);
-          setIsAdmin(Boolean(me?.ok && me?.user?.isAdmin));
-        } else {
-          setIsAdmin(false);
-        }
+        const teachersRes = await fetch("/api/teachers/list");
 
         const json = await teachersRes.json().catch(() => null);
         if (!teachersRes.ok || !json?.ok) throw new Error("FETCH_FAILED");
@@ -155,12 +143,11 @@ export default function TeachersPage() {
             ) : (
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {filteredTeachers.map((teacher) => (
-                  isAdmin ? (
-                    <Link
-                      key={teacher.slug}
-                      href={`/teachers/${teacher.slug}`}
-                      className="group block bg-transparent border border-transparent overflow-hidden transition-all"
-                    >
+                  <Link
+                    key={teacher.slug}
+                    href={`/teachers/${teacher.slug}`}
+                    className="group block bg-transparent border border-transparent overflow-hidden transition-all"
+                  >
                     {/* 이미지(컨테이너 없이 이미지 자체) */}
                     {teacher.imageUrl ? (
                       <Image
@@ -191,50 +178,7 @@ export default function TeachersPage() {
                         <h3 className="text-[14px] sm:text-[18px] font-semibold text-white truncate">{teacher.name} 선생님</h3>
                       </div>
                     </div>
-                    </Link>
-                  ) : (
-                    <div
-                      key={teacher.slug}
-                      role="link"
-                      aria-disabled="true"
-                      className="group block bg-transparent border border-transparent overflow-hidden transition-all cursor-default select-none"
-                      onClick={(e) => e.preventDefault()}
-                      onMouseDown={(e) => e.preventDefault()}
-                    >
-                      {/* 이미지(컨테이너 없이 이미지 자체) */}
-                      {teacher.imageUrl ? (
-                        <Image
-                          src={teacher.imageUrl}
-                          alt={teacher.name}
-                          width={600}
-                          height={800}
-                          className="w-full h-auto opacity-90"
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full flex items-center justify-center bg-white/[0.04] py-12">
-                          <span className="text-[56px] font-bold text-white/70">{teacher.name.charAt(0)}</span>
-                        </div>
-                      )}
-
-                      {/* 이름 / 과목 */}
-                      <div className="p-3 sm:p-5">
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`inline-flex items-center px-2 py-1 sm:px-2.5 rounded-full text-[10px] sm:text-[12px] border shrink-0 ${subjectBadgeClass(
-                              teacher.subjectName
-                            )}`}
-                          >
-                            {teacher.subjectName}
-                          </span>
-                          <h3 className="text-[14px] sm:text-[18px] font-semibold text-white truncate">
-                            {teacher.name} 선생님
-                          </h3>
-                        </div>
-                      </div>
-                    </div>
-                  )
+                  </Link>
                 ))}
               </div>
             )}

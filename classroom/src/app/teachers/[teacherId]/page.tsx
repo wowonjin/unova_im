@@ -7,9 +7,8 @@ import type { TeacherDetailTeacher } from "./TeacherDetailClient";
 import { prisma } from "@/lib/prisma";
 import { getTeacherRatingSummary } from "@/lib/teacher-rating";
 import type { StorePreviewProduct } from "@/app/_components/StorePreviewTabs";
-import { getCurrentUser } from "@/lib/current-user";
 
-// 선생님 상세는 개발 중이므로 관리자만 접근 가능 + 유저별(세션) 권한 분기 필요
+// 선생님 상세 페이지: 누구나 접근 가능 (공개 페이지)
 export const dynamic = "force-dynamic";
 
 function toPublicGcsUrl(input?: string | null) {
@@ -864,12 +863,6 @@ for (const id of Object.keys(teachersData)) {
 export default async function TeacherDetailPage({ params }: { params: Promise<{ teacherId: string }> }) {
   const { teacherId } = await params;
 
-  // 개발 중: 관리자만 접근 가능. 그 외에는 선생님 목록(/teachers)까지만 허용.
-  const user = await getCurrentUser();
-  if (!user?.isAdmin) {
-    redirect("/teachers");
-  }
-
   // 1) 레거시 하드코딩 데이터 우선
   const teacher = teachersData[teacherId];
 
@@ -1008,7 +1001,8 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
       >
         <LandingHeader
           backgroundColor="#161616"
-          topBackgroundColor="#161616"
+          // 선생님 상세 페이지: 모바일에서도 헤더가 콘텐츠와 겹치도록(스크롤 전 투명)
+          topBackgroundColor="transparent"
           scrolledBackgroundColor="#161616"
           variant="dark"
           scrolledVariant="dark"
@@ -1083,7 +1077,8 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
       <div className="min-h-screen bg-[#464065] text-white flex flex-col">
         <LandingHeader
           backgroundColor="#161616"
-          topBackgroundColor="#161616"
+          // 선생님 상세 페이지: 모바일에서도 헤더가 콘텐츠와 겹치도록(스크롤 전 투명)
+          topBackgroundColor="transparent"
           scrolledBackgroundColor="#161616"
           variant="dark"
           scrolledVariant="dark"
@@ -1103,7 +1098,8 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
     <div className="min-h-screen bg-[#464065] text-white flex flex-col">
       <LandingHeader
         backgroundColor="#161616"
-        topBackgroundColor="#161616"
+        // 선생님 상세 페이지: 모바일에서도 헤더가 콘텐츠와 겹치도록(스크롤 전 투명)
+        topBackgroundColor="transparent"
         scrolledBackgroundColor="#161616"
         variant="dark"
         scrolledVariant="dark"
@@ -1111,7 +1107,8 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
         overlayOnDesktop
       />
       
-      <main className="flex-1 pt-[70px]">
+      {/* 모바일에서는 헤더와 겹치도록 pt 제거, 데스크탑은 기존 여백 유지 */}
+      <main className="flex-1 pt-0 lg:pt-[80px]">
         {/* 프로필 섹션 */}
         <section className="py-20 md:py-28 border-b border-white/[0.06]">
           <div className="mx-auto max-w-3xl px-6">

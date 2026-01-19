@@ -373,6 +373,13 @@ html, body {
   }
 }
 
+/* 선생님 상세(PC): 헤더와 본문이 "딱 붙어" 보이지 않도록 아주 살짝 여백 추가 */
+@media (min-width: 1024px) {
+  .unova-wrapper {
+    padding-top: calc(var(--unova-fixed-header-offset) + 10px);
+  }
+}
+
 /* 메인(상단) 섹터 뒤 배경을 화면 전체(100vw)로 #464065 깔기 */
 .unova-wrapper::before {
   content: "";
@@ -3146,6 +3153,9 @@ a.unova-menu-item:active {
     padding: 24px 16px 0;
     gap: 16px;
     align-items: flex-start;
+    /* 긴 텍스트가 있을 때 flex item이 폭을 강제로 키우며 이미지 영역을 밀어내는 현상 방지 */
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   .mega-mobile-hero__info {
@@ -3155,6 +3165,8 @@ a.unova-menu-item:active {
     justify-content: flex-start;
     padding-top: 24px;
     padding-bottom: 0;
+    /* flex item 기본 min-width:auto 때문에 nowrap/긴 문자열이 폭을 늘려 이미지를 밀 수 있음 */
+    min-width: 0;
   }
 
   .mega-mobile-hero__catchphrase {
@@ -3241,10 +3253,12 @@ a.unova-menu-item:active {
     display: flex;
     flex-direction: column;
     gap: 6px;
+    min-width: 0;
   }
 
   .mega-mobile-hero__notices .mega-mobile-notice {
     font-size: 12px;
+    min-width: 0;
   }
 
   .mega-mobile-hero__image {

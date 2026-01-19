@@ -701,11 +701,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
           </div>
         )}
         {/* 헤더 아래 얇은 이벤트 바 */}
-        <div className="mega-mobile-eventbar" role="note" aria-label="이벤트 안내">
-          <span className="mega-mobile-eventbar__text">
-            📌{teacher.name} 선생님 교재 및 강의 후기 이벤트를 확인하세요!
-          </span>
-        </div>
+        {/* (요청사항) 모바일 이벤트 바 제거 */}
 
         {/* 히어로 섹션 */}
         <div className="mega-mobile-hero">
