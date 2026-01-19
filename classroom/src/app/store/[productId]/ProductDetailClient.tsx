@@ -1407,10 +1407,7 @@ export default function ProductDetailClient({
                   {/* FREE 말풍선 - 커리큘럼 탭 위에 (탭이 sticky 상태가 아닐 때만 표시) */}
                   {product.type === "course" && tab === "커리큘럼" && !isTabSticky && (
                     <div className="absolute -top-7 sm:-top-8 left-1/2 -translate-x-1/2 z-10">
-                      <div className="relative inline-flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] sm:text-[11px] font-bold shadow-lg shadow-blue-500/30 animate-bounce whitespace-nowrap">
-                        <span className="material-symbols-outlined text-[12px] sm:text-[14px]">
-                          play_circle
-                        </span>
+                      <div className="relative inline-flex items-center px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] sm:text-[11px] font-bold shadow-lg shadow-blue-500/30 animate-bounce whitespace-nowrap">
                         맛보기 파일
                         {/* 말풍선 꼬리 */}
                         <div className="absolute -bottom-1 sm:-bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] sm:border-l-[6px] border-l-transparent border-r-[5px] sm:border-r-[6px] border-r-transparent border-t-[5px] sm:border-t-[6px] border-t-cyan-500" />
@@ -1420,10 +1417,7 @@ export default function ProductDetailClient({
                   {/* 맛보기 파일 말풍선 - 교재소개 탭 위에 (탭이 sticky 상태가 아닐 때만 표시) */}
                   {product.type === "textbook" && tab === "교재소개" && Boolean(previewDownloadUrl) && !isTabSticky && (
                     <div className="absolute -top-7 sm:-top-8 left-1/2 -translate-x-1/2 z-10">
-                      <div className="relative inline-flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] sm:text-[11px] font-bold shadow-lg shadow-blue-500/30 animate-bounce whitespace-nowrap">
-                        <span className="material-symbols-outlined text-[12px] sm:text-[14px]">
-                          download
-                        </span>
+                      <div className="relative inline-flex items-center px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] sm:text-[11px] font-bold shadow-lg shadow-blue-500/30 animate-bounce whitespace-nowrap">
                         맛보기 파일
                         {/* 말풍선 꼬리 */}
                         <div className="absolute -bottom-1 sm:-bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] sm:border-l-[6px] border-l-transparent border-r-[5px] sm:border-r-[6px] border-r-transparent border-t-[5px] sm:border-t-[6px] border-t-cyan-500" />
