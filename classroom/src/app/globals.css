@@ -1159,10 +1159,13 @@ a.unova-menu-item:active {
 /* PC: 상단 3줄 타이틀(상단 문구/과목/이름) 굵기 살짝 톤다운 */
 @media (min-width: 1001px) {
   .unova-header-title {
-    font-weight: 600;
+    font-weight: 500;
   }
   .unova-header-title .unova-subject {
-    font-weight: 600;
+    font-weight: 500;
+  }
+  .unova-header-sub {
+    font-weight: 450;
   }
 }
 

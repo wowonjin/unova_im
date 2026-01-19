@@ -927,9 +927,6 @@ export default function TeacherDetailClient({ teacher }: Props) {
                   className={`unova-header-sub ${isLsy ? "unova-header-sub--accent" : ""}`}
                   style={{
                     ...(isLsy ? { color: "#fff", fontWeight: 400 } : null),
-                    // 요청사항: PC에서 상단 3줄 타이틀(상단 문구/과목/이름)이 너무 굵어 보여서
-                    // headerSub는 살짝만 톤다운
-                    fontWeight: 500,
                   }}
                 >
                   {teacher.headerSub}
