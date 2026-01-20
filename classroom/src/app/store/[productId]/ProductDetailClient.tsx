@@ -1212,7 +1212,7 @@ export default function ProductDetailClient({
             </div>
           ) : product.thumbnailUrl ? (
             <div className="mb-8">
-              <div className="relative w-full max-w-[520px] lg:max-w-none aspect-square lg:aspect-video rounded-xl overflow-hidden bg-[#1a1a1c] border border-white/10">
+              <div className="relative w-full max-w-[520px] lg:max-w-none aspect-video rounded-xl overflow-hidden bg-[#1a1a1c] border border-white/10">
                 {product.isSoldOut && (
                   <div className="absolute right-3 top-3 z-10">
                     <span className="inline-flex items-center rounded-full bg-zinc-700/80 px-3 py-1 text-xs font-semibold text-white/90 border border-white/10">
@@ -1234,7 +1234,7 @@ export default function ProductDetailClient({
             </div>
           ) : (
             <div className="mb-8">
-              <div className="relative w-full max-w-[520px] lg:max-w-none aspect-square lg:aspect-video rounded-xl overflow-hidden bg-[#1a1a1c] border border-white/10 flex items-center justify-center bg-gradient-to-br from-white/[0.06] to-white/[0.02]">
+              <div className="relative w-full max-w-[520px] lg:max-w-none aspect-video rounded-xl overflow-hidden bg-[#1a1a1c] border border-white/10 flex items-center justify-center bg-gradient-to-br from-white/[0.06] to-white/[0.02]">
                 {product.isSoldOut && (
                   <div className="absolute right-3 top-3 z-10">
                     <span className="inline-flex items-center rounded-full bg-zinc-700/80 px-3 py-1 text-xs font-semibold text-white/90 border border-white/10">
@@ -1380,25 +1380,6 @@ export default function ProductDetailClient({
             }`}
           >
             {(() => {
-              const renderMobileShortLabel = (t: TabKey) => {
-                switch (t) {
-                  case "상세 페이지":
-                    return "상세";
-                  case "강의소개":
-                  case "교재소개":
-                    return "소개";
-                  case "커리큘럼":
-                    return "커리";
-                  case "강의후기":
-                  case "교재후기":
-                    return "후기";
-                  case "환불정책":
-                    return "환불";
-                  default:
-                    return String(t);
-                }
-              };
-
               const mobileColsClass = tabs.length >= 5 ? "grid-cols-5" : "grid-cols-4";
               return (
                 <div className={`grid ${mobileColsClass} gap-x-1 gap-y-1 px-2 py-2 sm:flex sm:justify-between sm:px-0 sm:py-0`}>
@@ -1408,7 +1389,7 @@ export default function ProductDetailClient({
                   {product.type === "course" && tab === "커리큘럼" && !isTabSticky && (
                     <div className="absolute -top-7 sm:-top-8 left-1/2 -translate-x-1/2 z-10">
                       <div className="relative inline-flex items-center px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] sm:text-[11px] font-bold shadow-lg shadow-blue-500/30 animate-bounce whitespace-nowrap">
-                        맛보기 파일
+                        맛보기 후기
                         {/* 말풍선 꼬리 */}
                         <div className="absolute -bottom-1 sm:-bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] sm:border-l-[6px] border-l-transparent border-r-[5px] sm:border-r-[6px] border-r-transparent border-t-[5px] sm:border-t-[6px] border-t-cyan-500" />
                       </div>
@@ -1426,18 +1407,22 @@ export default function ProductDetailClient({
                   )}
                   <button
                     onClick={() => setActiveTab(tab)}
-                    className={`relative w-full px-1 py-2 text-[10px] font-semibold text-center leading-tight whitespace-nowrap transition-colors duration-150 sm:w-auto sm:px-5 sm:py-4 sm:text-[14px] sm:font-medium sm:whitespace-nowrap ${
+                    className={`relative w-full px-1 py-2 text-[11px] font-semibold text-center leading-tight whitespace-normal break-all transition-colors duration-150 sm:w-auto sm:px-5 sm:py-4 sm:text-[14px] sm:font-medium sm:whitespace-nowrap ${
                       activeTab === tab
                         ? "text-white"
                         : "text-white/40 hover:text-white/70"
                     }`}
                   >
-                    {/* 모바일: 짧은 라벨로 한 줄 4개가 확실히 들어가게 */}
-                    <span className="sm:hidden">{renderMobileShortLabel(tab)}</span>
+                    {/* 모바일: 전체 라벨 표시 */}
+                    <span className="sm:hidden">
+                      {tab === "강의후기" || tab === "교재후기"
+                        ? `${tab}(${reviewCount.toLocaleString("ko-KR")})`
+                        : tab}
+                    </span>
                     {/* 데스크톱: 기존 라벨/카운트 유지 */}
                     <span className="hidden sm:inline">
                       {tab === "강의후기" || tab === "교재후기" ? (
-                        <>{tab} ({reviewCount})</>
+                        <>{tab}({reviewCount.toLocaleString("ko-KR")})</>
                       ) : tab === "커리큘럼" ? (
                         <>커리큘럼 ({totalLessons}강)</>
                       ) : (
@@ -1482,27 +1467,27 @@ export default function ProductDetailClient({
             <section>
               {/* 수강기간/구성 컨테이너는 강좌/교재 모두 유지 */}
               <div className="rounded-xl border border-white/10 overflow-hidden mb-8">
-                  <table className="w-full text-[14px]">
+                  <table className="w-full text-[12px] sm:text-[14px]">
                     <tbody>
                       <tr className="border-b border-white/10">
-                        <td className="px-5 py-4 bg-white/[0.02] text-white/50 w-32 font-medium whitespace-nowrap">
+                        <td className="px-4 py-3 sm:px-5 sm:py-4 bg-white/[0.02] text-white/50 w-28 sm:w-32 font-medium whitespace-nowrap">
                           {product.type === "textbook" ? "다운로드 기간" : "수강 기간"}
                         </td>
-                        <td className="px-5 py-4 text-white/90">
+                        <td className="px-4 py-3 sm:px-5 sm:py-4 text-white/90">
                           {product.studyPeriod.regular + product.studyPeriod.review}일
                         </td>
                       </tr>
                       {product.type === "textbook" && previewDownloadUrl && (
                         <tr className="border-b border-white/10">
-                          <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium whitespace-nowrap">
+                          <td className="px-4 py-3 sm:px-5 sm:py-4 bg-white/[0.02] text-white/50 font-medium whitespace-nowrap">
                             맛보기 파일
                           </td>
-                          <td className="px-5 py-4 text-white/90">
+                          <td className="px-4 py-3 sm:px-5 sm:py-4 text-white/90">
                             <a
                               href={previewDownloadUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-[13px] font-semibold text-white/80 hover:bg-white/10"
+                              className="inline-flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-[12px] sm:text-[13px] font-semibold text-white/80 hover:bg-white/10"
                             >
                               <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
                                 download
@@ -1513,8 +1498,8 @@ export default function ProductDetailClient({
                         </tr>
                       )}
                       <tr>
-                        <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">구성</td>
-                        <td className="px-5 py-4 text-white/90">
+                        <td className="px-4 py-3 sm:px-5 sm:py-4 bg-white/[0.02] text-white/50 font-medium">구성</td>
+                        <td className="px-4 py-3 sm:px-5 sm:py-4 text-white/90">
                           {product.type === "textbook" ? (product.composition || "PDF 교재") : `총 ${totalLessons}개 수업`}
                         </td>
                       </tr>
@@ -1523,8 +1508,8 @@ export default function ProductDetailClient({
                           // NOTE: 맛보기 파일 URL은 전용 row로 노출하므로 중복 표시는 막습니다.
                           (opt?.name ?? "").replace(/\s+/g, "").toLowerCase() === "맛보기파일url" ? null :
                           <tr key={`${opt.name}-${i}`} className="border-t border-white/10">
-                            <td className="px-5 py-4 bg-white/[0.02] text-white/50 font-medium">{opt.name}</td>
-                            <td className="px-5 py-4 text-white/90 whitespace-pre-line">{opt.value}</td>
+                            <td className="px-4 py-3 sm:px-5 sm:py-4 bg-white/[0.02] text-white/50 font-medium">{opt.name}</td>
+                            <td className="px-4 py-3 sm:px-5 sm:py-4 text-white/90 whitespace-pre-line">{opt.value}</td>
                           </tr>
                         ))}
                     </tbody>
@@ -1609,14 +1594,10 @@ export default function ProductDetailClient({
             <section>
               
               {/* 요약 + CTA */}
-              <div className={`mb-6 rounded-2xl p-5 ${isSimpleReviewUi ? "" : "border border-white/10"}`}>
+              <div className="mb-6 rounded-2xl p-5">
                 <div className="flex flex-col gap-4">
                   <div className="flex items-start gap-4">
-                    <div
-                      className={`rounded-2xl px-4 py-3 text-center min-w-[140px] ${
-                        totalReviews <= 0 || isSimpleReviewUi ? "" : "border border-white/10"
-                      }`}
-                    >
+                    <div className="rounded-2xl px-4 py-3 text-center min-w-[140px]">
                       <p className="text-[28px] sm:text-[32px] font-semibold tracking-[-0.02em] text-white">
                         {averageRating.toFixed(1)}
                       </p>
@@ -2196,11 +2177,10 @@ export default function ProductDetailClient({
           {/* 환불정책 */}
           {activeTab === "환불정책" && (
             <section>
-              <div className="rounded-xl border border-white/10 p-6">
-                {product.type === "course" ? (
-                  <div className="space-y-6 text-[14px] text-white/70">
+              {product.type === "course" ? (
+                <div className="space-y-6 text-[12px] sm:text-[14px] text-white/70 leading-relaxed">
                     <div>
-                      <p className="text-[15px] font-semibold text-white/90 mb-2">환불/취소 안내 (VOD 강의)</p>
+                      <p className="text-[13px] sm:text-[15px] font-semibold text-white/90 mb-2">환불/취소 안내 (VOD 강의)</p>
                       <ul className="space-y-2">
                         <li className="flex items-start gap-3">
                           <span className="text-white/30">•</span>
@@ -2216,7 +2196,7 @@ export default function ProductDetailClient({
                     </div>
 
                     <div>
-                      <p className="text-[15px] font-semibold text-white/90 mb-2">전액 환불(청약철회) 가능</p>
+                      <p className="text-[13px] sm:text-[15px] font-semibold text-white/90 mb-2">전액 환불(청약철회) 가능</p>
                       <ul className="space-y-2">
                         <li className="flex items-start gap-3">
                           <span className="text-white/30">•</span>
@@ -2235,7 +2215,7 @@ export default function ProductDetailClient({
                     </div>
 
                     <div>
-                      <p className="text-[15px] font-semibold text-white/90 mb-2">부분 환불(수강 진행 후)</p>
+                      <p className="text-[13px] sm:text-[15px] font-semibold text-white/90 mb-2">부분 환불(수강 진행 후)</p>
                       <ul className="space-y-2">
                         <li className="flex items-start gap-3">
                           <span className="text-white/30">•</span>
@@ -2259,7 +2239,7 @@ export default function ProductDetailClient({
                     </div>
 
                     <div>
-                      <p className="text-[15px] font-semibold text-white/90 mb-2">환불 불가(예외)</p>
+                      <p className="text-[13px] sm:text-[15px] font-semibold text-white/90 mb-2">환불 불가(예외)</p>
                       <ul className="space-y-2">
                         <li className="flex items-start gap-3">
                           <span className="text-white/30">•</span>
@@ -2273,7 +2253,7 @@ export default function ProductDetailClient({
                     </div>
 
                     <div>
-                      <p className="text-[15px] font-semibold text-white/90 mb-2">교재/추가 강의와 함께 구매한 경우</p>
+                      <p className="text-[13px] sm:text-[15px] font-semibold text-white/90 mb-2">교재/추가 강의와 함께 구매한 경우</p>
                       <ul className="space-y-2">
                         <li className="flex items-start gap-3">
                           <span className="text-white/30">•</span>
@@ -2287,7 +2267,7 @@ export default function ProductDetailClient({
                     </div>
 
                     <div>
-                      <p className="text-[15px] font-semibold text-white/90 mb-2">환불 신청 및 처리</p>
+                      <p className="text-[13px] sm:text-[15px] font-semibold text-white/90 mb-2">환불 신청 및 처리</p>
                       <ul className="space-y-2">
                         <li className="flex items-start gap-3">
                           <span className="text-white/30">•</span>
@@ -2299,11 +2279,11 @@ export default function ProductDetailClient({
                         </li>
                       </ul>
                     </div>
-                  </div>
-                ) : (
-                  <div className="space-y-6 text-[14px] text-white/70">
+                </div>
+              ) : (
+                <div className="space-y-6 text-[12px] sm:text-[14px] text-white/70 leading-relaxed">
                     <div>
-                      <p className="text-[15px] font-semibold text-white/90 mb-2">환불/취소 안내 (PDF 교재)</p>
+                      <p className="text-[13px] sm:text-[15px] font-semibold text-white/90 mb-2">환불/취소 안내 (PDF 교재)</p>
                       <ul className="space-y-2">
                         <li className="flex items-start gap-3">
                           <span className="text-white/30">•</span>
@@ -2317,7 +2297,7 @@ export default function ProductDetailClient({
                     </div>
 
                     <div>
-                      <p className="text-[15px] font-semibold text-white/90 mb-2">환불 가능</p>
+                      <p className="text-[13px] sm:text-[15px] font-semibold text-white/90 mb-2">환불 가능</p>
                       <ul className="space-y-2">
                         <li className="flex items-start gap-3">
                           <span className="text-white/30">•</span>
@@ -2327,7 +2307,7 @@ export default function ProductDetailClient({
                     </div>
 
                     <div>
-                      <p className="text-[15px] font-semibold text-white/90 mb-2">환불 불가</p>
+                      <p className="text-[13px] sm:text-[15px] font-semibold text-white/90 mb-2">환불 불가</p>
                       <ul className="space-y-2">
                         <li className="flex items-start gap-3">
                           <span className="text-white/30">•</span>
@@ -2341,7 +2321,7 @@ export default function ProductDetailClient({
                     </div>
 
                     <div>
-                      <p className="text-[15px] font-semibold text-white/90 mb-2">환불 신청 및 처리</p>
+                      <p className="text-[13px] sm:text-[15px] font-semibold text-white/90 mb-2">환불 신청 및 처리</p>
                       <ul className="space-y-2">
                         <li className="flex items-start gap-3">
                           <span className="text-white/30">•</span>
@@ -2353,9 +2333,8 @@ export default function ProductDetailClient({
                         </li>
                       </ul>
                     </div>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </section>
           )}
         </div>
