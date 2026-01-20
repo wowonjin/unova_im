@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTeacherUser } from "@/lib/current-user";
 import { slugify } from "@/lib/slugify";
+import { getBaseUrl } from "@/lib/oauth";
 
 export const runtime = "nodejs";
 
@@ -146,7 +147,7 @@ export async function POST(req: Request) {
 
   const redirectTo = `/admin/course/${course.id}`;
   if (json) return NextResponse.json({ ok: true, courseId: course.id, redirectTo });
-  return NextResponse.redirect(new URL(redirectTo, req.url));
+  return NextResponse.redirect(new URL(redirectTo, getBaseUrl(req)));
 }
 
 

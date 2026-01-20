@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTeacherUser } from "@/lib/current-user";
+import { getBaseUrl } from "@/lib/oauth";
 import path from "node:path";
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
@@ -76,7 +77,7 @@ export async function POST(req: Request) {
   });
 
   // 업로드 후 뒤로
-  return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin", req.url));
+  return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin", getBaseUrl(req)));
 }
 
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTeacherUser } from "@/lib/current-user";
 import { ensureSoldOutColumnsOnce } from "@/lib/ensure-columns";
+import { getBaseUrl } from "@/lib/oauth";
 
 export const runtime = "nodejs";
 
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
     data: { isPublished, isSoldOut: isPublished ? isSoldOut : false },
   });
 
-  return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin", req.url));
+  return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin", getBaseUrl(req)));
 }
 
 

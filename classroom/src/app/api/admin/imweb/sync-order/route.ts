@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentTeacherUser } from "@/lib/current-user";
 import { syncImwebOrderToEnrollments } from "@/lib/imweb";
+import { getBaseUrl } from "@/lib/oauth";
 
 export const runtime = "nodejs";
 
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
   const result = await syncImwebOrderToEnrollments(parsed.data.orderNo);
   console.log("[IMWEB] sync-order", parsed.data.orderNo, result);
 
-  return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin", req.url));
+  return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin", getBaseUrl(req)));
 }
 
 

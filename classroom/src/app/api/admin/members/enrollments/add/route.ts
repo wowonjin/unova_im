@@ -12,7 +12,7 @@ const Schema = z.object({
 
 export async function POST(req: Request) {
   try {
-    await requireAdminUser();
+    const admin = await requireAdminUser();
 
     const raw = await req.json().catch(() => null);
     const parsed = Schema.safeParse(raw);
@@ -23,10 +23,10 @@ export async function POST(req: Request) {
 
     const { memberId, courseId } = parsed.data;
 
-    // 강좌 조회하여 enrollmentDays 가져오기
+    // 강좌 조회(소유권 포함)하여 enrollmentDays 가져오기
     const course = await prisma.course.findUnique({
-      where: { id: courseId },
-      select: { enrollmentDays: true },
+      where: { id: courseId, ownerId: admin.id },
+      select: { id: true, title: true, enrollmentDays: true },
     });
 
     if (!course) {
@@ -36,13 +36,30 @@ export async function POST(req: Request) {
     const startAt = new Date();
     const endAt = new Date(startAt.getTime() + course.enrollmentDays * 24 * 60 * 60 * 1000);
 
-    await prisma.enrollment.upsert({
+    const enrollment = await prisma.enrollment.upsert({
       where: { userId_courseId: { userId: memberId, courseId } },
       update: { status: "ACTIVE", startAt, endAt },
       create: { userId: memberId, courseId, status: "ACTIVE", startAt, endAt },
+      select: {
+        id: true,
+        courseId: true,
+        status: true,
+        startAt: true,
+        endAt: true,
+      },
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      ok: true,
+      enrollment: {
+        id: enrollment.id,
+        courseId: enrollment.courseId,
+        courseTitle: course.title,
+        status: enrollment.status,
+        startAt: enrollment.startAt.toISOString(),
+        endAt: enrollment.endAt.toISOString(),
+      },
+    });
   } catch (error) {
     console.error("Member enrollment add error:", error);
     return NextResponse.json({ ok: false, error: "ADD_FAILED" }, { status: 500 });

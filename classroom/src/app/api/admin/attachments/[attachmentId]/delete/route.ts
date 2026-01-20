@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTeacherUser } from "@/lib/current-user";
+import { getBaseUrl } from "@/lib/oauth";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -47,7 +48,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ attachmentId: 
     // ignore
   }
 
-  return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin", req.url));
+  return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin", getBaseUrl(req)));
 }
 
 

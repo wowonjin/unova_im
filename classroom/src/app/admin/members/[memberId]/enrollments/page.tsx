@@ -9,7 +9,7 @@ export default async function MemberEnrollmentsPage({
 }: {
   params: Promise<{ memberId: string }>;
 }) {
-  await requireAdminUser();
+  const admin = await requireAdminUser();
   const { memberId } = await params;
 
   const member = await prisma.user.findUnique({
@@ -43,6 +43,8 @@ export default async function MemberEnrollmentsPage({
   const enrolledCourseIds = member.enrollments.map((e) => e.course.id);
   const availableCourses = await prisma.course.findMany({
     where: {
+      // "강좌 판매하기(/admin/courses)"에 있는 내 강좌만 강좌추가에 노출
+      ownerId: admin.id,
       id: { notIn: enrolledCourseIds },
     },
     orderBy: { title: "asc" },

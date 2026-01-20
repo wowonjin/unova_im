@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTeacherUser } from "@/lib/current-user";
+import { getBaseUrl } from "@/lib/oauth";
 
 export const runtime = "nodejs";
 
@@ -29,13 +30,19 @@ export async function POST(req: Request) {
   if (lesson.course.ownerId !== teacher.id) return NextResponse.json({ ok: false, error: "LESSON_NOT_FOUND" }, { status: 404 });
 
   const targetPos = parsed.data.dir === "up" ? lesson.position - 1 : lesson.position + 1;
-  if (targetPos < 1) return NextResponse.redirect(new URL(req.headers.get("referer") || `/admin/course/${lesson.courseId}`, req.url));
+  if (targetPos < 1)
+    return NextResponse.redirect(
+      new URL(req.headers.get("referer") || `/admin/course/${lesson.courseId}`, getBaseUrl(req))
+    );
 
   const other = await prisma.lesson.findFirst({
     where: { courseId: lesson.courseId, position: targetPos },
     select: { id: true, position: true },
   });
-  if (!other) return NextResponse.redirect(new URL(req.headers.get("referer") || `/admin/course/${lesson.courseId}`, req.url));
+  if (!other)
+    return NextResponse.redirect(
+      new URL(req.headers.get("referer") || `/admin/course/${lesson.courseId}`, getBaseUrl(req))
+    );
 
   // unique(courseId, position) 때문에 임시 포지션 사용
   await prisma.$transaction([
@@ -44,7 +51,9 @@ export async function POST(req: Request) {
     prisma.lesson.update({ where: { id: lesson.id }, data: { position: other.position } }),
   ]);
 
-  return NextResponse.redirect(new URL(req.headers.get("referer") || `/admin/course/${lesson.courseId}`, req.url));
+  return NextResponse.redirect(
+    new URL(req.headers.get("referer") || `/admin/course/${lesson.courseId}`, getBaseUrl(req))
+  );
 }
 
 

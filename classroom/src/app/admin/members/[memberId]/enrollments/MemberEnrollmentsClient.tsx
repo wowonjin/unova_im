@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 
 type Enrollment = {
@@ -35,13 +35,19 @@ function formatDate(iso: string) {
 export default function MemberEnrollmentsClient({
   memberId,
   enrollments: initialEnrollments,
-  availableCourses,
+  availableCourses: initialAvailableCourses,
 }: Props) {
   const router = useRouter();
   const [enrollments, setEnrollments] = useState(initialEnrollments);
   const [selectedCourse, setSelectedCourse] = useState("");
   const [adding, setAdding] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [availableCourses, setAvailableCourses] = useState(initialAvailableCourses);
+
+  // NOTE: 네이티브 <select> 드롭다운(옵션 목록)은 브라우저/OS가 강제로 흰 배경으로 렌더링하는 경우가 많습니다.
+  // 이때 select에 text-white가 걸려 있으면 옵션 텍스트도 흰색이 되어 "흰 배경 + 흰 글씨"로 안 보일 수 있어
+  // 옵션에만 명시적으로 검정 텍스트/흰 배경을 줘 가독성을 보장합니다.
+  const optionStyle: CSSProperties = { backgroundColor: "#ffffff", color: "#111827" };
 
   const handleAdd = async () => {
     if (!selectedCourse) return;
@@ -53,8 +59,33 @@ export default function MemberEnrollmentsClient({
         body: JSON.stringify({ memberId, courseId: selectedCourse }),
       });
       if (!res.ok) throw new Error("Add failed");
+      const data = (await res.json().catch(() => null)) as
+        | null
+        | {
+            ok?: boolean;
+            enrollment?: Enrollment;
+          };
+
+      const added = data?.enrollment;
+      if (added) {
+        setEnrollments((prev) => {
+          // 혹시 같은 enrollment가 있으면 교체, 없으면 맨 위에 추가
+          const idx = prev.findIndex((e) => e.id === added.id || e.courseId === added.courseId);
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = added;
+            return next;
+          }
+          return [added, ...prev];
+        });
+      } else {
+        // 폴백: 응답에 enrollment가 없으면 서버 상태와 동기화
+        router.refresh();
+      }
+
+      // 드롭다운에서 방금 추가한 강좌 제거
+      setAvailableCourses((prev) => prev.filter((c) => c.id !== selectedCourse));
       setSelectedCourse("");
-      router.refresh();
     } catch {
       alert("추가 중 오류가 발생했습니다.");
     } finally {
@@ -91,9 +122,11 @@ export default function MemberEnrollmentsClient({
             onChange={(e) => setSelectedCourse(e.target.value)}
             className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white focus:border-white/20 focus:outline-none"
           >
-            <option value="">강좌 선택...</option>
+            <option value="" style={optionStyle}>
+              강좌 선택...
+            </option>
             {availableCourses.map((c) => (
-              <option key={c.id} value={c.id}>
+              <option key={c.id} value={c.id} style={optionStyle}>
                 {c.title} ({c.enrollmentDays}일)
               </option>
             ))}

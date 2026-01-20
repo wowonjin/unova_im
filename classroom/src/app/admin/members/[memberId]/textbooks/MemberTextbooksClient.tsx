@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 
 type Entitlement = {
@@ -42,6 +42,11 @@ export default function MemberTextbooksClient({
   const [selectedTextbook, setSelectedTextbook] = useState("");
   const [adding, setAdding] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+
+  // NOTE: 네이티브 <select> 드롭다운(옵션 목록)은 브라우저/OS가 흰 배경으로 렌더링하는 경우가 있어
+  // select에 text-white가 걸려 있으면 옵션 텍스트도 흰색으로 보이며 가독성이 깨질 수 있습니다.
+  // 옵션에만 검정 텍스트/흰 배경을 명시해 안전하게 표시합니다.
+  const optionStyle: CSSProperties = { backgroundColor: "#ffffff", color: "#111827" };
 
   const handleAdd = async () => {
     if (!selectedTextbook) return;
@@ -91,9 +96,11 @@ export default function MemberTextbooksClient({
             onChange={(e) => setSelectedTextbook(e.target.value)}
             className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white focus:border-white/20 focus:outline-none"
           >
-            <option value="">교재 선택...</option>
+            <option value="" style={optionStyle}>
+              교재 선택...
+            </option>
             {availableTextbooks.map((t) => (
-              <option key={t.id} value={t.id}>
+              <option key={t.id} value={t.id} style={optionStyle}>
                 {t.title} ({t.entitlementDays}일)
               </option>
             ))}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTeacherUser } from "@/lib/current-user";
+import { getBaseUrl } from "@/lib/oauth";
 
 export const runtime = "nodejs";
 
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
 
   await prisma.course.delete({ where: { id: course.id } });
 
-  return NextResponse.redirect(new URL("/admin", req.url));
+  return NextResponse.redirect(new URL("/admin", getBaseUrl(req)));
 }
 
 

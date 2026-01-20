@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTeacherUser } from "@/lib/current-user";
+import { getBaseUrl } from "@/lib/oauth";
 
 export const runtime = "nodejs";
 
@@ -47,7 +48,8 @@ export async function POST(req: Request) {
     create: { userId: targetUser.id, courseId, status: "ACTIVE", startAt, endAt },
   });
 
-  return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin", req.url));
+  const base = getBaseUrl(req);
+  return NextResponse.redirect(new URL(req.headers.get("referer") || "/admin", base));
 }
 
 
