@@ -38,7 +38,9 @@ export async function POST(req: Request) {
     select: { id: true, ownerId: true },
   });
   if (!course) return NextResponse.json({ ok: false, error: "COURSE_NOT_FOUND" }, { status: 404 });
-  if (course.ownerId !== teacher.id) return NextResponse.json({ ok: false, error: "COURSE_NOT_FOUND" }, { status: 404 });
+  if (!teacher.isAdmin && course.ownerId !== teacher.id) {
+    return NextResponse.json({ ok: false, error: "COURSE_NOT_FOUND" }, { status: 404 });
+  }
 
   // 이미지를 Base64 데이터 URL로 변환하여 DB에 저장
   const bytes = Buffer.from(await file.arrayBuffer());

@@ -25,7 +25,9 @@ export async function POST(req: Request) {
     where: { id: parsed.data.courseId },
     select: { id: true, ownerId: true, position: true },
   });
-  if (!course || course.ownerId !== teacher.id) return NextResponse.json({ ok: false, error: "COURSE_NOT_FOUND" }, { status: 404 });
+  if (!course || (!teacher.isAdmin && course.ownerId !== teacher.id)) {
+    return NextResponse.json({ ok: false, error: "COURSE_NOT_FOUND" }, { status: 404 });
+  }
 
   const curPos = course.position ?? 0;
   const targetPos = parsed.data.dir === "up" ? curPos - 1 : curPos + 1;

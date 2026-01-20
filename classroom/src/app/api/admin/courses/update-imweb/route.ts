@@ -44,7 +44,9 @@ export async function POST(req: Request) {
     where: { id: parsed.data.courseId },
     select: { id: true, ownerId: true },
   });
-  if (!course || course.ownerId !== teacher.id) return NextResponse.json({ ok: false, error: "COURSE_NOT_FOUND" }, { status: 404 });
+  if (!course || (!teacher.isAdmin && course.ownerId !== teacher.id)) {
+    return NextResponse.json({ ok: false, error: "COURSE_NOT_FOUND" }, { status: 404 });
+  }
 
   const op = parsed.data.op ?? "set"; // 기본은 단일 코드 "저장"
   const baseUrl = new URL(req.headers.get("referer") || `/admin/course/${course.id}?tab=settings`, req.url);

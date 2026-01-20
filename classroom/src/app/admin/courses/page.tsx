@@ -21,7 +21,6 @@ export default async function AdminCoursesPage({
 
   const courses = await prisma.course.findMany({
     where: {
-      ownerId: teacher.id,
       // 공개 상태 필터: 전체 / 공개만 / 비공개만 / 준비중(공개+품절)
       ...(soldOutOnly ? { isPublished: true, isSoldOut: true } : {}),
       ...(soldOutOnly ? {} : publishedFilter == null ? {} : { isPublished: publishedFilter }),
@@ -105,7 +104,13 @@ export default async function AdminCoursesPage({
           </CardBody>
         </Card>
 
-        <CourseListClient courses={coursesForClient} q={q} publishedRaw={publishedRaw} />
+        <CourseListClient
+          title="강좌 목록"
+          courses={coursesForClient}
+          q={q}
+          publishedRaw={publishedRaw}
+          disableReorder
+        />
       </div>
     </AppShell>
   );

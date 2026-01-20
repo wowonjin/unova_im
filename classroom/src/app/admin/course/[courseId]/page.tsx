@@ -42,7 +42,7 @@ export default async function AdminCoursePage({
   const enrollMsg = sp.enroll || null;
 
   const course = await prisma.course.findUnique({
-    where: { id: courseId, ownerId: teacher.id },
+    where: { id: courseId },
     include: {
       lessons: { orderBy: { position: "asc" }, include: { attachments: { select: { id: true } } } },
       imwebProdCodes: { orderBy: { createdAt: "desc" } },

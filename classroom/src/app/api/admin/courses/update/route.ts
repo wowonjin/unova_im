@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     where: { id: parsed.data.courseId },
     select: { id: true, ownerId: true },
   });
-  if (!course || course.ownerId !== teacher.id) {
+  if (!course || (!teacher.isAdmin && course.ownerId !== teacher.id)) {
     return NextResponse.json({ ok: false, error: "COURSE_NOT_FOUND" }, { status: 404 });
   }
 

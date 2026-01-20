@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     select: { id: true, ownerId: true },
   });
 
-  if (!course || course.ownerId !== teacher.id) {
+  if (!course || (!teacher.isAdmin && course.ownerId !== teacher.id)) {
     return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
   }
 

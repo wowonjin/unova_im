@@ -40,13 +40,17 @@ function inferSubjectFromTitle(title: string) {
 }
 
 export default function CourseListClient({
+  title,
   courses,
   q,
   publishedRaw,
+  disableReorder,
 }: {
+  title?: string;
   courses: Course[];
   q: string;
   publishedRaw: string;
+  disableReorder?: boolean;
 }) {
   const [deleteMode, setDeleteMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -63,7 +67,7 @@ export default function CourseListClient({
   }, [courses]);
 
   const hasActiveFilter = Boolean(q.trim()) || publishedRaw !== "all";
-  const canReorder = !hasActiveFilter && !deleteMode;
+  const canReorder = !disableReorder && !hasActiveFilter && !deleteMode;
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -167,7 +171,7 @@ export default function CourseListClient({
     <div className="rounded-2xl border border-white/10 bg-transparent">
       <div className="border-b border-white/10 px-5 py-4">
         <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-semibold">내 강좌 목록</div>
+          <div className="text-sm font-semibold">{title || "내 강좌 목록"}</div>
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${items.length ? "bg-white/10 text-white/80" : "bg-white/5 text-white/40"}`}>
             {items.length}개
           </span>
