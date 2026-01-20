@@ -26,6 +26,19 @@ export type StorePreviewProduct = {
   reviewCount: number | null;
 };
 
+export type StorePreviewProductGroup = {
+  id: string;
+  title: string;
+  products: StorePreviewProduct[];
+  emptyLabel?: string;
+};
+
+export type StorePreviewProductGroupSection = {
+  id: string;
+  title: string;
+  groups: StorePreviewProductGroup[];
+};
+
 const types = ["교재", "강의"] as const;
 type TypeLabel = (typeof types)[number];
 type Variant = "tabs" | "sections";
@@ -353,13 +366,20 @@ function StorePreviewSectionsSimple({
   textbooks,
   hideTabMenus = false,
   anchorPrefix,
+  textbookGroups,
+  textbookGroupSections,
 }: {
   courses: StorePreviewProduct[];
   textbooks: StorePreviewProduct[];
   hideTabMenus?: boolean;
   /** 스크롤 타겟용 id prefix (예: "teacher-pc" -> "teacher-pc-courses") */
   anchorPrefix?: string;
+  /** 특정 페이지(예: 선생님 상세)에서 교재를 여러 섹션으로 나눠 보여주고 싶을 때 사용 */
+  textbookGroups?: StorePreviewProductGroup[];
+  /** 특정 페이지에서 "교재 구매하기" 자체를 여러 섹션(예: 실물책/전자책)으로 나눠 보여주고 싶을 때 사용 */
+  textbookGroupSections?: StorePreviewProductGroupSection[];
 }) {
+  const groupTitleClass = "text-[16px] md:text-[20px] font-bold tracking-[-0.02em]";
   const [selectedCourseSubject, setSelectedCourseSubject] = useState<string>("전체");
   const [selectedFreeTextbookSubject, setSelectedFreeTextbookSubject] = useState<string>("전체");
   const [selectedTextbookSubject, setSelectedTextbookSubject] = useState<string>("전체");
@@ -553,67 +573,115 @@ function StorePreviewSectionsSimple({
           </div>
         ) : null}
 
-        <div id={textbooksAnchorId} className={textbooksAnchorId ? "unova-scroll-target" : undefined}>
-          <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">교재 구매하기</h2>
-        </div>
-        {!hideTabMenus && textbookSubjects.length > 1 ? (
-          <div className="mt-2 md:mt-8">
-            {/* 모바일: 탭 메뉴 스타일 */}
-            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
-              {textbookSubjects.map((subject) => {
-                const active = selectedTextbookSubject === subject;
-                return (
-                  <button
-                    key={`textbook-${subject}`}
-                    type="button"
-                    onClick={() => setSelectedTextbookSubject(subject)}
-                    role="tab"
-                    aria-selected={active}
-                    className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
-                      active ? "text-white" : "text-white/55"
-                    }`}
-                  >
-                    {subject}
-                    {active ? (
-                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-            {/* 데스크톱: 탭 메뉴 스타일 */}
-            <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
-              {textbookSubjects.map((subject) => {
-                const active = selectedTextbookSubject === subject;
-                return (
-                  <button
-                    key={`textbook-${subject}-desktop`}
-                    type="button"
-                    onClick={() => setSelectedTextbookSubject(subject)}
-                    role="tab"
-                    aria-selected={active}
-                    className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
-                      active ? "text-white" : "text-white/55"
-                    }`}
-                  >
-                    {subject}
-                    {active ? (
-                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                    ) : null}
-                  </button>
-                );
-              })}
+        {Array.isArray(textbookGroupSections) && textbookGroupSections.length > 0 ? (
+          <div id={textbooksAnchorId} className={textbooksAnchorId ? "unova-scroll-target" : undefined}>
+            <div className="mt-6 space-y-14">
+              {textbookGroupSections.map((sec) => (
+                <div key={sec.id}>
+                  <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">{sec.title}</h2>
+                  <div className="mt-6 space-y-12">
+                    {sec.groups.map((g) => (
+                      <div key={g.id}>
+                        <h3 className={groupTitleClass}>{g.title}</h3>
+                        <div className="mt-6">
+                          <ProductGrid
+                            products={Array.isArray(g.products) ? g.products : []}
+                            emptyLabel={g.emptyLabel ?? "등록된 교재 상품이 없습니다"}
+                            eagerCount={8}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ) : null}
-        <div className="mt-6">
-          <ExpandableProductGrid
-            products={filteredTextbooks}
-            emptyLabel="등록된 교재 상품이 없습니다"
-            collapsedRows={3}
-            eagerCount={8}
-          />
-        </div>
+        ) : Array.isArray(textbookGroups) && textbookGroups.length > 0 ? (
+          <>
+            <div id={textbooksAnchorId} className={textbooksAnchorId ? "unova-scroll-target" : undefined}>
+              <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">교재 구매하기</h2>
+            </div>
+            <div className="mt-6 space-y-12">
+              {textbookGroups.map((g) => (
+                <div key={g.id}>
+                  <h3 className={groupTitleClass}>{g.title}</h3>
+                  <div className="mt-6">
+                    <ProductGrid
+                      products={Array.isArray(g.products) ? g.products : []}
+                      emptyLabel={g.emptyLabel ?? "등록된 교재 상품이 없습니다"}
+                      eagerCount={8}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div id={textbooksAnchorId} className={textbooksAnchorId ? "unova-scroll-target" : undefined}>
+              <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">교재 구매하기</h2>
+            </div>
+            {!hideTabMenus && textbookSubjects.length > 1 ? (
+              <div className="mt-2 md:mt-8">
+                {/* 모바일: 탭 메뉴 스타일 */}
+                <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
+                  {textbookSubjects.map((subject) => {
+                    const active = selectedTextbookSubject === subject;
+                    return (
+                      <button
+                        key={`textbook-${subject}`}
+                        type="button"
+                        onClick={() => setSelectedTextbookSubject(subject)}
+                        role="tab"
+                        aria-selected={active}
+                        className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                          active ? "text-white" : "text-white/55"
+                        }`}
+                      >
+                        {subject}
+                        {active ? (
+                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* 데스크톱: 탭 메뉴 스타일 */}
+                <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+                  {textbookSubjects.map((subject) => {
+                    const active = selectedTextbookSubject === subject;
+                    return (
+                      <button
+                        key={`textbook-${subject}-desktop`}
+                        type="button"
+                        onClick={() => setSelectedTextbookSubject(subject)}
+                        role="tab"
+                        aria-selected={active}
+                        className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                          active ? "text-white" : "text-white/55"
+                        }`}
+                      >
+                        {subject}
+                        {active ? (
+                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            <div className="mt-6">
+              <ExpandableProductGrid
+                products={filteredTextbooks}
+                emptyLabel="등록된 교재 상품이 없습니다"
+                collapsedRows={3}
+                eagerCount={8}
+              />
+            </div>
+          </>
+        )}
       </div>
     </section>
   );
@@ -1096,6 +1164,8 @@ export default function StorePreviewTabs({
   sectionsMode = "home",
   hideTabMenus = false,
   anchorPrefix,
+  textbookGroups,
+  textbookGroupSections,
 }: {
   courses: StorePreviewProduct[];
   textbooks: StorePreviewProduct[];
@@ -1106,10 +1176,21 @@ export default function StorePreviewTabs({
   hideTabMenus?: boolean;
   /** 스크롤 타겟용 id prefix */
   anchorPrefix?: string;
+  /** sectionsMode="simple"에서 교재를 여러 섹션으로 나눠 보여주고 싶을 때 사용 */
+  textbookGroups?: StorePreviewProductGroup[];
+  /** sectionsMode="simple"에서 교재를 여러 "구매하기" 섹션(예: 실물책/전자책)으로 나눠 보여주고 싶을 때 사용 */
+  textbookGroupSections?: StorePreviewProductGroupSection[];
 }) {
   if (variant === "sections") {
     return sectionsMode === "simple"
-      ? <StorePreviewSectionsSimple courses={courses} textbooks={textbooks} hideTabMenus={hideTabMenus} anchorPrefix={anchorPrefix} />
+      ? <StorePreviewSectionsSimple
+          courses={courses}
+          textbooks={textbooks}
+          hideTabMenus={hideTabMenus}
+          anchorPrefix={anchorPrefix}
+          textbookGroups={textbookGroups}
+          textbookGroupSections={textbookGroupSections}
+        />
       : <StorePreviewSections courses={courses} textbooks={textbooks} hideTabMenus={hideTabMenus} anchorPrefix={anchorPrefix} />;
   }
 

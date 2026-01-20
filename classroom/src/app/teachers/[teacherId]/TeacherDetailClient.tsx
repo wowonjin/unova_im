@@ -6,7 +6,7 @@ import Image from 'next/image';
 import CurriculumCarousel, { CurriculumSlide } from './CurriculumCarousel';
 import BookCoverFlow, { BookSet } from './BookCoverFlow';
 import LectureRail, { LectureSet } from './LectureRail';
-import StorePreviewTabs, { type StorePreviewProduct } from "@/app/_components/StorePreviewTabs";
+import StorePreviewTabs, { type StorePreviewProduct, type StorePreviewProductGroupSection } from "@/app/_components/StorePreviewTabs";
 import type { YoutubeVideo } from './YoutubeMarquee';
 import type { FAQItem } from './FAQSection';
 
@@ -575,6 +575,81 @@ export default function TeacherDetailClient({ teacher }: Props) {
   const singleLectures = teacher.lectureSets?.filter(ls => !ls.id.includes('package')) || [];
   const packageLectures = teacher.lectureSets?.filter(ls => ls.id.includes('package')) || [];
 
+  // 선생님 페이지 교재: 물리(장진우/jjw) 요청사항
+  // - 실물책 구매하기 / 전자책 구매하기로 구분
+  // - 각 섹션에 물리학I/II 2개 그룹(각 3개 상품)
+  // - 책 순서: 역학+비역학 → 역학 → 비역학
+  const textbookGroupSections: StorePreviewProductGroupSection[] | undefined = (() => {
+    const slug = String(teacher.slug || "").trim().toLowerCase();
+    if (slug !== "jjw") return undefined;
+
+    const src = Array.isArray(teacher.storeTextbooks) ? teacher.storeTextbooks : [];
+    const paid = src.filter((p) => !p.isFree);
+
+    const norm = (s: unknown) => String(s ?? "").replace(/\s+/g, "").toUpperCase();
+    const topicRank = (p: StorePreviewProduct): number => {
+      const t = String(p.title ?? "").replace(/\s+/g, "");
+      // 요청 순서: 역학+비역학 → 역학 → 비역학
+      // NOTE: "비역학"에 "역학"이 포함되어 있어 includes("(역학)") 같은 단순 매칭은 오탐 위험이 있으므로
+      // 괄호 포함 패턴을 우선으로 정확히 분기합니다.
+      if (/\(역학\+비역학\)/.test(t) || /역학\+비역학/.test(t)) return 0;
+      if (/\(역학\)/.test(t)) return 1;
+      if (/\(비역학\)/.test(t)) return 2;
+      return 9;
+    };
+    const sortByTopic = (arr: StorePreviewProduct[]): StorePreviewProduct[] => {
+      return arr
+        .map((p, idx) => ({ p, idx, r: topicRank(p) }))
+        .sort((a, b) => (a.r - b.r) || (a.idx - b.idx))
+        .map((x) => x.p);
+    };
+
+    const getLevel = (p: StorePreviewProduct): "I" | "II" | null => {
+      const s = norm(p.subject);
+      const t = norm(p.title);
+      // II 먼저 체크( I 포함 오탐 방지 )
+      if (s.includes("물리학II") || s.includes("물리학2") || t.includes("물리학II") || t.includes("물리학2")) return "II";
+      if (s.includes("물리학I") || s.includes("물리학1") || t.includes("물리학I") || t.includes("물리학1")) return "I";
+      return null;
+    };
+
+    const isEbook = (p: StorePreviewProduct): boolean => {
+      const tt = norm(p.textbookType);
+      if (tt === "PDF") return true;
+      // 운영상 title이 "PDF ..."로 시작하는 케이스도 있어 폴백
+      const t = String(p.title ?? "").trim().toUpperCase();
+      return t.startsWith("PDF ");
+    };
+
+    const p1Print: StorePreviewProduct[] = [];
+    const p2Print: StorePreviewProduct[] = [];
+    const p1Ebook: StorePreviewProduct[] = [];
+    const p2Ebook: StorePreviewProduct[] = [];
+
+    for (const p of paid) {
+      const level = getLevel(p);
+      if (!level) continue;
+      const ebook = isEbook(p);
+      if (level === "I") (ebook ? p1Ebook : p1Print).push(p);
+      if (level === "II") (ebook ? p2Ebook : p2Print).push(p);
+    }
+
+    const printGroups = [
+      { id: "phy1-print", title: "CONNECT 물리학I", products: sortByTopic(p1Print).slice(0, 3) },
+      // NOTE: 사용자 요청 문구 그대로("CONENCT") 반영
+      { id: "phy2-print", title: "CONENCT 물리학II", products: sortByTopic(p2Print).slice(0, 3) },
+    ];
+    const ebookGroups = [
+      { id: "phy1-ebook", title: "CONNECT 물리학I", products: sortByTopic(p1Ebook).slice(0, 3) },
+      { id: "phy2-ebook", title: "CONNECT 물리학II", products: sortByTopic(p2Ebook).slice(0, 3) },
+    ];
+
+    return [
+      { id: "print", title: "실물책 구매하기", groups: printGroups },
+      { id: "ebook", title: "전자책 구매하기", groups: ebookGroups },
+    ] satisfies StorePreviewProductGroupSection[];
+  })();
+
   return (
     <>
       {/* ============ 모바일 전용 레이아웃 (메가스터디 스타일) ============ */}
@@ -787,6 +862,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
               variant="sections"
               sectionsMode="simple"
               hideTabMenus
+              textbookGroupSections={textbookGroupSections}
             />
           </div>
         </div>
@@ -1146,6 +1222,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
           sectionsMode="simple"
           hideTabMenus
           anchorPrefix="teacher-pc"
+          textbookGroupSections={textbookGroupSections}
         />
       </section>
 
