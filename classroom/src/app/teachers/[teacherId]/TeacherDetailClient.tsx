@@ -581,7 +581,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
   // - 책 순서: 역학+비역학 → 역학 → 비역학
   const textbookGroupSections: StorePreviewProductGroupSection[] | undefined = (() => {
     const slug = String(teacher.slug || "").trim().toLowerCase();
-    if (slug !== "jjw") return undefined;
+    if (slug !== "jjw" && slug !== "bhu") return undefined;
 
     const src = Array.isArray(teacher.storeTextbooks) ? teacher.storeTextbooks : [];
     const paid = src.filter((p) => !p.isFree);
@@ -620,6 +620,16 @@ export default function TeacherDetailClient({ teacher }: Props) {
       const t = String(p.title ?? "").trim().toUpperCase();
       return t.startsWith("PDF ");
     };
+
+    // ===== bhu(백하욱) 요청사항: 실물책/전자책으로 분리 + CONNECT 수학 라벨 =====
+    if (slug === "bhu") {
+      const print = paid.filter((p) => !isEbook(p));
+      const ebook = paid.filter((p) => isEbook(p));
+      return [
+        { id: "print", title: "실물책 구매하기", groups: [{ id: "bhu-print", title: "CONNECT 수학", products: print }] },
+        { id: "ebook", title: "전자책 구매하기", groups: [{ id: "bhu-ebook", title: "CONNECT 수학", products: ebook }] },
+      ] satisfies StorePreviewProductGroupSection[];
+    }
 
     const p1Print: StorePreviewProduct[] = [];
     const p2Print: StorePreviewProduct[] = [];
