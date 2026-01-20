@@ -850,7 +850,6 @@ export default function TeacherDetailClient({ teacher }: Props) {
                     ))}
                   </span>
                   <span className="mega-mobile-hero__score">{avgRatingText}<small>/5</small></span>
-                  <span className="mega-mobile-hero__review-count">리뷰 {reviewCount}개</span>
                 </div>
               )}
               {/* 버튼 아래: 공지 대신 리뷰 노출 (스타일 유지) */}

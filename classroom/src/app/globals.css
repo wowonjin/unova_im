@@ -3227,7 +3227,7 @@ a.unova-menu-item:active {
   }
 
   .mega-mobile-hero__catchphrase {
-    font-size: 13px;
+    font-size: 11px;
     color: #fff;
     margin: 0 0 8px;
     /* 요청사항: 모바일은 얇게 */
@@ -3235,7 +3235,7 @@ a.unova-menu-item:active {
   }
 
   .mega-mobile-hero__name {
-    font-size: 28px;
+    font-size: 20px;
     font-weight: 500;
     color: #fff;
     margin: 0 0 16px;
@@ -3244,6 +3244,7 @@ a.unova-menu-item:active {
 
   .mega-mobile-hero__subject {
     color: var(--u-subject-color, #a78bfa);
+    font-size: 16px;
   }
 
   .mega-mobile-hero__profile-btn {
@@ -3321,8 +3322,9 @@ a.unova-menu-item:active {
   .mega-mobile-hero__image {
     width: 160px;
     flex-shrink: 0;
-    margin-bottom: -1px; /* 아래 영역과 완전히 붙도록 */
+    margin-bottom: 0;
     position: relative;
+    align-self: flex-end;
   }
 
   .mega-mobile-hero__img {
