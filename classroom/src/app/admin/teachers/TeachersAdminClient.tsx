@@ -10,6 +10,7 @@ type Teacher = {
   subjectTextColor: string | null;
   imageUrl: string | null;
   mainImageUrl: string | null;
+  universityIconUrl?: string | null;
   promoImageUrl: string | null;
   selectedCourseIds?: string[];
   selectedTextbookIds?: string[];
@@ -57,6 +58,7 @@ export default function TeachersAdminClient() {
     headerSubText: "",
     imageUrl: "",
     mainImageUrl: "",
+    universityIconUrl: "",
     pageBgColor: "",
     newsBgColor: "",
     educationText: "",
@@ -122,6 +124,7 @@ export default function TeachersAdminClient() {
       headerSubText: t.headerSubText || "",
       imageUrl: t.imageUrl || "",
       mainImageUrl: t.mainImageUrl || "",
+      universityIconUrl: (t as any).universityIconUrl || "",
       pageBgColor: t.pageBgColor || "",
       newsBgColor: t.newsBgColor || "",
       educationText: t.educationText || "",
@@ -147,6 +150,7 @@ export default function TeachersAdminClient() {
       headerSubText: "",
       imageUrl: "",
       mainImageUrl: "",
+      universityIconUrl: "",
       pageBgColor: "",
       newsBgColor: "",
       educationText: "",
@@ -234,6 +238,7 @@ export default function TeachersAdminClient() {
     fd.append("headerSubText", t.headerSubText || "");
     fd.append("imageUrl", t.imageUrl || "");
     fd.append("mainImageUrl", t.mainImageUrl || "");
+    fd.append("universityIconUrl", (t as any).universityIconUrl || "");
     fd.append("pageBgColor", t.pageBgColor || "");
     fd.append("newsBgColor", t.newsBgColor || "");
     fd.append("educationText", t.educationText || "");
@@ -278,6 +283,7 @@ export default function TeachersAdminClient() {
     fd.append("headerSubText", formData.headerSubText.trim());
     fd.append("imageUrl", formData.imageUrl.trim());
     fd.append("mainImageUrl", formData.mainImageUrl.trim());
+    fd.append("universityIconUrl", formData.universityIconUrl.trim());
     fd.append("pageBgColor", formData.pageBgColor.trim());
     fd.append("newsBgColor", formData.newsBgColor.trim());
     fd.append("educationText", formData.educationText);
@@ -503,6 +509,17 @@ export default function TeachersAdminClient() {
                           className="w-full px-4 py-3 rounded-xl bg-transparent border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
                         />
                         <p className="mt-2 text-[12px] text-white/40">선생님 개인 페이지 상단 중앙 프로필 이미지로 노출됩니다.</p>
+                      </div>
+                      <div>
+                        <label className="block text-[13px] text-white/50 mb-2">대학교 아이콘 이미지 URL (말풍선 배지)</label>
+                        <input
+                          type="text"
+                          value={formData.universityIconUrl}
+                          onChange={(e) => setFormData({ ...formData, universityIconUrl: e.target.value })}
+                          placeholder="https://storage.googleapis.com/..."
+                          className="w-full px-4 py-3 rounded-xl bg-transparent border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                        />
+                        <p className="mt-2 text-[12px] text-white/40">선생님 이미지 위에 작게 말풍선 형태로 오버레이됩니다. 비워두면 표시하지 않습니다.</p>
                       </div>
                     </div>
                   </div>
@@ -823,6 +840,11 @@ export default function TeachersAdminClient() {
                     <p className="mt-1 text-[12px] text-emerald-200/80">메인 이미지: 설정됨</p>
                   ) : (
                     <p className="mt-1 text-[12px] text-white/30">메인 이미지: 없음</p>
+                  )}
+                  {(t as any).universityIconUrl ? (
+                    <p className="mt-1 text-[12px] text-emerald-200/80">대학교 아이콘: 설정됨</p>
+                  ) : (
+                    <p className="mt-1 text-[12px] text-white/30">대학교 아이콘: 없음</p>
                   )}
                   {t.youtubeUrl ? (
                     <p className="mt-1 text-[12px] text-emerald-200/80">유튜브: 설정됨</p>

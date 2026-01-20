@@ -13,6 +13,7 @@ const Schema = z.object({
   subjectTextColor: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   imageUrl: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   mainImageUrl: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
+  universityIconUrl: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   promoImageUrl: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   instagramUrl: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
   youtubeUrl: z.string().trim().optional().transform((v) => (v ? v : null)).nullable(),
@@ -59,6 +60,7 @@ export async function POST(req: Request) {
     subjectTextColor: typeof form.get("subjectTextColor") === "string" ? form.get("subjectTextColor") : undefined,
     imageUrl: typeof form.get("imageUrl") === "string" ? form.get("imageUrl") : undefined,
     mainImageUrl: typeof form.get("mainImageUrl") === "string" ? form.get("mainImageUrl") : undefined,
+    universityIconUrl: typeof form.get("universityIconUrl") === "string" ? form.get("universityIconUrl") : undefined,
     promoImageUrl: typeof form.get("promoImageUrl") === "string" ? form.get("promoImageUrl") : undefined,
     instagramUrl: typeof form.get("instagramUrl") === "string" ? form.get("instagramUrl") : undefined,
     youtubeUrl: typeof form.get("youtubeUrl") === "string" ? form.get("youtubeUrl") : undefined,
@@ -78,6 +80,7 @@ export async function POST(req: Request) {
       await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedCourseIds" JSONB;');
       await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedTextbookIds" JSONB;');
       await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "subjectTextColor" TEXT;');
+      await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "universityIconUrl" TEXT;');
     } catch {
       // ignore
     }
@@ -89,6 +92,7 @@ export async function POST(req: Request) {
       subjectTextColor: parsed.data.subjectTextColor,
       imageUrl: parsed.data.imageUrl,
       mainImageUrl: parsed.data.mainImageUrl,
+      universityIconUrl: parsed.data.universityIconUrl,
       promoImageUrl: parsed.data.promoImageUrl,
       instagramUrl: parsed.data.instagramUrl,
       youtubeUrl: parsed.data.youtubeUrl,

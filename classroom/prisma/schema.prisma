@@ -678,6 +678,8 @@ model Teacher {
   imageUrl      String?
   // 선생님 개인 페이지(상단 중앙)에 사용할 메인 이미지
   mainImageUrl  String?
+  // 선생님 이미지 위에 배지로 노출할 "대학교 아이콘" 이미지 URL
+  universityIconUrl String?
   // 선생님 상세 상단 섹터 아래에 노출할 광고/프로모션 이미지 (가로 배너)
   promoImageUrl String?
   // 커리큘럼 소개용 유튜브 주소(단일)

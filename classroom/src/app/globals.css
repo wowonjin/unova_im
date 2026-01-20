@@ -1473,6 +1473,63 @@ a.unova-menu-item:active {
   box-shadow: none !important;
 }
 
+/* 선생님 이미지 위 "대학교 아이콘" 말풍선 배지 */
+.unova-university-badge {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.unova-university-badge__bubble {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  min-width: 30px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.unova-university-badge__icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  display: block;
+}
+
+.unova-university-badge__tail {
+  position: absolute;
+  left: 12px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  transform: rotate(45deg);
+  background: rgba(255, 255, 255, 0.96);
+  border-left: 1px solid rgba(0, 0, 0, 0.10);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.10);
+}
+
+@media (max-width: 767px) {
+  .unova-university-badge {
+    left: 10px;
+    top: 10px;
+  }
+  .unova-university-badge__bubble {
+    height: 28px;
+    min-width: 28px;
+  }
+  .unova-university-badge__icon {
+    width: 15px;
+    height: 15px;
+  }
+}
+
 /* 선생님 슬로건(메가스터디 스타일 카피) */
 .unova-teacher-slogan {
   position: absolute;

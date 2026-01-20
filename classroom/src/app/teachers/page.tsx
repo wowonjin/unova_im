@@ -11,6 +11,7 @@ type Teacher = {
   name: string;
   subjectName: string;
   imageUrl: string | null;
+  universityIconUrl?: string | null;
   position?: number;
 };
 
@@ -148,22 +149,41 @@ export default function TeachersPage() {
                     href={`/teachers/${teacher.slug}`}
                     className="group block bg-transparent border border-transparent overflow-hidden transition-all"
                   >
-                    {/* 이미지(컨테이너 없이 이미지 자체) */}
-                    {teacher.imageUrl ? (
-                      <Image
-                        src={teacher.imageUrl}
-                        alt={teacher.name}
-                        width={600}
-                        height={800}
-                        className="w-full h-auto"
-                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full flex items-center justify-center bg-white/[0.04] py-12">
-                        <span className="text-[56px] font-bold text-white/70">{teacher.name.charAt(0)}</span>
-                      </div>
-                    )}
+                    {/* 이미지 + 대학교 아이콘 배지(말풍선) */}
+                    <div className="relative">
+                      {teacher.imageUrl ? (
+                        <Image
+                          src={teacher.imageUrl}
+                          alt={teacher.name}
+                          width={600}
+                          height={800}
+                          className="w-full h-auto"
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full flex items-center justify-center bg-white/[0.04] py-12">
+                          <span className="text-[56px] font-bold text-white/70">{teacher.name.charAt(0)}</span>
+                        </div>
+                      )}
+
+                      {teacher.universityIconUrl ? (
+                        <div className="absolute left-2 top-2 z-10 pointer-events-none">
+                          <div className="relative flex items-center justify-center rounded-full bg-white/95 border border-black/10 shadow-[0_10px_28px_rgba(0,0,0,0.22)] px-2 py-1">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={teacher.universityIconUrl}
+                              alt="대학교"
+                              className="h-4 w-4 object-contain"
+                            />
+                            <span
+                              className="absolute left-[10px] -bottom-[6px] h-3 w-3 rotate-45 bg-white/95 border-b border-l border-black/10"
+                              aria-hidden="true"
+                            />
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
 
                     {/* 이름 / 과목 */}
                     <div className="p-3 sm:p-5">

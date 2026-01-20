@@ -4,6 +4,13 @@ import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 
 export async function GET() {
+  // deployment-safe: 마이그레이션 미적용 환경에서도 새 컬럼이 있으면 노출할 수 있게 보강
+  try {
+    await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "universityIconUrl" TEXT;');
+  } catch {
+    // ignore
+  }
+
   // position: 오름차순 정렬용. 0은 "미설정/레거시"이므로 맨 뒤로 보냄.
   const teachers = await prisma.teacher.findMany({
     where: { isActive: true },
@@ -12,6 +19,7 @@ export async function GET() {
       name: true,
       subjectName: true,
       imageUrl: true,
+      universityIconUrl: true,
       position: true,
       createdAt: true,
     },
@@ -30,6 +38,7 @@ export async function GET() {
       name: t.name,
       subjectName: t.subjectName,
       imageUrl: t.imageUrl,
+      universityIconUrl: (t as any).universityIconUrl ?? null,
       position: t.position,
     }));
 

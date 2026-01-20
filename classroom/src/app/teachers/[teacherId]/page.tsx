@@ -852,6 +852,7 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
         subjectTextColor: true,
         imageUrl: true,
         mainImageUrl: true,
+        universityIconUrl: true,
         promoImageUrl: true,
         instagramUrl: true,
         youtubeUrl: true,
@@ -915,6 +916,10 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
       bgColor: "bg-emerald-500/10",
       headerSub: headerSubText,
       imageUrl: dbTeacher.mainImageUrl || dbTeacher.imageUrl || yooYerinTemplate.imageUrl || "",
+      universityIconUrl:
+        (typeof dbTeacher.universityIconUrl === "string" && dbTeacher.universityIconUrl.trim())
+          ? dbTeacher.universityIconUrl.trim()
+          : undefined,
       promoImageUrl: dbTeacher.promoImageUrl || undefined,
       pageBgColor: typeof dbTeacher.pageBgColor === "string" ? dbTeacher.pageBgColor : undefined,
       newsBgColor: typeof dbTeacher.newsBgColor === "string" ? dbTeacher.newsBgColor : undefined,

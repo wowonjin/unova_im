@@ -17,6 +17,7 @@ async function ensureTeacherTable() {
       "subjectTextColor" TEXT,
       "imageUrl" TEXT,
       "mainImageUrl" TEXT,
+      "universityIconUrl" TEXT,
       "promoImageUrl" TEXT,
       "youtubeUrl" TEXT,
       "instagramUrl" TEXT,
@@ -54,6 +55,7 @@ export async function GET() {
     await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "selectedTextbookIds" JSONB;');
     await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "accountUserId" TEXT;');
     await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "subjectTextColor" TEXT;');
+    await prisma.$executeRawUnsafe('ALTER TABLE "Teacher" ADD COLUMN IF NOT EXISTS "universityIconUrl" TEXT;');
   } catch {
     // ignore
   }
@@ -71,6 +73,7 @@ export async function GET() {
         subjectTextColor: true,
         imageUrl: true,
         mainImageUrl: true,
+        universityIconUrl: true,
         promoImageUrl: true,
         instagramUrl: true,
         youtubeUrl: true,
