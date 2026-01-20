@@ -298,8 +298,6 @@ type TeacherData = {
   profile?: {
     education: ProfileSection;
     career: ProfileSection;
-    gradeImprovements?: ProfileSection;
-    mockTestImprovements?: ProfileSection;
   };
   navigationLinks?: {
     curriculum?: string;
@@ -480,29 +478,6 @@ const teachersData: Record<string, TeacherData> = {
         content: [
           "2022 - 과외 강사",
           "2025 - 대치영어전문학원 영어 강사",
-        ],
-      },
-      gradeImprovements: {
-        title: "내신 성적 상승 사례",
-        content: [
-          "1학년 1학기 60점대 → 1학년 2학기 중간 80점대 (김00)",
-          "1학년 1학기 4등급 → 1학년 2학기 기말 1등급 (이00)",
-          "1학년 1학기 중간 70점대 → 1학년 2학기 중간 100점 (황00)",
-          "1학년 2학기 5등급 → 2학년 2학기 3등급 (정00)",
-          "1학년 1학기 중간 30점 → 1학년 1학기 기말 60점 (권00)",
-          "1학년 1학기 80점 → 1학년 2학기 기말 1등급 (김00)",
-          "1학년 1학기 2등급 → 1학년 2학기 중간 1등급 (김00)",
-        ],
-      },
-      mockTestImprovements: {
-        title: "모고 / 수능 성적 상승 사례",
-        content: [
-          "모의고사 4등급 → 2023학년도 수능 2등급 (박00)",
-          "모의고사 30점대 → 2학년 모의고사 3등급 (이00)",
-          "모의고사 50점대 → 3학년 모의고사 3등급 (김00)",
-          "모의고사 4등급 → 2024학년도 수능 2등급 (김00)",
-          "2023년도 수능 2등급 → 2024학년도 수능 1등급 (유00)",
-          "모의고사 40점대 → 1학년 모의고사 1등급 (황00)",
         ],
       },
     },
@@ -982,8 +957,6 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
             return [];
           })(),
         },
-        ...(yooYerinTemplate.profile?.gradeImprovements ? { gradeImprovements: yooYerinTemplate.profile.gradeImprovements } : {}),
-        ...(yooYerinTemplate.profile?.mockTestImprovements ? { mockTestImprovements: yooYerinTemplate.profile.mockTestImprovements } : {}),
       },
       socialLinks,
       navigationLinks: {

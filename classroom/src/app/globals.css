@@ -1143,14 +1143,14 @@ a.unova-menu-item:active {
   font-size: 16px;
   color: #fff;
   margin-bottom: 5px;
-  /* 요청사항: '문장 구조를 읽는...' 상단 문구를 살짝 굵게 */
-  font-weight: 500;
+  /* 상단 문구: 기본은 과목/이름 대비 가볍게 */
+  font-weight: 400;
 }
 
 .unova-header-sub--accent {
   color: #fff !important;
-  /* 기존엔 300을 강제해서(important) 굵게가 적용되지 않았음 → 살짝 굵게로 통일 */
-  font-weight: 500 !important;
+  /* 상단 문구(강조)도 과목/이름 대비 가볍게 */
+  font-weight: 400 !important;
 }
 
 .unova-header-title {
@@ -1172,7 +1172,7 @@ a.unova-menu-item:active {
     font-weight: 500;
   }
   .unova-header-sub {
-    font-weight: 450;
+    font-weight: 400;
   }
 }
 

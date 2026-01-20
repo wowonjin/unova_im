@@ -78,8 +78,6 @@ export type TeacherDetailTeacher = {
   profile: {
     education: ProfileSection;
     career: ProfileSection;
-    gradeImprovements?: ProfileSection;
-    mockTestImprovements?: ProfileSection;
   };
   socialLinks: {
     type: 'instagram' | 'youtube';
@@ -1193,30 +1191,6 @@ export default function TeacherDetailClient({ teacher }: Props) {
                   )}
                 </ul>
               </div>
-              {teacher.profile.gradeImprovements && (
-                <div className="unova-modal-section">
-                  <div className="unova-modal-h">{teacher.profile.gradeImprovements.title}</div>
-                  <ul className="unova-modal-list">
-                    {Array.isArray(teacher.profile.gradeImprovements.content) ? (
-                      teacher.profile.gradeImprovements.content.map((item, idx) => <li key={idx}>{item}</li>)
-                    ) : (
-                      <li>{teacher.profile.gradeImprovements.content}</li>
-                    )}
-                  </ul>
-                </div>
-              )}
-              {teacher.profile.mockTestImprovements && (
-                <div className="unova-modal-section">
-                  <div className="unova-modal-h">{teacher.profile.mockTestImprovements.title}</div>
-                  <ul className="unova-modal-list">
-                    {Array.isArray(teacher.profile.mockTestImprovements.content) ? (
-                      teacher.profile.mockTestImprovements.content.map((item, idx) => <li key={idx}>{item}</li>)
-                    ) : (
-                      <li>{teacher.profile.mockTestImprovements.content}</li>
-                    )}
-                  </ul>
-                </div>
-              )}
             </div>
           </div>
         </div>
