@@ -52,6 +52,7 @@ export type TeacherDetailTeacher = {
   bgColor: string;
   headerSub: string;
   imageUrl: string;
+  universityIconUrl?: string;
   promoImageUrl?: string;
   // 선생님 개인 페이지 커스터마이징(테마)
   pageBgColor?: string;
@@ -623,11 +624,45 @@ export default function TeacherDetailClient({ teacher }: Props) {
 
     // ===== bhu(백하욱) 요청사항: 실물책/전자책으로 분리 + CONNECT 수학 라벨 =====
     if (slug === "bhu") {
+      const mathRank = (p: StorePreviewProduct): number => {
+        // 요청 순서:
+        // 1) 수학I+II+미적분
+        // 2) 수학I+II+확률과통계
+        // 3) 수학I
+        // 4) 수학II
+        // 5) 미적분
+        // 6) 확률과통계
+        const t = String(p.title ?? "").replace(/\s+/g, "");
+        // 조합 우선
+        if (t.includes("수학I+II+미적분")) return 0;
+        if (t.includes("수학I+II+확률과통계")) return 1;
+        // 단과 (주의: "수학II"에 "수학I"가 포함되므로 II를 먼저 체크)
+        if (t.includes("수학II")) return 3;
+        if (t.includes("수학I")) return 2;
+        if (t.includes("미적분")) return 4;
+        if (t.includes("확률과통계")) return 5;
+        return 9;
+      };
+      const sortByMathOrder = (arr: StorePreviewProduct[]): StorePreviewProduct[] => {
+        return arr
+          .map((p, idx) => ({ p, idx, r: mathRank(p) }))
+          .sort((a, b) => (a.r - b.r) || (a.idx - b.idx))
+          .map((x) => x.p);
+      };
+
       const print = paid.filter((p) => !isEbook(p));
       const ebook = paid.filter((p) => isEbook(p));
       return [
-        { id: "print", title: "실물책 구매하기", groups: [{ id: "bhu-print", title: "CONNECT 수학", products: print }] },
-        { id: "ebook", title: "전자책 구매하기", groups: [{ id: "bhu-ebook", title: "CONNECT 수학", products: ebook }] },
+        {
+          id: "print",
+          title: "실물책 구매하기",
+          groups: [{ id: "bhu-print", title: "CONNECT 수학", products: sortByMathOrder(print) }],
+        },
+        {
+          id: "ebook",
+          title: "전자책 구매하기",
+          groups: [{ id: "bhu-ebook", title: "CONNECT 수학", products: sortByMathOrder(ebook) }],
+        },
       ] satisfies StorePreviewProductGroupSection[];
     }
 
@@ -1041,6 +1076,19 @@ export default function TeacherDetailClient({ teacher }: Props) {
 
             {/* 가운데 선생님 이미지 */}
             <div className="unova-teacher-area">
+              {teacher.universityIconUrl ? (
+                <div className="unova-university-badge" aria-hidden="true">
+                  <div className="unova-university-badge__bubble">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={teacher.universityIconUrl}
+                      alt=""
+                      className="unova-university-badge__icon"
+                    />
+                    <span className="unova-university-badge__tail" />
+                  </div>
+                </div>
+              ) : null}
               <Image
                 src={teacher.imageUrl}
                 alt={`${teacher.name} 선생님`}
