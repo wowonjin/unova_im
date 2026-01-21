@@ -19,6 +19,7 @@ const Schema = z.object({
   // data URL(base64)이나 긴 CDN URL도 허용하기 위해 넉넉하게 잡음
   imageUrl: z.string().min(1).max(MAX_URL_LEN),
   linkUrl: z.string().min(1).max(MAX_URL_LEN),
+  schoolLogoUrl: z.string().optional().transform((v) => (v && v.trim().length ? v.trim() : null)),
   bgColor: z.string().optional().transform((v) => (v && v.trim().length ? v.trim() : null)),
   position: z
     .string()
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
     label: getFormString(form, "label"),
     imageUrl: getFormString(form, "imageUrl"),
     linkUrl: getFormString(form, "linkUrl"),
+    schoolLogoUrl: getFormString(form, "schoolLogoUrl"),
     bgColor: getFormString(form, "bgColor"),
     position: getFormString(form, "position"),
   });
@@ -48,12 +50,16 @@ export async function POST(req: Request) {
   }
 
   try {
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "HomeShortcut" ADD COLUMN IF NOT EXISTS "schoolLogoUrl" TEXT;'
+    );
     const p = prisma as unknown as { homeShortcut: { create: Function } };
     const shortcut = await p.homeShortcut.create({
       data: {
         label: parsed.data.label,
         imageUrl: parsed.data.imageUrl,
         linkUrl: parsed.data.linkUrl,
+        schoolLogoUrl: parsed.data.schoolLogoUrl,
         bgColor: parsed.data.bgColor,
         position: parsed.data.position,
         isActive: true,

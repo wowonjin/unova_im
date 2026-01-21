@@ -7,6 +7,9 @@ export const runtime = "nodejs";
 export async function GET() {
   await requireAdminUser();
   try {
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "HomeShortcut" ADD COLUMN IF NOT EXISTS "schoolLogoUrl" TEXT;'
+    );
     const p = prisma as unknown as { homeShortcut: { findMany: Function } };
     const shortcuts = await p.homeShortcut.findMany({
       orderBy: [{ position: "desc" }, { createdAt: "desc" }],

@@ -654,10 +654,11 @@ model HomeShortcut {
   position Int     @default(0)
   isActive Boolean @default(true)
 
-  label    String // 아이콘 이름
-  imageUrl String
-  linkUrl  String
-  bgColor  String? // 예: "#FFFFFF" / "#7c4ff5"
+  label         String // 아이콘 이름
+  imageUrl      String
+  linkUrl       String
+  bgColor       String? // 예: "#FFFFFF" / "#7c4ff5"
+  schoolLogoUrl String? // 아이콘 위에 올릴 학교 로고(배지)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

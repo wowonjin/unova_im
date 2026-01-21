@@ -20,6 +20,10 @@ const Schema = z.object({
   // data URL(base64)이나 긴 CDN URL도 허용하기 위해 넉넉하게 잡음
   imageUrl: z.string().min(1).max(MAX_URL_LEN).optional(),
   linkUrl: z.string().min(1).max(MAX_URL_LEN).optional(),
+  schoolLogoUrl: z
+    .string()
+    .optional()
+    .transform((v) => (v == null ? undefined : v.trim() || null)),
   bgColor: z.string().optional().transform((v) => (v == null ? undefined : v.trim() || null)),
   position: z
     .string()
@@ -49,6 +53,7 @@ export async function POST(req: Request) {
     label: getFormString(form, "label"),
     imageUrl: getFormString(form, "imageUrl"),
     linkUrl: getFormString(form, "linkUrl"),
+    schoolLogoUrl: getFormString(form, "schoolLogoUrl"),
     bgColor: getFormString(form, "bgColor"),
     position: getFormString(form, "position"),
     isActive: getFormString(form, "isActive"),
@@ -64,11 +69,15 @@ export async function POST(req: Request) {
   if (parsed.data.label !== undefined) data.label = parsed.data.label;
   if (parsed.data.imageUrl !== undefined) data.imageUrl = parsed.data.imageUrl;
   if (parsed.data.linkUrl !== undefined) data.linkUrl = parsed.data.linkUrl;
+  if (parsed.data.schoolLogoUrl !== undefined) data.schoolLogoUrl = parsed.data.schoolLogoUrl;
   if (parsed.data.bgColor !== undefined) data.bgColor = parsed.data.bgColor;
   if (parsed.data.position !== undefined) data.position = parsed.data.position;
   if (parsed.data.isActive !== undefined) data.isActive = parsed.data.isActive;
 
   try {
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "HomeShortcut" ADD COLUMN IF NOT EXISTS "schoolLogoUrl" TEXT;'
+    );
     const p = prisma as unknown as { homeShortcut: { update: Function } };
     const shortcut = await p.homeShortcut.update({
       where: { id: parsed.data.id },

@@ -71,6 +71,7 @@ export default async function HomePage() {
           imageVersion: s.updatedAt ? new Date(s.updatedAt).toISOString() : s.createdAt ? new Date(s.createdAt).toISOString() : undefined,
           label: s.label,
           bgColor: s.bgColor || null,
+          schoolLogoUrl: s.schoolLogoUrl || null,
         }))
         .filter((s: any) => s.href && s.image && s.label);
       if (!shortcutItems.length) shortcutItems = undefined;

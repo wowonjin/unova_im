@@ -22,6 +22,7 @@ type HomeShortcut = {
   isActive: boolean;
   label: string;
   imageUrl: string;
+  schoolLogoUrl: string | null;
   linkUrl: string;
   bgColor: string | null;
   createdAt: string;
@@ -76,6 +77,7 @@ export default function HomeSettingsClient() {
   const [shortcutForm, setShortcutForm] = useState({
     label: "",
     imageUrl: "",
+    schoolLogoUrl: "",
     linkUrl: "",
     bgColor: "",
     position: "0",
@@ -234,6 +236,7 @@ export default function HomeSettingsClient() {
     const fd = new FormData();
     fd.append("label", shortcutForm.label);
     fd.append("imageUrl", shortcutForm.imageUrl);
+    fd.append("schoolLogoUrl", shortcutForm.schoolLogoUrl);
     fd.append("linkUrl", shortcutForm.linkUrl);
     fd.append("bgColor", shortcutForm.bgColor);
     fd.append("position", shortcutForm.position);
@@ -247,7 +250,7 @@ export default function HomeSettingsClient() {
     }
     setShowShortcutForm(false);
     setEditingShortcutId(null);
-    setShortcutForm({ label: "", imageUrl: "", linkUrl: "", bgColor: "", position: "0" });
+    setShortcutForm({ label: "", imageUrl: "", schoolLogoUrl: "", linkUrl: "", bgColor: "", position: "0" });
     await refreshShortcuts();
   };
 
@@ -258,6 +261,7 @@ export default function HomeSettingsClient() {
     setShortcutForm({
       label: s.label,
       imageUrl: s.imageUrl,
+      schoolLogoUrl: s.schoolLogoUrl || "",
       linkUrl: s.linkUrl,
       bgColor: s.bgColor || "",
       position: String(s.position ?? 0),
@@ -289,7 +293,7 @@ export default function HomeSettingsClient() {
             onClick={() => {
               setShowShortcutForm((v) => !v);
               setEditingShortcutId(null);
-              setShortcutForm({ imageUrl: "", label: "", linkUrl: "", bgColor: "", position: "0" });
+              setShortcutForm({ imageUrl: "", schoolLogoUrl: "", label: "", linkUrl: "", bgColor: "", position: "0" });
             }}
             className="flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
           >
@@ -539,6 +543,15 @@ export default function HomeSettingsClient() {
                     />
                   </div>
                   <div>
+                    <label className="block text-[13px] text-white/50 mb-2">학교 로고 URL (아이콘 위 배지)</label>
+                    <input
+                      value={shortcutForm.schoolLogoUrl}
+                      onChange={(e) => setShortcutForm({ ...shortcutForm, schoolLogoUrl: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500"
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <div>
                     <label className="block text-[13px] text-white/50 mb-2">배경색(선택)</label>
                     <input
                       value={shortcutForm.bgColor}
@@ -599,10 +612,20 @@ export default function HomeSettingsClient() {
                   {/* 아이콘 미리보기 */}
                   <div className="p-6 flex items-center justify-center bg-white/[0.02]">
                     <div
-                      className="w-16 h-16 rounded-2xl border border-white/10 overflow-hidden flex items-center justify-center"
+                      className="relative w-16 h-16 rounded-2xl border border-white/10 overflow-hidden flex items-center justify-center"
                       style={{ backgroundColor: s.bgColor?.trim() ? s.bgColor.trim() : "#ffffff" }}
                       title={s.bgColor || ""}
                     >
+                      {s.schoolLogoUrl ? (
+                        <div className="absolute left-1 top-1 z-10 h-4 w-4 rounded-full bg-white/95 flex items-center justify-center sm:h-5 sm:w-5">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={toImageProxyUrl(s.schoolLogoUrl, s.updatedAt || s.createdAt)}
+                            alt=""
+                            className="h-full w-full object-contain"
+                          />
+                        </div>
+                      ) : null}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={toImageProxyUrl(s.imageUrl, s.updatedAt || s.createdAt)}
@@ -628,6 +651,10 @@ export default function HomeSettingsClient() {
                       <div className="truncate flex items-center gap-1">
                         <span className="material-symbols-outlined" style={{ fontSize: "12px" }}>link</span>
                         {s.linkUrl}
+                      </div>
+                      <div className="truncate flex items-center gap-1">
+                        <span className="material-symbols-outlined" style={{ fontSize: "12px" }}>school</span>
+                        {s.schoolLogoUrl || "-"}
                       </div>
                       <div className="truncate flex items-center gap-1">
                         <span className="material-symbols-outlined" style={{ fontSize: "12px" }}>palette</span>

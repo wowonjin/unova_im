@@ -9,6 +9,7 @@ interface ShortcutItem {
   label: string;
   iconClass?: string;
   bgColor?: string | null;
+  schoolLogoUrl?: string | null;
 }
 
 const defaultShortcuts: ShortcutItem[] = [
@@ -104,7 +105,7 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
               >
                 <div
                   className={[
-                    "mx-auto mb-2 sm:mb-3 flex items-center justify-center overflow-hidden",
+                    "mx-auto mb-2 sm:mb-3 flex items-center justify-center overflow-hidden relative",
                     "h-[56px] w-[56px] rounded-[16px] sm:h-[92px] sm:w-[92px] sm:rounded-[22px]",
                     "shadow-[0_12px_26px_rgba(15,23,42,0.10)] border border-white/10",
                     "transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-[0_18px_34px_rgba(15,23,42,0.16)]",
@@ -116,6 +117,16 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
                       : undefined
                   }
                 >
+                  {item.schoolLogoUrl ? (
+                    <div className="absolute left-1 top-1 z-10 h-4 w-4 rounded-full bg-white/95 flex items-center justify-center sm:left-1.5 sm:top-1.5 sm:h-6 sm:w-6">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={toImageProxyUrl(item.schoolLogoUrl, item.imageVersion)}
+                        alt=""
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                  ) : null}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={toImageProxyUrl(item.image, item.imageVersion)}
