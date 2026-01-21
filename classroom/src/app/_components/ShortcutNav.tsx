@@ -118,7 +118,7 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
                   }
                 >
                   {item.schoolLogoUrl ? (
-                    <div className="absolute left-1 top-1 z-10 h-4 w-4 rounded-full bg-white/95 flex items-center justify-center sm:left-1.5 sm:top-1.5 sm:h-6 sm:w-6">
+                    <div className="absolute left-1 top-1 z-10 h-4 w-4 rounded-full flex items-center justify-center sm:left-1.5 sm:top-1.5 sm:h-6 sm:w-6">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={toImageProxyUrl(item.schoolLogoUrl, item.imageVersion)}

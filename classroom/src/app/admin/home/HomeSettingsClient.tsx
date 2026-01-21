@@ -617,7 +617,7 @@ export default function HomeSettingsClient() {
                       title={s.bgColor || ""}
                     >
                       {s.schoolLogoUrl ? (
-                        <div className="absolute left-1 top-1 z-10 h-4 w-4 rounded-full bg-white/95 flex items-center justify-center sm:h-5 sm:w-5">
+                        <div className="absolute left-1 top-1 z-10 h-4 w-4 rounded-full flex items-center justify-center sm:h-5 sm:w-5">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={toImageProxyUrl(s.schoolLogoUrl, s.updatedAt || s.createdAt)}
