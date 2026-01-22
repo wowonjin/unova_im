@@ -14,6 +14,11 @@ import TextbookReviewFormClient from "@/app/_components/TextbookReviewFormClient
 import ConfirmDeleteButton, { ConfirmDeleteIconButton } from "@/app/_components/ConfirmDeleteButton";
 import type { TextbookGradeCategory } from "@/app/_components/TextbookBasicInfoClient";
 
+function hasRegisterFiles(row: { files?: unknown }) {
+  const files = Array.isArray((row as any).files) ? ((row as any).files as any[]) : null;
+  return Boolean(files && files.length > 0);
+}
+
 export default async function AdminTextbookPage({
   params,
   searchParams,
@@ -235,9 +240,10 @@ export default async function AdminTextbookPage({
                 { storedPath: { contains: "storage.googleapis.com" } },
                 { storedPath: { contains: "storage.cloud.google.com" } },
               ],
-              // 판매 설정(가격/원가)이 들어간 항목은 제외
+              // "교재 등록" 목록 기준과 동일하게 맞춤
               price: null,
               originalPrice: null,
+              isPublished: false,
             },
             orderBy: [{ createdAt: "desc" }],
             select: {
@@ -251,6 +257,7 @@ export default async function AdminTextbookPage({
             },
             take: 400,
           })
+          .then((rows) => rows.filter(hasRegisterFiles))
           .catch(async () => {
             return await prisma.textbook.findMany({
               where: {
@@ -261,6 +268,7 @@ export default async function AdminTextbookPage({
                 ],
                 price: null,
                 originalPrice: null,
+                isPublished: false,
               },
               orderBy: [{ createdAt: "desc" }],
               // NOTE: files 컬럼 마이그레이션 누락 등으로 크래시날 수 있어 폴백에서는 files 제외
