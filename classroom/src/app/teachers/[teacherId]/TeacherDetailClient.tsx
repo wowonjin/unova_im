@@ -651,32 +651,25 @@ export default function TeacherDetailClient({ teacher }: Props) {
       };
 
       const print = paid.filter((p) => !isEbook(p));
-      const ebook = paid.filter((p) => isEbook(p));
       return [
         {
           id: "print",
           title: "실물책 구매하기",
           groups: [{ id: "bhu-print", title: "CONNECT 수학", products: sortByMathOrder(print) }],
         },
-        {
-          id: "ebook",
-          title: "전자책 구매하기",
-          groups: [{ id: "bhu-ebook", title: "CONNECT 수학", products: sortByMathOrder(ebook) }],
-        },
       ] satisfies StorePreviewProductGroupSection[];
     }
 
     const p1Print: StorePreviewProduct[] = [];
     const p2Print: StorePreviewProduct[] = [];
-    const p1Ebook: StorePreviewProduct[] = [];
-    const p2Ebook: StorePreviewProduct[] = [];
 
     for (const p of paid) {
       const level = getLevel(p);
       if (!level) continue;
       const ebook = isEbook(p);
-      if (level === "I") (ebook ? p1Ebook : p1Print).push(p);
-      if (level === "II") (ebook ? p2Ebook : p2Print).push(p);
+      if (ebook) continue;
+      if (level === "I") p1Print.push(p);
+      if (level === "II") p2Print.push(p);
     }
 
     const printGroups = [
@@ -684,14 +677,8 @@ export default function TeacherDetailClient({ teacher }: Props) {
       // NOTE: 사용자 요청 문구 그대로("CONENCT") 반영
       { id: "phy2-print", title: "CONENCT 물리학II", products: sortByTopic(p2Print).slice(0, 3) },
     ];
-    const ebookGroups = [
-      { id: "phy1-ebook", title: "CONNECT 물리학I", products: sortByTopic(p1Ebook).slice(0, 3) },
-      { id: "phy2-ebook", title: "CONNECT 물리학II", products: sortByTopic(p2Ebook).slice(0, 3) },
-    ];
-
     return [
       { id: "print", title: "실물책 구매하기", groups: printGroups },
-      { id: "ebook", title: "전자책 구매하기", groups: ebookGroups },
     ] satisfies StorePreviewProductGroupSection[];
   })();
 
