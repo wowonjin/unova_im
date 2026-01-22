@@ -4,13 +4,30 @@ import { prisma } from "@/lib/prisma";
 import AdminTextbookRegisterFormClient from "./AdminTextbookRegisterFormClient";
 import AdminTextbookRegisterLogClient from "./AdminTextbookRegisterLogClient";
 
+type RegisteredTextbookRow = {
+  id: string;
+  title: string;
+  originalName: string;
+  createdAt: Date;
+  sizeBytes: number;
+  pageCount: number | null;
+  thumbnailUrl: string | null;
+  files?: unknown;
+};
+
+function hasRegisterFiles(row: RegisteredTextbookRow) {
+  const files = Array.isArray((row as any).files) ? ((row as any).files as any[]) : null;
+  return Boolean(files && files.length > 0);
+}
+
 export default async function AdminTextbookRegisterPage() {
   const teacher = await requireAdminUser();
 
   // "교재 등록" 플로우로 등록된 교재(= storedPath가 GCS URL인 것) 전체 목록을 노출합니다.
   // 기존의 sessionStorage 기반 "등록 기록" 대신 DB 기준으로 표시합니다.
-  const registeredTextbooks = await prisma.textbook
-    .findMany({
+  let registeredTextbooks: Omit<RegisteredTextbookRow, "files">[] = [];
+  try {
+    const rows = (await prisma.textbook.findMany({
       where: {
         ownerId: teacher.id,
         OR: [
@@ -30,31 +47,33 @@ export default async function AdminTextbookRegisterPage() {
         sizeBytes: true,
         pageCount: true,
         thumbnailUrl: true,
+        files: true,
       },
-    })
-    .catch(async () => {
-      return await prisma.textbook.findMany({
-        where: {
-          ownerId: teacher.id,
-          OR: [
-            { storedPath: { contains: "storage.googleapis.com" } },
-            { storedPath: { contains: "storage.cloud.google.com" } },
-          ],
-          price: null,
-          originalPrice: null,
-        },
-        orderBy: [{ createdAt: "desc" }],
-        select: {
-          id: true,
-          title: true,
-          originalName: true,
-          createdAt: true,
-          sizeBytes: true,
-          pageCount: true,
-          thumbnailUrl: true,
-        },
-      });
+    })) as RegisteredTextbookRow[];
+    registeredTextbooks = rows.filter(hasRegisterFiles).map(({ files: _files, ...rest }) => rest);
+  } catch {
+    registeredTextbooks = await prisma.textbook.findMany({
+      where: {
+        ownerId: teacher.id,
+        OR: [
+          { storedPath: { contains: "storage.googleapis.com" } },
+          { storedPath: { contains: "storage.cloud.google.com" } },
+        ],
+        price: null,
+        originalPrice: null,
+      },
+      orderBy: [{ createdAt: "desc" }],
+      select: {
+        id: true,
+        title: true,
+        originalName: true,
+        createdAt: true,
+        sizeBytes: true,
+        pageCount: true,
+        thumbnailUrl: true,
+      },
     });
+  }
 
   return (
     <AppShell>

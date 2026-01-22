@@ -5,6 +5,13 @@ import AdminTextbooksClient from "./AdminTextbooksClient";
 import { ensureSoldOutColumnsOnce } from "@/lib/ensure-columns";
 import { OrderStatus, ProductType } from "@prisma/client";
 
+type RegisterOptionRow = { id: string; title: string; originalName: string; files?: unknown };
+
+function hasRegisterFiles(row: RegisterOptionRow) {
+  const files = Array.isArray((row as any).files) ? ((row as any).files as any[]) : null;
+  return Boolean(files && files.length > 0);
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminTextbooksPage() {
@@ -125,29 +132,31 @@ export default async function AdminTextbooksPage() {
     ],
   } as const;
 
-  const textbookOptions = await prisma.textbook
-    .findMany({
+  let textbookOptions: Array<{ id: string; title: string; originalName: string }> = [];
+  try {
+    const rows = (await prisma.textbook.findMany({
       where: {
         ...(registeredTextbookWhere as any),
         price: null,
         originalPrice: null,
       },
       orderBy: [{ position: "desc" }, { createdAt: "desc" }],
+      select: { id: true, title: true, originalName: true, files: true },
+      take: 300,
+    })) as RegisterOptionRow[];
+    textbookOptions = rows.filter(hasRegisterFiles).map(({ files: _files, ...rest }) => rest);
+  } catch {
+    textbookOptions = await prisma.textbook.findMany({
+      where: {
+        ...(registeredTextbookWhere as any),
+        price: null,
+        originalPrice: null,
+      },
+      orderBy: [{ createdAt: "desc" }],
       select: { id: true, title: true, originalName: true },
       take: 300,
-    })
-    .catch(async () => {
-      return await prisma.textbook.findMany({
-        where: {
-          ...(registeredTextbookWhere as any),
-          price: null,
-          originalPrice: null,
-        },
-        orderBy: [{ createdAt: "desc" }],
-        select: { id: true, title: true, originalName: true },
-        take: 300,
-      });
     });
+  }
 
   return (
     <AppShell>
