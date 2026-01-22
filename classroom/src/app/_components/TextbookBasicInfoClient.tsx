@@ -6,6 +6,67 @@ import { Badge, Field, Input } from "@/app/_components/ui";
 
 export type TextbookGradeCategory = "G1_2" | "SUNEUNG" | "TRANSFER";
 
+const MAX_TEACHER_IMAGE_BYTES = 1 * 1024 * 1024; // 1MB
+
+async function readAsImage(file: Blob): Promise<HTMLImageElement> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.decoding = "async";
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("IMAGE_LOAD_FAILED"));
+      img.src = url;
+    });
+    return img;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function compressImageToLimit(file: File): Promise<File> {
+  if (file.size <= MAX_TEACHER_IMAGE_BYTES) return file;
+
+  const img = await readAsImage(file);
+  const maxW = 800;
+  const maxH = 800;
+  const srcW = img.naturalWidth || img.width;
+  const srcH = img.naturalHeight || img.height;
+  const ratio = Math.min(1, maxW / Math.max(1, srcW), maxH / Math.max(1, srcH));
+  const dstW = Math.max(1, Math.round(srcW * ratio));
+  const dstH = Math.max(1, Math.round(srcH * ratio));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = dstW;
+  canvas.height = dstH;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("CANVAS_CTX_FAILED");
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, dstW, dstH);
+  ctx.drawImage(img, 0, 0, dstW, dstH);
+
+  let quality = 0.9;
+  for (let i = 0; i < 7; i++) {
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/jpeg", quality),
+    );
+    if (blob && blob.size <= MAX_TEACHER_IMAGE_BYTES) {
+      return new File([blob], "teacher.jpg", { type: "image/jpeg" });
+    }
+    quality = Math.max(0.5, quality - 0.1);
+  }
+
+  const blob: Blob | null = await new Promise((resolve) =>
+    canvas.toBlob((b) => resolve(b), "image/jpeg", 0.5),
+  );
+  if (blob && blob.size <= MAX_TEACHER_IMAGE_BYTES) {
+    return new File([blob], "teacher.jpg", { type: "image/jpeg" });
+  }
+
+  throw new Error("COMPRESS_TOO_LARGE");
+}
+
 type Props = {
   textbookId: string;
   initialTitle: string;
@@ -39,10 +100,13 @@ export default function TextbookBasicInfoClient({
   const [gradeCategory, setGradeCategory] = useState<TextbookGradeCategory>(initialGradeCategory);
   const [composition, setComposition] = useState(initialComposition);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [teacherImagePending, setTeacherImagePending] = useState(false);
+  const [teacherImageError, setTeacherImageError] = useState<string | null>(null);
   
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isFirstRender = useRef(true);
   const resolveTeacherImageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const teacherImageInputRef = useRef<HTMLInputElement | null>(null);
 
   const saveData = useCallback(async () => {
     setSaveStatus("saving");
@@ -179,26 +243,91 @@ export default function TextbookBasicInfoClient({
             <div className="flex-1">
               <Input value={teacherName} onChange={(e) => setTeacherName(e.target.value)} placeholder="예: 홍길동" className="bg-transparent" />
             </div>
-            <div
-              className="shrink-0 w-14 h-14 rounded-full overflow-hidden border border-white/10 bg-white/5"
-              aria-label="선생님 프로필 이미지"
-              title="선생님 프로필 이미지(자동)"
-            >
-              {teacherImageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={teacherImageUrl} alt="선생님 프로필" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-white/35">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
+            <div className="shrink-0 text-right">
+              <div
+                className={`relative w-14 h-14 rounded-full overflow-hidden border border-white/10 bg-white/5 ${
+                  teacherImagePending ? "opacity-60" : "cursor-pointer hover:opacity-95"
+                }`}
+                aria-label="선생님 프로필 이미지"
+                title="클릭해서 프로필 이미지 업로드"
+                onClick={() => {
+                  if (teacherImagePending) return;
+                  teacherImageInputRef.current?.click();
+                }}
+              >
+                {teacherImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={teacherImageUrl} alt="선생님 프로필" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-white/35">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                  </div>
+                )}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-[10px] text-white/80 opacity-0 transition-opacity hover:opacity-100">
+                  업로드
                 </div>
-              )}
+              </div>
+              <input
+                ref={teacherImageInputRef}
+                className="hidden"
+                type="file"
+                accept="image/*"
+                disabled={teacherImagePending}
+                onChange={async (e) => {
+                  const file = e.currentTarget.files?.[0] ?? null;
+                  e.currentTarget.value = "";
+                  if (!file) return;
+
+                  setTeacherImageError(null);
+                  setTeacherImagePending(true);
+                  try {
+                    const uploadFile = await compressImageToLimit(file).catch(() => {
+                      throw new Error("FILE_TOO_LARGE");
+                    });
+                    const fd = new FormData();
+                    fd.set("teacherImage", uploadFile);
+
+                    const res = await fetch(`/api/admin/textbooks/${textbookId}/teacher-image`, {
+                      method: "POST",
+                      body: fd,
+                      headers: { "x-unova-client": "1", accept: "application/json" },
+                    });
+
+                    if (!res.ok) {
+                      const payload = await res.json().catch(() => null);
+                      const code = payload?.error ? String(payload.error) : `HTTP_${res.status}`;
+                      const msg =
+                        code === "FILE_TOO_LARGE"
+                          ? "파일이 너무 큽니다. 1MB 이하 이미지로 업로드해주세요."
+                          : code === "FORBIDDEN" || res.status === 403
+                            ? "권한이 없어 업로드할 수 없습니다. 다시 로그인 후 시도해주세요."
+                            : "업로드에 실패했습니다. 잠시 후 다시 시도해주세요.";
+                      setTeacherImageError(msg);
+                      return;
+                    }
+
+                    const data = await res.json().catch(() => null);
+                    const nextUrl = (data?.teacherImageUrl as string | null | undefined) ?? null;
+                    if (nextUrl) {
+                      setTeacherImageUrl(nextUrl);
+                      router.refresh();
+                    }
+                  } catch {
+                    setTeacherImageError("업로드에 실패했습니다. (이미지 용량/형식) 잠시 후 다시 시도해주세요.");
+                  } finally {
+                    setTeacherImagePending(false);
+                  }
+                }}
+              />
+              {teacherImagePending ? <p className="mt-1 text-[11px] text-white/60">업로드 중...</p> : null}
+              {teacherImageError ? <p className="mt-1 text-[11px] text-red-400">{teacherImageError}</p> : null}
             </div>
           </div>
         </Field>
