@@ -1125,9 +1125,10 @@ export default function ProductDetailClient({
   const reviewTabKey: TabKey = product.type === "textbook" ? "교재후기" : "강의후기";
   const introTabKey: TabKey = product.type === "textbook" ? "교재소개" : "강의소개";
   const detailPageTabKey: TabKey = "상세 페이지";
-  // 무료(0원) 교재는 후기 UI를 단순화: 키워드/추천/베스트/구매자 탭 등 숨김
-  // (운영 중 특정 상품 ID 하드코딩으로 인해 무료 교재들의 후기 탭 디자인이 "기본값"으로 보이는 문제를 방지)
-  const isSimpleReviewUi = product.type === "textbook" && product.isPriceSet && product.price === 0;
+  // 강의 상세 후기 UI는 교재 후기 디자인과 동일하게 단순화합니다.
+  // 무료(0원) 교재도 동일하게 단순 UI로 노출합니다.
+  const isSimpleReviewUi =
+    product.type === "course" || (product.type === "textbook" && product.isPriceSet && product.price === 0);
   const reviewTeacherDisplayName = useMemo(() => {
     const raw = String(product.teacher || "").replace(/선생님/g, "").trim();
     return raw ? `${raw} 선생님` : "선생님";
