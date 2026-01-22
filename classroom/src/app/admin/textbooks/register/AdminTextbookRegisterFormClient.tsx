@@ -314,7 +314,7 @@ export default function AdminTextbookRegisterFormClient() {
             </div>
 
             {/* Hidden inputs */}
-            <input type="hidden" name="isPublished" value="1" />
+            <input type="hidden" name="isPublished" value="0" />
             <input type="hidden" name="pageCount" value={pageCount != null ? String(pageCount) : ""} />
             <input type="hidden" name="thumbnailDataUrl" value={thumbnailDataUrl || ""} />
 

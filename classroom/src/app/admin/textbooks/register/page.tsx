@@ -34,9 +34,10 @@ export default async function AdminTextbookRegisterPage() {
           { storedPath: { contains: "storage.googleapis.com" } },
           { storedPath: { contains: "storage.cloud.google.com" } },
         ],
-        // "교재 판매하기"로 판매 설정(가격/원가)이 들어간 항목은 등록 기록에서 제외
+        // "교재 판매하기"로 판매 설정(가격/원가) 또는 공개된 항목은 등록 기록에서 제외
         price: null,
         originalPrice: null,
+        isPublished: false,
       },
       orderBy: [{ createdAt: "desc" }],
       select: {
@@ -61,6 +62,7 @@ export default async function AdminTextbookRegisterPage() {
         ],
         price: null,
         originalPrice: null,
+        isPublished: false,
       },
       orderBy: [{ createdAt: "desc" }],
       select: {
