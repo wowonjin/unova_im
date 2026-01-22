@@ -101,6 +101,8 @@ const getCachedTextbooksForStore = unstable_cache(
         isPublished: true,
         // /admin/textbooks(판매 물품)과 동일 기준: 판매가/정가 중 하나라도 설정된 교재만 노출
         OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+        // 판매가가 0원인 교재는 스토어에서 숨김
+        AND: [{ OR: [{ price: { equals: null } }, { price: { not: 0 } }] }],
       };
       const where = baseWhere;
 
