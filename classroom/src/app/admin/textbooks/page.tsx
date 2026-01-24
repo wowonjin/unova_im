@@ -12,6 +12,12 @@ function hasRegisterFiles(row: RegisterOptionRow) {
   return Boolean(files && files.length > 0);
 }
 
+function isBundleComposition(raw: unknown) {
+  if (typeof raw !== "string") return false;
+  const value = raw.trim();
+  return /^\d+\s*권\s*세트$/.test(value);
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminTextbooksPage() {
@@ -118,13 +124,16 @@ export default async function AdminTextbooksPage() {
 
   // "교재 등록"(/admin/textbooks/register)로 등록된 교재만 옵션으로 노출
   // - 해당 플로우는 storedPath에 GCS URL(https://storage.googleapis.com/...)을 저장합니다.
-  // - 또한 "교재 판매하기"에서 이미 판매 설정(가격/원가)이 들어간 교재는 옵션에서 제외합니다.
   const registeredTextbookWhere = {
     ownerId: teacher.id,
     OR: [
       { storedPath: { contains: "storage.googleapis.com" } },
       { storedPath: { contains: "storage.cloud.google.com" } },
     ],
+    // "교재 등록" 목록과 동일하게: 판매 설정(가격/원가)이나 공개된 항목은 제외
+    price: null,
+    originalPrice: null,
+    isPublished: false,
   } as const;
 
   let textbookOptions: Array<{ id: string; title: string; originalName: string }> = [];
@@ -132,25 +141,24 @@ export default async function AdminTextbooksPage() {
     const rows = (await prisma.textbook.findMany({
       where: {
         ...(registeredTextbookWhere as any),
-        price: null,
-        originalPrice: null,
       },
       orderBy: [{ position: "desc" }, { createdAt: "desc" }],
-      select: { id: true, title: true, originalName: true, files: true },
+      select: { id: true, title: true, originalName: true, files: true, composition: true },
       take: 300,
-    })) as RegisterOptionRow[];
-    textbookOptions = rows.filter(hasRegisterFiles).map(({ files: _files, ...rest }) => rest);
+    })) as Array<RegisterOptionRow & { composition?: string | null }>;
+    textbookOptions = rows
+      .filter((row) => hasRegisterFiles(row) && !isBundleComposition((row as any).composition))
+      .map(({ files: _files, composition: _composition, ...rest }) => rest);
   } catch {
     textbookOptions = await prisma.textbook.findMany({
       where: {
         ...(registeredTextbookWhere as any),
-        price: null,
-        originalPrice: null,
       },
       orderBy: [{ createdAt: "desc" }],
-      select: { id: true, title: true, originalName: true },
+      select: { id: true, title: true, originalName: true, composition: true },
       take: 300,
     });
+    textbookOptions = textbookOptions.filter((row) => !isBundleComposition((row as any).composition));
   }
 
   return (

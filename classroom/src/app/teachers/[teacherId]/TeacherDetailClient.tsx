@@ -594,8 +594,9 @@ export default function TeacherDetailClient({ teacher }: Props) {
       // NOTE: "비역학"에 "역학"이 포함되어 있어 includes("(역학)") 같은 단순 매칭은 오탐 위험이 있으므로
       // 괄호 포함 패턴을 우선으로 정확히 분기합니다.
       if (/\(역학\+비역학\)/.test(t) || /역학\+비역학/.test(t)) return 0;
-      if (/\(역학\)/.test(t)) return 1;
-      if (/\(비역학\)/.test(t)) return 2;
+      // "비역학"이 "역학"을 포함하므로 비역학을 먼저 체크
+      if (/\(비역학\)/.test(t) || /비역학/.test(t)) return 2;
+      if (/\(역학\)/.test(t) || /역학/.test(t)) return 1;
       return 9;
     };
     const sortByTopic = (arr: StorePreviewProduct[]): StorePreviewProduct[] => {
@@ -662,23 +663,40 @@ export default function TeacherDetailClient({ teacher }: Props) {
 
     const p1Print: StorePreviewProduct[] = [];
     const p2Print: StorePreviewProduct[] = [];
+    const p1Ebook: StorePreviewProduct[] = [];
+    const p2Ebook: StorePreviewProduct[] = [];
+    const extraEbook: StorePreviewProduct[] = [];
 
     for (const p of paid) {
       const level = getLevel(p);
-      if (!level) continue;
-      const ebook = isEbook(p);
-      if (ebook) continue;
+      const isPrintItem = norm(p.textbookType) === norm("실물책+PDF");
+      const ebook = !isPrintItem;
+
+      if (ebook) {
+        if (level === "I") p1Ebook.push(p);
+        else if (level === "II") p2Ebook.push(p);
+        else extraEbook.push(p);
+        continue;
+      }
+
       if (level === "I") p1Print.push(p);
-      if (level === "II") p2Print.push(p);
+      else if (level === "II") p2Print.push(p);
     }
 
     const printGroups = [
       { id: "phy1-print", title: "CONNECT 물리학I", products: sortByTopic(p1Print).slice(0, 3) },
-      // NOTE: 사용자 요청 문구 그대로("CONENCT") 반영
-      { id: "phy2-print", title: "CONENCT 물리학II", products: sortByTopic(p2Print).slice(0, 3) },
+      { id: "phy2-print", title: "CONNECT 물리학II", products: sortByTopic(p2Print).slice(0, 3) },
     ];
+    const ebookGroups = [
+      { id: "phy1-ebook", title: "CONNECT 물리학I", products: sortByTopic(p1Ebook) },
+      { id: "phy2-ebook", title: "CONNECT 물리학II", products: sortByTopic(p2Ebook) },
+    ];
+    if (extraEbook.length > 0) {
+      ebookGroups.push({ id: "pdf-etc", title: "PDF 교재", products: sortByTopic(extraEbook) });
+    }
     return [
       { id: "print", title: "실물책 구매하기", groups: printGroups },
+      { id: "ebook", title: "전자책 구매하기", groups: ebookGroups },
     ] satisfies StorePreviewProductGroupSection[];
   })();
 

@@ -53,6 +53,22 @@ function normalizeTextbookType(v: string | null | undefined): string {
     .toUpperCase();
 }
 
+function movePdfToLast<T extends { textbookType: string | null | undefined }>(items: T[]): T[] {
+  const nonPdf: T[] = [];
+  const pdf: T[] = [];
+
+  for (const item of items) {
+    const tt = normalizeTextbookType(item.textbookType ?? null);
+    if (tt === "PDF") {
+      pdf.push(item);
+    } else {
+      nonPdf.push(item);
+    }
+  }
+
+  return [...nonPdf, ...pdf];
+}
+
 function getThumbnailSrc(product: StorePreviewProduct): string | null {
   if (!product.thumbnailUrl && !(product.type === "course" && product.thumbnailStoredPath)) return null;
 
@@ -824,7 +840,9 @@ function StorePreviewSections({
 
     // 폴백: 수능 후보가 0개면, 유료 교재(단, 편입 제외) 또는 전체 유료 교재를 보여준다(빈 화면 방지)
     const baseSource = merged.length > 0 ? merged : paidNonTransfer.length > 0 ? paidNonTransfer : paid;
-    if (selectedSuneungBookFormat === "전체") return baseSource;
+    if (selectedSuneungBookFormat === "전체") {
+      return movePdfToLast(baseSource);
+    }
     return baseSource.filter((p) => {
       const tt = normalizeTextbookType(p.textbookType);
       if (selectedSuneungBookFormat === "전자책") return tt === "PDF";
