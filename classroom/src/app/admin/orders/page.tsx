@@ -99,6 +99,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams?:
         { course: { ownerId: teacher.id } },
         { textbook: { ownerId: teacher.id } },
       ],
+      amount: { gt: 0 },
       // 미결제/미확정 주문(PENDING)은 더미처럼 쌓이기 쉬워 주문관리 화면에서는 제외합니다.
       // (결제 완료/환불/취소 등 처리된 주문만 노출)
       NOT: { status: "PENDING" },

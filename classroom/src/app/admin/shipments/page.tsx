@@ -147,6 +147,7 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
           ? kstStartOfDay(addDaysKst(clamped.toKey, 1))
           : null;
 
+  const orderLimit = dateFilter === "range" || dateFilter === "all" ? 10000 : 2000;
   const orders = await prisma.order.findMany({
     where: {
       NOT: { status: "PENDING" },
@@ -157,7 +158,7 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
       ],
     },
     orderBy: { createdAt: "desc" },
-    take: 500,
+    take: orderLimit,
     select: {
       id: true,
       orderNo: true,

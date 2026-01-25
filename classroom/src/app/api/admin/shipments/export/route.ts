@@ -216,6 +216,7 @@ export async function GET(req: Request) {
     const titleByTextbookId = new Map(textbooks.map((t) => [t.id, t.title] as const));
     const selectedIdSet = new Set(selectedIds);
 
+    const orderLimit = date === "range" || date === "all" ? 10000 : 2000;
     const orders = await prisma.order.findMany({
       where: {
         NOT: { status: "PENDING" },
@@ -226,7 +227,7 @@ export async function GET(req: Request) {
         ],
       },
       orderBy: { createdAt: "desc" },
-      take: 1000,
+      take: orderLimit,
       select: {
         orderNo: true,
         productName: true,
