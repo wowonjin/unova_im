@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import * as XLSX from "xlsx";
 
 export const runtime = "nodejs";
@@ -11,6 +12,27 @@ const MAX_EXPORT_ROWS = (() => {
   return 5000;
 })();
 const BATCH_SIZE = 500;
+
+const memberSelect = {
+  id: true,
+  email: true,
+  name: true,
+  phone: true,
+  address: true,
+  addressDetail: true,
+  birthday: true,
+  imwebMemberCode: true,
+  createdAt: true,
+  lastLoginAt: true,
+  _count: {
+    select: {
+      enrollments: true,
+      textbookEntitlements: true,
+    },
+  },
+} satisfies Prisma.UserSelect;
+
+type MemberRow = Prisma.UserGetPayload<{ select: typeof memberSelect }>;
 
 export async function GET(req: Request) {
   try {
@@ -46,28 +68,11 @@ export async function GET(req: Request) {
 
     while (fetched < limit) {
       const take = Math.min(BATCH_SIZE, limit - fetched);
-      const members = await prisma.user.findMany({
+      const members: MemberRow[] = await prisma.user.findMany({
         ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
         take,
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          phone: true,
-          address: true,
-          addressDetail: true,
-          birthday: true,
-          imwebMemberCode: true,
-          createdAt: true,
-          lastLoginAt: true,
-          _count: {
-            select: {
-              enrollments: true,
-              textbookEntitlements: true,
-            },
-          },
-        },
+        select: memberSelect,
       });
 
       if (members.length === 0) break;
