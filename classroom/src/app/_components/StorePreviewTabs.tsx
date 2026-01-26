@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type StorePreviewProduct = {
   id: string;
@@ -262,6 +262,87 @@ function ProductGrid({
           </Link>
         );
       })}
+    </div>
+  );
+}
+
+function ExpandableSubjectTabs({
+  subjects,
+  selected,
+  onSelect,
+  tabKeyPrefix,
+  containerClassName,
+  tabTextClassName,
+}: {
+  subjects: string[];
+  selected: string;
+  onSelect: (subject: string) => void;
+  tabKeyPrefix: string;
+  containerClassName: string;
+  tabTextClassName: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [hasOverflow, setHasOverflow] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const measureOverflow = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    if (expanded) return;
+    setHasOverflow(el.scrollWidth > el.clientWidth + 1);
+  }, []);
+
+  useEffect(() => {
+    const run = () => requestAnimationFrame(measureOverflow);
+    run();
+    window.addEventListener("resize", run);
+    return () => window.removeEventListener("resize", run);
+  }, [measureOverflow, subjects]);
+
+  const showToggle = hasOverflow || expanded;
+
+  return (
+    <div>
+      <div
+        ref={containerRef}
+        className={`flex ${expanded ? "flex-wrap" : "flex-nowrap overflow-hidden"} ${containerClassName}`}
+      >
+        {subjects.map((subject) => {
+          const active = selected === subject;
+          return (
+            <button
+              key={`${tabKeyPrefix}-${subject}`}
+              type="button"
+              onClick={() => onSelect(subject)}
+              role="tab"
+              aria-selected={active}
+              className={`relative shrink-0 px-1 py-2 font-semibold ${tabTextClassName} ${
+                active ? "text-white" : "text-white/55"
+              }`}
+            >
+              {subject}
+              {active ? (
+                <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+      {showToggle ? (
+        <div className="mt-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setExpanded((prev) => !prev)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1 text-[12px] font-semibold text-white/85 hover:bg-white/[0.1] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+            aria-expanded={expanded}
+          >
+            <span className="material-symbols-outlined text-[16px] leading-none text-white/70">
+              {expanded ? "expand_less" : "expand_more"}
+            </span>
+            {expanded ? "접기" : "더보기"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -530,52 +611,22 @@ function StorePreviewSectionsSimple({
             <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">무료 자료 다운로드</h2>
             {!hideTabMenus && freeTextbookSubjects.length > 1 ? (
               <div className="mt-2 md:mt-8">
-                {/* 모바일: 탭 메뉴 스타일 */}
-                <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
-                  {freeTextbookSubjects.map((subject) => {
-                    const active = selectedFreeTextbookSubject === subject;
-                    return (
-                      <button
-                        key={`textbook-free-simple-${subject}`}
-                        type="button"
-                        onClick={() => setSelectedFreeTextbookSubject(subject)}
-                        role="tab"
-                        aria-selected={active}
-                        className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
-                          active ? "text-white" : "text-white/55"
-                        }`}
-                      >
-                        {subject}
-                        {active ? (
-                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
-                {/* 데스크톱: 탭 메뉴 스타일 */}
-                <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
-                  {freeTextbookSubjects.map((subject) => {
-                    const active = selectedFreeTextbookSubject === subject;
-                    return (
-                      <button
-                        key={`textbook-free-simple-${subject}-desktop`}
-                        type="button"
-                        onClick={() => setSelectedFreeTextbookSubject(subject)}
-                        role="tab"
-                        aria-selected={active}
-                        className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
-                          active ? "text-white" : "text-white/55"
-                        }`}
-                      >
-                        {subject}
-                        {active ? (
-                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
+                <ExpandableSubjectTabs
+                  subjects={freeTextbookSubjects}
+                  selected={selectedFreeTextbookSubject}
+                  onSelect={setSelectedFreeTextbookSubject}
+                  tabKeyPrefix="textbook-free-simple"
+                  containerClassName="gap-4 border-b border-white/10 pb-2 md:hidden"
+                  tabTextClassName="text-[13px]"
+                />
+                <ExpandableSubjectTabs
+                  subjects={freeTextbookSubjects}
+                  selected={selectedFreeTextbookSubject}
+                  onSelect={setSelectedFreeTextbookSubject}
+                  tabKeyPrefix="textbook-free-simple-desktop"
+                  containerClassName="hidden md:flex gap-6 border-b border-white/10 pb-2"
+                  tabTextClassName="text-[15px]"
+                />
               </div>
             ) : null}
             <div className="mt-6">
@@ -955,52 +1006,22 @@ function StorePreviewSections({
             <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">무료 자료 다운로드</h2>
             {!hideTabMenus && freeTextbookSubjects.length > 1 ? (
               <div className="mt-2 md:mt-8">
-                {/* 모바일: 탭 메뉴 스타일 */}
-                <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
-                  {freeTextbookSubjects.map((subject) => {
-                    const active = selectedFreeTextbookSubject === subject;
-                    return (
-                      <button
-                        key={`textbook-free-home-${subject}`}
-                        type="button"
-                        onClick={() => setSelectedFreeTextbookSubject(subject)}
-                        role="tab"
-                        aria-selected={active}
-                        className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
-                          active ? "text-white" : "text-white/55"
-                        }`}
-                      >
-                        {subject}
-                        {active ? (
-                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
-                {/* 데스크톱: 탭 메뉴 스타일 */}
-                <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
-                  {freeTextbookSubjects.map((subject) => {
-                    const active = selectedFreeTextbookSubject === subject;
-                    return (
-                      <button
-                        key={`textbook-free-home-${subject}-desktop`}
-                        type="button"
-                        onClick={() => setSelectedFreeTextbookSubject(subject)}
-                        role="tab"
-                        aria-selected={active}
-                        className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
-                          active ? "text-white" : "text-white/55"
-                        }`}
-                      >
-                        {subject}
-                        {active ? (
-                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
+                <ExpandableSubjectTabs
+                  subjects={freeTextbookSubjects}
+                  selected={selectedFreeTextbookSubject}
+                  onSelect={setSelectedFreeTextbookSubject}
+                  tabKeyPrefix="textbook-free-home"
+                  containerClassName="gap-4 border-b border-white/10 pb-2 md:hidden"
+                  tabTextClassName="text-[13px]"
+                />
+                <ExpandableSubjectTabs
+                  subjects={freeTextbookSubjects}
+                  selected={selectedFreeTextbookSubject}
+                  onSelect={setSelectedFreeTextbookSubject}
+                  tabKeyPrefix="textbook-free-home-desktop"
+                  containerClassName="hidden md:flex gap-6 border-b border-white/10 pb-2"
+                  tabTextClassName="text-[15px]"
+                />
               </div>
             ) : null}
             <div className="mt-6">
