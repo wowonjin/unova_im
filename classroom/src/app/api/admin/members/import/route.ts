@@ -5,6 +5,17 @@ import * as XLSX from "xlsx";
 
 export const runtime = "nodejs";
 
+const MAX_IMPORT_ROWS = (() => {
+  const raw = Number(process.env.IMPORT_MEMBERS_MAX);
+  if (Number.isFinite(raw) && raw > 0) return Math.floor(raw);
+  return 2000;
+})();
+const MAX_IMPORT_FILE_BYTES = (() => {
+  const raw = Number(process.env.IMPORT_MEMBERS_MAX_BYTES);
+  if (Number.isFinite(raw) && raw > 0) return Math.floor(raw);
+  return 5 * 1024 * 1024; // 5MB
+})();
+
 // 이메일 유효성 검사
 function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -30,6 +41,12 @@ export async function POST(req: Request) {
     if (!file) {
       return NextResponse.json({ ok: false, error: "파일이 없습니다." }, { status: 400 });
     }
+    if (Number.isFinite(file.size) && file.size > MAX_IMPORT_FILE_BYTES) {
+      return NextResponse.json(
+        { ok: false, error: `파일이 너무 큽니다. 최대 ${Math.floor(MAX_IMPORT_FILE_BYTES / 1024 / 1024)}MB까지 가능합니다.` },
+        { status: 400 }
+      );
+    }
 
     // 파일 읽기
     const arrayBuffer = await file.arrayBuffer();
@@ -43,7 +60,22 @@ export async function POST(req: Request) {
     }
 
     const sheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
+    if (!sheet["!ref"]) {
+      return NextResponse.json({ ok: false, error: "시트 범위를 확인할 수 없습니다." }, { status: 400 });
+    }
+
+    const range = XLSX.utils.decode_range(sheet["!ref"]);
+    const totalDataRows = Math.max(0, range.e.r); // 0-based, header 포함
+    if (totalDataRows > MAX_IMPORT_ROWS) {
+      return NextResponse.json(
+        { ok: false, error: `행 수가 너무 많습니다. 최대 ${MAX_IMPORT_ROWS}행까지 가능합니다.` },
+        { status: 400 }
+      );
+    }
+
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+      range,
+    });
 
     if (rows.length === 0) {
       return NextResponse.json({ ok: false, error: "데이터가 없습니다." }, { status: 400 });
