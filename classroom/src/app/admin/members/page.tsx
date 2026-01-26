@@ -120,13 +120,19 @@ const dummyMembers: MemberRow[] = [
 export default async function AdminMembersPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string; page?: string }>;
+  searchParams?: Promise<{ q?: string; page?: string; limit?: string }>;
 }) {
   await requireAdminUser();
   const sp = (await searchParams) ?? {};
   const query = sp.q?.trim() || "";
   const page = Math.max(1, parseInt(sp.page || "1", 10));
-  const limit = 50;
+  const DEFAULT_LIMIT = 20;
+  const MAX_LIMIT = 50;
+  const parsedLimit = parseInt(sp.limit || "", 10);
+  const limit =
+    Number.isFinite(parsedLimit) && parsedLimit > 0
+      ? Math.min(MAX_LIMIT, Math.max(5, parsedLimit))
+      : DEFAULT_LIMIT;
   const skip = (page - 1) * limit;
 
   let membersData: MemberRow[] = dummyMembers;
@@ -344,6 +350,7 @@ export default async function AdminMembersPage({
         currentPage={page}
         totalPages={totalPages}
         query={query}
+        pageSize={limit}
         loginStats={loginStats ?? undefined}
       />
     </AppShell>

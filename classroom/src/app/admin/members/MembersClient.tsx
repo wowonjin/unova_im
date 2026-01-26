@@ -29,6 +29,7 @@ type Props = {
   currentPage: number;
   totalPages: number;
   query: string;
+  pageSize?: number;
   loginStats?: {
     kakao: number;
     naver: number;
@@ -156,6 +157,7 @@ export default function MembersClient({
   currentPage,
   totalPages,
   query,
+  pageSize,
   loginStats,
 }: Props) {
   const router = useRouter();
@@ -181,9 +183,10 @@ export default function MembersClient({
       const sp = new URLSearchParams();
       sp.set("page", String(page));
       if (query.trim()) sp.set("q", query.trim());
+      if (pageSize) sp.set("limit", String(pageSize));
       return `/admin/members?${sp.toString()}`;
     };
-  }, [query]);
+  }, [pageSize, query]);
 
   const Pagination = useMemo(() => {
     if (totalPages <= 1) return null;
@@ -316,6 +319,7 @@ export default function MembersClient({
     e.preventDefault();
     const params = new URLSearchParams();
     if (searchValue.trim()) params.set("q", searchValue.trim());
+    if (pageSize) params.set("limit", String(pageSize));
     router.push(`/admin/members?${params.toString()}`);
   };
 
