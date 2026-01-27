@@ -652,11 +652,17 @@ export default function TeacherDetailClient({ teacher }: Props) {
       };
 
       const print = paid.filter((p) => !isEbook(p));
+      const normalizedTitle = (value: unknown) => String(value ?? "").replace(/\s+/g, "");
+      const g1Products = print.filter((p) => normalizedTitle(p.title).includes("공통수학1"));
+      const g3Products = print.filter((p) => !normalizedTitle(p.title).includes("공통수학1"));
       return [
         {
           id: "print",
           title: "실물책 구매하기",
-          groups: [{ id: "bhu-print", title: "CONNECT 수학", products: sortByMathOrder(print) }],
+          groups: [
+            { id: "bhu-g3-print", title: "CONNECT 고3", products: sortByMathOrder(g3Products) },
+            { id: "bhu-g1-print", title: "CONNECT 고1", products: g1Products },
+          ],
         },
       ] satisfies StorePreviewProductGroupSection[];
     }

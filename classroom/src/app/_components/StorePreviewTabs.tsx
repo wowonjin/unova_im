@@ -46,11 +46,16 @@ type SectionsMode = "home" | "simple";
 
 type BookFormat = "전체" | "실물책" | "전자책";
 const BOOK_FORMATS: BookFormat[] = ["전체", "실물책", "전자책"];
+const HOME_TEXTBOOK_TITLE_PRIORITY = ["공통수학1"];
 
 function normalizeTextbookType(v: string | null | undefined): string {
   return String(v ?? "")
     .replace(/\s+/g, "")
     .toUpperCase();
+}
+
+function normalizeTitle(v: string | null | undefined): string {
+  return String(v ?? "").replace(/\s+/g, "");
 }
 
 function movePdfToLast<T extends { textbookType: string | null | undefined }>(items: T[]): T[] {
@@ -67,6 +72,24 @@ function movePdfToLast<T extends { textbookType: string | null | undefined }>(it
   }
 
   return [...nonPdf, ...pdf];
+}
+
+function sortByTitlePriority<T extends { title: string }>(items: T[], priorities: string[]): T[] {
+  if (!items.length || !priorities.length) return items;
+  const priorityMap = new Map(priorities.map((title, idx) => [normalizeTitle(title), idx]));
+  return items
+    .map((item, idx) => ({ item, idx }))
+    .sort((a, b) => {
+      const aTitle = normalizeTitle(a.item.title);
+      const bTitle = normalizeTitle(b.item.title);
+      const pa = [...priorityMap.entries()].find(([key]) => aTitle.includes(key))?.[1];
+      const pb = [...priorityMap.entries()].find(([key]) => bTitle.includes(key))?.[1];
+      if (pa != null && pb != null) return pa - pb;
+      if (pa != null) return -1;
+      if (pb != null) return 1;
+      return a.idx - b.idx;
+    })
+    .map((entry) => entry.item);
 }
 
 function getThumbnailSrc(product: StorePreviewProduct): string | null {
@@ -892,13 +915,14 @@ function StorePreviewSections({
     // 폴백: 수능 후보가 0개면, 유료 교재(단, 편입 제외) 또는 전체 유료 교재를 보여준다(빈 화면 방지)
     const baseSource = merged.length > 0 ? merged : paidNonTransfer.length > 0 ? paidNonTransfer : paid;
     if (selectedSuneungBookFormat === "전체") {
-      return movePdfToLast(baseSource);
+      return sortByTitlePriority(movePdfToLast(baseSource), HOME_TEXTBOOK_TITLE_PRIORITY);
     }
-    return baseSource.filter((p) => {
+    const filtered = baseSource.filter((p) => {
       const tt = normalizeTextbookType(p.textbookType);
       if (selectedSuneungBookFormat === "전자책") return tt === "PDF";
       return tt === normalizeTextbookType("실물책+PDF");
     });
+    return sortByTitlePriority(filtered, HOME_TEXTBOOK_TITLE_PRIORITY);
   }, [selectedSuneungBookFormat, textbooks]);
 
   const filteredSuneungTextbooks = useMemo(() => {
