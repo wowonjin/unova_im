@@ -2,7 +2,7 @@ import AppShell from "@/app/_components/AppShell";
 import { PageHeader, Card, CardBody } from "@/app/_components/ui";
 import { getCurrentUser, getTeacherAccountByUserId } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
-import type { OrderStatus } from "@prisma/client";
+import type { OrderStatus, Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -104,9 +104,18 @@ export default async function TeacherSalesPage() {
     let cursorId: string | null = null;
     let totalSales = 0;
     let payoutTotal = 0;
+    type OrderRow = Prisma.OrderGetPayload<{
+      select: {
+        id: true;
+        productType: true;
+        amount: true;
+        refundedAmount: true;
+        textbook: { select: { composition: true; textbookType: true } };
+      };
+    }>;
 
     while (true) {
-      const rows = await prisma.order.findMany({
+      const rows: OrderRow[] = await prisma.order.findMany({
         where,
         select: {
           id: true,

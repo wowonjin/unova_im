@@ -30,9 +30,4 @@ export async function register() {
   logMemory("boot");
   setInterval(() => logMemory("interval"), intervalMs).unref?.();
 
-  const onExit = (signal: string) => () => {
-    logMemory(`signal:${signal}`);
-  };
-  process.on("SIGTERM", onExit("SIGTERM"));
-  process.on("SIGINT", onExit("SIGINT"));
 }

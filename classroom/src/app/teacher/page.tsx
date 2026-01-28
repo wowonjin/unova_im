@@ -2,7 +2,7 @@ import AppShell from "@/app/_components/AppShell";
 import { PageHeader, Card, CardBody } from "@/app/_components/ui";
 import { getCurrentUser, getTeacherAccountByUserId } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
-import type { OrderStatus } from "@prisma/client";
+import type { OrderStatus, Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
 import SalesPayoutChartClient from "./SalesPayoutChartClient";
 
@@ -171,6 +171,15 @@ export default async function TeacherDashboardPage() {
   async function summarizeRange(startUtc: Date, endUtc: Date) {
     const BATCH_SIZE = 1000;
     let cursorId: string | null = null;
+    type OrderRow = Prisma.OrderGetPayload<{
+      select: {
+        id: true;
+        productType: true;
+        amount: true;
+        refundedAmount: true;
+        textbook: { select: { composition: true; textbookType: true } };
+      };
+    }>;
     let courseSales = 0;
     let ebookSales = 0; // PDF
     let textbookSales = 0; // non-PDF
@@ -180,7 +189,7 @@ export default async function TeacherDashboardPage() {
     let cardFeeWithVatTotal = 0;
 
     while (true) {
-      const rows = await prisma.order.findMany({
+      const rows: OrderRow[] = await prisma.order.findMany({
         where: { ...salesWhereBase, createdAt: { gte: startUtc, lte: endUtc } },
         select: {
           id: true,
