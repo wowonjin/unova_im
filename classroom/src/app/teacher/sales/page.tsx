@@ -99,7 +99,7 @@ export default async function TeacherSalesPage() {
   if (textbookIds.length) scopeOr.push({ textbookId: { in: textbookIds } });
   const scopeWhere = scopeOr.length ? ({ OR: scopeOr } as const) : ({ id: "__NO_MATCH__" } as const);
 
-  async function accumulateSalesAndPayout(where: Parameters<typeof prisma.order.findMany>[0]["where"]) {
+  async function accumulateSalesAndPayout(where: Prisma.OrderWhereInput) {
     const BATCH_SIZE = 1000;
     let cursorId: string | null = null;
     let totalSales = 0;

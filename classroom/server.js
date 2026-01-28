@@ -13,10 +13,26 @@ const slowMs = (() => {
   return Number.isFinite(v) && v > 0 ? v : 1000;
 })();
 
+const memIntervalMs = (() => {
+  const v = Number(process.env.MEM_LOG_INTERVAL_MS);
+  return Number.isFinite(v) && v >= 5000 ? v : 60_000;
+})();
+
 const sampleRate = (() => {
   const v = Number(process.env.REQ_LOG_SAMPLE_RATE);
   return Number.isFinite(v) && v >= 0 ? Math.min(1, v) : 0.01;
 })();
+
+function logMemory(tag) {
+  const m = process.memoryUsage();
+  const toMb = (bytes) => Math.round((bytes / 1024 / 1024) * 10) / 10;
+  // eslint-disable-next-line no-console
+  console.log(
+    `[mem] ${tag} rss=${toMb(m.rss)}MB heapUsed=${toMb(m.heapUsed)}MB heapTotal=${toMb(m.heapTotal)}MB external=${toMb(
+      m.external
+    )}MB arrayBuffers=${toMb(m.arrayBuffers)}MB`
+  );
+}
 
 function toSafeText(v, maxLen) {
   const s = String(v ?? "");
@@ -59,5 +75,7 @@ app.prepare().then(() => {
     if (err) throw err;
     // eslint-disable-next-line no-console
     console.log(`> Ready on http://localhost:${port}`);
+    logMemory("boot");
+    setInterval(() => logMemory("interval"), memIntervalMs).unref?.();
   });
 });
