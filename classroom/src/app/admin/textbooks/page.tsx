@@ -38,6 +38,8 @@ export default async function AdminTextbooksPage() {
     subjectName?: string | null;
     price?: number | null;
     originalPrice?: number | null;
+    gradeCategory?: "G1_2" | "SUNEUNG" | "TRANSFER" | null;
+    imwebProdCode?: string | null;
     salesCount?: number;
   }> = [];
 
@@ -64,6 +66,8 @@ export default async function AdminTextbooksPage() {
         subjectName: true,
         price: true,
         originalPrice: true,
+        gradeCategory: true,
+        imwebProdCode: true,
       },
     });
   } catch (e) {
@@ -84,6 +88,8 @@ export default async function AdminTextbooksPage() {
         createdAt: true,
         isPublished: true,
         thumbnailUrl: true,
+        gradeCategory: true,
+        imwebProdCode: true,
       },
     });
   }

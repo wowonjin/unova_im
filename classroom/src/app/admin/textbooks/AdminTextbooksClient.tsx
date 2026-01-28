@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import AdminTextbooksListView from "./AdminTextbooksListView";
 import AdminTextbooksRegisterView from "./AdminTextbooksRegisterView";
+import AdminTextbooksBulkClient from "./AdminTextbooksBulkClient";
 
 type TextbookRow = {
   id: string;
@@ -20,12 +21,14 @@ type TextbookRow = {
   subjectName?: string | null;
   price?: number | null;
   originalPrice?: number | null;
+  gradeCategory?: "G1_2" | "SUNEUNG" | "TRANSFER" | null;
+  imwebProdCode?: string | null;
   salesCount?: number;
 };
 
 type TextbookOption = { id: string; title: string; originalName: string };
 
-type Tab = "list" | "register";
+type Tab = "list" | "register" | "bulk";
 
 export default function AdminTextbooksClient({
   saleItems,
@@ -87,6 +90,19 @@ export default function AdminTextbooksClient({
                 <span className="absolute inset-x-0 -bottom-px h-0.5 bg-white" />
               )}
             </button>
+            <button
+              onClick={() => setActiveTab("bulk")}
+              className={`relative px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === "bulk"
+                  ? "text-white"
+                  : "text-white/40 hover:text-white/70"
+              }`}
+            >
+              일괄 변경
+              {activeTab === "bulk" && (
+                <span className="absolute inset-x-0 -bottom-px h-0.5 bg-white" />
+              )}
+            </button>
           </div>
         </div>
       </div>
@@ -95,8 +111,10 @@ export default function AdminTextbooksClient({
       <div className="mx-auto max-w-6xl px-6 py-8">
         {activeTab === "list" ? (
           <AdminTextbooksListView items={saleItems} />
-        ) : (
+        ) : activeTab === "register" ? (
           <AdminTextbooksRegisterView textbooks={textbookOptions} onComplete={() => setActiveTab("list")} />
+        ) : (
+          <AdminTextbooksBulkClient textbooks={saleItems} />
         )}
       </div>
     </div>

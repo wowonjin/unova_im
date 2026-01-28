@@ -47,6 +47,7 @@ type SectionsMode = "home" | "simple";
 type BookFormat = "전체" | "실물책" | "전자책";
 const BOOK_FORMATS: BookFormat[] = ["전체", "실물책", "전자책"];
 const HOME_TEXTBOOK_TITLE_PRIORITY = ["공통수학1"];
+const SUNEUNG_SUBJECT_PRIORITY = ["국어", "영어", "수학", "물리학I", "물리학II", "사회문화"];
 
 function normalizeTextbookType(v: string | null | undefined): string {
   return String(v ?? "")
@@ -84,6 +85,22 @@ function sortByTitlePriority<T extends { title: string }>(items: T[], priorities
       const bTitle = normalizeTitle(b.item.title);
       const pa = [...priorityMap.entries()].find(([key]) => aTitle.includes(key))?.[1];
       const pb = [...priorityMap.entries()].find(([key]) => bTitle.includes(key))?.[1];
+      if (pa != null && pb != null) return pa - pb;
+      if (pa != null) return -1;
+      if (pb != null) return 1;
+      return a.idx - b.idx;
+    })
+    .map((entry) => entry.item);
+}
+
+function sortBySubjectPriority<T extends { subject: string }>(items: T[], priorities: string[]): T[] {
+  if (!items.length || !priorities.length) return items;
+  const priorityMap = new Map(priorities.map((subject, idx) => [subject, idx]));
+  return items
+    .map((item, idx) => ({ item, idx }))
+    .sort((a, b) => {
+      const pa = priorityMap.get(a.item.subject);
+      const pb = priorityMap.get(b.item.subject);
       if (pa != null && pb != null) return pa - pb;
       if (pa != null) return -1;
       if (pb != null) return 1;
@@ -792,6 +809,7 @@ function StorePreviewSections({
   const [selectedCourseSubject, setSelectedCourseSubject] = useState<string>("전체");
   const [selectedFreeTextbookSubject, setSelectedFreeTextbookSubject] = useState<string>("전체");
   const [selectedSuneungTextbookSubject, setSelectedSuneungTextbookSubject] = useState<string>("전체");
+  const [selectedG1TextbookSubject, setSelectedG1TextbookSubject] = useState<string>("전체");
   const [selectedTransferTextbookSubject, setSelectedTransferTextbookSubject] = useState<string>("전체");
   const [selectedSuneungBookFormat, setSelectedSuneungBookFormat] = useState<BookFormat>("전체");
   const coursesAnchorId = anchorPrefix ? `${anchorPrefix}-courses` : undefined;
@@ -833,6 +851,18 @@ function StorePreviewSections({
     const other = Array.from(subjectSet).filter((s) => !preferred.includes(s));
     return [...ordered, ...other];
   }, [selectedSuneungBookFormat, textbooks]);
+
+  const g1Textbooks = useMemo(() => {
+    return textbooks.filter((p) => !p.isFree && p.gradeCategory === "G1_2" && p.price > 0);
+  }, [textbooks]);
+
+  const g1TextbookSubjects = useMemo(() => {
+    const preferred = ["전체", "국어", "영어", "수학", "물리학I", "물리학II", "사회문화"];
+    const subjectSet = new Set(g1Textbooks.map((p) => p.subject).filter(Boolean));
+    const ordered = preferred.filter((s) => s === "전체" || subjectSet.has(s));
+    const other = Array.from(subjectSet).filter((s) => !preferred.includes(s));
+    return [...ordered, ...other];
+  }, [g1Textbooks]);
 
   const freeTextbooks = useMemo(() => {
     return textbooks.filter((p) => Boolean(p.isFree));
@@ -894,41 +924,33 @@ function StorePreviewSections({
   }, [freeTextbooks, hideTabMenus, selectedFreeTextbookSubject]);
 
   const suneungTextbooks = useMemo(() => {
-    const subjectAllow = new Set(["국어", "영어", "수학", "물리학I", "물리학II", "사회문화"]);
-    const paid = textbooks.filter((p) => !p.isFree);
-
-    // 명시 분류 우선: "수능"은 반드시 수능 섹션에 노출
-    const explicit = paid.filter((p) => p.gradeCategory === "SUNEUNG");
-
-    // 편입으로 명시된 교재는 수능 섹션에서 제외(중복/혼선 방지)
-    const paidNonTransfer = paid.filter((p) => p.gradeCategory !== "TRANSFER");
-
-    const heuristic = paidNonTransfer.filter((p) => subjectAllow.has(p.subject));
-
-    const seen = new Set<string>();
-    const merged = [...explicit, ...heuristic].filter((p) => {
-      if (seen.has(p.id)) return false;
-      seen.add(p.id);
-      return true;
-    });
-
-    // 폴백: 수능 후보가 0개면, 유료 교재(단, 편입 제외) 또는 전체 유료 교재를 보여준다(빈 화면 방지)
-    const baseSource = merged.length > 0 ? merged : paidNonTransfer.length > 0 ? paidNonTransfer : paid;
+    const baseSource = textbooks.filter((p) => !p.isFree && p.gradeCategory === "SUNEUNG" && p.price > 0);
     if (selectedSuneungBookFormat === "전체") {
-      return sortByTitlePriority(movePdfToLast(baseSource), HOME_TEXTBOOK_TITLE_PRIORITY);
+      return sortBySubjectPriority(
+        sortByTitlePriority(movePdfToLast(baseSource), HOME_TEXTBOOK_TITLE_PRIORITY),
+        SUNEUNG_SUBJECT_PRIORITY
+      );
     }
     const filtered = baseSource.filter((p) => {
       const tt = normalizeTextbookType(p.textbookType);
       if (selectedSuneungBookFormat === "전자책") return tt === "PDF";
       return tt === normalizeTextbookType("실물책+PDF");
     });
-    return sortByTitlePriority(filtered, HOME_TEXTBOOK_TITLE_PRIORITY);
+    return sortBySubjectPriority(
+      sortByTitlePriority(filtered, HOME_TEXTBOOK_TITLE_PRIORITY),
+      SUNEUNG_SUBJECT_PRIORITY
+    );
   }, [selectedSuneungBookFormat, textbooks]);
 
   const filteredSuneungTextbooks = useMemo(() => {
     if (hideTabMenus || selectedSuneungTextbookSubject === "전체") return suneungTextbooks;
     return suneungTextbooks.filter((p) => p.subject === selectedSuneungTextbookSubject);
   }, [hideTabMenus, selectedSuneungTextbookSubject, suneungTextbooks]);
+
+  const filteredG1Textbooks = useMemo(() => {
+    if (hideTabMenus || selectedG1TextbookSubject === "전체") return g1Textbooks;
+    return g1Textbooks.filter((p) => p.subject === selectedG1TextbookSubject);
+  }, [g1Textbooks, hideTabMenus, selectedG1TextbookSubject]);
 
   const filteredTransferTextbooks = useMemo(() => {
     if (hideTabMenus || selectedTransferTextbookSubject === "전체") return transferTextbooks;
@@ -951,6 +973,11 @@ function StorePreviewSections({
     if (!suneungTextbookSubjects.includes(selectedSuneungTextbookSubject)) setSelectedSuneungTextbookSubject("전체");
   }, [selectedSuneungTextbookSubject, suneungTextbookSubjects]);
 
+  useEffect(() => {
+    if (selectedG1TextbookSubject === "전체") return;
+    if (!g1TextbookSubjects.includes(selectedG1TextbookSubject)) setSelectedG1TextbookSubject("전체");
+  }, [g1TextbookSubjects, selectedG1TextbookSubject]);
+
   // 수능 교재 "실물책/전자책" 선택이 바뀌면, 과목 탭도 안전하게 리셋
   useEffect(() => {
     setSelectedSuneungTextbookSubject("전체");
@@ -965,52 +992,31 @@ function StorePreviewSections({
   return (
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
       <div className="mt-4 md:mt-6">
-        <div id={coursesAnchorId} className={coursesAnchorId ? "unova-scroll-target" : undefined}>
-          <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">강의 구매하기</h2>
-        </div>
-        {!hideTabMenus && courseSubjects.length > 1 ? (
-          <div className="mt-2 md:mt-8">
-            {/* 모바일: 탭 메뉴 스타일 */}
-            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
-              {courseSubjects.map((subject) => {
-                const active = selectedCourseSubject === subject;
+        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">수능 교재 구매하기</h2>
+        {/* 전자책/실물책 필터 (과목 탭 위) */}
+        {!hideTabMenus ? (
+          <div className="mt-4 md:mt-6">
+            {/* 과목 탭과 동일한 탭 메뉴(underline) 스타일 */}
+            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+              {BOOK_FORMATS.map((fmt) => {
+                const active = selectedSuneungBookFormat === fmt;
                 return (
                   <button
-                    key={`course-home-${subject}`}
+                    key={`suneung-bookfmt-${fmt}`}
                     type="button"
-                    onClick={() => setSelectedCourseSubject(subject)}
+                    onClick={() => setSelectedSuneungBookFormat((prev) => (prev === fmt ? "전체" : fmt))}
                     role="tab"
                     aria-selected={active}
-                    className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                    className={`relative shrink-0 px-1 py-2 text-[13px] md:px-1 md:py-2 md:text-[15px] font-semibold ${
                       active ? "text-white" : "text-white/55"
                     }`}
                   >
-                    {subject}
+                    {fmt}
                     {active ? (
-                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-            {/* 데스크톱: 탭 메뉴 스타일 */}
-            <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
-              {courseSubjects.map((subject) => {
-                const active = selectedCourseSubject === subject;
-                return (
-                  <button
-                    key={`course-home-${subject}-desktop`}
-                    type="button"
-                    onClick={() => setSelectedCourseSubject(subject)}
-                    role="tab"
-                    aria-selected={active}
-                    className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
-                      active ? "text-white" : "text-white/55"
-                    }`}
-                  >
-                    {subject}
-                    {active ? (
-                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                      <span
+                        className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white"
+                        aria-hidden="true"
+                      />
                     ) : null}
                   </button>
                 );
@@ -1018,83 +1024,9 @@ function StorePreviewSections({
             </div>
           </div>
         ) : null}
-        <div className="mt-6">
-          <ProductGrid products={filteredCourses} emptyLabel="등록된 강의 상품이 없습니다" eagerCount={8} />
-        </div>
-      </div>
 
-      <div className="mt-14 md:mt-20">
-        {/* 무료 자료 다운로드 */}
-        {freeTextbooks.length > 0 ? (
-          <div className="mb-14 md:mb-16">
-            <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">무료 자료 다운로드</h2>
-            {!hideTabMenus && freeTextbookSubjects.length > 1 ? (
-              <div className="mt-2 md:mt-8">
-                <ExpandableSubjectTabs
-                  subjects={freeTextbookSubjects}
-                  selected={selectedFreeTextbookSubject}
-                  onSelect={setSelectedFreeTextbookSubject}
-                  tabKeyPrefix="textbook-free-home"
-                  containerClassName="gap-4 border-b border-white/10 pb-2 md:hidden"
-                  tabTextClassName="text-[13px]"
-                />
-                <ExpandableSubjectTabs
-                  subjects={freeTextbookSubjects}
-                  selected={selectedFreeTextbookSubject}
-                  onSelect={setSelectedFreeTextbookSubject}
-                  tabKeyPrefix="textbook-free-home-desktop"
-                  containerClassName="hidden md:flex gap-6 border-b border-white/10 pb-2"
-                  tabTextClassName="text-[15px]"
-                />
-              </div>
-            ) : null}
-            <div className="mt-6">
-              <ExpandableProductGrid
-                products={filteredFreeTextbooks}
-                emptyLabel="등록된 무료 자료가 없습니다"
-                collapsedRows={3}
-                eagerCount={8}
-              />
-            </div>
-          </div>
-        ) : null}
-
-        <div className={freeTextbooks.length > 0 ? "mt-10 md:mt-16" : ""}>
-          <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">수능 교재 구매하기</h2>
-          {/* 전자책/실물책 필터 (과목 탭 위) */}
-          {!hideTabMenus ? (
-            <div className="mt-4 md:mt-6">
-              {/* 과목 탭과 동일한 탭 메뉴(underline) 스타일 */}
-              <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
-                {BOOK_FORMATS.map((fmt) => {
-                  const active = selectedSuneungBookFormat === fmt;
-                  return (
-                    <button
-                      key={`suneung-bookfmt-${fmt}`}
-                      type="button"
-                      onClick={() => setSelectedSuneungBookFormat((prev) => (prev === fmt ? "전체" : fmt))}
-                      role="tab"
-                      aria-selected={active}
-                      className={`relative shrink-0 px-1 py-2 text-[13px] md:px-1 md:py-2 md:text-[15px] font-semibold ${
-                        active ? "text-white" : "text-white/55"
-                      }`}
-                    >
-                      {fmt}
-                      {active ? (
-                        <span
-                          className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white"
-                          aria-hidden="true"
-                        />
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-
-          {!hideTabMenus && suneungTextbookSubjects.length > 1 ? (
-            <div className="mt-2 md:mt-4">
+        {!hideTabMenus && suneungTextbookSubjects.length > 1 ? (
+          <div className="mt-2 md:mt-4">
             {/* 모바일: 탭 메뉴 스타일 */}
             <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
               {suneungTextbookSubjects.map((subject) => {
@@ -1142,14 +1074,173 @@ function StorePreviewSections({
               })}
             </div>
           </div>
+        ) : null}
+        <div id={textbooksAnchorId} className={textbooksAnchorId ? "unova-scroll-target mt-6" : "mt-6"}>
+          <ExpandableProductGrid
+            products={filteredSuneungTextbooks}
+            emptyLabel="등록된 교재 상품이 없습니다"
+            collapsedRows={3}
+            eagerCount={8}
+          />
+        </div>
+      </div>
+
+      {g1Textbooks.length > 0 ? (
+        <div className="mt-14 md:mt-20">
+          <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">내신 교재 구매하기</h2>
+          {!hideTabMenus && g1TextbookSubjects.length > 1 ? (
+            <div className="mt-2 md:mt-4">
+              {/* 모바일: 탭 메뉴 스타일 */}
+              <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
+                {g1TextbookSubjects.map((subject) => {
+                  const active = selectedG1TextbookSubject === subject;
+                  return (
+                    <button
+                      key={`textbook-g1-home-${subject}`}
+                      type="button"
+                      onClick={() => setSelectedG1TextbookSubject(subject)}
+                      role="tab"
+                      aria-selected={active}
+                      className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                        active ? "text-white" : "text-white/55"
+                      }`}
+                    >
+                      {subject}
+                      {active ? (
+                        <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* 데스크톱: 탭 메뉴 스타일 */}
+              <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+                {g1TextbookSubjects.map((subject) => {
+                  const active = selectedG1TextbookSubject === subject;
+                  return (
+                    <button
+                      key={`textbook-g1-home-${subject}-desktop`}
+                      type="button"
+                      onClick={() => setSelectedG1TextbookSubject(subject)}
+                      role="tab"
+                      aria-selected={active}
+                      className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                        active ? "text-white" : "text-white/55"
+                      }`}
+                    >
+                      {subject}
+                      {active ? (
+                        <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           ) : null}
-          <div id={textbooksAnchorId} className={textbooksAnchorId ? "unova-scroll-target mt-6" : "mt-6"}>
+          <div className="mt-6">
             <ExpandableProductGrid
-              products={filteredSuneungTextbooks}
-              emptyLabel="등록된 교재 상품이 없습니다"
+              products={filteredG1Textbooks}
+              emptyLabel="등록된 내신 교재가 없습니다"
               collapsedRows={3}
               eagerCount={8}
             />
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-14 md:mt-20">
+        {/* 무료 자료 다운로드 */}
+        {freeTextbooks.length > 0 ? (
+          <div className="mb-14 md:mb-16">
+            <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">무료 자료 다운로드</h2>
+            {!hideTabMenus && freeTextbookSubjects.length > 1 ? (
+              <div className="mt-2 md:mt-8">
+                <ExpandableSubjectTabs
+                  subjects={freeTextbookSubjects}
+                  selected={selectedFreeTextbookSubject}
+                  onSelect={setSelectedFreeTextbookSubject}
+                  tabKeyPrefix="textbook-free-home"
+                  containerClassName="gap-4 border-b border-white/10 pb-2 md:hidden"
+                  tabTextClassName="text-[13px]"
+                />
+                <ExpandableSubjectTabs
+                  subjects={freeTextbookSubjects}
+                  selected={selectedFreeTextbookSubject}
+                  onSelect={setSelectedFreeTextbookSubject}
+                  tabKeyPrefix="textbook-free-home-desktop"
+                  containerClassName="hidden md:flex gap-6 border-b border-white/10 pb-2"
+                  tabTextClassName="text-[15px]"
+                />
+              </div>
+            ) : null}
+            <div className="mt-6">
+              <ExpandableProductGrid
+                products={filteredFreeTextbooks}
+                emptyLabel="등록된 무료 자료가 없습니다"
+                collapsedRows={3}
+                eagerCount={8}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <div className={freeTextbooks.length > 0 || g1Textbooks.length > 0 ? "mt-10 md:mt-16" : ""}>
+          <div id={coursesAnchorId} className={coursesAnchorId ? "unova-scroll-target" : undefined}>
+            <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">강의 구매하기</h2>
+          </div>
+          {!hideTabMenus && courseSubjects.length > 1 ? (
+            <div className="mt-2 md:mt-8">
+              {/* 모바일: 탭 메뉴 스타일 */}
+              <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
+                {courseSubjects.map((subject) => {
+                  const active = selectedCourseSubject === subject;
+                  return (
+                    <button
+                      key={`course-home-${subject}`}
+                      type="button"
+                      onClick={() => setSelectedCourseSubject(subject)}
+                      role="tab"
+                      aria-selected={active}
+                      className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                        active ? "text-white" : "text-white/55"
+                      }`}
+                    >
+                      {subject}
+                      {active ? (
+                        <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* 데스크톱: 탭 메뉴 스타일 */}
+              <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+                {courseSubjects.map((subject) => {
+                  const active = selectedCourseSubject === subject;
+                  return (
+                    <button
+                      key={`course-home-${subject}-desktop`}
+                      type="button"
+                      onClick={() => setSelectedCourseSubject(subject)}
+                      role="tab"
+                      aria-selected={active}
+                      className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                        active ? "text-white" : "text-white/55"
+                      }`}
+                    >
+                      {subject}
+                      {active ? (
+                        <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+          <div className="mt-6">
+            <ProductGrid products={filteredCourses} emptyLabel="등록된 강의 상품이 없습니다" eagerCount={8} />
           </div>
         </div>
 

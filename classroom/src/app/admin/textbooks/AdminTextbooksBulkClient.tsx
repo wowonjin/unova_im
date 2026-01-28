@@ -21,6 +21,7 @@ type TextbookRow = {
   subjectName?: string | null;
   price?: number | null;
   originalPrice?: number | null;
+  gradeCategory?: "G1_2" | "SUNEUNG" | "TRANSFER" | null;
 };
 
 function formatBytes(bytes: number) {
@@ -127,7 +128,8 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
   const [teacherName, setTeacherName] = useState("");
   const [subjectName, setSubjectName] = useState("");
   const [entitlementDays, setEntitlementDays] = useState("");
-  const [publishOnRegister, setPublishOnRegister] = useState(true);
+  const [gradeCategory, setGradeCategory] = useState<"" | "G1_2" | "SUNEUNG" | "TRANSFER">("");
+  const [publishOnRegister, setPublishOnRegister] = useState(false);
   const [busy, setBusy] = useState<null | "update" | "delete">(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -166,6 +168,7 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
 
     if (teacherName.trim()) update.teacherName = teacherName.trim();
     if (subjectName.trim()) update.subjectName = subjectName.trim();
+    if (gradeCategory) update.gradeCategory = gradeCategory;
     if (entitlementDays.trim()) {
       const n = parseInt(entitlementDays.trim(), 10);
       if (Number.isFinite(n) && n >= 1 && n <= 3650) update.entitlementDays = n;
@@ -197,6 +200,7 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
       setOriginalPrice("");
       setTeacherName("");
       setSubjectName("");
+      setGradeCategory("");
       setEntitlementDays("");
       router.refresh();
     } catch (e) {
@@ -376,6 +380,69 @@ export default function AdminTextbooksBulkClient({ textbooks }: { textbooks: Tex
             필터가 적용된 상태에서는 정렬(드래그)이 꺼집니다. (전체 보기로 돌리면 다시 사용 가능)
           </div>
         ) : null}
+      </div>
+
+      {/* Bulk Update */}
+      <div className="rounded-2xl border border-white/10 bg-[#1a1a1c] p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="text-sm text-white/70">
+            선택됨: <span className="text-white font-semibold">{selectedIds.length}</span> / {visibleIds.length}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="secondary" onClick={selectAll}>
+              전체 선택
+            </Button>
+            <Button type="button" variant="secondary" onClick={clearAll}>
+              선택 해제
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <Field label="학년 일괄 변경">
+            <select
+              value={gradeCategory}
+              onChange={(e) => setGradeCategory(e.target.value as typeof gradeCategory)}
+              className="h-10 w-full rounded-xl border border-white/10 bg-[#131315] px-3 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
+            >
+              <option value="">변경 없음</option>
+              <option value="G1_2">고1/2</option>
+              <option value="SUNEUNG">수능</option>
+              <option value="TRANSFER">편입</option>
+            </select>
+          </Field>
+          <Field label="공개로 전환">
+            <div className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-[#131315] px-3">
+              <input
+                type="checkbox"
+                checked={publishOnRegister}
+                onChange={(e) => setPublishOnRegister(e.target.checked)}
+                className="h-4 w-4 accent-white"
+              />
+              <span className="text-sm text-white/70">선택 항목 공개</span>
+            </div>
+          </Field>
+        </div>
+
+        {error ? (
+          <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-200">
+            {error}
+          </div>
+        ) : null}
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Button type="button" onClick={() => void bulkUpdate()} disabled={busy !== null || selectedIds.length === 0}>
+            선택 항목 변경 적용
+          </Button>
+          <button
+            type="button"
+            onClick={() => void bulkDelete()}
+            disabled={busy !== null || selectedIds.length === 0}
+            className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+          >
+            선택 항목 삭제
+          </button>
+        </div>
       </div>
 
       {/* List */}
