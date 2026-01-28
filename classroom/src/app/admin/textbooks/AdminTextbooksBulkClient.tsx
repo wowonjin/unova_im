@@ -14,7 +14,7 @@ type TextbookRow = {
   sizeBytes: number;
   createdAt: string | Date;
   isPublished: boolean;
-  imwebProdCode: string | null;
+  imwebProdCode?: string | null;
   thumbnailUrl: string | null;
   entitlementDays?: number | null;
   teacherName?: string | null;
