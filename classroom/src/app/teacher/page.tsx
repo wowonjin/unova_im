@@ -169,18 +169,8 @@ export default async function TeacherDashboardPage() {
     : ({ status: { in: SALES_STATUSES }, id: "__NO_MATCH__" } as const);
 
   async function summarizeRange(startUtc: Date, endUtc: Date) {
-    const rows = await prisma.order.findMany({
-      where: { ...salesWhereBase, createdAt: { gte: startUtc, lte: endUtc } },
-      select: {
-        productType: true,
-        amount: true,
-        refundedAmount: true,
-        textbook: { select: { composition: true, textbookType: true } },
-      },
-      take: 5000,
-      orderBy: { createdAt: "asc" },
-    });
-
+    const BATCH_SIZE = 1000;
+    let cursorId: string | null = null;
     let courseSales = 0;
     let ebookSales = 0; // PDF
     let textbookSales = 0; // non-PDF
@@ -189,22 +179,42 @@ export default async function TeacherDashboardPage() {
     let platformFeeTotal = 0; // 플랫폼 수수료(=총매출 - 정산기본액)
     let cardFeeWithVatTotal = 0;
 
-    for (const o of rows) {
-      const net = (o.amount ?? 0) - (o.refundedAmount ?? 0);
-      const base = Math.max(0, net);
-      netSalesTotal += base;
-      if (o.productType === "COURSE") courseSales += net;
-      if (o.productType === "TEXTBOOK") {
-        if (isPdfTextbook(o.textbook)) ebookSales += net;
-        else textbookSales += net;
+    while (true) {
+      const rows = await prisma.order.findMany({
+        where: { ...salesWhereBase, createdAt: { gte: startUtc, lte: endUtc } },
+        select: {
+          id: true,
+          productType: true,
+          amount: true,
+          refundedAmount: true,
+          textbook: { select: { composition: true, textbookType: true } },
+        },
+        orderBy: { id: "asc" },
+        take: BATCH_SIZE,
+        ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
+      });
+      if (!rows.length) break;
+
+      for (const o of rows) {
+        const net = (o.amount ?? 0) - (o.refundedAmount ?? 0);
+        const base = Math.max(0, net);
+        netSalesTotal += base;
+        if (o.productType === "COURSE") courseSales += net;
+        if (o.productType === "TEXTBOOK") {
+          if (isPdfTextbook(o.textbook)) ebookSales += net;
+          else textbookSales += net;
+        }
+        const rate = payoutRateOfOrder({ productType: o.productType, textbook: o.textbook });
+        const payoutBeforeFees = base * rate;
+        const platformFee = base - payoutBeforeFees;
+        const cardFeeWithVat = base * CARD_FEE_RATE * (1 + VAT_RATE);
+        platformFeeTotal += platformFee;
+        cardFeeWithVatTotal += cardFeeWithVat;
+        payoutTotal += Math.max(0, payoutBeforeFees - cardFeeWithVat);
       }
-      const rate = payoutRateOfOrder({ productType: o.productType, textbook: o.textbook });
-      const payoutBeforeFees = base * rate;
-      const platformFee = base - payoutBeforeFees;
-      const cardFeeWithVat = base * CARD_FEE_RATE * (1 + VAT_RATE);
-      platformFeeTotal += platformFee;
-      cardFeeWithVatTotal += cardFeeWithVat;
-      payoutTotal += Math.max(0, payoutBeforeFees - cardFeeWithVat);
+
+      if (rows.length < BATCH_SIZE) break;
+      cursorId = rows[rows.length - 1].id;
     }
 
     return { courseSales, ebookSales, textbookSales, payoutTotal, netSalesTotal, platformFeeTotal, cardFeeWithVatTotal };

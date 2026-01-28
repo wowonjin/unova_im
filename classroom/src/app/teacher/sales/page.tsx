@@ -99,7 +99,41 @@ export default async function TeacherSalesPage() {
   if (textbookIds.length) scopeOr.push({ textbookId: { in: textbookIds } });
   const scopeWhere = scopeOr.length ? ({ OR: scopeOr } as const) : ({ id: "__NO_MATCH__" } as const);
 
-  const [weekOrders, monthOrders] = await Promise.all([
+  async function accumulateSalesAndPayout(where: Parameters<typeof prisma.order.findMany>[0]["where"]) {
+    const BATCH_SIZE = 1000;
+    let cursorId: string | null = null;
+    let totalSales = 0;
+    let payoutTotal = 0;
+
+    while (true) {
+      const rows = await prisma.order.findMany({
+        where,
+        select: {
+          id: true,
+          productType: true,
+          amount: true,
+          refundedAmount: true,
+          textbook: { select: { composition: true, textbookType: true } },
+        },
+        orderBy: { id: "asc" },
+        take: BATCH_SIZE,
+        ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
+      });
+      if (!rows.length) break;
+      for (const o of rows) {
+        const net = (o.amount ?? 0) - (o.refundedAmount ?? 0);
+        totalSales += net;
+        const rate = payoutRateOfOrder({ productType: o.productType, textbook: o.textbook });
+        payoutTotal += settleNetPayout(net, rate);
+      }
+      if (rows.length < BATCH_SIZE) break;
+      cursorId = rows[rows.length - 1].id;
+    }
+
+    return { totalSales, payoutTotal };
+  }
+
+  const [weekOrders, monthSummary] = await Promise.all([
     prisma.order.findMany({
       where: {
         status: { in: SALES_STATUSES },
@@ -118,24 +152,15 @@ export default async function TeacherSalesPage() {
       orderBy: { createdAt: "desc" },
       take: 200,
     }),
-    prisma.order.findMany({
-      where: {
-        status: { in: SALES_STATUSES },
-        createdAt: { gte: monthStart, lte: now },
-        ...(scopeWhere as any),
-      },
-      select: {
-        productType: true,
-        amount: true,
-        refundedAmount: true,
-        textbook: { select: { composition: true, textbookType: true } },
-      },
-      take: 20000,
+    accumulateSalesAndPayout({
+      status: { in: SALES_STATUSES },
+      createdAt: { gte: monthStart, lte: now },
+      ...(scopeWhere as any),
     }),
   ]);
 
   const weekSales = weekOrders.reduce((acc, o) => acc + (o.amount - (o.refundedAmount || 0)), 0);
-  const monthSales = monthOrders.reduce((acc, o) => acc + (o.amount - (o.refundedAmount || 0)), 0);
+  const monthSales = monthSummary.totalSales;
 
   // NOTE: 교재는 PDF 여부에 따라 정산비가 달라서(25% vs 50%)
   // 정산액은 "주문 단위"로 계산합니다.
@@ -144,11 +169,7 @@ export default async function TeacherSalesPage() {
     const rate = payoutRateOfOrder({ productType: o.productType, textbook: o.textbook });
     return acc + settleNetPayout(net, rate);
   }, 0);
-  const monthPayoutTotal = monthOrders.reduce((acc, o) => {
-    const net = (o.amount ?? 0) - (o.refundedAmount ?? 0);
-    const rate = payoutRateOfOrder({ productType: o.productType, textbook: o.textbook });
-    return acc + settleNetPayout(net, rate);
-  }, 0);
+  const monthPayoutTotal = monthSummary.payoutTotal;
 
   return (
     <AppShell>
