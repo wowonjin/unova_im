@@ -808,7 +808,7 @@ function StorePreviewSections({
 }) {
   const [selectedCourseSubject, setSelectedCourseSubject] = useState<string>("전체");
   const [selectedFreeTextbookSubject, setSelectedFreeTextbookSubject] = useState<string>("전체");
-  const [selectedSuneungTextbookSubject, setSelectedSuneungTextbookSubject] = useState<string>("전체");
+  const [selectedSuneungTextbookSubject, setSelectedSuneungTextbookSubject] = useState<string>("물리학I");
   const [selectedG1TextbookSubject, setSelectedG1TextbookSubject] = useState<string>("전체");
   const [selectedTransferTextbookSubject, setSelectedTransferTextbookSubject] = useState<string>("전체");
   const [selectedSuneungBookFormat, setSelectedSuneungBookFormat] = useState<BookFormat>("전체");
@@ -851,6 +851,12 @@ function StorePreviewSections({
     const other = Array.from(subjectSet).filter((s) => !preferred.includes(s));
     return [...ordered, ...other];
   }, [selectedSuneungBookFormat, textbooks]);
+
+  const defaultSuneungSubject = useMemo(() => {
+    if (suneungTextbookSubjects.includes("물리학I")) return "물리학I";
+    if (suneungTextbookSubjects.includes("전체")) return "전체";
+    return suneungTextbookSubjects[0] ?? "전체";
+  }, [suneungTextbookSubjects]);
 
   const g1Textbooks = useMemo(() => {
     return textbooks.filter((p) => !p.isFree && p.gradeCategory === "G1_2" && p.price > 0);
@@ -969,9 +975,10 @@ function StorePreviewSections({
   }, [selectedFreeTextbookSubject, freeTextbookSubjects]);
 
   useEffect(() => {
-    if (selectedSuneungTextbookSubject === "전체") return;
-    if (!suneungTextbookSubjects.includes(selectedSuneungTextbookSubject)) setSelectedSuneungTextbookSubject("전체");
-  }, [selectedSuneungTextbookSubject, suneungTextbookSubjects]);
+    if (!suneungTextbookSubjects.includes(selectedSuneungTextbookSubject)) {
+      setSelectedSuneungTextbookSubject(defaultSuneungSubject);
+    }
+  }, [defaultSuneungSubject, selectedSuneungTextbookSubject, suneungTextbookSubjects]);
 
   useEffect(() => {
     if (selectedG1TextbookSubject === "전체") return;
@@ -980,8 +987,8 @@ function StorePreviewSections({
 
   // 수능 교재 "실물책/전자책" 선택이 바뀌면, 과목 탭도 안전하게 리셋
   useEffect(() => {
-    setSelectedSuneungTextbookSubject("전체");
-  }, [selectedSuneungBookFormat]);
+    setSelectedSuneungTextbookSubject(defaultSuneungSubject);
+  }, [defaultSuneungSubject, selectedSuneungBookFormat]);
 
   useEffect(() => {
     if (selectedTransferTextbookSubject === "전체") return;
