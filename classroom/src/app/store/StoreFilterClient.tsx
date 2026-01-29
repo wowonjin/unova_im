@@ -136,8 +136,13 @@ export default function StoreFilterClient({
   initialSubject = "전체",
   initialExamType = "전체",
 }: StoreFilterClientProps) {
+  const allowedExamTypes: ExamType[] =
+    selectedType === "강의"
+      ? (EXAM_TYPES.filter((t) => t !== "편입") as ExamType[])
+      : (EXAM_TYPES as ExamType[]);
+
   const initialExamTypeNormalized: ExamType =
-    EXAM_TYPES.includes(initialExamType as ExamType) ? (initialExamType as ExamType) : "전체";
+    allowedExamTypes.includes(initialExamType as ExamType) ? (initialExamType as ExamType) : "전체";
 
   const [selectedExamType, setSelectedExamType] = useState<ExamType>(
     initialExamTypeNormalized
@@ -266,7 +271,7 @@ export default function StoreFilterClient({
   }, [visibleProducts, selectedType, selectedBookFormat, selectedExamType, selectedSubject, searchQuery]);
 
   // 전체를 제외한 입시 유형
-  const examTypesWithoutAll = EXAM_TYPES.filter((t) => t !== "전체");
+  const examTypesWithoutAll = allowedExamTypes.filter((t) => t !== "전체");
   // 전체를 제외한 과목 목록
   const subjectsWithoutAll = availableSubjects.filter((s) => s !== "전체");
   const bookFormatsWithoutAll = availableBookFormats.filter((t) => t !== "전체") as BookFormat[];
@@ -286,7 +291,7 @@ export default function StoreFilterClient({
                 <h3 className="sr-only">입시</h3>
                 <UnderlineTabBar
                   ariaLabel="입시 선택"
-                  items={EXAM_TYPES.map((t) => ({ key: t, label: t }))}
+                  items={allowedExamTypes.map((t) => ({ key: t, label: t }))}
                   activeKey={selectedExamType}
                   onSelect={(k) => handleExamTypeChange(k as ExamType)}
                 />

@@ -659,6 +659,7 @@ model HomeShortcut {
   linkUrl       String
   bgColor       String? // 예: "#FFFFFF" / "#7c4ff5"
   schoolLogoUrl String? // 아이콘 위에 올릴 학교 로고(배지)
+  openInNewTab  Boolean @default(true) // 새 창에서 열기
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

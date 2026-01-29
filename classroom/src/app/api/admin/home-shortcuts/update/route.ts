@@ -25,6 +25,16 @@ const Schema = z.object({
     .optional()
     .transform((v) => (v == null ? undefined : v.trim() || null)),
   bgColor: z.string().optional().transform((v) => (v == null ? undefined : v.trim() || null)),
+  openInNewTab: z
+    .string()
+    .optional()
+    .transform((v) => {
+      if (v == null) return undefined;
+      const s = v.toLowerCase().trim();
+      if (s === "1" || s === "true" || s === "on") return true;
+      if (s === "0" || s === "false" || s === "off") return false;
+      return undefined;
+    }),
   position: z
     .string()
     .optional()
@@ -55,6 +65,7 @@ export async function POST(req: Request) {
     linkUrl: getFormString(form, "linkUrl"),
     schoolLogoUrl: getFormString(form, "schoolLogoUrl"),
     bgColor: getFormString(form, "bgColor"),
+    openInNewTab: getFormString(form, "openInNewTab"),
     position: getFormString(form, "position"),
     isActive: getFormString(form, "isActive"),
   });
@@ -65,6 +76,7 @@ export async function POST(req: Request) {
     );
   }
 
+  const openInNewTab = parsed.data.openInNewTab;
   const data: Record<string, unknown> = {};
   if (parsed.data.label !== undefined) data.label = parsed.data.label;
   if (parsed.data.imageUrl !== undefined) data.imageUrl = parsed.data.imageUrl;
@@ -78,11 +90,21 @@ export async function POST(req: Request) {
     await prisma.$executeRawUnsafe(
       'ALTER TABLE "HomeShortcut" ADD COLUMN IF NOT EXISTS "schoolLogoUrl" TEXT;'
     );
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "HomeShortcut" ADD COLUMN IF NOT EXISTS "openInNewTab" BOOLEAN DEFAULT true;'
+    );
     const p = prisma as unknown as { homeShortcut: { update: Function } };
     const shortcut = await p.homeShortcut.update({
       where: { id: parsed.data.id },
       data,
     });
+    if (openInNewTab !== undefined) {
+      await prisma.$executeRaw`
+        UPDATE "HomeShortcut"
+        SET "openInNewTab" = ${openInNewTab}, "updatedAt" = NOW()
+        WHERE "id" = ${parsed.data.id};
+      `;
+    }
     // 홈은 ISR 캐시를 사용하므로, 관리자 변경 사항을 즉시 반영하기 위해 캐시를 무효화한다.
     revalidatePath("/");
     return NextResponse.json({ ok: true, shortcut });

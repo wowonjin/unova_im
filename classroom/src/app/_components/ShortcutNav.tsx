@@ -10,6 +10,7 @@ interface ShortcutItem {
   iconClass?: string;
   bgColor?: string | null;
   schoolLogoUrl?: string | null;
+  openInNewTab?: boolean | null;
 }
 
 const defaultShortcuts: ShortcutItem[] = [
@@ -78,6 +79,7 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
         {/* Mobile: 한 줄에 4개 고정 (overflow 방지) */}
         <div className="grid grid-cols-4 justify-items-center gap-x-2 gap-y-6 sm:flex sm:flex-wrap sm:justify-center sm:gap-y-0">
           {shortcuts.map((item, idx) => {
+            const openInNewTab = item.openInNewTab ?? true;
             const bgClass =
               item.bgColor && String(item.bgColor).trim().length > 0
                 ? "" // inline style로 적용
@@ -99,8 +101,8 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
               <a
                 key={idx}
                 href={item.href}
-                target="_blank"
-                rel="noopener noreferrer"
+                target={openInNewTab ? "_blank" : undefined}
+                rel={openInNewTab ? "noopener noreferrer" : undefined}
                 className="text-center w-full px-0 sm:w-auto sm:px-3"
               >
                 <div

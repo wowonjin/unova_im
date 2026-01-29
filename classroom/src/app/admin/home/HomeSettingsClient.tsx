@@ -25,6 +25,7 @@ type HomeShortcut = {
   schoolLogoUrl: string | null;
   linkUrl: string;
   bgColor: string | null;
+  openInNewTab?: boolean | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -80,6 +81,7 @@ export default function HomeSettingsClient() {
     schoolLogoUrl: "",
     linkUrl: "",
     bgColor: "",
+    openInNewTab: true,
     position: "0",
   });
 
@@ -239,6 +241,7 @@ export default function HomeSettingsClient() {
     fd.append("schoolLogoUrl", shortcutForm.schoolLogoUrl);
     fd.append("linkUrl", shortcutForm.linkUrl);
     fd.append("bgColor", shortcutForm.bgColor);
+    fd.append("openInNewTab", shortcutForm.openInNewTab ? "1" : "0");
     fd.append("position", shortcutForm.position);
     const url = editingShortcutId ? "/api/admin/home-shortcuts/update" : "/api/admin/home-shortcuts/create";
     if (editingShortcutId) fd.append("id", editingShortcutId);
@@ -250,7 +253,15 @@ export default function HomeSettingsClient() {
     }
     setShowShortcutForm(false);
     setEditingShortcutId(null);
-    setShortcutForm({ label: "", imageUrl: "", schoolLogoUrl: "", linkUrl: "", bgColor: "", position: "0" });
+    setShortcutForm({
+      label: "",
+      imageUrl: "",
+      schoolLogoUrl: "",
+      linkUrl: "",
+      bgColor: "",
+      openInNewTab: true,
+      position: "0",
+    });
     await refreshShortcuts();
   };
 
@@ -264,6 +275,7 @@ export default function HomeSettingsClient() {
       schoolLogoUrl: s.schoolLogoUrl || "",
       linkUrl: s.linkUrl,
       bgColor: s.bgColor || "",
+      openInNewTab: s.openInNewTab ?? true,
       position: String(s.position ?? 0),
     });
   };
@@ -293,7 +305,15 @@ export default function HomeSettingsClient() {
             onClick={() => {
               setShowShortcutForm((v) => !v);
               setEditingShortcutId(null);
-              setShortcutForm({ imageUrl: "", schoolLogoUrl: "", label: "", linkUrl: "", bgColor: "", position: "0" });
+              setShortcutForm({
+                imageUrl: "",
+                schoolLogoUrl: "",
+                label: "",
+                linkUrl: "",
+                bgColor: "",
+                openInNewTab: true,
+                position: "0",
+              });
             }}
             className="flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
           >
@@ -532,6 +552,17 @@ export default function HomeSettingsClient() {
                       required
                     />
                   </div>
+                  <div className="flex items-end">
+                    <label className="flex items-center gap-2 text-[13px] text-white/70">
+                      <input
+                        type="checkbox"
+                        checked={shortcutForm.openInNewTab}
+                        onChange={(e) => setShortcutForm({ ...shortcutForm, openInNewTab: e.target.checked })}
+                        className="h-4 w-4 rounded border border-white/20 bg-white/10 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+                      />
+                      새 창에서 열기
+                    </label>
+                  </div>
                   <div>
                     <label className="block text-[13px] text-white/50 mb-2">이미지 URL</label>
                     <input
@@ -659,6 +690,10 @@ export default function HomeSettingsClient() {
                       <div className="truncate flex items-center gap-1">
                         <span className="material-symbols-outlined" style={{ fontSize: "12px" }}>palette</span>
                         {s.bgColor || "-"}
+                      </div>
+                      <div className="truncate flex items-center gap-1">
+                        <span className="material-symbols-outlined" style={{ fontSize: "12px" }}>open_in_new</span>
+                        {(s.openInNewTab ?? true) ? "새 창" : "현재 창"}
                       </div>
                     </div>
                   </div>

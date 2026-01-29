@@ -10,6 +10,9 @@ export async function GET() {
     await prisma.$executeRawUnsafe(
       'ALTER TABLE "HomeShortcut" ADD COLUMN IF NOT EXISTS "schoolLogoUrl" TEXT;'
     );
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "HomeShortcut" ADD COLUMN IF NOT EXISTS "openInNewTab" BOOLEAN DEFAULT true;'
+    );
     const p = prisma as unknown as { homeShortcut: { findMany: Function } };
     const shortcuts = await p.homeShortcut.findMany({
       orderBy: [{ position: "desc" }, { createdAt: "desc" }],

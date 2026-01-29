@@ -22,9 +22,14 @@ export default function Footer() {
               <p className="font-bold text-white mb-3 text-[13px]">서비스</p>
               <ul className="space-y-2 text-[12px] text-white/50">
                 <li>
-                  <Link href={`/store?type=${encodeURIComponent("교재")}`} className="hover:text-white transition-colors">
-                    책 구매
-                  </Link>
+                  <a
+                    href="https://unova.imweb.me/home"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-white transition-colors"
+                  >
+                    책 소개
+                  </a>
                 </li>
                 <li>
                   <Link href={`/store?type=${encodeURIComponent("강의")}`} className="hover:text-white transition-colors">
@@ -113,9 +118,14 @@ export default function Footer() {
             <p className="font-bold text-white mb-4">서비스</p>
             <ul className="space-y-2.5 text-[14px] text-white/50">
               <li>
-                <Link href={`/store?type=${encodeURIComponent("교재")}`} className="hover:text-white transition-colors">
-                  책 구매
-                </Link>
+                <a
+                  href="https://unova.imweb.me/home"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  책 소개
+                </a>
               </li>
               <li>
                 <Link href={`/store?type=${encodeURIComponent("강의")}`} className="hover:text-white transition-colors">

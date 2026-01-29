@@ -61,36 +61,6 @@ type MenuItem = {
   subItems?: SubMenuItem[];
 };
 
-const menuItems: MenuItem[] = [
-  {
-    label: "나의 강의실",
-    href: "/dashboard",
-    icon: "school",
-    subItems: [
-      { label: "수강중인 강좌", href: "/dashboard", icon: "play_circle" },
-      { label: "교재 다운로드", href: "/materials", icon: "menu_book" },
-    ],
-  },
-  {
-    label: "책 구매",
-    // /books는 레거시 리다이렉트(서버)라서 클릭 시 1번 더 왕복이 생깁니다.
-    // 메뉴는 바로 /store로 이동하도록 합니다.
-    href: `/store?type=${encodeURIComponent("교재")}`,
-  },
-  {
-    label: "강의 구매",
-    href: `/store?type=${encodeURIComponent("강의")}`,
-  },
-  {
-    label: "유노바 선생님",
-    href: "/teachers",
-  },
-  {
-    label: "공지사항",
-    href: "/notices",
-  },
-];
-
 export default function LandingHeader({
   showMobileMenu = false,
   fullWidth = false,
@@ -125,6 +95,7 @@ export default function LandingHeader({
   const sidebar = showMobileMenu ? sidebarContext : null;
   const pathname = usePathname();
   const isTeacherConsole = pathname?.startsWith("/teacher");
+  const isHome = pathname === "/";
   const [rawSearch, setRawSearch] = useState<string>("");
   const [teacherSubItems, setTeacherSubItems] = useState<SubMenuItem[] | null>(null);
   const currentVariant = scrolled ? scrolledVariant ?? variant : variant;
@@ -271,9 +242,7 @@ export default function LandingHeader({
             href: `/teachers/${encodeURIComponent(String(t.slug).trim())}`,
           }));
 
-        // 상단에 "전체 보기"를 항상 제공
-        const withAll: SubMenuItem[] = [{ label: "선생님 전체", href: "/teachers" }, ...items];
-        if (!cancelled) setTeacherSubItems(withAll);
+        if (!cancelled) setTeacherSubItems(items);
       } catch {
         // 실패 시에도 메뉴는 깨지지 않게: 서브메뉴만 숨김(기본 /teachers 링크는 유지)
         if (!cancelled) setTeacherSubItems([]);
@@ -285,11 +254,48 @@ export default function LandingHeader({
     };
   }, []);
 
+  const baseMenuItems = useMemo<MenuItem[]>(
+    () => [
+      {
+        label: "나의 강의실",
+        href: "/dashboard",
+        icon: "school",
+        subItems: [
+          { label: "수강중인 강좌", href: "/dashboard", icon: "play_circle" },
+          { label: "교재 다운로드", href: "/materials", icon: "menu_book" },
+        ],
+      },
+      {
+        label: "책 소개",
+        href: "https://unova.imweb.me/home",
+        external: true,
+        subItems: [
+          { label: "CONNECT Series", href: "https://unova.imweb.me/home", external: true },
+        ],
+      },
+      {
+        label: "강의 구매",
+        href: `/store?type=${encodeURIComponent("강의")}`,
+      },
+      {
+        label: "유노바 선생님",
+        href: "/teachers",
+      },
+      {
+        label: "공지사항",
+        href: "/notices",
+      },
+    ],
+    []
+  );
+
   const mergedMenuItems = useMemo(() => {
     // teacherSubItems가 null이면 아직 로드 전이므로 서브메뉴를 숨깁니다.
     const teachersSub = teacherSubItems && teacherSubItems.length ? teacherSubItems : undefined;
-    return menuItems.map((item) => (item.href === "/teachers" ? { ...item, subItems: teachersSub } : item));
-  }, [teacherSubItems]);
+    return baseMenuItems.map((item) =>
+      item.href === "/teachers" ? { ...item, subItems: teachersSub } : item
+    );
+  }, [teacherSubItems, baseMenuItems]);
 
   const toRgba = (color: string, alpha: number) => {
     // 이미 rgba/hsla면 그대로 사용(중복 변환 방지)
@@ -479,14 +485,14 @@ export default function LandingHeader({
 
 
   // 스크롤 시 배너 숨김
-  const showEventBanner = eventBannerVisible && !scrolled && !isTeacherConsole;
+  const showEventBanner = eventBannerVisible && !scrolled && !isTeacherConsole && isHome;
   // 모바일/PC 높이를 CSS 변수로 관리 (모바일에서 더 낮게)
   const eventBannerOffset = showEventBanner ? "var(--unova-event-banner-h)" : "0px";
 
   return (
     <div className="unova-event-banner-vars" style={{ ["--unova-event-banner-offset" as any]: eventBannerOffset } as any}>
       {/* ❄️ 겨울 이벤트 배너 - 게임 스타일 */}
-      {eventBannerVisible && !isTeacherConsole && (
+      {eventBannerVisible && !isTeacherConsole && isHome && (
         <div
           className={`fixed top-0 left-0 right-0 z-[1001] h-[var(--unova-event-banner-h)] overflow-hidden transition-all duration-300 ease-out ${
             scrolled ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"
@@ -646,7 +652,7 @@ export default function LandingHeader({
                 {item.subItems && activeMenu === item.label && (
                   <div 
                     className="absolute top-full left-0 pt-2 z-[1300]"
-                    style={{ minWidth: "168px" }}
+                    style={{ minWidth: "220px" }}
                   >
                     {/* 서브 메뉴 컨테이너: 원래처럼 흰 배경 */}
                     <div
@@ -660,7 +666,7 @@ export default function LandingHeader({
                           href={subItem.href}
                           target={subItem.external ? "_blank" : undefined}
                           rel={subItem.external ? "noopener noreferrer" : undefined}
-                          className={`flex items-center rounded-lg px-3 py-2 text-[14px] transition-colors ${
+                          className={`flex items-center rounded-lg px-3 py-2 text-[14px] whitespace-nowrap transition-colors ${
                             isLight
                               ? isActiveHref(subItem.href)
                                 ? "bg-[rgba(94,91,92,0.2)] text-black"

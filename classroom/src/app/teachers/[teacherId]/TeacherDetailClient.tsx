@@ -658,7 +658,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
       return [
         {
           id: "print",
-          title: "실물책 구매하기",
+          title: "📖 책 구매하기",
           groups: [
             { id: "bhu-g3-print", title: "CONNECT 고3", products: sortByMathOrder(g3Products) },
             { id: "bhu-g1-print", title: "CONNECT 고1", products: g1Products },
@@ -700,8 +700,14 @@ export default function TeacherDetailClient({ teacher }: Props) {
     if (extraEbook.length > 0) {
       ebookGroups.push({ id: "pdf-etc", title: "PDF 교재", products: sortByTopic(extraEbook) });
     }
+    if (slug === "jjw") {
+      return [
+        { id: "print", title: "📖 책 구매하기", groups: printGroups },
+      ] satisfies StorePreviewProductGroupSection[];
+    }
+
     return [
-      { id: "print", title: "실물책 구매하기", groups: printGroups },
+      { id: "print", title: "📖 책 구매하기", groups: printGroups },
       { id: "ebook", title: "전자책 구매하기", groups: ebookGroups },
     ] satisfies StorePreviewProductGroupSection[];
   })();
@@ -1241,10 +1247,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
                             <span key={i} className={i < filledStars ? "is-on" : "is-off"} aria-hidden="true">★</span>
                           ))}
                         </div>
-                        <div className="unova-rating-card__score">
-                          {avgRatingText}
-                          <small>/5</small>
-                        </div>
+                        <div className="unova-rating-card__score">{avgRatingText}</div>
                         <span className="unova-rating-card__count">총 리뷰 {reviewCount}개</span>
                       </div>
                     </div>
@@ -1252,16 +1255,17 @@ export default function TeacherDetailClient({ teacher }: Props) {
                       {reviews.slice(0, 3).map((r, idx) => (
                         <li key={idx} className="unova-rating-card__item">
                           <div className="unova-rating-card__item-head">
-                            <span className="unova-rating-card__item-title">{stripLeadingScore(r.text)}</span>
-                            <span className="unova-rating-card__item-score">
-                              {Number(r.rating).toFixed(1)}
-                              <span className="unova-rating-card__item-score-suffix">/5</span>
+                            <span className="unova-rating-card__item-title line-clamp-2">
+                              {stripLeadingScore(r.text)}
                             </span>
+                            <span className="unova-rating-card__item-score" aria-hidden="true" />
                           </div>
                           {(r.authorName || r.createdAt) ? (
                             <div className="unova-rating-card__item-sub">
-                              <div className="unova-rating-card__meta-row">
-                                {r.authorName ? <span className="unova-rating-card__author">{r.authorName}</span> : null}
+                              <div className="unova-rating-card__meta-row text-[12px] text-white/60 truncate">
+                                {r.authorName ? (
+                                  <span className="unova-rating-card__author">{maskAuthorName(r.authorName)}</span>
+                                ) : null}
                                 {r.createdAt ? <span className="unova-rating-card__time">{relTimeFromIso(r.createdAt)}</span> : null}
                               </div>
                             </div>

@@ -72,6 +72,7 @@ export default async function HomePage() {
           label: s.label,
           bgColor: s.bgColor || null,
           schoolLogoUrl: s.schoolLogoUrl || null,
+          openInNewTab: s.openInNewTab ?? true,
         }))
         .filter((s: any) => s.href && s.image && s.label);
       if (!shortcutItems.length) shortcutItems = undefined;
