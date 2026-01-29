@@ -1,46 +1,41 @@
 import { NextResponse } from "next/server";
-import crypto from "node:crypto";
+import { getCurrentUser } from "@/lib/current-user";
 
 export const runtime = "nodejs";
 
-// 간단한 이미지 업로드 (Base64 data URL 반환)
-// 프로덕션에서는 GCS 또는 S3 등 외부 스토리지 사용 권장
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+
 export async function POST(req: Request) {
-  try {
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-
-    if (!file) {
-      return NextResponse.json({ ok: false, error: "NO_FILE" }, { status: 400 });
-    }
-
-    // 파일 크기 제한 (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ ok: false, error: "FILE_TOO_LARGE" }, { status: 400 });
-    }
-
-    // 이미지 타입 확인
-    if (!file.type.startsWith("image/")) {
-      return NextResponse.json({ ok: false, error: "NOT_AN_IMAGE" }, { status: 400 });
-    }
-
-    // Base64 data URL로 변환
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const base64 = buffer.toString("base64");
-    const mimeType = file.type;
-    const dataUrl = `data:${mimeType};base64,${base64}`;
-
-    // 고유 ID 생성 (추후 참조용)
-    const imageId = crypto.randomUUID();
-
-    return NextResponse.json({ 
-      ok: true, 
-      url: dataUrl,
-      imageId,
-    });
-  } catch (error) {
-    console.error("Image upload error:", error);
-    return NextResponse.json({ ok: false, error: "UPLOAD_FAILED" }, { status: 500 });
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   }
+
+  const contentType = req.headers.get("content-type") || "";
+  if (!contentType.includes("multipart/form-data")) {
+    return NextResponse.json({ ok: false, error: "INVALID_CONTENT_TYPE" }, { status: 400 });
+  }
+
+  const form = await req.formData();
+  const file = form.get("file");
+
+  if (!(file instanceof File)) {
+    return NextResponse.json({ ok: false, error: "NO_FILE" }, { status: 400 });
+  }
+  if ((file.size ?? 0) <= 0) {
+    return NextResponse.json({ ok: false, error: "EMPTY_FILE" }, { status: 400 });
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    return NextResponse.json({ ok: false, error: "FILE_TOO_LARGE" }, { status: 400 });
+  }
+  if (!file.type || !file.type.startsWith("image/")) {
+    return NextResponse.json({ ok: false, error: "UNSUPPORTED_FILE" }, { status: 400 });
+  }
+
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const mimeType = file.type || "image/jpeg";
+  const base64 = bytes.toString("base64");
+  const dataUrl = `data:${mimeType};base64,${base64}`;
+
+  return NextResponse.json({ ok: true, url: dataUrl });
 }

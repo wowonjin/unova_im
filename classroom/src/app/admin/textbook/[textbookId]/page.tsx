@@ -346,6 +346,7 @@ export default async function AdminTextbookPage({
             authorName: true,
             rating: true,
             content: true,
+            imageUrls: true,
             isApproved: true,
             createdAt: true,
             user: { select: { id: true, email: true } },
@@ -613,6 +614,21 @@ export default async function AdminTextbookPage({
                             )}
                           </div>
                           <p className="text-sm text-white/70 whitespace-pre-line">{review.content}</p>
+                          {Array.isArray((review as any).imageUrls) && (review as any).imageUrls.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {(review as any).imageUrls.map((url: string, idx: number) => (
+                                <a
+                                  key={`${url}-${idx}`}
+                                  href={url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="block h-20 w-20 overflow-hidden rounded-lg border border-white/10"
+                                >
+                                  <img src={url} alt="" className="h-full w-full object-cover" />
+                                </a>
+                              ))}
+                            </div>
+                          )}
                           {review.user && (
                             <p className="mt-2 text-xs text-white/40">
                               회원: {review.user.email}

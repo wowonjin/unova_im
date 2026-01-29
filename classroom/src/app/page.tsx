@@ -123,6 +123,8 @@ export default async function HomePage() {
 
   let storeCourses: DbCourseRow[] = [];
   let storeTextbooks: DbTextbookRow[] = [];
+  let courseReviewStats = new Map<string, { count: number; avg: number }>();
+  let textbookReviewStats = new Map<string, { count: number; avg: number }>();
   try {
     const coursesPromise = (async () => {
       let rows = await prisma.course.findMany({
@@ -217,6 +219,56 @@ export default async function HomePage() {
     const [coursesRes, textbooksRes] = await Promise.allSettled([coursesPromise, textbooksPromise]);
     storeCourses = coursesRes.status === "fulfilled" ? coursesRes.value : [];
     storeTextbooks = textbooksRes.status === "fulfilled" ? textbooksRes.value : [];
+
+    // 리뷰 집계값이 DB에 반영되지 않은 경우를 대비한 보정(홈 프리뷰 표시용)
+    try {
+      if (storeCourses.length > 0) {
+        const courseIds = storeCourses.map((c) => c.id);
+        const rows = await prisma.review.groupBy({
+          by: ["courseId"],
+          where: { productType: "COURSE", courseId: { in: courseIds }, isApproved: true },
+          _count: { _all: true },
+          _avg: { rating: true },
+        });
+        courseReviewStats = new Map(
+          rows
+            .filter((r) => r.courseId)
+            .map((r) => [
+              r.courseId as string,
+              {
+                count: r._count._all ?? 0,
+                avg: Math.round(((r._avg.rating ?? 0) as number) * 10) / 10,
+              },
+            ])
+        );
+      }
+
+      if (storeTextbooks.length > 0) {
+        const textbookIds = storeTextbooks.map((t) => t.id);
+        const rows = await prisma.review.groupBy({
+          by: ["textbookId"],
+          where: { productType: "TEXTBOOK", textbookId: { in: textbookIds }, isApproved: true },
+          _count: { _all: true },
+          _avg: { rating: true },
+        });
+        textbookReviewStats = new Map(
+          rows
+            .filter((r) => r.textbookId)
+            .map((r) => [
+              r.textbookId as string,
+              {
+                count: r._count._all ?? 0,
+                avg: Math.round(((r._avg.rating ?? 0) as number) * 10) / 10,
+              },
+            ])
+        );
+      }
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn("[home] failed to load review stats:", msg);
+      }
+    }
   } catch (e) {
     if (process.env.NODE_ENV !== "production") {
       const msg = e instanceof Error ? e.message : String(e);
@@ -228,6 +280,7 @@ export default async function HomePage() {
 
   const coursePreview: StorePreviewProduct[] = storeCourses.map((c) => {
     const tags = (c.tags as string[] | null) || [];
+    const stats = courseReviewStats.get(c.id);
     return {
       id: c.id,
       title: c.title,
@@ -245,13 +298,14 @@ export default async function HomePage() {
       thumbnailUrl: c.thumbnailUrl ? "__thumb__" : null,
       thumbnailStoredPath: c.thumbnailStoredPath,
       thumbnailUpdatedAtISO: c.updatedAt.toISOString(),
-      rating: c.rating,
-      reviewCount: c.reviewCount,
+      rating: stats ? stats.avg : c.rating,
+      reviewCount: stats ? stats.count : c.reviewCount,
     };
   });
 
   const textbookPreview: StorePreviewProduct[] = storeTextbooks.map((t) => {
     const tags = (t.tags as string[] | null) || [];
+    const stats = textbookReviewStats.get(t.id);
     return {
       id: t.id,
       title: t.title,
@@ -269,8 +323,8 @@ export default async function HomePage() {
       // 여기서는 "썸네일이 있는지"만 나타내는 작은 값만 유지합니다(베이스64 payload 방지).
       thumbnailUrl: t.thumbnailUrl ? "__thumb__" : null,
       thumbnailUpdatedAtISO: t.updatedAt.toISOString(),
-      rating: t.rating,
-      reviewCount: t.reviewCount,
+      rating: stats ? stats.avg : t.rating,
+      reviewCount: stats ? stats.count : t.reviewCount,
     };
   });
 

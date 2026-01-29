@@ -9,6 +9,8 @@ export default function TextbookReviewFormClient({ textbookId }: { textbookId: s
   const [authorName, setAuthorName] = useState("");
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState("");
+  const [reviewImages, setReviewImages] = useState<File[]>([]);
+  const [reviewImagePreviews, setReviewImagePreviews] = useState<string[]>([]);
   const [createdAt, setCreatedAt] = useState(() => {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -16,6 +18,33 @@ export default function TextbookReviewFormClient({ textbookId }: { textbookId: s
   });
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const remaining = Math.max(0, 5 - reviewImages.length);
+    const newFiles = Array.from(files).slice(0, remaining);
+    if (newFiles.length === 0) return;
+
+    const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
+    setReviewImages((prev) => [...prev, ...newFiles]);
+    setReviewImagePreviews((prev) => [...prev, ...newPreviews]);
+    e.target.value = "";
+  };
+
+  const handleRemoveImage = (index: number) => {
+    const preview = reviewImagePreviews[index];
+    if (preview) URL.revokeObjectURL(preview);
+    setReviewImages((prev) => prev.filter((_, i) => i !== index));
+    setReviewImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const clearImages = () => {
+    reviewImagePreviews.forEach((url) => URL.revokeObjectURL(url));
+    setReviewImages([]);
+    setReviewImagePreviews([]);
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,6 +57,21 @@ export default function TextbookReviewFormClient({ textbookId }: { textbookId: s
     setErrorMsg("");
 
     try {
+      const imageUrls: string[] = [];
+      for (const file of reviewImages) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const uploadRes = await fetch("/api/reviews/upload-image", {
+          method: "POST",
+          body: formData,
+        });
+        const uploadData = await uploadRes.json().catch(() => ({}));
+        if (!uploadRes.ok || !uploadData.ok || !uploadData.url) {
+          throw new Error(uploadData.error || "IMAGE_UPLOAD_FAILED");
+        }
+        imageUrls.push(uploadData.url);
+      }
+
       const res = await fetch("/api/admin/textbook-reviews/add", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -37,6 +81,7 @@ export default function TextbookReviewFormClient({ textbookId }: { textbookId: s
           rating,
           content: content.trim(),
           createdAt,
+          imageUrls,
         }),
       });
 
@@ -49,6 +94,7 @@ export default function TextbookReviewFormClient({ textbookId }: { textbookId: s
       setAuthorName("");
       setContent("");
       setRating(5);
+      clearImages();
       router.refresh();
       setTimeout(() => setStatus("idle"), 2000);
     } catch (err: any) {
@@ -107,6 +153,33 @@ export default function TextbookReviewFormClient({ textbookId }: { textbookId: s
           required
           className="bg-transparent"
         />
+      </Field>
+
+      <Field label="후기 이미지" hint="최대 5장, 각 2MB 이하">
+        <Input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleImageChange}
+          disabled={status === "saving"}
+          className="bg-transparent h-auto py-2"
+        />
+        {reviewImagePreviews.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {reviewImagePreviews.map((url, index) => (
+              <div key={`${url}-${index}`} className="relative h-20 w-20 overflow-hidden rounded-lg border border-white/10">
+                <img src={url} alt="" className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveImage(index)}
+                  className="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 py-0.5 text-xs text-white"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </Field>
 
       {errorMsg && <p className="text-sm text-red-400">{errorMsg}</p>}

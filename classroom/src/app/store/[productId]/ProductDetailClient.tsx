@@ -1125,10 +1125,9 @@ export default function ProductDetailClient({
   const reviewTabKey: TabKey = product.type === "textbook" ? "교재후기" : "강의후기";
   const introTabKey: TabKey = product.type === "textbook" ? "교재소개" : "강의소개";
   const detailPageTabKey: TabKey = "상세 페이지";
-  // 강의 상세 후기 UI는 교재 후기 디자인과 동일하게 단순화합니다.
-  // 무료(0원) 교재도 동일하게 단순 UI로 노출합니다.
-  const isSimpleReviewUi =
-    product.type === "course" || (product.type === "textbook" && product.isPriceSet && product.price === 0);
+  // 교재 상세 후기 탭은 "무료 자료 다운로드" 상세 페이지와 동일한 단순 UI로 노출합니다.
+  // 강의 상세 후기 UI도 동일한 단순 UI를 유지합니다.
+  const isSimpleReviewUi = product.type === "course" || product.type === "textbook";
   const reviewTeacherDisplayName = useMemo(() => {
     const raw = String(product.teacher || "").replace(/선생님/g, "").trim();
     return raw ? `${raw} 선생님` : "선생님";
@@ -1663,24 +1662,6 @@ export default function ProductDetailClient({
                         <span className="absolute inset-x-0 -bottom-[1px] h-[2px] bg-white" aria-hidden="true" />
                       ) : null}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setReviewPhotoOnly(true);
-                        setReviewVerifiedOnly(false);
-                      }}
-                      className={`relative pb-3 text-[13px] font-semibold transition-colors ${
-                        reviewPhotoOnly ? "text-white" : "text-white/50 hover:text-white/75"
-                      }`}
-                    >
-                      사진후기
-                      <span className="ml-2 text-[12px] font-medium text-white/45">
-                        {reviewSummary.photoCount.toLocaleString("ko-KR")}
-                      </span>
-                      {reviewPhotoOnly ? (
-                        <span className="absolute inset-x-0 -bottom-[1px] h-[2px] bg-white" aria-hidden="true" />
-                      ) : null}
-                    </button>
                     {!isSimpleReviewUi ? (
                       <button
                         type="button"
@@ -1757,73 +1738,6 @@ export default function ProductDetailClient({
                 </div>
               ) : null}
 
-              {/* 포토리뷰 미리보기 */}
-              {photoReviews.length > 0 && (
-                <div className="mb-6 rounded-2xl border border-white/10 p-4">
-                  <div className="mb-3 flex items-center justify-between">
-                    <p className="text-[14px] font-semibold text-white">포토리뷰</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setReviewPhotoOnly(true);
-                        setReviewVerifiedOnly(false);
-                      }}
-                      className="text-[12px] text-white/60 hover:text-white/80"
-                    >
-                      사진후기 더보기
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                    {photoReviews.slice(0, 6).map((r) => (
-                      <button
-                        key={`photo-preview-${r.id}`}
-                        type="button"
-                        onClick={() => {
-                          setReviewPhotoOnly(true);
-                          setReviewVerifiedOnly(false);
-                        }}
-                        className="aspect-square w-full overflow-hidden rounded-xl border border-white/10 hover:border-white/25 transition-colors"
-                      >
-                        <img src={(r.imageUrls ?? [])[0]} alt="" className="h-full w-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 사진후기 탭: 포토리뷰 모아보기(네이버 느낌) */}
-              {reviewPhotoOnly && photoUrls.length > 0 && (
-                <div className="mb-6 rounded-2xl border border-white/10 p-4">
-                  <div className="mb-3 flex items-center justify-between">
-                    <p className="text-[14px] font-semibold text-white">포토리뷰 모아보기</p>
-                    <span className="text-[12px] text-white/50">{photoUrls.length.toLocaleString("ko-KR")}장</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                    {photoUrls.slice(0, visiblePhotoCount).map((url, idx) => (
-                      <button
-                        key={`photo-only-${idx}`}
-                        type="button"
-                        onClick={() => setPhotoModalUrl(url)}
-                        className="aspect-square w-full overflow-hidden rounded-xl border border-white/10 hover:border-white/25 transition-colors"
-                        aria-label="사진 보기"
-                      >
-                        <img src={url} alt="" className="h-full w-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                  {photoUrls.length > visiblePhotoCount ? (
-                    <div className="mt-4 flex justify-center">
-                      <button
-                        type="button"
-                        onClick={() => setVisiblePhotoCount((n) => Math.min(photoUrls.length, n + 24))}
-                        className="rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3 text-[13px] font-semibold text-white/75 hover:bg-white/[0.08] hover:text-white"
-                      >
-                        사진 더보기
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              )}
 
               {/* 추천 리뷰(네이버 느낌: 상단 고정) */}
               {!isSimpleReviewUi &&
@@ -1842,11 +1756,6 @@ export default function ProductDetailClient({
                             {review.isVerifiedBuyer && (
                               <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
                                 구매자
-                              </span>
-                            )}
-                            {(review.imageUrls ?? []).length > 0 && (
-                              <span className="rounded-full border border-white/15 bg-white/[0.06] px-2 py-0.5 text-[11px] text-white/70">
-                                사진후기
                               </span>
                             )}
                           </div>
@@ -2006,11 +1915,6 @@ export default function ProductDetailClient({
                                   구매자
                                 </span>
                               )}
-                              {(review.imageUrls ?? []).length > 0 && (
-                                <span className="rounded-full border border-white/15 bg-white/[0.06] px-2 py-0.5 text-[11px] text-white/70">
-                                  사진후기
-                                </span>
-                              )}
                               {/* 단순 후기 UI에서는 평점을 "이름 아래"로 내립니다. */}
                               {!isSimpleReviewUi ? (
                                 <div className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5">
@@ -2118,7 +2022,7 @@ export default function ProductDetailClient({
                               <button
                                 key={idx}
                                 type="button"
-                                onClick={() => window.open(url, "_blank")}
+                                onClick={() => setPhotoModalUrl(url)}
                                 className="aspect-square w-full rounded-xl overflow-hidden border border-white/10 hover:border-white/25 transition-colors"
                               >
                                 <img src={url} alt="" className="w-full h-full object-cover" />

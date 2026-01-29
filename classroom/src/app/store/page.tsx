@@ -292,6 +292,63 @@ async function StoreProducts({
     productsOfCurrentType = [];
   }
 
+  // 리뷰 집계값이 DB에 반영되지 않은 경우를 대비한 보정
+  if (productsOfCurrentType.length > 0) {
+    try {
+      const ids = productsOfCurrentType.map((p) => p.id);
+      if (currentType === "course") {
+        const rows = await prisma.review.groupBy({
+          by: ["courseId"],
+          where: { productType: "COURSE", courseId: { in: ids }, isApproved: true },
+          _count: { _all: true },
+          _avg: { rating: true },
+        });
+        const stats = new Map(
+          rows
+            .filter((r) => r.courseId)
+            .map((r) => [
+              r.courseId as string,
+              {
+                count: r._count._all ?? 0,
+                avg: Math.round(((r._avg.rating ?? 0) as number) * 10) / 10,
+              },
+            ])
+        );
+        productsOfCurrentType = productsOfCurrentType.map((p) => {
+          const s = stats.get(p.id);
+          return s ? { ...p, rating: s.avg, reviewCount: s.count } : p;
+        });
+      } else {
+        const rows = await prisma.review.groupBy({
+          by: ["textbookId"],
+          where: { productType: "TEXTBOOK", textbookId: { in: ids }, isApproved: true },
+          _count: { _all: true },
+          _avg: { rating: true },
+        });
+        const stats = new Map(
+          rows
+            .filter((r) => r.textbookId)
+            .map((r) => [
+              r.textbookId as string,
+              {
+                count: r._count._all ?? 0,
+                avg: Math.round(((r._avg.rating ?? 0) as number) * 10) / 10,
+              },
+            ])
+        );
+        productsOfCurrentType = productsOfCurrentType.map((p) => {
+          const s = stats.get(p.id);
+          return s ? { ...p, rating: s.avg, reviewCount: s.count } : p;
+        });
+      }
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn("[store] failed to load review stats:", msg);
+      }
+    }
+  }
+
   return (
     <StoreFilterClient
       products={productsOfCurrentType}
