@@ -136,10 +136,10 @@ export default function StoreFilterClient({
   initialSubject = "전체",
   initialExamType = "전체",
 }: StoreFilterClientProps) {
-  const allowedExamTypes: ExamType[] =
+  const allowedExamTypes: readonly ExamType[] =
     selectedType === "강의"
-      ? (EXAM_TYPES.filter((t) => t !== "편입") as ExamType[])
-      : (EXAM_TYPES as ExamType[]);
+      ? EXAM_TYPES.filter((t): t is Exclude<ExamType, "편입"> => t !== "편입")
+      : EXAM_TYPES;
 
   const initialExamTypeNormalized: ExamType =
     allowedExamTypes.includes(initialExamType as ExamType) ? (initialExamType as ExamType) : "전체";
