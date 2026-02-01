@@ -810,7 +810,7 @@ function StorePreviewSections({
 }) {
   const [selectedCourseSubject, setSelectedCourseSubject] = useState<string>("전체");
   const [selectedFreeTextbookSubject, setSelectedFreeTextbookSubject] = useState<string>("전체");
-  const [selectedSuneungTextbookSubject, setSelectedSuneungTextbookSubject] = useState<string>("물리학I");
+  const [selectedSuneungTextbookSubject, setSelectedSuneungTextbookSubject] = useState<string>("수학");
   const [selectedG1TextbookSubject, setSelectedG1TextbookSubject] = useState<string>("전체");
   const [selectedTransferTextbookSubject, setSelectedTransferTextbookSubject] = useState<string>("전체");
   const [selectedSuneungBookFormat, setSelectedSuneungBookFormat] = useState<BookFormat>("전체");
@@ -855,7 +855,7 @@ function StorePreviewSections({
   }, [selectedSuneungBookFormat, textbooks]);
 
   const defaultSuneungSubject = useMemo(() => {
-    if (suneungTextbookSubjects.includes("물리학I")) return "물리학I";
+    if (suneungTextbookSubjects.includes("수학")) return "수학";
     if (suneungTextbookSubjects.includes("전체")) return "전체";
     return suneungTextbookSubjects[0] ?? "전체";
   }, [suneungTextbookSubjects]);
