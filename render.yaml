@@ -19,10 +19,10 @@ services:
         value: production
 
       # DB
+      # Use the same DB as local (set in Render dashboard).
+      # Example: the DATABASE_URL from classroom/.env.local
       - key: DATABASE_URL
-        fromDatabase:
-          name: unova-classroom-db
-          property: connectionString
+        sync: false
 
       # File storage (uploads)
       - key: STORAGE_ROOT
@@ -78,6 +78,10 @@ services:
       - key: TOSS_CLIENT_KEY
         sync: false
       - key: TOSS_SECRET_KEY
+        sync: false
+      - key: TOSS_BILLING_CLIENT_KEY
+        sync: false
+      - key: TOSS_BILLING_SECRET_KEY
         sync: false
 
     disk:

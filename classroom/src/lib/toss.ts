@@ -69,9 +69,43 @@ export function getTossPaymentClientKey(): string {
   return v;
 }
 
+// 토스 자동결제(빌링)용 API 개별 연동 키(클라이언트 키)
+// - test_ck_/live_ck_ 계열을 사용합니다. (gck는 결제위젯용)
+export function getTossBillingClientKey(): string {
+  const v = process.env.TOSS_BILLING_CLIENT_KEY || process.env.TOSS_PAYMENT_CLIENT_KEY || "";
+  if (!v) throw new Error("TOSS_BILLING_CLIENT_KEY_NOT_SET");
+
+  const lower = v.toLowerCase();
+  if (lower.startsWith("test_sk_") || lower.startsWith("live_sk_")) {
+    throw new Error("TOSS_BILLING_CLIENT_KEY_IS_SECRET_KEY");
+  }
+
+  const looksLikePaymentClientKey =
+    lower.includes("_ck_") ||
+    lower.startsWith("test_ck_") ||
+    lower.startsWith("live_ck_");
+
+  if (!looksLikePaymentClientKey) {
+    // eslint-disable-next-line no-console
+    console.warn("[toss] TOSS_BILLING_CLIENT_KEY does not look like an API/billing client key (test_ck_/live_ck_). The SDK may reject it.");
+  }
+  if (lower.includes("_gck_") || lower.startsWith("test_gck_") || lower.startsWith("live_gck_")) {
+    throw new Error("TOSS_BILLING_CLIENT_KEY_IS_WIDGET_KEY");
+  }
+
+  return v;
+}
+
 export function getTossSecretKey(): string {
   const v = process.env.TOSS_SECRET_KEY || "";
   if (!v) throw new Error("TOSS_SECRET_KEY_NOT_SET");
+  return v;
+}
+
+// 토스 자동결제(빌링) 승인용 시크릿 키
+export function getTossBillingSecretKey(): string {
+  const v = process.env.TOSS_BILLING_SECRET_KEY || process.env.TOSS_SECRET_KEY || "";
+  if (!v) throw new Error("TOSS_BILLING_SECRET_KEY_NOT_SET");
   return v;
 }
 

@@ -400,6 +400,7 @@ export default function SidebarClient({ email, userId, displayName, avatarUrl, i
                   <NavItem href="/admin/members" label="회원 관리" icon="group" />
                   <NavItem href="/admin/orders" label="주문 관리" icon="receipt_long" />
                   <NavItem href="/admin/shipments" label="택배 관리" icon="local_shipping" />
+                  <NavItem href="/admin/subscription-test" label="구독 결제 테스트" icon="repeat" />
                   <NavItem href="/admin/popups" label="팝업 관리" icon="web_asset" />
                   <NavItem href="/admin/reviews" label="후기 관리" icon="rate_review" />
                   <NavItem href="/admin/teachers" label="선생님 관리" icon="badge" />
