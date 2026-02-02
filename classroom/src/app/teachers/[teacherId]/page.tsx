@@ -11,6 +11,22 @@ import type { StorePreviewProduct } from "@/app/_components/StorePreviewTabs";
 // 선생님 상세 페이지: 누구나 접근 가능 (공개 페이지)
 export const dynamic = "force-dynamic";
 
+const BLOCKED_TEACHER_IDS = new Set(["lsy", "lee-sangyeob"]);
+const BLOCKED_TEACHER_NAMES = new Set(["이상엽"]);
+
+function normalizeTeacherName(input?: string | null): string {
+  return (input || "").trim();
+}
+
+function isBlockedTeacherId(teacherId: string): boolean {
+  return BLOCKED_TEACHER_IDS.has((teacherId || "").trim());
+}
+
+function isBlockedTeacherName(teacherName?: string | null): boolean {
+  const normalized = normalizeTeacherName(teacherName);
+  return normalized.length > 0 && BLOCKED_TEACHER_NAMES.has(normalized);
+}
+
 function toPublicGcsUrl(input?: string | null) {
   const s = typeof input === "string" ? input.trim() : "";
   if (!s) return "";
@@ -352,23 +368,6 @@ async function getTeacherRecentNoticesForRightPanel(teacherName: string): Promis
 }
 
 const teachersData: Record<string, TeacherData> = {
-  "lee-sangyeob": {
-    name: "이상엽",
-    subject: "국어",
-    subjectColor: "text-rose-400",
-    bgColor: "bg-rose-500/10",
-    description: "수능 국어의 본질을 꿰뚫는 명강의",
-    longDescription: "국어 영역의 핵심을 정확히 짚어주는 강의로 많은 학생들의 성적 향상을 이끌어낸 국어 전문가입니다. 체계적인 독해 방법론과 실전 문제 풀이 전략으로 학생들이 국어 영역에서 안정적인 고득점을 받을 수 있도록 지도합니다.",
-    achievements: [
-      "국어 영역 1등급 배출 다수",
-      "독해력 향상 프로그램 개발",
-      "수능 국어 분석 전문가",
-    ],
-    courses: [
-      { title: "CONNECT 국어 비문학 완성", price: "89,000원", href: "https://unova.co.kr" },
-      { title: "CONNECT 국어 문학 완성", price: "89,000원", href: "https://unova.co.kr" },
-    ],
-  },
   "baek-hawook": {
     name: "백하욱",
     subject: "수학",
@@ -837,9 +836,11 @@ for (const id of Object.keys(teachersData)) {
 
 export default async function TeacherDetailPage({ params }: { params: Promise<{ teacherId: string }> }) {
   const { teacherId } = await params;
+  if (isBlockedTeacherId(teacherId)) redirect("/teachers");
 
   // 1) 레거시 하드코딩 데이터 우선
   const teacher = teachersData[teacherId];
+  if (isBlockedTeacherName((teacher as any)?.name)) redirect("/teachers");
 
   // 2) DB 기반 선생님(어드민 등록) 폴백 → 유예린 디자인 템플릿 적용
   if (!teacher) {
@@ -864,6 +865,7 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
       },
     } as any);
     if (!dbTeacher) notFound();
+    if (isBlockedTeacherName(dbTeacher.name)) redirect("/teachers");
 
     // 유예린 선생님 데이터를 템플릿으로 사용
     const yooYerinTemplate = teachersData["yoo-yerin"];
@@ -1015,11 +1017,6 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
     const ratingSummary = await getTeacherRatingSummary({ teacherSlug: teacherId, teacherName: (teacher as any)?.name ?? "" });
     const boardCategory = `선생님 공지사항 - ${((teacher as any)?.name ?? "").trim()}`.replace(/\s+/g, " ").trim();
     const boardHref = boardCategory.endsWith("-") ? "/notices" : `/notices?${new URLSearchParams({ cat: boardCategory }).toString()}`;
-    const fixedHeaderSub =
-      teacherId === "lsy" || teacherId === "lee-sangyeob" || (teacher as any)?.name === "이상엽"
-        ? "막연한 국어의 끝"
-        : (teacher as any)?.headerSub;
-
     // 판매하기(강좌/교재)에서 입력된 teacherName(선생님 이름) 기준으로 자동 연동
     const { lectureSets, bookSets, storeCourses, storeTextbooks } = await buildTeacherLectureAndBookSetsByTeacherName(
       (teacher as any)?.name ?? ""
@@ -1028,7 +1025,7 @@ export default async function TeacherDetailPage({ params }: { params: Promise<{ 
     const teacherWithLiveData: TeacherDetailTeacher = {
       ...(teacher as any),
       slug: teacherId,
-      ...(typeof fixedHeaderSub === "string" ? { headerSub: fixedHeaderSub } : {}),
+      ...(typeof (teacher as any)?.headerSub === "string" ? { headerSub: (teacher as any)?.headerSub } : {}),
       // "선생님 게시글"은 실제 공지사항(Notice)와 연동된 데이터만 사용
       notices: recentNotices,
       navigationLinks: {
