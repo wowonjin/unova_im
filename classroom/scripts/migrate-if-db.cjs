@@ -131,8 +131,19 @@ async function ensureStoreSchema(connectionString) {
   }
 
   if (sql.trim()) {
-    await client.query(sql);
-    console.log("✅ Store schema ensured (columns/tables).");
+    try {
+      await client.query(sql);
+      console.log("✅ Store schema ensured (columns/tables).");
+    } catch (e) {
+      const code = e?.code || e?.cause?.code;
+      const msg = String(e?.message || "");
+      // If unique constraints already exist, skip and continue.
+      if (code === "42P07" || /already exists/i.test(msg)) {
+        console.warn("⚠️  Store schema already up to date (constraint exists).");
+      } else {
+        throw e;
+      }
+    }
   }
 
   await client.end();

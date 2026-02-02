@@ -146,7 +146,10 @@ export default function SignupFormClient() {
       setError("비밀번호가 일치하지 않습니다.");
       return;
     }
-    // 주소는 선택 사항 (필수 아님)
+    if (!formData.address.trim()) {
+      setError("교재 배송 주소를 입력해주세요.");
+      return;
+    }
     if (!agreements.terms || !agreements.privacy) {
       setError("필수 약관에 동의해주세요.");
       return;
@@ -197,6 +200,7 @@ export default function SignupFormClient() {
     formData.email.trim() &&
     formData.password &&
     formData.passwordConfirm &&
+    formData.address.trim() &&
     agreements.terms &&
     agreements.privacy;
 

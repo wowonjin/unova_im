@@ -25,12 +25,35 @@
 - `ADMIN_EMAILS`: 관리자(선생님) 이메일(쉼표로 여러 개 가능)
 - `DEFAULT_USER_EMAIL`: (선택) 데모/공개 모드에서 기본 사용자 이메일
 
+#### Supabase(Postgres) 사용
+
+- Supabase 대시보드 → **Settings → Database → Connection string**에서 **Direct/URI** 형식 사용
+- `.env.local`의 `DATABASE_URL`에 Supabase 연결 문자열 설정
+  - 예: `postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres?sslmode=require`
+  - 또는 `PGSSLMODE=require`로 SSL 강제
+
 ### 2) DB 마이그레이션/시드
 
 ```bash
 npm install
 npm run db:migrate
 npm run db:seed
+```
+
+#### 기존 DB 데이터 이전(선택)
+
+기존 Postgres에서 Supabase로 옮길 때는 `pg_dump`/`pg_restore`를 사용합니다.
+
+```bash
+# 예시 (소스 DB -> 덤프)
+pg_dump --format=custom --no-owner --no-privileges \
+  --dbname "postgresql://USER:PASSWORD@OLD_HOST:5432/DB" \
+  --file db.dump
+
+# 예시 (덤프 -> Supabase)
+pg_restore --no-owner --no-privileges \
+  --dbname "postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres?sslmode=require" \
+  db.dump
 ```
 
 ### 3) 개발 서버 실행
