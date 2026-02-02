@@ -40,42 +40,62 @@ function toSafeText(v, maxLen) {
   return `${s.slice(0, maxLen)}...`;
 }
 
-app.prepare().then(() => {
-  const server = http.createServer((req, res) => {
-    const start = process.hrtime.bigint();
-    const reqId = req.headers["x-request-id"] || randomUUID();
-    res.setHeader("x-request-id", reqId);
+let isReady = false;
 
-    res.on("finish", () => {
-      const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
-      const status = res.statusCode || 0;
-      const shouldLog = status >= 500 || durationMs >= slowMs || Math.random() < sampleRate;
-      if (!shouldLog) return;
+const server = http.createServer((req, res) => {
+  if (!isReady) {
+    res.statusCode = 503;
+    res.setHeader("retry-after", "5");
+    res.end("Server is starting, please retry.");
+    return;
+  }
 
-      const ipHeader = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "";
-      const ip = String(ipHeader).split(",")[0]?.trim() || "";
-      const ua = toSafeText(req.headers["user-agent"], 200);
-      const bytes = res.getHeader("content-length") || "-";
-      const parsedUrl = parse(req.url || "/", false);
-      const path = `${parsedUrl.pathname || "/"}${parsedUrl.search || ""}`;
+  const start = process.hrtime.bigint();
+  const reqId = req.headers["x-request-id"] || randomUUID();
+  res.setHeader("x-request-id", reqId);
 
-      // eslint-disable-next-line no-console
-      console.log(
-        `[access] method=${req.method} status=${status} durationMs=${durationMs.toFixed(
-          1
-        )} bytes=${bytes} ip="${ip}" reqId="${reqId}" path="${path}" ua="${ua}"`
-      );
-    });
+  res.on("finish", () => {
+    const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+    const status = res.statusCode || 0;
+    const shouldLog = status >= 500 || durationMs >= slowMs || Math.random() < sampleRate;
+    if (!shouldLog) return;
 
-    const parsedUrl = parse(req.url || "/", true);
-    handle(req, res, parsedUrl);
+    const ipHeader = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "";
+    const ip = String(ipHeader).split(",")[0]?.trim() || "";
+    const ua = toSafeText(req.headers["user-agent"], 200);
+    const bytes = res.getHeader("content-length") || "-";
+    const parsedUrl = parse(req.url || "/", false);
+    const path = `${parsedUrl.pathname || "/"}${parsedUrl.search || ""}`;
+
+    // eslint-disable-next-line no-console
+    console.log(
+      `[access] method=${req.method} status=${status} durationMs=${durationMs.toFixed(
+        1
+      )} bytes=${bytes} ip="${ip}" reqId="${reqId}" path="${path}" ua="${ua}"`
+    );
   });
 
-  server.listen(port, (err) => {
-    if (err) throw err;
+  const parsedUrl = parse(req.url || "/", true);
+  handle(req, res, parsedUrl);
+});
+
+server.listen(port, (err) => {
+  if (err) throw err;
+  // eslint-disable-next-line no-console
+  console.log(`> Listening on http://localhost:${port}`);
+});
+
+app
+  .prepare()
+  .then(() => {
+    isReady = true;
     // eslint-disable-next-line no-console
-    console.log(`> Ready on http://localhost:${port}`);
+    console.log(`> Next.js ready on http://localhost:${port}`);
     logMemory("boot");
     setInterval(() => logMemory("interval"), memIntervalMs).unref?.();
+  })
+  .catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error("❌ Next.js prepare failed:", err);
+    process.exit(1);
   });
-});
