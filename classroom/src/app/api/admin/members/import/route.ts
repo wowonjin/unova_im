@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 const MAX_IMPORT_ROWS = (() => {
   const raw = Number(process.env.IMPORT_MEMBERS_MAX);
   if (Number.isFinite(raw) && raw > 0) return Math.floor(raw);
-  return 2000;
+  return 10000;
 })();
 const MAX_IMPORT_FILE_BYTES = (() => {
   const raw = Number(process.env.IMPORT_MEMBERS_MAX_BYTES);
