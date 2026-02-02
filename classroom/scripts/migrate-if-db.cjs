@@ -194,6 +194,16 @@ async function main() {
   if (!result.success) {
     const output = result.output || "";
     const isP3009 = /Error:\s*P3009/i.test(output) || /P3009/i.test(output);
+    const isP1001 =
+      /Error:\s*P1001/i.test(output) ||
+      /P1001/i.test(output) ||
+      /Can't reach database server/i.test(output);
+
+    if (isP1001) {
+      console.warn("⚠️  DB 연결 실패(P1001)로 마이그레이션을 건너뜁니다.");
+      console.warn("   배포는 계속 진행되며, DB 연결 가능 여부를 확인해 주세요.");
+      return;
+    }
 
     if (!isP3009) {
       console.error("❌ 마이그레이션 실패:", result.error);
