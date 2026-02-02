@@ -25,8 +25,11 @@ export async function GET() {
     },
   });
 
+  const blockedNames = new Set(["이상엽"]);
+
   const sorted = teachers
     .slice()
+    .filter((t) => !blockedNames.has((t.name || "").trim()))
     .sort((a, b) => {
       const ap = a.position === 0 ? Number.MAX_SAFE_INTEGER : a.position;
       const bp = b.position === 0 ? Number.MAX_SAFE_INTEGER : b.position;

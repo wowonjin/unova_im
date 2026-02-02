@@ -6,6 +6,8 @@ import { getCurrentUser } from "@/lib/current-user";
 import AdminNoticeComposerClient from "./AdminNoticeComposerClient";
 import NoticeDeleteButton from "./NoticeDeleteButton";
 
+const BLOCKED_TEACHER_NAMES = new Set(["이상엽"]);
+
 function parseTeacherNameFromCategory(category: string): string | null {
   const c = (category || "").trim();
   const prefix = "선생님 공지사항 -";
@@ -101,7 +103,13 @@ export default async function NoticesPage({
     });
 
   const teacherPrefix = "선생님 공지사항 -";
-  const teacherCategoriesFromTeachers = sortedTeachers.map((t) => {
+  const blockedTeacherCategories = new Set(
+    Array.from(BLOCKED_TEACHER_NAMES).map((name) => `${teacherPrefix} ${name}`.replace(/\s+/g, " ").trim())
+  );
+
+  const activeTeachers = sortedTeachers.filter((t) => !BLOCKED_TEACHER_NAMES.has((t.name || "").trim()));
+
+  const teacherCategoriesFromTeachers = activeTeachers.map((t) => {
     const category = `${teacherPrefix} ${t.name}`.replace(/\s+/g, " ").trim();
     const count = countByCategory.get(category) ?? 0;
     return { category, count };
@@ -111,6 +119,7 @@ export default async function NoticesPage({
   const teacherCategorySet = new Set(teacherCategoriesFromTeachers.map((x) => x.category));
   const legacyTeacherCategories = Array.from(countByCategory.entries())
     .filter(([cat]) => cat.startsWith(teacherPrefix) && !teacherCategorySet.has(cat))
+    .filter(([cat]) => !blockedTeacherCategories.has(cat))
     .map(([category, count]) => ({ category, count }))
     .sort((a, b) => a.category.localeCompare(b.category, "ko"));
 
@@ -130,12 +139,18 @@ export default async function NoticesPage({
 
   const selected = typeof sp?.cat === "string" ? sp.cat.trim() : "";
   // Teacher 기반 게시판도(공지 0개) 선택 가능해야 하므로 categories 기준으로 검증
-  const selectedCategory = selected && categories.some((c) => c.category === selected) ? selected : "";
+  const selectedCategory =
+    selected &&
+    !blockedTeacherCategories.has(selected) &&
+    categories.some((c) => c.category === selected)
+      ? selected
+      : "";
   const pageTitle = selectedCategory ? displayBoardName(selectedCategory) : "공지사항";
 
   const where = {
     isPublished: true,
     ...(selectedCategory ? { category: selectedCategory } : {}),
+    ...(blockedTeacherCategories.size > 0 ? { NOT: { category: { in: Array.from(blockedTeacherCategories) } } } : {}),
   };
 
   const currentPage = Math.max(1, parseInt(sp?.page || "1", 10) || 1);
@@ -169,7 +184,13 @@ export default async function NoticesPage({
 
   const notice = activeSlug
     ? await prisma.notice.findFirst({
-        where: { slug: activeSlug, ...(user?.isAdmin ? {} : { isPublished: true }) },
+        where: {
+          slug: activeSlug,
+          ...(user?.isAdmin ? {} : { isPublished: true }),
+          ...(blockedTeacherCategories.size > 0
+            ? { NOT: { category: { in: Array.from(blockedTeacherCategories) } } }
+            : {}),
+        },
         select: { id: true, slug: true, title: true, body: true, category: true, createdAt: true },
       })
     : null;
