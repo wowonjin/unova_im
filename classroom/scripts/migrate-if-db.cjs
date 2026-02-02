@@ -11,11 +11,11 @@ const { execSync } = require("child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const dbUrl =
-  process.env.DATABASE_URL ||
-  process.env.POSTGRES_PRISMA_URL ||
-  process.env.POSTGRES_URL_NON_POOLING ||
-  process.env.POSTGRES_URL;
+const env = process.env;
+const directUrl =
+  env.POSTGRES_URL_NON_POOLING || env.POSTGRES_PRISMA_URL || env.DIRECT_URL;
+const poolUrl = env.DATABASE_URL || env.POSTGRES_URL;
+const dbUrl = directUrl || poolUrl;
 
 if (!dbUrl) {
   console.log("⚠️  DATABASE_URL이 설정되지 않아 마이그레이션을 건너뜁니다.");
@@ -23,7 +23,29 @@ if (!dbUrl) {
   process.exit(0);
 }
 
-console.log("✅ DATABASE_URL 감지됨. 마이그레이션을 실행합니다...");
+function isPoolerUrl(connectionString) {
+  try {
+    const u = new URL(connectionString);
+    const pgbouncer = (u.searchParams.get("pgbouncer") || "").toLowerCase();
+    if (pgbouncer === "true" || pgbouncer === "1") return true;
+    if (u.hostname && u.hostname.includes("pooler.supabase.com")) return true;
+    if (u.port === "6543") return true;
+  } catch {
+    // ignore
+  }
+  return false;
+}
+
+const poolerDetected = poolUrl ? isPoolerUrl(poolUrl) : false;
+const migrateUrl = directUrl || (poolerDetected ? "" : poolUrl);
+const canUseDirectForSafetyNet = Boolean(directUrl);
+
+if (!migrateUrl && poolUrl) {
+  console.warn("⚠️  풀러(PgBouncer) URL만 감지되어 마이그레이션을 건너뜁니다.");
+  console.warn("   POSTGRES_URL_NON_POOLING 또는 DIRECT_URL을 설정하세요.");
+} else {
+  console.log("✅ DATABASE_URL 감지됨. 마이그레이션을 실행합니다...");
+}
 
 function runCmd(cmd) {
   try {
@@ -47,6 +69,11 @@ function runCmd(cmd) {
 }
 
 function runMigrateDeploy() {
+  if (!migrateUrl) {
+    return { success: true, output: "skip: pooler-only url" };
+  }
+  // Prisma는 기본적으로 DATABASE_URL을 사용합니다.
+  env.DATABASE_URL = migrateUrl;
   return runCmd("npx prisma migrate deploy");
 }
 
@@ -263,12 +290,16 @@ async function main() {
 
   // Final safety net to prevent runtime P2022 ("column does not exist")
   try {
+    if (!canUseDirectForSafetyNet && poolerDetected) {
+      console.warn("⚠️  풀러 URL만 감지되어 스키마 안전망을 건너뜁니다.");
+      return;
+    }
     await ensureStoreSchema(dbUrl);
   } catch (e) {
     // Safety net should never take down a deploy if migrations already succeeded.
     // If TLS verification is the only blocker, log and continue.
     const code = e?.code || e?.cause?.code;
-    if (code === "DEPTH_ZERO_SELF_SIGNED_CERT") {
+    if (code === "DEPTH_ZERO_SELF_SIGNED_CERT" || code === "SELF_SIGNED_CERT_IN_CHAIN") {
       console.warn("⚠️  스키마 동기화(안전망) 단계에서 self-signed certificate로 접속 실패했습니다.");
       console.warn("   마이그레이션은 이미 성공했으므로 배포를 계속 진행합니다.");
       return;
