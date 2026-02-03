@@ -136,10 +136,10 @@ export default async function AdminTextbooksPage() {
       { storedPath: { contains: "storage.googleapis.com" } },
       { storedPath: { contains: "storage.cloud.google.com" } },
     ],
-    // "교재 등록" 목록과 동일하게: 판매 설정(가격/원가)이나 공개된 항목은 제외
-    price: null,
-    originalPrice: null,
-    isPublished: false,
+    // NOTE:
+    // "새 물품 등록"에서 상품(판매 설정)을 만든 뒤에도,
+    // '교재 선택' 목록에서는 등록된 교재가 사라지지 않아야 합니다.
+    // 따라서 판매 설정 여부(price/originalPrice/isPublished)로 교재를 제외하지 않습니다.
   } as const;
 
   let textbookOptions: Array<{ id: string; title: string; originalName: string }> = [];
