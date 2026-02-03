@@ -246,6 +246,13 @@ export default function SubscriptionTestClient({ adminEmail, adminName }: Props)
     }
   };
 
+  useEffect(() => {
+    if (!selectedProduct) return;
+    if (!billingKey || !customerKey) return;
+    if (isRunning) return;
+    startSchedule();
+  }, [selectedProduct, billingKey, customerKey, isRunning]);
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
@@ -359,23 +366,8 @@ export default function SubscriptionTestClient({ adminEmail, adminName }: Props)
             />
           </div>
 
-            <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={startSchedule}
-              disabled={isRunning || isCharging || !billingKey || !customerKey}
-              className="flex-1 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isRunning ? "자동 결제 실행 중" : "자동 결제 시작"}
-            </button>
-            <button
-              type="button"
-              onClick={stopSchedule}
-              disabled={!isRunning}
-              className="flex-1 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              중지
-            </button>
+          <div className="text-xs text-white/50">
+            {isRunning ? "자동 결제 실행 중" : "자동 결제는 빌링키 발급 후 자동 시작됩니다."}
           </div>
         </div>
       ) : null}
@@ -383,13 +375,23 @@ export default function SubscriptionTestClient({ adminEmail, adminName }: Props)
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
         <div className="flex items-center justify-between">
           <h2 className="text-[16px] font-semibold">실행 로그</h2>
-          <button
-            type="button"
-            onClick={() => setLogs([])}
-            className="text-xs text-white/50 hover:text-white"
-          >
-            로그 비우기
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={stopSchedule}
+              disabled={!isRunning}
+              className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              중지
+            </button>
+            <button
+              type="button"
+              onClick={() => setLogs([])}
+              className="text-xs text-white/50 hover:text-white"
+            >
+              로그 비우기
+            </button>
+          </div>
         </div>
         {logs.length === 0 ? (
           <p className="mt-3 text-sm text-white/50">아직 실행 로그가 없습니다.</p>
