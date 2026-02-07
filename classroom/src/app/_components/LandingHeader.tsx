@@ -90,7 +90,8 @@ export default function LandingHeader({
   const [mobileExpanded, setMobileExpanded] = useState<Record<string, boolean>>({});
   const [mobileProfileExpanded, setMobileProfileExpanded] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [eventBannerVisible] = useState(true);
+  // 메인 페이지 헤더 이벤트 배너(🎁 겨울방학... 무료 다운로드!) 숨김
+  const [eventBannerVisible] = useState(false);
   const sidebarContext = useSidebarOptional();
   const sidebar = showMobileMenu ? sidebarContext : null;
   const pathname = usePathname();
@@ -953,7 +954,13 @@ export default function LandingHeader({
                         onClick={closeMenu}
                         className="flex-1 font-medium"
                       >
-                        {item.label}
+                        {item.label === "저자모집" ? (
+                          <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-violet-300 via-fuchsia-300 to-indigo-300">
+                            {item.label}
+                          </span>
+                        ) : (
+                          item.label
+                        )}
                       </Link>
                       {item.subItems ? (
                         <button
@@ -1212,6 +1219,7 @@ function NavLink({
   const fgClass = isLight ? "text-black" : "text-white";
   const hoverFgClass = isLight ? "hover:text-black/70" : "hover:text-white/80";
   const decoClass = isLight ? "decoration-black/60" : "decoration-white/70";
+  const isAuthorRecruit = label === "저자모집";
   return (
     <Link
       href={href}
@@ -1232,7 +1240,13 @@ function NavLink({
           {icon}
         </span>
       )}
-      {label}
+      {isAuthorRecruit ? (
+        <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-violet-300 via-fuchsia-300 to-indigo-300">
+          {label}
+        </span>
+      ) : (
+        label
+      )}
     </Link>
   );
 }
