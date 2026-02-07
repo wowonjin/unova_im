@@ -159,19 +159,7 @@ export default function LandingHeader({
   useEffect(() => {
     if (didPrefetchRef.current) return;
     didPrefetchRef.current = true;
-
-    const targets = [
-      `/store?type=${encodeURIComponent("교재")}`,
-      `/store?type=${encodeURIComponent("강의")}`,
-    ];
-
-    const run = () => {
-      for (const url of targets) router.prefetch(url);
-    };
-
-    const w = window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => void };
-    if (typeof w.requestIdleCallback === "function") w.requestIdleCallback(run, { timeout: 1500 });
-    else setTimeout(run, 200);
+    // NOTE: 메뉴 구조가 자주 바뀌어 불필요한 프리패치를 줄입니다.
   }, [router]);
 
   useEffect(() => {
@@ -266,24 +254,16 @@ export default function LandingHeader({
         ],
       },
       {
-        label: "책 소개",
-        href: "https://unova.imweb.me/home",
-        external: true,
-        subItems: [
-          { label: "CONNECT Series", href: "https://unova.imweb.me/home", external: true },
-        ],
-      },
-      {
-        label: "강의 구매",
-        href: `/store?type=${encodeURIComponent("강의")}`,
-      },
-      {
         label: "유노바 선생님",
         href: "/teachers",
       },
       {
         label: "공지사항",
         href: "/notices",
+      },
+      {
+        label: "저자모집",
+        href: "/author-recruit",
       },
     ],
     []
