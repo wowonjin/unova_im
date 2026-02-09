@@ -135,10 +135,12 @@ function ProductGrid({
   products,
   emptyLabel,
   eagerCount = 0,
+  showMeta = true,
 }: {
   products: StorePreviewProduct[];
   emptyLabel: string;
   eagerCount?: number;
+  showMeta?: boolean;
 }) {
   if (products.length <= 0) {
     return (
@@ -252,19 +254,21 @@ function ProductGrid({
               ) : null}
             </div>
 
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-white">
-              <span className="flex items-center gap-0.5">
-                <span className="text-yellow-400">⭐</span>
-                <span>{(product.rating ?? 0).toFixed(1)}</span>
-                <span>({product.reviewCount ?? 0})</span>
-              </span>
-              {product.teacher ? (
-                <>
-                  <span className="text-white/70">·</span>
-                  <span>{product.teacher}T</span>
-                </>
-              ) : null}
-            </div>
+            {showMeta ? (
+              <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-white">
+                <span className="flex items-center gap-0.5">
+                  <span className="text-yellow-400">⭐</span>
+                  <span>{(product.rating ?? 0).toFixed(1)}</span>
+                  <span>({product.reviewCount ?? 0})</span>
+                </span>
+                {product.teacher ? (
+                  <>
+                    <span className="text-white/70">·</span>
+                    <span>{product.teacher}T</span>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
 
             {product.tags.length > 0 ? (
               <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -392,11 +396,13 @@ function ExpandableProductGrid({
   emptyLabel,
   collapsedRows = 2,
   eagerCount = 0,
+  showMeta = true,
 }: {
   products: StorePreviewProduct[];
   emptyLabel: string;
   collapsedRows?: number;
   eagerCount?: number;
+  showMeta?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [columns, setColumns] = useState<2 | 4>(2);
@@ -446,13 +452,13 @@ function ExpandableProductGrid({
   }, [columns, expanded, hasMore, maxVisible, products]);
 
   if (products.length <= 0) {
-    return <ProductGrid products={products} emptyLabel={emptyLabel} eagerCount={eagerCount} />;
+    return <ProductGrid products={products} emptyLabel={emptyLabel} eagerCount={eagerCount} showMeta={showMeta} />;
   }
 
   return (
     <div className="relative">
       {/* 자동 흘러가기(무한 루프) 효과 제거: 접힌 상태에서는 단순히 일부만 보여줌 */}
-      <ProductGrid products={visibleProducts} emptyLabel={emptyLabel} eagerCount={eagerCount} />
+      <ProductGrid products={visibleProducts} emptyLabel={emptyLabel} eagerCount={eagerCount} showMeta={showMeta} />
 
       {!expanded && hasMore ? (
         <>
@@ -505,6 +511,8 @@ function StorePreviewSectionsSimple({
   anchorPrefix,
   textbookGroups,
   textbookGroupSections,
+  showMeta = true,
+  showFreeDownloads = true,
 }: {
   courses: StorePreviewProduct[];
   textbooks: StorePreviewProduct[];
@@ -515,6 +523,8 @@ function StorePreviewSectionsSimple({
   textbookGroups?: StorePreviewProductGroup[];
   /** 특정 페이지에서 "교재 구매하기" 자체를 여러 섹션(예: 실물책/전자책)으로 나눠 보여주고 싶을 때 사용 */
   textbookGroupSections?: StorePreviewProductGroupSection[];
+  showMeta?: boolean;
+  showFreeDownloads?: boolean;
 }) {
   const groupTitleClass = "text-[16px] md:text-[20px] font-bold tracking-[-0.02em]";
   const [selectedCourseSubject, setSelectedCourseSubject] = useState<string>("전체");
@@ -601,6 +611,7 @@ function StorePreviewSectionsSimple({
                             products={Array.isArray(g.products) ? g.products : []}
                             emptyLabel={g.emptyLabel ?? "등록된 교재 상품이 없습니다"}
                             eagerCount={8}
+                            showMeta={showMeta}
                           />
                         </div>
                       </div>
@@ -624,6 +635,7 @@ function StorePreviewSectionsSimple({
                       products={Array.isArray(g.products) ? g.products : []}
                       emptyLabel={g.emptyLabel ?? "등록된 교재 상품이 없습니다"}
                       eagerCount={8}
+                      showMeta={showMeta}
                     />
                   </div>
                 </div>
@@ -691,6 +703,7 @@ function StorePreviewSectionsSimple({
                 emptyLabel="등록된 교재 상품이 없습니다"
                 collapsedRows={3}
                 eagerCount={8}
+                showMeta={showMeta}
               />
             </div>
           </>
@@ -752,12 +765,12 @@ function StorePreviewSectionsSimple({
           </div>
         ) : null}
         <div className="mt-6">
-          <ProductGrid products={filteredCourses} emptyLabel="등록된 강의 상품이 없습니다" eagerCount={8} />
+          <ProductGrid products={filteredCourses} emptyLabel="등록된 강의 상품이 없습니다" eagerCount={8} showMeta={showMeta} />
         </div>
       </div>
 
       {/* 무료 자료 다운로드 (선생님 페이지 simple 모드 지원) */}
-      {freeTextbooks.length > 0 ? (
+      {showFreeDownloads && freeTextbooks.length > 0 ? (
         <div className="mt-14 md:mt-20">
           <div className="mb-14 md:mb-16">
             <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">무료 자료 다운로드</h2>
@@ -787,6 +800,7 @@ function StorePreviewSectionsSimple({
                 emptyLabel="등록된 무료 자료가 없습니다"
                 collapsedRows={3}
                 eagerCount={8}
+                showMeta={showMeta}
               />
             </div>
           </div>
@@ -801,12 +815,16 @@ function StorePreviewSections({
   textbooks,
   hideTabMenus = false,
   anchorPrefix,
+  showMeta = true,
+  showFreeDownloads = true,
 }: {
   courses: StorePreviewProduct[];
   textbooks: StorePreviewProduct[];
   hideTabMenus?: boolean;
   /** 스크롤 타겟용 id prefix */
   anchorPrefix?: string;
+  showMeta?: boolean;
+  showFreeDownloads?: boolean;
 }) {
   const [selectedCourseSubject, setSelectedCourseSubject] = useState<string>("전체");
   const [selectedFreeTextbookSubject, setSelectedFreeTextbookSubject] = useState<string>("전체");
@@ -1000,7 +1018,7 @@ function StorePreviewSections({
 
   return (
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
-      <div className="mt-4 md:mt-6">
+      <div id="section-suneung" className="mt-4 md:mt-6 scroll-mt-24">
         <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">수능 교재 구매하기</h2>
         {/* 전자책/실물책 필터 (과목 탭 위) */}
         {!hideTabMenus ? (
@@ -1090,12 +1108,13 @@ function StorePreviewSections({
             emptyLabel="등록된 교재 상품이 없습니다"
             collapsedRows={3}
             eagerCount={8}
+            showMeta={showMeta}
           />
         </div>
       </div>
 
       {g1Textbooks.length > 0 ? (
-        <div className="mt-14 md:mt-20">
+        <div id="section-g1" className="mt-14 md:mt-20 scroll-mt-24">
           <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">내신 교재 구매하기</h2>
           {!hideTabMenus && g1TextbookSubjects.length > 1 ? (
             <div className="mt-2 md:mt-4">
@@ -1153,168 +1172,171 @@ function StorePreviewSections({
               emptyLabel="등록된 내신 교재가 없습니다"
               collapsedRows={3}
               eagerCount={8}
+              showMeta={showMeta}
             />
           </div>
         </div>
       ) : null}
 
-      <div className="mt-14 md:mt-20">
-        {/* 무료 자료 다운로드 */}
-        {freeTextbooks.length > 0 ? (
-          <div className="mb-14 md:mb-16">
-            <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">무료 자료 다운로드</h2>
-            {!hideTabMenus && freeTextbookSubjects.length > 1 ? (
-              <div className="mt-2 md:mt-8">
-                <ExpandableSubjectTabs
-                  subjects={freeTextbookSubjects}
-                  selected={selectedFreeTextbookSubject}
-                  onSelect={setSelectedFreeTextbookSubject}
-                  tabKeyPrefix="textbook-free-home"
-                  containerClassName="gap-4 border-b border-white/10 pb-2 md:hidden"
-                  tabTextClassName="text-[13px]"
-                />
-                <ExpandableSubjectTabs
-                  subjects={freeTextbookSubjects}
-                  selected={selectedFreeTextbookSubject}
-                  onSelect={setSelectedFreeTextbookSubject}
-                  tabKeyPrefix="textbook-free-home-desktop"
-                  containerClassName="hidden md:flex gap-6 border-b border-white/10 pb-2"
-                  tabTextClassName="text-[15px]"
-                />
-              </div>
-            ) : null}
-            <div className="mt-6">
-              <ExpandableProductGrid
-                products={filteredFreeTextbooks}
-                emptyLabel="등록된 무료 자료가 없습니다"
-                collapsedRows={3}
-                eagerCount={8}
-              />
+      {/* 편입 교재 구매하기 */}
+      <div id="section-transfer" className="mt-14 md:mt-20 scroll-mt-24">
+        <h3 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">편입 교재 구매하기</h3>
+        {!hideTabMenus && transferTextbookSubjects.length > 1 ? (
+          <div className="mt-2 md:mt-8">
+            {/* 모바일: 탭 메뉴 스타일 */}
+            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
+              {transferTextbookSubjects.map((subject) => {
+                const active = selectedTransferTextbookSubject === subject;
+                return (
+                  <button
+                    key={`textbook-transfer-home-${subject}`}
+                    type="button"
+                    onClick={() => setSelectedTransferTextbookSubject(subject)}
+                    role="tab"
+                    aria-selected={active}
+                    className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                      active ? "text-white" : "text-white/55"
+                    }`}
+                  >
+                    {subject}
+                    {active ? (
+                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+            {/* 데스크톱: 탭 메뉴 스타일 */}
+            <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+              {transferTextbookSubjects.map((subject) => {
+                const active = selectedTransferTextbookSubject === subject;
+                return (
+                  <button
+                    key={`textbook-transfer-home-${subject}-desktop`}
+                    type="button"
+                    onClick={() => setSelectedTransferTextbookSubject(subject)}
+                    role="tab"
+                    aria-selected={active}
+                    className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                      active ? "text-white" : "text-white/55"
+                    }`}
+                  >
+                    {subject}
+                    {active ? (
+                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                    ) : null}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : null}
-
-        <div className={freeTextbooks.length > 0 || g1Textbooks.length > 0 ? "mt-10 md:mt-16" : ""}>
-          <div id={coursesAnchorId} className={coursesAnchorId ? "unova-scroll-target" : undefined}>
-            <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">🔥 강의 구매하기</h2>
-          </div>
-          {!hideTabMenus && courseSubjects.length > 1 ? (
-            <div className="mt-2 md:mt-8">
-              {/* 모바일: 탭 메뉴 스타일 */}
-              <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
-                {courseSubjects.map((subject) => {
-                  const active = selectedCourseSubject === subject;
-                  return (
-                    <button
-                      key={`course-home-${subject}`}
-                      type="button"
-                      onClick={() => setSelectedCourseSubject(subject)}
-                      role="tab"
-                      aria-selected={active}
-                      className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
-                        active ? "text-white" : "text-white/55"
-                      }`}
-                    >
-                      {subject}
-                      {active ? (
-                        <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-              {/* 데스크톱: 탭 메뉴 스타일 */}
-              <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
-                {courseSubjects.map((subject) => {
-                  const active = selectedCourseSubject === subject;
-                  return (
-                    <button
-                      key={`course-home-${subject}-desktop`}
-                      type="button"
-                      onClick={() => setSelectedCourseSubject(subject)}
-                      role="tab"
-                      aria-selected={active}
-                      className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
-                        active ? "text-white" : "text-white/55"
-                      }`}
-                    >
-                      {subject}
-                      {active ? (
-                        <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-          <div className="mt-6">
-            <ProductGrid products={filteredCourses} emptyLabel="등록된 강의 상품이 없습니다" eagerCount={8} />
-          </div>
+        <div className="mt-6">
+          <ExpandableProductGrid
+            products={filteredTransferTextbooks}
+            emptyLabel="등록된 교재 상품이 없습니다"
+            collapsedRows={3}
+            eagerCount={8}
+            showMeta={showMeta}
+          />
         </div>
+      </div>
 
-        <div className="mt-14 md:mt-16">
-          <h3 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">편입 교재 구매하기</h3>
-          {!hideTabMenus && transferTextbookSubjects.length > 1 ? (
+      {/* 강의 구매하기 */}
+      <div id="section-courses" className="mt-14 md:mt-20 scroll-mt-24">
+        <div id={coursesAnchorId} className={coursesAnchorId ? "unova-scroll-target" : undefined}>
+          <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">🔥 강의 구매하기</h2>
+        </div>
+        {!hideTabMenus && courseSubjects.length > 1 ? (
+          <div className="mt-2 md:mt-8">
+            {/* 모바일: 탭 메뉴 스타일 */}
+            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
+              {courseSubjects.map((subject) => {
+                const active = selectedCourseSubject === subject;
+                return (
+                  <button
+                    key={`course-home-${subject}`}
+                    type="button"
+                    onClick={() => setSelectedCourseSubject(subject)}
+                    role="tab"
+                    aria-selected={active}
+                    className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                      active ? "text-white" : "text-white/55"
+                    }`}
+                  >
+                    {subject}
+                    {active ? (
+                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+            {/* 데스크톱: 탭 메뉴 스타일 */}
+            <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+              {courseSubjects.map((subject) => {
+                const active = selectedCourseSubject === subject;
+                return (
+                  <button
+                    key={`course-home-${subject}-desktop`}
+                    type="button"
+                    onClick={() => setSelectedCourseSubject(subject)}
+                    role="tab"
+                    aria-selected={active}
+                    className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                      active ? "text-white" : "text-white/55"
+                    }`}
+                  >
+                    {subject}
+                    {active ? (
+                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+        <div className="mt-6">
+          <ProductGrid products={filteredCourses} emptyLabel="등록된 강의 상품이 없습니다" eagerCount={8} showMeta={showMeta} />
+        </div>
+      </div>
+
+      {/* 무료 자료 다운로드 */}
+      {showFreeDownloads && freeTextbooks.length > 0 ? (
+        <div className="mt-14 md:mt-20">
+          <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">무료 자료 다운로드</h2>
+          {!hideTabMenus && freeTextbookSubjects.length > 1 ? (
             <div className="mt-2 md:mt-8">
-              {/* 모바일: 탭 메뉴 스타일 */}
-              <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
-                {transferTextbookSubjects.map((subject) => {
-                  const active = selectedTransferTextbookSubject === subject;
-                  return (
-                    <button
-                      key={`textbook-transfer-home-${subject}`}
-                      type="button"
-                      onClick={() => setSelectedTransferTextbookSubject(subject)}
-                      role="tab"
-                      aria-selected={active}
-                      className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
-                        active ? "text-white" : "text-white/55"
-                      }`}
-                    >
-                      {subject}
-                      {active ? (
-                        <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-              {/* 데스크톱: 탭 메뉴 스타일 */}
-              <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
-                {transferTextbookSubjects.map((subject) => {
-                  const active = selectedTransferTextbookSubject === subject;
-                  return (
-                    <button
-                      key={`textbook-transfer-home-${subject}-desktop`}
-                      type="button"
-                      onClick={() => setSelectedTransferTextbookSubject(subject)}
-                      role="tab"
-                      aria-selected={active}
-                      className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
-                        active ? "text-white" : "text-white/55"
-                      }`}
-                    >
-                      {subject}
-                      {active ? (
-                        <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
+              <ExpandableSubjectTabs
+                subjects={freeTextbookSubjects}
+                selected={selectedFreeTextbookSubject}
+                onSelect={setSelectedFreeTextbookSubject}
+                tabKeyPrefix="textbook-free-home"
+                containerClassName="gap-4 border-b border-white/10 pb-2 md:hidden"
+                tabTextClassName="text-[13px]"
+              />
+              <ExpandableSubjectTabs
+                subjects={freeTextbookSubjects}
+                selected={selectedFreeTextbookSubject}
+                onSelect={setSelectedFreeTextbookSubject}
+                tabKeyPrefix="textbook-free-home-desktop"
+                containerClassName="hidden md:flex gap-6 border-b border-white/10 pb-2"
+                tabTextClassName="text-[15px]"
+              />
             </div>
           ) : null}
           <div className="mt-6">
             <ExpandableProductGrid
-              products={filteredTransferTextbooks}
-              emptyLabel="등록된 교재 상품이 없습니다"
+              products={filteredFreeTextbooks}
+              emptyLabel="등록된 무료 자료가 없습니다"
               collapsedRows={3}
               eagerCount={8}
+              showMeta={showMeta}
             />
           </div>
         </div>
-      </div>
+      ) : null}
     </section>
   );
 }
@@ -1329,6 +1351,8 @@ export default function StorePreviewTabs({
   anchorPrefix,
   textbookGroups,
   textbookGroupSections,
+  showMeta = true,
+  showFreeDownloads = true,
 }: {
   courses: StorePreviewProduct[];
   textbooks: StorePreviewProduct[];
@@ -1343,6 +1367,8 @@ export default function StorePreviewTabs({
   textbookGroups?: StorePreviewProductGroup[];
   /** sectionsMode="simple"에서 교재를 여러 "구매하기" 섹션(예: 실물책/전자책)으로 나눠 보여주고 싶을 때 사용 */
   textbookGroupSections?: StorePreviewProductGroupSection[];
+  showMeta?: boolean;
+  showFreeDownloads?: boolean;
 }) {
   if (variant === "sections") {
     return sectionsMode === "simple"
@@ -1353,8 +1379,17 @@ export default function StorePreviewTabs({
           anchorPrefix={anchorPrefix}
           textbookGroups={textbookGroups}
           textbookGroupSections={textbookGroupSections}
+          showMeta={showMeta}
+          showFreeDownloads={showFreeDownloads}
         />
-      : <StorePreviewSections courses={courses} textbooks={textbooks} hideTabMenus={hideTabMenus} anchorPrefix={anchorPrefix} />;
+      : <StorePreviewSections
+          courses={courses}
+          textbooks={textbooks}
+          hideTabMenus={hideTabMenus}
+          anchorPrefix={anchorPrefix}
+          showMeta={showMeta}
+          showFreeDownloads={showFreeDownloads}
+        />;
   }
 
   const [selectedType, setSelectedType] = useState<TypeLabel>(defaultType);
@@ -1519,7 +1554,7 @@ export default function StorePreviewTabs({
 
       {/* 상품 그리드 */}
       <div className="mt-6">
-        <ProductGrid products={filteredProducts} emptyLabel="해당 조건의 상품이 없습니다" />
+        <ProductGrid products={filteredProducts} emptyLabel="해당 조건의 상품이 없습니다" showMeta={showMeta} />
       </div>
 
       {/* 모바일 전체 보기 */}

@@ -7,6 +7,7 @@ import ShortcutNav, { type ShortcutNavItem } from "./_components/ShortcutNav";
 import FloatingKakaoButton from "./_components/FloatingKakaoButton";
 import PopupLayerClient from "./_components/PopupLayerClient";
 import StorePreviewTabs, { type StorePreviewProduct } from "./_components/StorePreviewTabs";
+import HomeSectionNav from "./_components/HomeSectionNav";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 
@@ -351,9 +352,18 @@ export default async function HomePage() {
         {/* Shortcut Navigation */}
         <ShortcutNav items={shortcutItems} />
 
+        {/* PC 좌측 섹션 네비게이션 */}
+        <HomeSectionNav />
+
         {/* 교재 및 강의 구매(스토어) - 바로가기 아래 배치 */}
         <div className="pb-20">
-          <StorePreviewTabs courses={coursePreview} textbooks={textbookPreview} variant="sections" />
+          <StorePreviewTabs
+            courses={coursePreview}
+            textbooks={textbookPreview}
+            variant="sections"
+            showMeta={false}
+            showFreeDownloads={true}
+          />
         </div>
 
         {/* Footer */}
