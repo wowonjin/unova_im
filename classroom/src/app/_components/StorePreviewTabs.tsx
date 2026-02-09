@@ -1304,7 +1304,7 @@ function StorePreviewSections({
 
       {/* 무료 자료 다운로드 */}
       {showFreeDownloads && freeTextbooks.length > 0 ? (
-        <div className="mt-14 md:mt-20">
+        <div id="section-free" className="mt-14 md:mt-20 scroll-mt-24">
           <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">무료 자료 다운로드</h2>
           {!hideTabMenus && freeTextbookSubjects.length > 1 ? (
             <div className="mt-2 md:mt-8">
