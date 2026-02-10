@@ -15,8 +15,8 @@ const CARD_FEE_RATE = 0.034; // 3.4%
 const VAT_RATE = 0.1; // 부가세 10%
 // NOTE: RATE는 "선생님 정산률"입니다.
 const TEXTBOOK_PLATFORM_FEE_RATE = 0.25; // 교재 정산률 25%
-const COURSE_PLATFORM_FEE_RATE = 0.5; // 강의 정산률 50%
-const PDF_TEXTBOOK_PLATFORM_FEE_RATE = 0.5; // 전자책(PDF) 교재 정산률 50%
+const COURSE_PLATFORM_FEE_RATE = 0.6; // 강의 정산률 60%
+const PDF_TEXTBOOK_PLATFORM_FEE_RATE = 0.6; // 전자책(PDF) 교재 정산률 60%
 const SALES_STATUSES: OrderStatus[] = ["COMPLETED", "PARTIALLY_REFUNDED"];
 
 function settleNetPayout(netSales: number, platformFeeRate: number) {
@@ -42,7 +42,7 @@ function payoutRateOfOrder(o: {
   textbook?: { composition?: string | null; textbookType?: string | null } | null;
 }) {
   if (o.productType === "COURSE") return COURSE_PLATFORM_FEE_RATE;
-  // TEXTBOOK: PDF 전자책은 50%, 그 외는 25%
+  // TEXTBOOK: PDF 전자책은 60%, 그 외는 25%
   return isPdfTextbook(o.textbook) ? PDF_TEXTBOOK_PLATFORM_FEE_RATE : TEXTBOOK_PLATFORM_FEE_RATE;
 }
 
@@ -171,7 +171,7 @@ export default async function TeacherSalesPage() {
   const weekSales = weekOrders.reduce((acc, o) => acc + (o.amount - (o.refundedAmount || 0)), 0);
   const monthSales = monthSummary.totalSales;
 
-  // NOTE: 교재는 PDF 여부에 따라 정산비가 달라서(25% vs 50%)
+  // NOTE: 교재는 PDF 여부에 따라 정산비가 달라서(25% vs 60%)
   // 정산액은 "주문 단위"로 계산합니다.
   const weekPayoutTotal = weekOrders.reduce((acc, o) => {
     const net = (o.amount ?? 0) - (o.refundedAmount ?? 0);
