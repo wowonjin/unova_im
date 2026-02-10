@@ -71,6 +71,19 @@ function kstRangeUtc(kind: "day" | "week" | "month") {
   return { startUtc: new Date(startUtcMs), endUtc: now };
 }
 
+function kstPreviousMonthRangeUtc() {
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const y = kst.getUTCFullYear();
+  const m = kst.getUTCMonth();
+  const currentMonthStartUtcMs = Date.UTC(y, m, 1, 0, 0, 0) - 9 * 60 * 60 * 1000;
+  const prevMonthStartUtcMs = Date.UTC(y, m - 1, 1, 0, 0, 0) - 9 * 60 * 60 * 1000;
+  return {
+    startUtc: new Date(prevMonthStartUtcMs),
+    endUtc: new Date(currentMonthStartUtcMs - 1),
+  };
+}
+
 function kstDateKey(dateUtc: Date) {
   const kst = new Date(dateUtc.getTime() + 9 * 60 * 60 * 1000);
   const y = kst.getUTCFullYear();
@@ -157,6 +170,7 @@ export default async function TeacherDashboardPage() {
   const day = kstRangeUtc("day");
   const week = kstRangeUtc("week");
   const month = kstRangeUtc("month");
+  const lastMonth = kstPreviousMonthRangeUtc();
   const dayMs = 24 * 60 * 60 * 1000;
   const lastWeekStartUtc = new Date(week.startUtc.getTime() - 7 * dayMs);
   const lastWeekEndUtc = new Date(week.startUtc.getTime() - 1);
@@ -229,11 +243,12 @@ export default async function TeacherDashboardPage() {
     return { courseSales, ebookSales, textbookSales, payoutTotal, netSalesTotal, platformFeeTotal, cardFeeWithVatTotal };
   }
 
-  const [daySum, weekSum, lastWeekSum, monthSum, reviewCount, reviews] = await Promise.all([
+  const [daySum, weekSum, lastWeekSum, monthSum, lastMonthSum, reviewCount, reviews] = await Promise.all([
     summarizeRange(day.startUtc, day.endUtc),
     summarizeRange(week.startUtc, week.endUtc),
     summarizeRange(lastWeekStartUtc, lastWeekEndUtc),
     summarizeRange(month.startUtc, month.endUtc),
+    summarizeRange(lastMonth.startUtc, lastMonth.endUtc),
     prisma.review.count({
       where: {
         isApproved: true,
@@ -278,6 +293,9 @@ export default async function TeacherDashboardPage() {
   const monthCourseSales = monthSum.courseSales;
   const monthEbookSales = monthSum.ebookSales;
   const monthTextbookSales = monthSum.textbookSales;
+  const lastMonthCourseSales = lastMonthSum.courseSales;
+  const lastMonthEbookSales = lastMonthSum.ebookSales;
+  const lastMonthTextbookSales = lastMonthSum.textbookSales;
 
   // NOTE: 교재는 PDF 여부에 따라 정산비가 달라서(25% vs 50%)
   // day/week/month 정산액은 aggregate가 아니라 "주문 단위"로 계산합니다.
@@ -285,6 +303,7 @@ export default async function TeacherDashboardPage() {
   const weekPayoutTotal = weekSum.payoutTotal;
   const lastWeekPayoutTotal = lastWeekSum.payoutTotal;
   const monthPayoutTotal = monthSum.payoutTotal;
+  const lastMonthPayoutTotal = lastMonthSum.payoutTotal;
 
   // 최근 21일(3주, 오늘 포함) 판매액 추이 (KST 기준 일자)
   const TREND_DAYS = 21;
@@ -427,6 +446,14 @@ export default async function TeacherDashboardPage() {
       ebook: monthEbookSales,
       course: monthCourseSales,
     },
+    {
+      key: "lastMonth",
+      label: "저번달",
+      range: kstRangeLabel(lastMonth.startUtc, lastMonth.endUtc),
+      textbook: lastMonthTextbookSales,
+      ebook: lastMonthEbookSales,
+      course: lastMonthCourseSales,
+    },
   ] as const;
 
   const payoutRows = [
@@ -465,6 +492,15 @@ export default async function TeacherDashboardPage() {
       netSalesTotal: monthSum.netSalesTotal,
       platformFeeTotal: monthSum.platformFeeTotal,
       cardFeeWithVatTotal: monthSum.cardFeeWithVatTotal,
+    },
+    {
+      key: "lastMonth",
+      label: "저번달",
+      payout: lastMonthPayoutTotal,
+      range: kstRangeLabel(lastMonth.startUtc, lastMonth.endUtc),
+      netSalesTotal: lastMonthSum.netSalesTotal,
+      platformFeeTotal: lastMonthSum.platformFeeTotal,
+      cardFeeWithVatTotal: lastMonthSum.cardFeeWithVatTotal,
     },
   ] as const;
 
