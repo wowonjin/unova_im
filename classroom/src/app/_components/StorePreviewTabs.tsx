@@ -831,7 +831,7 @@ function StorePreviewSections({
   const [selectedSuneungTextbookSubject, setSelectedSuneungTextbookSubject] = useState<string>("수학");
   const [selectedG1TextbookSubject, setSelectedG1TextbookSubject] = useState<string>("전체");
   const [selectedTransferTextbookSubject, setSelectedTransferTextbookSubject] = useState<string>("전체");
-  const [selectedSuneungBookFormat, setSelectedSuneungBookFormat] = useState<BookFormat>("전체");
+  const [selectedSuneungBookFormat, setSelectedSuneungBookFormat] = useState<BookFormat>("실물책");
   const coursesAnchorId = anchorPrefix ? `${anchorPrefix}-courses` : undefined;
   const textbooksAnchorId = anchorPrefix ? `${anchorPrefix}-textbooks` : undefined;
 
