@@ -18,13 +18,6 @@ const FALLBACK_POPUPS: Popup[] = [
     linkUrl: null,
     position: "center",
   },
-  {
-    id: "main-sumin-2",
-    title: "김수민 선생님",
-    imageUrl: "/popups/sumin2.png",
-    linkUrl: null,
-    position: "center",
-  },
 ];
 
 function getDismissKey(id: string) {
