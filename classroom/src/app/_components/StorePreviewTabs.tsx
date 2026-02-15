@@ -513,6 +513,7 @@ function StorePreviewSectionsSimple({
   textbookGroupSections,
   showMeta = true,
   showFreeDownloads = true,
+  courseFirstInSimple = false,
 }: {
   courses: StorePreviewProduct[];
   textbooks: StorePreviewProduct[];
@@ -525,6 +526,8 @@ function StorePreviewSectionsSimple({
   textbookGroupSections?: StorePreviewProductGroupSection[];
   showMeta?: boolean;
   showFreeDownloads?: boolean;
+  /** simple 모드에서 강의 섹션을 교재보다 먼저 노출할지 여부 */
+  courseFirstInSimple?: boolean;
 }) {
   const groupTitleClass = "text-[16px] md:text-[20px] font-bold tracking-[-0.02em]";
   const [selectedCourseSubject, setSelectedCourseSubject] = useState<string>("전체");
@@ -532,6 +535,8 @@ function StorePreviewSectionsSimple({
   const [selectedTextbookSubject, setSelectedTextbookSubject] = useState<string>("전체");
   const coursesAnchorId = anchorPrefix ? `${anchorPrefix}-courses` : undefined;
   const textbooksAnchorId = anchorPrefix ? `${anchorPrefix}-textbooks` : undefined;
+  const textbookSectionClass = courseFirstInSimple ? "order-2 mt-14 md:mt-20" : "order-1 mt-4 md:mt-4";
+  const courseSectionClass = courseFirstInSimple ? "order-1 mt-4 md:mt-4" : "order-2 mt-14 md:mt-20";
 
   const courseSubjects = useMemo(() => {
     // 홈 "강의 구매하기" 과목 탭 순서(요청 반영)
@@ -595,7 +600,7 @@ function StorePreviewSectionsSimple({
 
   return (
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
-      <div className="mt-4 md:mt-4">
+      <div className={`flex flex-col ${textbookSectionClass}`}>
         {Array.isArray(textbookGroupSections) && textbookGroupSections.length > 0 ? (
           <div id={textbooksAnchorId} className={textbooksAnchorId ? "unova-scroll-target" : undefined}>
             <div className="mt-4 space-y-12">
@@ -710,7 +715,7 @@ function StorePreviewSectionsSimple({
         )}
       </div>
 
-      <div className="mt-14 md:mt-20">
+      <div className={courseSectionClass}>
         <div id={coursesAnchorId} className={coursesAnchorId ? "unova-scroll-target" : undefined}>
           <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">🔥 강의 구매하기</h2>
         </div>
@@ -1353,6 +1358,7 @@ export default function StorePreviewTabs({
   textbookGroupSections,
   showMeta = true,
   showFreeDownloads = true,
+  courseFirstInSimple = false,
 }: {
   courses: StorePreviewProduct[];
   textbooks: StorePreviewProduct[];
@@ -1369,6 +1375,8 @@ export default function StorePreviewTabs({
   textbookGroupSections?: StorePreviewProductGroupSection[];
   showMeta?: boolean;
   showFreeDownloads?: boolean;
+  /** sectionsMode="simple"에서 강의 구매하기를 교재보다 먼저 노출 */
+  courseFirstInSimple?: boolean;
 }) {
   if (variant === "sections") {
     return sectionsMode === "simple"
@@ -1381,6 +1389,7 @@ export default function StorePreviewTabs({
           textbookGroupSections={textbookGroupSections}
           showMeta={showMeta}
           showFreeDownloads={showFreeDownloads}
+          courseFirstInSimple={courseFirstInSimple}
         />
       : <StorePreviewSections
           courses={courses}

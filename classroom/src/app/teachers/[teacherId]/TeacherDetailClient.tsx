@@ -711,6 +711,11 @@ export default function TeacherDetailClient({ teacher }: Props) {
       { id: "ebook", title: "전자책 구매하기", groups: ebookGroups },
     ] satisfies StorePreviewProductGroupSection[];
   })();
+  const courseFirstInSimple =
+    (() => {
+      const slug = String(teacher.slug || "").trim().toLowerCase();
+      return slug === "kimsumin" || slug === "kim-sumin";
+    })();
 
   return (
     <>
@@ -923,6 +928,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
               variant="sections"
               sectionsMode="simple"
               hideTabMenus
+              courseFirstInSimple={courseFirstInSimple}
               textbookGroupSections={textbookGroupSections}
             />
           </div>
@@ -1294,6 +1300,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
           sectionsMode="simple"
           hideTabMenus
           anchorPrefix="teacher-pc"
+          courseFirstInSimple={courseFirstInSimple}
           textbookGroupSections={textbookGroupSections}
         />
       </section>
