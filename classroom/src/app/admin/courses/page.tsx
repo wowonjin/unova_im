@@ -109,7 +109,6 @@ export default async function AdminCoursesPage({
           courses={coursesForClient}
           q={q}
           publishedRaw={publishedRaw}
-          disableReorder
         />
       </div>
     </AppShell>
