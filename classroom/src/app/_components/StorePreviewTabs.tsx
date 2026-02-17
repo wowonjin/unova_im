@@ -600,6 +600,7 @@ function StorePreviewSectionsSimple({
 
   return (
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
+      <div className="flex flex-col">
       <div className={`flex flex-col ${textbookSectionClass}`}>
         {Array.isArray(textbookGroupSections) && textbookGroupSections.length > 0 ? (
           <div id={textbooksAnchorId} className={textbooksAnchorId ? "unova-scroll-target" : undefined}>
@@ -775,6 +776,7 @@ function StorePreviewSectionsSimple({
       </div>
 
       {/* 무료 자료 다운로드 (선생님 페이지 simple 모드 지원) */}
+      </div>
       {showFreeDownloads && freeTextbooks.length > 0 ? (
         <div className="mt-14 md:mt-20">
           <div className="mb-14 md:mb-16">
@@ -1571,5 +1573,3 @@ export default function StorePreviewTabs({
     </section>
   );
 }
-
-

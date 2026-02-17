@@ -14,6 +14,7 @@ import type { Prisma } from "@prisma/client";
 // 홈은 유저별 데이터가 아니고(쿠키/세션 의존 X) 변경도 잦지 않으므로
 // ISR 캐시로 서버/DB 부하를 줄여 페이지 이동 체감 속도를 개선합니다.
 export const revalidate = 60;
+const SHOW_MAIN_POPUP = false; // Temporary: hide main-page popup layer.
 
 function getStoreOwnerEmail(): string {
   // NOTE: 홈 프리뷰는 "판매 등록된 상품"을 보여줘야 하므로 특정 owner로 제한하지 않습니다.
@@ -344,7 +345,7 @@ export default async function HomePage() {
         <HomeLandingHeaderClient />
 
         {/* Admin-managed popups */}
-        <PopupLayerClient />
+        {SHOW_MAIN_POPUP ? <PopupLayerClient /> : null}
 
         {/* Hero Carousel */}
         <HeroCarousel slides={heroSlides} />
