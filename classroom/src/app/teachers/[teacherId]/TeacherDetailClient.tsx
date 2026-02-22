@@ -165,10 +165,19 @@ export default function TeacherDetailClient({ teacher }: Props) {
   const [newsBgDraft, setNewsBgDraft] = useState<string>(teacher.newsBgColor || "");
   const [subjectColorDraft, setSubjectColorDraft] = useState<string>(teacher.subjectTextColor || "");
   const [isSavingTheme, setIsSavingTheme] = useState(false);
+  const [relativeNowMs, setRelativeNowMs] = useState<number | null>(null);
 
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     setShowCustomizer(sp.get("customize") === "1");
+  }, []);
+
+  // SSR/CSR hydration 일치: 최초 렌더에서는 고정 날짜 포맷만 사용하고,
+  // 마운트 이후에만 상대 시간(방금 전/몇 분 전)으로 전환합니다.
+  useEffect(() => {
+    setRelativeNowMs(Date.now());
+    const id = window.setInterval(() => setRelativeNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(id);
   }, []);
 
   // NOTE: 요청사항(관리자 디자인): "최근 소식 배경색(newsBgColor)"을 설정하면
@@ -316,9 +325,9 @@ export default function TeacherDetailClient({ teacher }: Props) {
     return `${year}.${month}.${day}`;
   };
 
-  const getRelativeTime = (date: Date): string => {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
+  const getRelativeTime = (date: Date, nowMs?: number): string => {
+    if (!Number.isFinite(nowMs)) return fmtDate(date);
+    const diffMs = (nowMs as number) - date.getTime();
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -335,7 +344,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
     if (!iso) return "";
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "";
-    return getRelativeTime(d);
+    return getRelativeTime(d, relativeNowMs ?? undefined);
   };
 
   const maskAuthorName = (name?: string) => {
@@ -658,7 +667,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
       return [
         {
           id: "print",
-          title: "📖 책 구매하기",
+          title: "책 구매하기",
           groups: [
             { id: "bhu-g3-print", title: "CONNECT 고3", products: sortByMathOrder(g3Products) },
             { id: "bhu-g1-print", title: "CONNECT 고1", products: g1Products },
@@ -702,19 +711,98 @@ export default function TeacherDetailClient({ teacher }: Props) {
     }
     if (slug === "jjw") {
       return [
-        { id: "print", title: "📖 책 구매하기", groups: printGroups },
+        { id: "print", title: "책 구매하기", groups: printGroups },
       ] satisfies StorePreviewProductGroupSection[];
     }
 
     return [
-      { id: "print", title: "📖 책 구매하기", groups: printGroups },
+      { id: "print", title: "책 구매하기", groups: printGroups },
       { id: "ebook", title: "전자책 구매하기", groups: ebookGroups },
     ] satisfies StorePreviewProductGroupSection[];
   })();
   const courseFirstInSimple =
     (() => {
       const slug = String(teacher.slug || "").trim().toLowerCase();
-      return slug === "kimsumin" || slug === "kim-sumin";
+      return slug === "kimsumin" || slug === "kim-sumin" || slug === "jjw";
+    })();
+  const hideStoreMeta =
+    (() => {
+      const slug = String(teacher.slug || "").trim().toLowerCase();
+      return slug === "jjw";
+    })();
+  const courseGroupSections =
+    (() => {
+      const slug = String(teacher.slug || "").trim().toLowerCase();
+      if (slug !== "jjw") return undefined;
+
+      const src = Array.isArray(teacher.storeCourses) ? teacher.storeCourses : [];
+      let suneungCourses = src.filter((p) => /2027/.test(String(p.title || "")) && /수능특강/.test(String(p.title || "")));
+      if (suneungCourses.length === 0) {
+        suneungCourses = src.filter((p) => /수능특강/.test(String(p.title || "")));
+      }
+      let connectCourses = src.filter((p) => /2027/.test(String(p.title || "")) && /CONNECT/i.test(String(p.title || "")));
+      if (connectCourses.length === 0) {
+        connectCourses = src.filter((p) => /CONNECT/i.test(String(p.title || "")));
+      }
+      const naesinCourses = src.filter((p) => {
+        const title = String(p.title || "");
+        const tags = Array.isArray(p.tags) ? p.tags.join(" ") : "";
+        const haystack = `${title} ${tags}`;
+        return /내신|내신대비|중간고사|기말고사|1학기|2학기|2022개정/.test(haystack);
+      });
+
+      const subjectRank = (p: StorePreviewProduct) => {
+        const s = `${p.subject || ""} ${p.title || ""}`;
+        if (/물리학I|물리1|물리 I/.test(s)) return 1;
+        if (/물리학II|물리2|물리 II/.test(s)) return 2;
+        return 99;
+      };
+
+      const sorted = suneungCourses
+        .map((p, idx) => ({ p, idx, r: subjectRank(p) }))
+        .sort((a, b) => (a.r - b.r) || (a.idx - b.idx))
+        .map((x) => x.p);
+      const sortedConnect = connectCourses
+        .map((p, idx) => ({ p, idx, r: subjectRank(p) }))
+        .sort((a, b) => (a.r - b.r) || (a.idx - b.idx))
+        .map((x) => x.p);
+      const sortedNaesin = naesinCourses
+        .map((p, idx) => ({ p, idx, r: subjectRank(p) }))
+        .sort((a, b) => (a.r - b.r) || (a.idx - b.idx))
+        .map((x) => x.p);
+
+      return [
+        {
+          id: "jjw-suneung-lectures",
+          title: "수능 강의 구매하기",
+          groups: [
+            {
+              id: "jjw-2027-suneung-special-lectures",
+              title: "2027 수능특강 강의",
+              products: sorted,
+              emptyLabel: "등록된 2027 수능특강 강의가 없습니다",
+            },
+            {
+              id: "jjw-2027-connect-lectures",
+              title: "2027 CONNECT 강의",
+              products: sortedConnect,
+              emptyLabel: "등록된 2027 CONNECT 강의가 없습니다",
+            },
+          ],
+        },
+        {
+          id: "jjw-naesin-lectures",
+          title: "내신 강의 구매하기",
+          groups: [
+            {
+              id: "jjw-naesin-lectures-main",
+              title: "물리학 강의",
+              products: sortedNaesin,
+              emptyLabel: "등록된 내신 강의가 없습니다",
+            },
+          ],
+        },
+      ] satisfies StorePreviewProductGroupSection[];
     })();
 
   return (
@@ -928,6 +1016,8 @@ export default function TeacherDetailClient({ teacher }: Props) {
               variant="sections"
               sectionsMode="simple"
               hideTabMenus
+              showMeta={!hideStoreMeta}
+              courseGroupSections={courseGroupSections}
               courseFirstInSimple={courseFirstInSimple}
               textbookGroupSections={textbookGroupSections}
             />
@@ -1300,6 +1390,8 @@ export default function TeacherDetailClient({ teacher }: Props) {
           sectionsMode="simple"
           hideTabMenus
           anchorPrefix="teacher-pc"
+          showMeta={!hideStoreMeta}
+          courseGroupSections={courseGroupSections}
           courseFirstInSimple={courseFirstInSimple}
           textbookGroupSections={textbookGroupSections}
         />

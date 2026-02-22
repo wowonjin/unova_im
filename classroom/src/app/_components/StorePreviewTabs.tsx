@@ -49,6 +49,11 @@ const BOOK_FORMATS: BookFormat[] = ["전체", "실물책", "전자책"];
 const HOME_TEXTBOOK_TITLE_PRIORITY = ["공통수학1"];
 const SUNEUNG_SUBJECT_PRIORITY = ["국어", "영어", "수학", "물리학I", "물리학II", "사회문화"];
 
+type SimpleSectionNavItem = {
+  id: string;
+  label: string;
+};
+
 function normalizeTextbookType(v: string | null | undefined): string {
   return String(v ?? "")
     .replace(/\s+/g, "")
@@ -391,6 +396,96 @@ function ExpandableSubjectTabs({
   );
 }
 
+function SimpleSectionFloatingNav({ items }: { items: SimpleSectionNavItem[] }) {
+  const [activeId, setActiveId] = useState<string>(items[0]?.id ?? "");
+
+  useEffect(() => {
+    setActiveId(items[0]?.id ?? "");
+  }, [items]);
+
+  useEffect(() => {
+    if (!items.length) return;
+    const observers: IntersectionObserver[] = [];
+    const visibleMap = new Map<string, boolean>();
+
+    const timer = window.setTimeout(() => {
+      for (const item of items) {
+        const el = document.getElementById(item.id);
+        if (!el) continue;
+        const observer = new IntersectionObserver(
+          ([entry]) => {
+            visibleMap.set(item.id, entry.isIntersecting);
+            for (const navItem of items) {
+              if (visibleMap.get(navItem.id)) {
+                setActiveId(navItem.id);
+                return;
+              }
+            }
+          },
+          { rootMargin: "-20% 0px -60% 0px", threshold: 0 }
+        );
+        observer.observe(el);
+        observers.push(observer);
+      }
+    }, 80);
+
+    return () => {
+      window.clearTimeout(timer);
+      observers.forEach((o) => o.disconnect());
+    };
+  }, [items]);
+
+  const getHeaderOffset = useCallback(() => {
+    const nav = document.querySelector("nav.fixed") as HTMLElement | null;
+    const h = nav?.getBoundingClientRect().height ?? 70;
+    return Math.max(70, Math.round(h)) + 16;
+  }, []);
+
+  const alignSectionTop = useCallback((id: string, behavior: ScrollBehavior) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY - getHeaderOffset();
+    window.scrollTo({ top: Math.max(0, top), behavior });
+  }, [getHeaderOffset]);
+
+  const handleClick = useCallback((id: string) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    setActiveId(id);
+    // 1차 이동 + 레이아웃 변동(이미지 로딩 등)을 고려한 2차/3차 보정
+    alignSectionTop(id, "smooth");
+    window.setTimeout(() => alignSectionTop(id, "auto"), 220);
+    window.setTimeout(() => alignSectionTop(id, "auto"), 520);
+  }, [alignSectionTop]);
+
+  if (!items.length) return null;
+
+  return (
+    <nav
+      className="hidden 2xl:flex fixed top-1/2 -translate-y-1/2 z-40 flex-col gap-0.5"
+      style={{ left: "max(0.75rem, calc(50vw - 48rem))" }}
+    >
+      <div className="rounded-2xl bg-white/[0.04] backdrop-blur-md border border-white/[0.06] px-2 py-2.5">
+        {items.map((item) => {
+          const active = activeId === item.id;
+          return (
+            <button
+              key={`simple-side-nav-${item.id}`}
+              type="button"
+              onClick={() => handleClick(item.id)}
+              className={`block w-full text-left text-[13px] font-medium px-4 py-2.5 rounded-xl transition-all whitespace-nowrap ${
+                active ? "text-white bg-white/[0.1]" : "text-white/40 hover:text-white/70 hover:bg-white/[0.05]"
+              }`}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
 function ExpandableProductGrid({
   products,
   emptyLabel,
@@ -509,6 +604,7 @@ function StorePreviewSectionsSimple({
   textbooks,
   hideTabMenus = false,
   anchorPrefix,
+  courseGroupSections,
   textbookGroups,
   textbookGroupSections,
   showMeta = true,
@@ -520,6 +616,8 @@ function StorePreviewSectionsSimple({
   hideTabMenus?: boolean;
   /** 스크롤 타겟용 id prefix (예: "teacher-pc" -> "teacher-pc-courses") */
   anchorPrefix?: string;
+  /** 특정 페이지에서 "강의 구매하기" 자체를 여러 섹션으로 나눠 보여주고 싶을 때 사용 */
+  courseGroupSections?: StorePreviewProductGroupSection[];
   /** 특정 페이지(예: 선생님 상세)에서 교재를 여러 섹션으로 나눠 보여주고 싶을 때 사용 */
   textbookGroups?: StorePreviewProductGroup[];
   /** 특정 페이지에서 "교재 구매하기" 자체를 여러 섹션(예: 실물책/전자책)으로 나눠 보여주고 싶을 때 사용 */
@@ -533,6 +631,7 @@ function StorePreviewSectionsSimple({
   const [selectedCourseSubject, setSelectedCourseSubject] = useState<string>("전체");
   const [selectedFreeTextbookSubject, setSelectedFreeTextbookSubject] = useState<string>("전체");
   const [selectedTextbookSubject, setSelectedTextbookSubject] = useState<string>("전체");
+  const [selectedGroupBySection, setSelectedGroupBySection] = useState<Record<string, string>>({});
   const coursesAnchorId = anchorPrefix ? `${anchorPrefix}-courses` : undefined;
   const textbooksAnchorId = anchorPrefix ? `${anchorPrefix}-textbooks` : undefined;
   const textbookSectionClass = courseFirstInSimple ? "order-2 mt-14 md:mt-20" : "order-1 mt-4 md:mt-4";
@@ -598,30 +697,134 @@ function StorePreviewSectionsSimple({
     if (!textbookSubjects.includes(selectedTextbookSubject)) setSelectedTextbookSubject("전체");
   }, [selectedTextbookSubject, textbookSubjects]);
 
+  useEffect(() => {
+    const sections = [
+      ...(Array.isArray(textbookGroupSections) ? textbookGroupSections : []),
+      ...(Array.isArray(courseGroupSections) ? courseGroupSections : []),
+    ];
+    if (sections.length === 0) return;
+    setSelectedGroupBySection((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const sec of sections) {
+        const first = sec.groups?.[0]?.id;
+        if (!first) continue;
+        const selected = next[sec.id];
+        const exists = selected ? sec.groups.some((g) => g.id === selected) : false;
+        if (!exists) {
+          next[sec.id] = first;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [courseGroupSections, textbookGroupSections]);
+
+  const isCustomSimpleSections = useMemo(
+    () =>
+      (Array.isArray(textbookGroupSections) && textbookGroupSections.length > 0) ||
+      (Array.isArray(courseGroupSections) && courseGroupSections.length > 0),
+    [courseGroupSections, textbookGroupSections]
+  );
+
+  const textbookNavItems = useMemo<SimpleSectionNavItem[]>(
+    () =>
+      Array.isArray(textbookGroupSections)
+        ? textbookGroupSections.map((sec) => ({ id: `section-${sec.id}`, label: sec.title }))
+        : [],
+    [textbookGroupSections]
+  );
+
+  const courseNavItems = useMemo<SimpleSectionNavItem[]>(
+    () =>
+      Array.isArray(courseGroupSections)
+        ? courseGroupSections.map((sec) => ({ id: `section-${sec.id}`, label: sec.title }))
+        : [],
+    [courseGroupSections]
+  );
+
+  const freeNavItems = useMemo<SimpleSectionNavItem[]>(
+    () => (showFreeDownloads && freeTextbooks.length > 0 ? [{ id: "section-free-simple", label: "무료 자료 다운로드" }] : []),
+    [freeTextbooks.length, showFreeDownloads]
+  );
+
+  const simpleSideNavItems = useMemo<SimpleSectionNavItem[]>(
+    () =>
+      courseFirstInSimple
+        ? [...courseNavItems, ...textbookNavItems, ...freeNavItems]
+        : [...textbookNavItems, ...courseNavItems, ...freeNavItems],
+    [courseFirstInSimple, courseNavItems, freeNavItems, textbookNavItems]
+  );
+
   return (
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
+      {isCustomSimpleSections ? <SimpleSectionFloatingNav items={simpleSideNavItems} /> : null}
       <div className="flex flex-col">
       <div className={`flex flex-col ${textbookSectionClass}`}>
         {Array.isArray(textbookGroupSections) && textbookGroupSections.length > 0 ? (
           <div id={textbooksAnchorId} className={textbooksAnchorId ? "unova-scroll-target" : undefined}>
-            <div className="mt-4 space-y-12">
+            <div className="mt-4 space-y-10 md:space-y-12">
               {textbookGroupSections.map((sec) => (
-                <div key={sec.id}>
+                <div key={sec.id} id={`section-${sec.id}`} className="scroll-mt-24">
                   <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">{sec.title}</h2>
-                  <div className="mt-6 space-y-12">
-                    {sec.groups.map((g) => (
-                      <div key={g.id}>
-                        <h3 className={groupTitleClass}>{g.title}</h3>
-                        <div className="mt-6">
-                          <ProductGrid
-                            products={Array.isArray(g.products) ? g.products : []}
-                            emptyLabel={g.emptyLabel ?? "등록된 교재 상품이 없습니다"}
-                            eagerCount={8}
-                            showMeta={showMeta}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                  <div className="mt-2 md:mt-4">
+                    <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
+                      {sec.groups.map((g) => {
+                        const active = (selectedGroupBySection[sec.id] ?? sec.groups[0]?.id) === g.id;
+                        return (
+                          <button
+                            key={`book-custom-${sec.id}-${g.id}`}
+                            type="button"
+                            onClick={() => setSelectedGroupBySection((prev) => ({ ...prev, [sec.id]: g.id }))}
+                            role="tab"
+                            aria-selected={active}
+                            className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                              active ? "text-white" : "text-white/55"
+                            }`}
+                          >
+                            {g.title}
+                            {active ? (
+                              <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+                      {sec.groups.map((g) => {
+                        const active = (selectedGroupBySection[sec.id] ?? sec.groups[0]?.id) === g.id;
+                        return (
+                          <button
+                            key={`book-custom-${sec.id}-${g.id}-desktop`}
+                            type="button"
+                            onClick={() => setSelectedGroupBySection((prev) => ({ ...prev, [sec.id]: g.id }))}
+                            role="tab"
+                            aria-selected={active}
+                            className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                              active ? "text-white" : "text-white/55"
+                            }`}
+                          >
+                            {g.title}
+                            {active ? (
+                              <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="mt-5 md:mt-6">
+                    <ProductGrid
+                      products={Array.isArray(sec.groups.find((g) => g.id === (selectedGroupBySection[sec.id] ?? sec.groups[0]?.id))?.products)
+                        ? (sec.groups.find((g) => g.id === (selectedGroupBySection[sec.id] ?? sec.groups[0]?.id))?.products ?? [])
+                        : []}
+                      emptyLabel={
+                        sec.groups.find((g) => g.id === (selectedGroupBySection[sec.id] ?? sec.groups[0]?.id))?.emptyLabel
+                        ?? "등록된 교재 상품이 없습니다"
+                      }
+                      eagerCount={8}
+                      showMeta={showMeta}
+                    />
                   </div>
                 </div>
               ))}
@@ -717,68 +920,145 @@ function StorePreviewSectionsSimple({
       </div>
 
       <div className={courseSectionClass}>
-        <div id={coursesAnchorId} className={coursesAnchorId ? "unova-scroll-target" : undefined}>
-          <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">🔥 강의 구매하기</h2>
-        </div>
-        {!hideTabMenus && courseSubjects.length > 1 ? (
-          <div className="mt-2 md:mt-8">
-            {/* 모바일: 탭 메뉴 스타일 */}
-            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
-              {courseSubjects.map((subject) => {
-                const active = selectedCourseSubject === subject;
-                return (
-                  <button
-                    key={`course-simple-${subject}`}
-                    type="button"
-                    onClick={() => setSelectedCourseSubject(subject)}
-                    role="tab"
-                    aria-selected={active}
-                    className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
-                      active ? "text-white" : "text-white/55"
-                    }`}
-                  >
-                    {subject}
-                    {active ? (
-                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-            {/* 데스크톱: 탭 메뉴 스타일 */}
-            <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
-              {courseSubjects.map((subject) => {
-                const active = selectedCourseSubject === subject;
-                return (
-                  <button
-                    key={`course-simple-${subject}-desktop`}
-                    type="button"
-                    onClick={() => setSelectedCourseSubject(subject)}
-                    role="tab"
-                    aria-selected={active}
-                    className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
-                      active ? "text-white" : "text-white/55"
-                    }`}
-                  >
-                    {subject}
-                    {active ? (
-                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                    ) : null}
-                  </button>
-                );
-              })}
+        {Array.isArray(courseGroupSections) && courseGroupSections.length > 0 ? (
+          <div id={coursesAnchorId} className={coursesAnchorId ? "unova-scroll-target" : undefined}>
+            <div className="mt-4 space-y-10 md:space-y-12">
+              {courseGroupSections.map((sec) => (
+                <div
+                  key={sec.id}
+                  id={`section-${sec.id}`}
+                  className={`scroll-mt-24 ${sec.id.includes("naesin") ? "pt-4 md:pt-6" : ""}`}
+                >
+                  <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">{sec.title}</h2>
+                  <div className="mt-2 md:mt-4">
+                    <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
+                      {sec.groups.map((g) => {
+                        const active = (selectedGroupBySection[sec.id] ?? sec.groups[0]?.id) === g.id;
+                        return (
+                          <button
+                            key={`course-custom-${sec.id}-${g.id}`}
+                            type="button"
+                            onClick={() => setSelectedGroupBySection((prev) => ({ ...prev, [sec.id]: g.id }))}
+                            role="tab"
+                            aria-selected={active}
+                            className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                              active ? "text-white" : "text-white/55"
+                            }`}
+                          >
+                            {g.title}
+                            {active ? (
+                              <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+                      {sec.groups.map((g) => {
+                        const active = (selectedGroupBySection[sec.id] ?? sec.groups[0]?.id) === g.id;
+                        return (
+                          <button
+                            key={`course-custom-${sec.id}-${g.id}-desktop`}
+                            type="button"
+                            onClick={() => setSelectedGroupBySection((prev) => ({ ...prev, [sec.id]: g.id }))}
+                            role="tab"
+                            aria-selected={active}
+                            className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                              active ? "text-white" : "text-white/55"
+                            }`}
+                          >
+                            {g.title}
+                            {active ? (
+                              <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="mt-5 md:mt-6">
+                    <ProductGrid
+                      products={Array.isArray(sec.groups.find((g) => g.id === (selectedGroupBySection[sec.id] ?? sec.groups[0]?.id))?.products)
+                        ? (sec.groups.find((g) => g.id === (selectedGroupBySection[sec.id] ?? sec.groups[0]?.id))?.products ?? [])
+                        : []}
+                      emptyLabel={
+                        sec.groups.find((g) => g.id === (selectedGroupBySection[sec.id] ?? sec.groups[0]?.id))?.emptyLabel
+                        ?? "등록된 강의 상품이 없습니다"
+                      }
+                      eagerCount={8}
+                      showMeta={showMeta}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ) : null}
-        <div className="mt-6">
-          <ProductGrid products={filteredCourses} emptyLabel="등록된 강의 상품이 없습니다" eagerCount={8} showMeta={showMeta} />
-        </div>
+        ) : (
+          <>
+            <div id={coursesAnchorId} className={coursesAnchorId ? "unova-scroll-target" : undefined}>
+              <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">🔥 강의 구매하기</h2>
+            </div>
+            {!hideTabMenus && courseSubjects.length > 1 ? (
+              <div className="mt-2 md:mt-8">
+                {/* 모바일: 탭 메뉴 스타일 */}
+                <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
+                  {courseSubjects.map((subject) => {
+                    const active = selectedCourseSubject === subject;
+                    return (
+                      <button
+                        key={`course-simple-${subject}`}
+                        type="button"
+                        onClick={() => setSelectedCourseSubject(subject)}
+                        role="tab"
+                        aria-selected={active}
+                        className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                          active ? "text-white" : "text-white/55"
+                        }`}
+                      >
+                        {subject}
+                        {active ? (
+                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* 데스크톱: 탭 메뉴 스타일 */}
+                <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+                  {courseSubjects.map((subject) => {
+                    const active = selectedCourseSubject === subject;
+                    return (
+                      <button
+                        key={`course-simple-${subject}-desktop`}
+                        type="button"
+                        onClick={() => setSelectedCourseSubject(subject)}
+                        role="tab"
+                        aria-selected={active}
+                        className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                          active ? "text-white" : "text-white/55"
+                        }`}
+                      >
+                        {subject}
+                        {active ? (
+                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            <div className="mt-6">
+              <ProductGrid products={filteredCourses} emptyLabel="등록된 강의 상품이 없습니다" eagerCount={8} showMeta={showMeta} />
+            </div>
+          </>
+        )}
       </div>
 
       {/* 무료 자료 다운로드 (선생님 페이지 simple 모드 지원) */}
       </div>
       {showFreeDownloads && freeTextbooks.length > 0 ? (
-        <div className="mt-14 md:mt-20">
+        <div id="section-free-simple" className="mt-14 md:mt-20 scroll-mt-24">
           <div className="mb-14 md:mb-16">
             <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">무료 자료 다운로드</h2>
             {!hideTabMenus && freeTextbookSubjects.length > 1 ? (
@@ -1356,6 +1636,7 @@ export default function StorePreviewTabs({
   sectionsMode = "home",
   hideTabMenus = false,
   anchorPrefix,
+  courseGroupSections,
   textbookGroups,
   textbookGroupSections,
   showMeta = true,
@@ -1371,6 +1652,8 @@ export default function StorePreviewTabs({
   hideTabMenus?: boolean;
   /** 스크롤 타겟용 id prefix */
   anchorPrefix?: string;
+  /** sectionsMode="simple"에서 강의를 여러 "구매하기" 섹션으로 나눠 보여주고 싶을 때 사용 */
+  courseGroupSections?: StorePreviewProductGroupSection[];
   /** sectionsMode="simple"에서 교재를 여러 섹션으로 나눠 보여주고 싶을 때 사용 */
   textbookGroups?: StorePreviewProductGroup[];
   /** sectionsMode="simple"에서 교재를 여러 "구매하기" 섹션(예: 실물책/전자책)으로 나눠 보여주고 싶을 때 사용 */
@@ -1387,6 +1670,7 @@ export default function StorePreviewTabs({
           textbooks={textbooks}
           hideTabMenus={hideTabMenus}
           anchorPrefix={anchorPrefix}
+          courseGroupSections={courseGroupSections}
           textbookGroups={textbookGroups}
           textbookGroupSections={textbookGroupSections}
           showMeta={showMeta}
