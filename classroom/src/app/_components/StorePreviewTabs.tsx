@@ -758,7 +758,7 @@ function StorePreviewSectionsSimple({
 
   return (
     <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
-      {isCustomSimpleSections ? <SimpleSectionFloatingNav items={simpleSideNavItems} /> : null}
+      {null}
       <div className="flex flex-col">
       <div className={`flex flex-col ${textbookSectionClass}`}>
         {Array.isArray(textbookGroupSections) && textbookGroupSections.length > 0 ? (

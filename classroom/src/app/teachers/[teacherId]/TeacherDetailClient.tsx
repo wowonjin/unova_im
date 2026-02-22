@@ -730,6 +730,11 @@ export default function TeacherDetailClient({ teacher }: Props) {
       const slug = String(teacher.slug || "").trim().toLowerCase();
       return slug === "jjw";
     })();
+  const effectiveTeacherImageUrl =
+    (() => {
+      const slug = String(teacher.slug || "").trim().toLowerCase();
+      return slug === "jjw" ? "/jjw-teacher.png" : teacher.imageUrl;
+    })();
   const courseGroupSections =
     (() => {
       const slug = String(teacher.slug || "").trim().toLowerCase();
@@ -994,7 +999,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
             </div>
             <div className="mega-mobile-hero__image">
               <Image
-                src={teacher.imageUrl}
+                src={effectiveTeacherImageUrl}
                 alt={`${teacher.name} 선생님`}
                 width={200}
                 height={280}
@@ -1202,7 +1207,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
                 </div>
               ) : null}
               <Image
-                src={teacher.imageUrl}
+                src={effectiveTeacherImageUrl}
                 alt={`${teacher.name} 선생님`}
                 width={360}
                 height={780}
@@ -1358,7 +1363,7 @@ export default function TeacherDetailClient({ teacher }: Props) {
                           </div>
                           {(r.authorName || r.createdAt) ? (
                             <div className="unova-rating-card__item-sub">
-                              <div className="unova-rating-card__meta-row text-[12px] text-white/60 truncate">
+                              <div className="unova-rating-card__meta-row text-[11px] text-white/60 truncate">
                                 {r.authorName ? (
                                   <span className="unova-rating-card__author">{maskAuthorName(r.authorName)}</span>
                                 ) : null}
