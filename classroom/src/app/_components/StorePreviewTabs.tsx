@@ -608,7 +608,7 @@ function StorePreviewSectionsSimple({
   textbookGroups,
   textbookGroupSections,
   showMeta = true,
-  showFreeDownloads = true,
+  showFreeDownloads = false,
   courseFirstInSimple = false,
 }: {
   courses: StorePreviewProduct[];
@@ -1103,7 +1103,7 @@ function StorePreviewSections({
   hideTabMenus = false,
   anchorPrefix,
   showMeta = true,
-  showFreeDownloads = true,
+  showFreeDownloads = false,
 }: {
   courses: StorePreviewProduct[];
   textbooks: StorePreviewProduct[];
@@ -1640,7 +1640,7 @@ export default function StorePreviewTabs({
   textbookGroups,
   textbookGroupSections,
   showMeta = true,
-  showFreeDownloads = true,
+  showFreeDownloads = false,
   courseFirstInSimple = false,
 }: {
   courses: StorePreviewProduct[];

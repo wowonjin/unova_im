@@ -363,7 +363,7 @@ export default async function HomePage() {
             textbooks={textbookPreview}
             variant="sections"
             showMeta={false}
-            showFreeDownloads={true}
+            showFreeDownloads={false}
           />
         </div>
 

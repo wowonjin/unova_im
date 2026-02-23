@@ -26,7 +26,7 @@ function StoreLoadingSkeleton() {
               총 <span className="inline-block h-4 w-10 rounded bg-white/10 align-[-2px] animate-pulse" />개의 상품
             </p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-9 sm:gap-x-6 sm:gap-y-12">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-9 sm:gap-x-6 sm:gap-y-12">
             {Array.from({ length: 9 }).map((_, idx) => (
               <div key={idx}>
                 <div className="relative aspect-video overflow-hidden rounded-xl bg-white/[0.06] animate-pulse" />
@@ -59,4 +59,3 @@ export default function Loading() {
     </div>
   );
 }
-

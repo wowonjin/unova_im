@@ -7,7 +7,6 @@ const NAV_ITEMS = [
   { id: "section-g1", label: "내신 교재 구매하기" },
   { id: "section-transfer", label: "편입 교재 구매하기" },
   { id: "section-courses", label: "강의 구매하기" },
-  { id: "section-free", label: "무료 자료 다운로드" },
 ];
 
 /** 스크롤이 이 값(px) 이상 내려가면 네비게이션이 나타남 */

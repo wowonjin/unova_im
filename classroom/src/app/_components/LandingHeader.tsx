@@ -51,6 +51,7 @@ type SubMenuItem = {
   href: string;
   icon?: string;
   external?: boolean;
+  subItems?: SubMenuItem[];
 };
 
 type MenuItem = {
@@ -86,6 +87,7 @@ export default function LandingHeader({
   const [replyNotifOpen, setReplyNotifOpen] = useState(false);
   const replyNotifRef = useRef<HTMLDivElement | null>(null);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [desktopExpanded, setDesktopExpanded] = useState<Record<string, boolean>>({});
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState<Record<string, boolean>>({});
   const [mobileProfileExpanded, setMobileProfileExpanded] = useState(false);
@@ -255,16 +257,26 @@ export default function LandingHeader({
         ],
       },
       {
+        label: "교재 구매하기",
+        href: "/store?type=교재&exam=수능",
+        subItems: [
+          { label: "수능 교재 구매하기", href: "/store?type=교재&exam=수능" },
+          { label: "내신 교재 구매하기", href: "/store?type=교재&exam=내신" },
+          { label: "편입 교재 구매하기", href: "/store?type=교재&exam=편입" },
+        ],
+      },
+      {
+        label: "강의 구매하기",
+        href: "/store?type=강의",
+        subItems: [{ label: "강의 구매하기", href: "/store?type=강의" }],
+      },
+      {
         label: "유노바 선생님",
         href: "/teachers",
       },
       {
         label: "공지사항",
         href: "/notices",
-      },
-      {
-        label: "저자모집",
-        href: "/author-recruit",
       },
     ],
     []
@@ -329,6 +341,11 @@ export default function LandingHeader({
       setMobileProfileExpanded(false);
     }
   }, [mobileDrawerOpen]);
+
+  // PC 드롭다운이 닫히면 2단계 펼침 상태 초기화
+  useEffect(() => {
+    if (!activeMenu) setDesktopExpanded({});
+  }, [activeMenu]);
 
   // 모바일 드로어가 열려 있을 때: 페이지(body) 스크롤을 잠가서
   // 스크롤에 따른 헤더 반투명 전환(scrolled)이 "메뉴 위에서" 발생하는 현상을 방지합니다.
@@ -462,6 +479,9 @@ export default function LandingHeader({
 
   const toggleMobileSubmenu = (label: string) => {
     setMobileExpanded((prev) => ({ ...prev, [label]: !prev[label] }));
+  };
+  const toggleDesktopSubmenu = (label: string) => {
+    setDesktopExpanded((prev) => ({ ...prev, [label]: !prev[label] }));
   };
 
 
@@ -633,33 +653,109 @@ export default function LandingHeader({
                 {item.subItems && activeMenu === item.label && (
                   <div 
                     className="absolute top-full left-0 pt-2 z-[1300]"
-                    style={{ minWidth: "220px" }}
+                    style={{ minWidth: "190px" }}
                   >
                     {/* 서브 메뉴 컨테이너: 원래처럼 흰 배경 */}
                     <div
-                      className={`animate-[fadeIn_150ms_ease-out] rounded-xl p-2 shadow-lg max-h-[60vh] overflow-y-auto ${
+                      className={`animate-[fadeIn_150ms_ease-out] rounded-xl p-2 shadow-lg max-h-[60vh] overflow-y-auto space-y-1 ${
                         isLight ? "border border-black/10 bg-white" : "border border-white/10 bg-[#1C1C1C]"
                       }`}
                     >
-                      {item.subItems.map((subItem, idx) => (
-                        <Link
-                          key={subItem.label}
-                          href={subItem.href}
-                          target={subItem.external ? "_blank" : undefined}
-                          rel={subItem.external ? "noopener noreferrer" : undefined}
-                          className={`flex items-center rounded-lg px-3 py-2 text-[14px] whitespace-nowrap transition-colors ${
-                            isLight
-                              ? isActiveHref(subItem.href)
-                                ? "bg-[rgba(94,91,92,0.2)] text-black"
-                                : "text-black/80 hover:bg-[rgba(94,91,92,0.2)]"
-                              : isActiveHref(subItem.href)
-                                ? "bg-white/[0.08] text-white"
-                                : "text-white/80 hover:bg-white/[0.06]"
-                          }`}
-                        >
-                          <span>{subItem.label}</span>
-                        </Link>
-                      ))}
+                      {item.subItems.map((subItem, idx) => {
+                        const nestedKey = `${item.label}::${subItem.label}::${idx}`;
+                        const hasNested = Boolean(subItem.subItems && subItem.subItems.length > 0);
+                        const hasActiveNested = Boolean(
+                          subItem.subItems?.some((nested) => isActiveHref(nested.href))
+                        );
+                        const subItemActive = isActiveHref(subItem.href) || hasActiveNested;
+
+                        if (!hasNested) {
+                          return (
+                            <Link
+                              key={nestedKey}
+                              href={subItem.href}
+                              target={subItem.external ? "_blank" : undefined}
+                              rel={subItem.external ? "noopener noreferrer" : undefined}
+                              className={`flex items-center rounded-lg px-3 py-2 text-[14px] whitespace-nowrap transition-colors ${
+                                isLight
+                                  ? subItemActive
+                                    ? "bg-[rgba(94,91,92,0.2)] text-black"
+                                    : "text-black/80 hover:bg-[rgba(94,91,92,0.2)]"
+                                  : subItemActive
+                                    ? "bg-white/[0.08] text-white"
+                                    : "text-white/80 hover:bg-white/[0.06]"
+                              }`}
+                            >
+                              <span>{subItem.label}</span>
+                            </Link>
+                          );
+                        }
+
+                        const nestedOpen = Boolean(desktopExpanded[nestedKey]) || hasActiveNested;
+
+                        return (
+                          <div key={nestedKey} className="space-y-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                toggleDesktopSubmenu(nestedKey);
+                              }}
+                              className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[14px] whitespace-nowrap transition-colors ${
+                                isLight
+                                  ? subItemActive
+                                    ? "bg-[rgba(94,91,92,0.2)] text-black"
+                                    : "text-black/80 hover:bg-[rgba(94,91,92,0.2)]"
+                                  : subItemActive
+                                    ? "bg-white/[0.08] text-white"
+                                    : "text-white/80 hover:bg-white/[0.06]"
+                              }`}
+                              aria-label={`${subItem.label} 서브메뉴 토글`}
+                            >
+                              <span>{subItem.label}</span>
+                              <span
+                                className="material-symbols-outlined transition-transform duration-200"
+                                style={{
+                                  fontSize: "18px",
+                                  transform: nestedOpen ? "rotate(180deg)" : "rotate(0deg)",
+                                }}
+                                aria-hidden="true"
+                              >
+                                expand_more
+                              </span>
+                            </button>
+
+                            {nestedOpen ? (
+                              <div
+                                className={`ml-2 space-y-1 pl-3 border-l ${
+                                  isLight ? "border-black/10" : "border-white/10"
+                                }`}
+                              >
+                                {subItem.subItems!.map((nestedItem, nestedIdx) => (
+                                  <Link
+                                    key={`${nestedKey}::nested::${nestedIdx}`}
+                                    href={nestedItem.href}
+                                    target={nestedItem.external ? "_blank" : undefined}
+                                    rel={nestedItem.external ? "noopener noreferrer" : undefined}
+                                    className={`flex items-center rounded-lg px-3 py-2 text-[13px] whitespace-nowrap transition-colors ${
+                                      isLight
+                                        ? isActiveHref(nestedItem.href)
+                                          ? "bg-[rgba(94,91,92,0.2)] text-black"
+                                          : "text-black/75 hover:bg-[rgba(94,91,92,0.2)]"
+                                        : isActiveHref(nestedItem.href)
+                                          ? "bg-white/[0.08] text-white"
+                                          : "text-white/75 hover:bg-white/[0.06]"
+                                    }`}
+                                  >
+                                    {nestedItem.label}
+                                  </Link>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -954,13 +1050,7 @@ export default function LandingHeader({
                         onClick={closeMenu}
                         className="flex-1 font-medium"
                       >
-                        {item.label === "저자모집" ? (
-                          <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-violet-300 via-fuchsia-300 to-indigo-300">
-                            {item.label}
-                          </span>
-                        ) : (
-                          item.label
-                        )}
+                        {item.label}
                       </Link>
                       {item.subItems ? (
                         <button
@@ -993,23 +1083,88 @@ export default function LandingHeader({
                     {item.subItems && mobileExpanded[item.label] ? (
                       <div className="px-5">
                         {/* 서브메뉴: 클릭 즉시 표시(애니메이션 제거) + 메인 메뉴와 동일한 줄간격 */}
-                        <div className="mt-0.5 space-y-0.5 pl-3 pb-0.5">
-                          {item.subItems.map((sub) => (
-                            <Link
-                              key={`mobile-sub-${sub.label}`}
-                              href={sub.href}
-                              target={sub.external ? "_blank" : undefined}
-                              rel={sub.external ? "noopener noreferrer" : undefined}
-                              onClick={closeMenu}
-                              className={`block w-full py-1.5 text-[13px] transition-colors ${
-                                isActiveHref(sub.href)
-                                  ? `${isLight ? "text-black font-semibold" : "text-white font-semibold"}`
-                                  : `${isLight ? "text-black/70" : "text-white/70"}`
-                              } ${mobileNoHoverBgClass}`}
-                            >
-                              {sub.label}
-                            </Link>
-                          ))}
+                        <div className="mt-1 space-y-1 pl-3 pb-1">
+                          {item.subItems.map((sub, idx) => {
+                            const nestedKey = `${item.label}::${sub.label}::${idx}`;
+                            const hasNested = Boolean(sub.subItems && sub.subItems.length > 0);
+                            const hasActiveNested = Boolean(
+                              sub.subItems?.some((nested) => isActiveHref(nested.href))
+                            );
+                            const subActive = isActiveHref(sub.href) || hasActiveNested;
+
+                            if (!hasNested) {
+                              return (
+                                <Link
+                                  key={`mobile-sub-${nestedKey}`}
+                                  href={sub.href}
+                                  target={sub.external ? "_blank" : undefined}
+                                  rel={sub.external ? "noopener noreferrer" : undefined}
+                                  onClick={closeMenu}
+                                  className={`block w-full py-1.5 text-[13px] transition-colors ${
+                                    subActive
+                                      ? `${isLight ? "text-black font-semibold" : "text-white font-semibold"}`
+                                      : `${isLight ? "text-black/70" : "text-white/70"}`
+                                  } ${mobileNoHoverBgClass}`}
+                                >
+                                  {sub.label}
+                                </Link>
+                              );
+                            }
+
+                            return (
+                              <div key={`mobile-sub-${nestedKey}`} className="w-full">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleMobileSubmenu(nestedKey)}
+                                  className={`flex w-full items-center justify-between py-1.5 text-left text-[13px] transition-colors ${
+                                    subActive
+                                      ? `${isLight ? "text-black font-semibold" : "text-white font-semibold"}`
+                                      : `${isLight ? "text-black/70" : "text-white/70"}`
+                                  } ${mobileNoHoverBgClass}`}
+                                  aria-label={`${sub.label} 서브메뉴 토글`}
+                                >
+                                  <span>{sub.label}</span>
+                                  <span
+                                    className={`material-symbols-outlined ${
+                                      isLight ? "text-black/60" : "text-white/70"
+                                    } transition-transform duration-200`}
+                                    style={{
+                                      fontSize: "16px",
+                                      transform: mobileExpanded[nestedKey] ? "rotate(180deg)" : "rotate(0deg)",
+                                    }}
+                                    aria-hidden="true"
+                                  >
+                                    expand_more
+                                  </span>
+                                </button>
+
+                                {mobileExpanded[nestedKey] ? (
+                                  <div
+                                    className={`mt-1 space-y-1 pl-3 pb-1 border-l ${
+                                      isLight ? "border-black/10" : "border-white/10"
+                                    }`}
+                                  >
+                                    {sub.subItems!.map((nested, nestedIdx) => (
+                                      <Link
+                                        key={`mobile-sub-${nestedKey}-nested-${nestedIdx}`}
+                                        href={nested.href}
+                                        target={nested.external ? "_blank" : undefined}
+                                        rel={nested.external ? "noopener noreferrer" : undefined}
+                                        onClick={closeMenu}
+                                        className={`block w-full py-1.5 text-[13px] transition-colors ${
+                                          isActiveHref(nested.href)
+                                            ? `${isLight ? "text-black font-semibold" : "text-white font-semibold"}`
+                                            : `${isLight ? "text-black/70" : "text-white/70"}`
+                                        } ${mobileNoHoverBgClass}`}
+                                      >
+                                        {nested.label}
+                                      </Link>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     ) : null}
@@ -1219,7 +1374,6 @@ function NavLink({
   const fgClass = isLight ? "text-black" : "text-white";
   const hoverFgClass = isLight ? "hover:text-black/70" : "hover:text-white/80";
   const decoClass = isLight ? "decoration-black/60" : "decoration-white/70";
-  const isAuthorRecruit = label === "저자모집";
   return (
     <Link
       href={href}
@@ -1240,13 +1394,7 @@ function NavLink({
           {icon}
         </span>
       )}
-      {isAuthorRecruit ? (
-        <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-violet-300 via-fuchsia-300 to-indigo-300">
-          {label}
-        </span>
-      ) : (
-        label
-      )}
+      {label}
     </Link>
   );
 }

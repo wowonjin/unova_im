@@ -202,7 +202,7 @@ function StoreProductsSkeleton({ label }: { label: "교재" | "강의" }) {
               총 <span className="inline-block h-4 w-10 rounded bg-white/10 align-[-2px] animate-pulse" />개의 {label}
             </p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-9 sm:gap-x-6 sm:gap-y-12">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-9 sm:gap-x-6 sm:gap-y-12">
             {Array.from({ length: 9 }).map((_, idx) => (
               <div key={idx} className="group">
                 <div className="relative aspect-video overflow-hidden rounded-xl bg-white/[0.06] animate-pulse" />
@@ -351,6 +351,7 @@ async function StoreProducts({
 
   return (
     <StoreFilterClient
+      key={`${selectedType}:${selectedExamType}:${selectedSubject}`}
       products={productsOfCurrentType}
       selectedType={selectedType}
       initialSubject={selectedSubject}
@@ -367,20 +368,42 @@ export default async function StorePage({
   try {
     const sp = await searchParams;
     const selectedSubject = sp?.subject || "전체";
-    const selectedExamType = sp?.exam || "전체";
+    const selectedExamTypeRaw = sp?.exam || "전체";
+    const selectedExamType =
+      selectedExamTypeRaw === "수능" || selectedExamTypeRaw === "내신" || selectedExamTypeRaw === "편입"
+        ? selectedExamTypeRaw
+        : "전체";
     const rawType = sp?.type || "교재";
     // 표기 통일: 레거시 "강좌" -> "강의"
     const selectedType = rawType === "강좌" ? "강의" : rawType;
     const skeletonLabel: "교재" | "강의" = selectedType === "강의" ? "강의" : "교재";
+    const isSuneungTextbookPage = selectedType === "교재" && selectedExamType === "수능";
+    const suneungSubjectForTitle = selectedSubject === "전체" ? "수학" : selectedSubject;
+    const connectTitleBySubject: Record<string, string> = {
+      수학: "CONNECT 수학",
+      물리학I: "CONNECT 물리학I",
+      물리학II: "CONNECT 물리학II",
+    };
+    const connectTitle = isSuneungTextbookPage ? connectTitleBySubject[suneungSubjectForTitle] : undefined;
+    const textbookTitle =
+      selectedExamType === "전체" ? "교재 구매하기" : `${selectedExamType} 교재 구매하기`;
     const pageCopy =
       selectedType === "강의"
         ? {
             title: "강의 구매하기",
             subtitle: "지금 바로 강의를 듣고 성적을 올려보세요",
           }
+        : connectTitle
+        ? {
+            title: connectTitle,
+            subtitle: "실전 개념, 적용 예제, 평가원 문제가 수록된 올인원 컨텐츠입니다.",
+          }
         : {
-            title: "교재 구매하기",
-            subtitle: "지금 바로 교재를 구매하고 성적을 올려보세요",
+            title: textbookTitle,
+            subtitle:
+              selectedExamType === "전체"
+                ? "지금 바로 교재를 구매하고 성적을 올려보세요"
+                : `지금 바로 ${selectedExamType} 교재를 구매하고 성적을 올려보세요`,
           };
 
     return (
@@ -389,13 +412,15 @@ export default async function StorePage({
 
         <main className="flex-1 pt-[50px] lg:pt-[70px]">
           {/* 페이지 타이틀(필터 버튼 위) */}
-          <section className="mx-auto max-w-6xl px-4 pt-6 pb-4 md:pt-10 md:pb-6 text-left md:text-center">
-            <h1 className="text-[22px] md:text-[40px] font-bold tracking-[-0.02em]">
-              {pageCopy.title}
-            </h1>
-            <p className="mt-2 text-[13px] md:mt-3 md:text-[16px] text-white/55 md:text-white/50">
-              {pageCopy.subtitle}
-            </p>
+          <section className="bg-[#161616] border-b border-white/10">
+            <div className="mx-auto max-w-6xl px-4 pt-10 pb-8 md:pt-14 md:pb-10 text-left">
+              <h1 className="text-[22px] md:text-[40px] font-bold tracking-[-0.02em]">
+                {pageCopy.title}
+              </h1>
+              <p className="mt-2 text-[13px] md:mt-3 md:text-[16px] text-white/55 md:text-white/50">
+                {pageCopy.subtitle}
+              </p>
+            </div>
           </section>
 
           {/* DB 조회는 느릴 수 있으므로, 먼저 스켈레톤을 보여주고 결과를 스트리밍합니다. */}
@@ -449,4 +474,3 @@ export default async function StorePage({
     );
   }
 }
-
