@@ -728,7 +728,13 @@ export default function TeacherDetailClient({ teacher }: Props) {
   const hideStoreMeta =
     (() => {
       const slug = String(teacher.slug || "").trim().toLowerCase();
-      return slug === "jjw";
+      return [
+        "jjw",
+        "bhu",
+        "baek-hawook",
+        "kimsumin",
+        "kim-sumin",
+      ].includes(slug);
     })();
   const effectiveTeacherImageUrl =
     (() => {
@@ -1452,5 +1458,4 @@ export default function TeacherDetailClient({ teacher }: Props) {
     </>
   );
 }
-
 
