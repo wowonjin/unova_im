@@ -109,6 +109,7 @@ interface StoreFilterClientProps {
   selectedType: string;
   initialSubject?: string;
   initialExamType?: string;
+  initialLectureGrade?: string;
 }
 
 export default function StoreFilterClient({
@@ -116,6 +117,7 @@ export default function StoreFilterClient({
   selectedType,
   initialSubject = "전체",
   initialExamType = "전체",
+  initialLectureGrade = "G2",
 }: StoreFilterClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -134,23 +136,32 @@ export default function StoreFilterClient({
   const isDefaultTransferEbookLanding =
     selectedType === "교재" && initialExamTypeNormalized === "편입";
   const isLectureLanding = selectedType === "강의";
-  const initialLectureSubjectValue =
-    initialSubject === "전체" ? "내신 수학" : initialSubject;
-  const initialLectureGradeValue: LectureGrade = (() => {
-    if (LECTURE_SUBJECTS_BY_GRADE.G2.includes(initialLectureSubjectValue)) return "G2";
-    if (LECTURE_SUBJECTS_BY_GRADE.G3.includes(initialLectureSubjectValue)) return "G3";
+  const initialLectureGradeNormalized: LectureGrade = (() => {
+    if (initialLectureGrade === "G1" || initialLectureGrade === "G2" || initialLectureGrade === "G3") {
+      return initialLectureGrade;
+    }
     return "G2";
   })();
-  const initialSubjectValue =
-    isLectureLanding
-      ? initialLectureSubjectValue
-      : initialSubject !== "전체"
-      ? initialSubject
-      : isDefaultMathPhysicalTextbookLanding
-        ? "수학"
-        : isDefaultTransferEbookLanding
-          ? "미적분학"
-          : initialSubject;
+  const initialLectureGradeValue: LectureGrade = (() => {
+    if (initialSubject !== "전체") {
+      if (LECTURE_SUBJECTS_BY_GRADE.G2.includes(initialSubject)) return "G2";
+      if (LECTURE_SUBJECTS_BY_GRADE.G3.includes(initialSubject)) return "G3";
+    }
+    return initialLectureGradeNormalized;
+  })();
+  const initialLectureSubjectValue =
+    initialSubject === "전체"
+      ? (LECTURE_SUBJECTS_BY_GRADE[initialLectureGradeValue][0] ?? "전체")
+      : initialSubject;
+  const initialSubjectValue = isLectureLanding
+    ? initialLectureSubjectValue
+    : initialSubject !== "전체"
+    ? initialSubject
+    : isDefaultMathPhysicalTextbookLanding
+      ? "수학"
+      : isDefaultTransferEbookLanding
+        ? "미적분학"
+        : initialSubject;
   const initialBookFormatValue: BookFormat =
     isDefaultMathPhysicalTextbookLanding
       ? "실물책"

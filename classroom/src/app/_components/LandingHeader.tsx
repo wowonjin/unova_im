@@ -268,7 +268,11 @@ export default function LandingHeader({
       {
         label: "강의 구매하기",
         href: "/store?type=강의",
-        subItems: [{ label: "강의 구매하기", href: "/store?type=강의" }],
+        subItems: [
+          { label: "고1 강의 구매하기", href: "/store?type=강의&grade=G1" },
+          { label: "고2 강의 구매하기", href: "/store?type=강의&grade=G2" },
+          { label: "고3 강의 구매하기", href: "/store?type=강의&grade=G3" },
+        ],
       },
       {
         label: "유노바 선생님",

@@ -224,10 +224,12 @@ async function StoreProducts({
   selectedType,
   selectedSubject,
   selectedExamType,
+  selectedLectureGrade,
 }: {
   selectedType: string;
   selectedSubject: string;
   selectedExamType: string;
+  selectedLectureGrade: string;
 }) {
   await ensureSoldOutColumnsOnce();
 
@@ -351,11 +353,12 @@ async function StoreProducts({
 
   return (
     <StoreFilterClient
-      key={`${selectedType}:${selectedExamType}:${selectedSubject}`}
+      key={`${selectedType}:${selectedExamType}:${selectedLectureGrade}:${selectedSubject}`}
       products={productsOfCurrentType}
       selectedType={selectedType}
       initialSubject={selectedSubject}
       initialExamType={selectedExamType}
+      initialLectureGrade={selectedLectureGrade}
     />
   );
 }
@@ -363,11 +366,16 @@ async function StoreProducts({
 export default async function StorePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ subject?: string; type?: string; exam?: string }>;
+  searchParams?: Promise<{ subject?: string; type?: string; exam?: string; grade?: string }>;
 }) {
   try {
     const sp = await searchParams;
     const selectedSubject = sp?.subject || "전체";
+    const selectedLectureGradeRaw = sp?.grade || "G2";
+    const selectedLectureGrade =
+      selectedLectureGradeRaw === "G1" || selectedLectureGradeRaw === "G2" || selectedLectureGradeRaw === "G3"
+        ? selectedLectureGradeRaw
+        : "G2";
     const selectedExamTypeRaw = sp?.exam || "전체";
     const selectedExamType =
       selectedExamTypeRaw === "수능" || selectedExamTypeRaw === "내신" || selectedExamTypeRaw === "편입"
@@ -429,6 +437,7 @@ export default async function StorePage({
               selectedType={selectedType}
               selectedSubject={selectedSubject}
               selectedExamType={selectedExamType}
+              selectedLectureGrade={selectedLectureGrade}
             />
           </Suspense>
 
