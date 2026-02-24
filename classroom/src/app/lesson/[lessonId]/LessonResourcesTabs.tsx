@@ -168,9 +168,6 @@ export default function LessonResourcesTabs({
                     ) : null}
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{f.title}</p>
-                      <p className="text-xs text-white/70">
-                        {f.scope} · {formatBytes(f.sizeBytes)}
-                      </p>
                     </div>
                   </a>
                 </li>
