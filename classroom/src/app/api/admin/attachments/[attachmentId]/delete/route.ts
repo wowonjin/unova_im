@@ -42,8 +42,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ attachmentId: 
 
   // 파일 삭제는 실패해도 UX를 막지 않음(파일이 이미 없을 수 있음)
   try {
-    const filePath = safeJoin(getStorageRoot(), att.storedPath);
-    await fs.unlink(filePath);
+    const isRemote = /^https?:\/\//i.test(att.storedPath);
+    if (!isRemote) {
+      const filePath = safeJoin(getStorageRoot(), att.storedPath);
+      await fs.unlink(filePath);
+    }
   } catch {
     // ignore
   }

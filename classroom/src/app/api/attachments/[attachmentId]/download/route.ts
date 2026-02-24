@@ -45,6 +45,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ attachmentId: s
   const att = await canAccessAttachment(user.id, user.isAdmin, attachmentId, bypassEnrollment);
   if (!att) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
+  if (/^https?:\/\//i.test(att.storedPath)) {
+    return NextResponse.redirect(att.storedPath, { status: 302 });
+  }
+
   let filePath: string;
   try {
     filePath = safeJoin(getStorageRoot(), att.storedPath);

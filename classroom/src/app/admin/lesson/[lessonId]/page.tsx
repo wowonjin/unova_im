@@ -144,18 +144,20 @@ export default async function AdminLessonPage({ params }: { params: Promise<{ le
           </Card>
 
           <Card>
-            <CardHeader title="차시 자료" description="파일 업로드/다운로드/삭제" right={<Badge tone={lesson.attachments.length ? "neutral" : "muted"}>{lesson.attachments.length}개</Badge>} />
+            <CardHeader title="차시 자료" description="버킷 공개 URL 등록/다운로드/삭제" right={<Badge tone={lesson.attachments.length ? "neutral" : "muted"}>{lesson.attachments.length}개</Badge>} />
             <CardBody>
-              <form className="space-y-2" action="/api/admin/attachments/upload" method="post" encType="multipart/form-data">
+              <form className="space-y-2" action="/api/admin/attachments/upload" method="post">
                 <input type="hidden" name="lessonId" value={lesson.id} />
-                <Field label="파일">
-                  <input className="block w-full text-sm" type="file" name="file" required />
-                </Field>
-                <Field label="자료 제목(선택)">
-                  <Input name="title" placeholder="예: 3강 문제풀이 PDF" />
+                <Field label="파일 URL">
+                  <Input
+                    name="fileUrl"
+                    type="url"
+                    required
+                    placeholder="https://storage.googleapis.com/your-bucket/path/to/file.pdf"
+                  />
                 </Field>
                 <Button type="submit" variant="secondary">
-                  업로드
+                  URL 등록
                 </Button>
               </form>
 
@@ -164,7 +166,9 @@ export default async function AdminLessonPage({ params }: { params: Promise<{ le
                   {lesson.attachments.map((a) => (
                     <li key={a.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-medium">{a.title}</div>
+                        <div className="truncate text-sm font-medium">
+                          {/^https?:\/\//i.test(a.storedPath) ? a.storedPath : a.title}
+                        </div>
                         <div className="truncate text-xs text-white/60">{a.originalName}</div>
                       </div>
                       <div className="flex items-center gap-2">

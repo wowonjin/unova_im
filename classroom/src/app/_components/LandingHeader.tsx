@@ -119,12 +119,44 @@ export default function LandingHeader({
   // `useSearchParams()`는 SSR/프리렌더 단계에서 CSR bail-out + Suspense 요구를 유발할 수 있어,
   // 헤더에서는 window.location.search 기반으로만 사용합니다(메뉴 활성화 표시용).
   useEffect(() => {
-    try {
-      setRawSearch(window.location.search || "");
-    } catch {
-      setRawSearch("");
-    }
-  }, [pathname]);
+    const syncSearch = () => {
+      try {
+        setRawSearch(window.location.search || "");
+      } catch {
+        setRawSearch("");
+      }
+    };
+
+    const LOCATION_CHANGE_EVENT = "unova:location-change";
+    const emitLocationChange = () => window.dispatchEvent(new Event(LOCATION_CHANGE_EVENT));
+    const handleLocationChange = () => syncSearch();
+
+    syncSearch();
+    window.addEventListener("popstate", handleLocationChange);
+    window.addEventListener(LOCATION_CHANGE_EVENT, handleLocationChange);
+
+    const originalPushState = window.history.pushState.bind(window.history);
+    const originalReplaceState = window.history.replaceState.bind(window.history);
+
+    window.history.pushState = (...args: Parameters<History["pushState"]>) => {
+      const result = originalPushState(...args);
+      emitLocationChange();
+      return result;
+    };
+
+    window.history.replaceState = (...args: Parameters<History["replaceState"]>) => {
+      const result = originalReplaceState(...args);
+      emitLocationChange();
+      return result;
+    };
+
+    return () => {
+      window.removeEventListener("popstate", handleLocationChange);
+      window.removeEventListener(LOCATION_CHANGE_EVENT, handleLocationChange);
+      window.history.pushState = originalPushState;
+      window.history.replaceState = originalReplaceState;
+    };
+  }, []);
 
   const searchParams = useMemo(() => {
     const s = (rawSearch || "").trim();
@@ -156,6 +188,15 @@ export default function LandingHeader({
       if ((searchParams.get(k) || "") !== v) return false;
     }
     return true;
+  };
+
+  const isMenuItemActive = (item: MenuItem) => {
+    if (pathname === "/store") {
+      const currentType = (searchParams.get("type") || "").trim();
+      if (item.label === "교재 구매하기") return currentType === "교재";
+      if (item.label === "강의 구매하기") return currentType === "강의" || currentType === "강좌";
+    }
+    return isActiveHref(item.href);
   };
 
   // 메뉴 클릭 전에 스토어 페이지를 미리 받아와서 체감 로딩을 줄입니다.
@@ -649,7 +690,7 @@ export default function LandingHeader({
                   label={item.label}
                   icon={item.icon}
                   external={item.external}
-                  active={isActiveHref(item.href)}
+                  active={isMenuItemActive(item)}
                   variant={currentVariant}
                 />
                 
@@ -1044,7 +1085,7 @@ export default function LandingHeader({
                   <div key={`mobile-${item.label}`} className="w-full">
                     <div
                       className={`flex w-full items-center justify-between px-5 py-1.5 transition-colors ${mobileNoHoverBgClass} ${
-                        isActiveHref(item.href) ? `${fgClass} font-semibold` : fgSubtleClass
+                        isMenuItemActive(item) ? `${fgClass} font-semibold` : fgSubtleClass
                       }`}
                     >
                       <Link
