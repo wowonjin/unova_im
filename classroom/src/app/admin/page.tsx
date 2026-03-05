@@ -23,19 +23,34 @@ function addDaysKst(dateKey: string, days: number): string {
   return kstDateKey(next);
 }
 
-function rangeLast7DaysKst(now = new Date()): string[] {
+function kstDayOfWeek(dateKey: string): number {
+  const start = kstStartOfDay(dateKey);
+  const kst = new Date(start.getTime() + 9 * 60 * 60 * 1000);
+  return kst.getUTCDay(); // 0=Sun .. 6=Sat
+}
+
+function rangeThisWeekToDateKst(now = new Date()): string[] {
   const today = kstDateKey(now);
+  const dow = kstDayOfWeek(today);
+  const weekDiff = (dow + 6) % 7; // Monday=0 ... Sunday=6
+  const weekStartKey = addDaysKst(today, -weekDiff);
   const days: string[] = [];
-  for (let i = 6; i >= 0; i--) days.push(addDaysKst(today, -i));
+  for (let i = 0; i <= weekDiff; i++) days.push(addDaysKst(weekStartKey, i));
   return days;
+}
+
+function getVisitorId(payload: unknown): string {
+  if (!payload || typeof payload !== "object") return "";
+  const visitorId = (payload as { visitorId?: unknown }).visitorId;
+  return typeof visitorId === "string" ? visitorId : "";
 }
 
 export default async function AdminPage() {
   await requireAdminUser();
 
   const now = new Date();
-  const days = rangeLast7DaysKst(now);
-  const start7 = kstStartOfDay(days[0]!);
+  const days = rangeThisWeekToDateKst(now);
+  const weekStart = kstStartOfDay(days[0]!);
   const endTomorrow = kstStartOfDay(addDaysKst(days[days.length - 1]!, 1));
 
   // 이번달(KST) 범위
@@ -43,15 +58,26 @@ export default async function AdminPage() {
   const monthStartKey = `${monthKey}-01`;
   const monthStart = kstStartOfDay(monthStartKey);
   const monthEnd = endTomorrow;
+  const monthYear = parseInt(monthKey.slice(0, 4), 10);
+  const monthNum = parseInt(monthKey.slice(5, 7), 10);
+  const prevMonthYear = monthNum === 1 ? monthYear - 1 : monthYear;
+  const prevMonthNum = monthNum === 1 ? 12 : monthNum - 1;
+  const prevMonthKey = `${prevMonthYear}-${String(prevMonthNum).padStart(2, "0")}`;
+  const prevMonthStart = kstStartOfDay(`${prevMonthKey}-01`);
+  const prevMonthEnd = monthStart;
 
   // --- 방문자/페이지뷰 (OrderEvent: provider=web, eventType=pageview) ---
-  const [pv7, pvMonth] = await Promise.all([
+  const [pv7, pvMonth, pvPrevMonth] = await Promise.all([
     prisma.orderEvent.findMany({
-      where: { provider: "web", eventType: "pageview", receivedAt: { gte: start7, lt: endTomorrow } },
+      where: { provider: "web", eventType: "pageview", receivedAt: { gte: weekStart, lt: endTomorrow } },
       select: { receivedAt: true, payload: true },
     }),
     prisma.orderEvent.findMany({
       where: { provider: "web", eventType: "pageview", receivedAt: { gte: monthStart, lt: monthEnd } },
+      select: { receivedAt: true, payload: true },
+    }),
+    prisma.orderEvent.findMany({
+      where: { provider: "web", eventType: "pageview", receivedAt: { gte: prevMonthStart, lt: prevMonthEnd } },
       select: { receivedAt: true, payload: true },
     }),
   ]);
@@ -60,27 +86,36 @@ export default async function AdminPage() {
   const [orders7, users7, qna7, reviews7] = await Promise.all([
     prisma.order.findMany({
       where: {
-        createdAt: { gte: start7, lt: endTomorrow },
+        createdAt: { gte: weekStart, lt: endTomorrow },
         status: { in: ["COMPLETED", "REFUNDED", "PARTIALLY_REFUNDED"] },
       },
       select: { createdAt: true, status: true, amount: true, refundedAmount: true },
     }),
     prisma.user.findMany({
-      where: { createdAt: { gte: start7, lt: endTomorrow } },
+      where: { createdAt: { gte: weekStart, lt: endTomorrow } },
       select: { createdAt: true },
     }),
     prisma.qnaPost.findMany({
-      where: { createdAt: { gte: start7, lt: endTomorrow }, parentId: null },
+      where: { createdAt: { gte: weekStart, lt: endTomorrow }, parentId: null },
       select: { createdAt: true },
     }),
     prisma.review.findMany({
-      where: { createdAt: { gte: start7, lt: endTomorrow }, isApproved: true },
+      where: { createdAt: { gte: weekStart, lt: endTomorrow }, isApproved: true },
       select: { createdAt: true },
     }),
   ]);
 
   // --- 이번달 합계 ---
-  const [ordersMonth, usersMonthCount, qnaMonthCount, reviewsMonthCount] = await Promise.all([
+  const [
+    ordersMonth,
+    usersMonthCount,
+    qnaMonthCount,
+    reviewsMonthCount,
+    ordersPrevMonth,
+    usersPrevMonthCount,
+    qnaPrevMonthCount,
+    reviewsPrevMonthCount,
+  ] = await Promise.all([
     prisma.order.findMany({
       where: {
         createdAt: { gte: monthStart, lt: monthEnd },
@@ -91,6 +126,16 @@ export default async function AdminPage() {
     prisma.user.count({ where: { createdAt: { gte: monthStart, lt: monthEnd } } }),
     prisma.qnaPost.count({ where: { createdAt: { gte: monthStart, lt: monthEnd }, parentId: null } }),
     prisma.review.count({ where: { createdAt: { gte: monthStart, lt: monthEnd }, isApproved: true } }),
+    prisma.order.findMany({
+      where: {
+        createdAt: { gte: prevMonthStart, lt: prevMonthEnd },
+        status: { in: ["COMPLETED", "REFUNDED", "PARTIALLY_REFUNDED"] },
+      },
+      select: { status: true, amount: true, refundedAmount: true },
+    }),
+    prisma.user.count({ where: { createdAt: { gte: prevMonthStart, lt: prevMonthEnd } } }),
+    prisma.qnaPost.count({ where: { createdAt: { gte: prevMonthStart, lt: prevMonthEnd }, parentId: null } }),
+    prisma.review.count({ where: { createdAt: { gte: prevMonthStart, lt: prevMonthEnd }, isApproved: true } }),
   ]);
 
   const init = (): Record<string, AdminDailyMetrics> =>
@@ -109,8 +154,7 @@ export default async function AdminPage() {
     const bucket = byDay[day];
     if (!bucket) continue;
     bucket.pageViews += 1;
-    const payload: any = ev.payload as any;
-    const visitorId = typeof payload?.visitorId === "string" ? payload.visitorId : "";
+    const visitorId = getVisitorId(ev.payload);
     if (visitorId) {
       const set = visitorsSetByDay.get(day) ?? new Set<string>();
       set.add(visitorId);
@@ -167,8 +211,7 @@ export default async function AdminPage() {
   let monthPageViews = 0;
   for (const ev of pvMonth) {
     monthPageViews += 1;
-    const payload: any = ev.payload as any;
-    const visitorId = typeof payload?.visitorId === "string" ? payload.visitorId : "";
+    const visitorId = getVisitorId(ev.payload);
     if (visitorId) monthVisitors.add(visitorId);
   }
   const monthRevenue = ordersMonth.reduce((sum, o) => sum + Math.max(0, o.amount - (o.refundedAmount || 0)), 0);
@@ -181,6 +224,23 @@ export default async function AdminPage() {
     inquiries: qnaMonthCount,
     reviews: reviewsMonthCount,
   };
+  const prevMonthVisitors = new Set<string>();
+  let prevMonthPageViews = 0;
+  for (const ev of pvPrevMonth) {
+    prevMonthPageViews += 1;
+    const visitorId = getVisitorId(ev.payload);
+    if (visitorId) prevMonthVisitors.add(visitorId);
+  }
+  const prevMonthRevenue = ordersPrevMonth.reduce((sum, o) => sum + Math.max(0, o.amount - (o.refundedAmount || 0)), 0);
+  const summaryPrevMonth = {
+    orders: ordersPrevMonth.length,
+    revenue: prevMonthRevenue,
+    pageViews: prevMonthPageViews,
+    visitors: prevMonthVisitors.size,
+    signups: usersPrevMonthCount,
+    inquiries: qnaPrevMonthCount,
+    reviews: reviewsPrevMonthCount,
+  };
 
   return (
     <AppShell>
@@ -191,7 +251,7 @@ export default async function AdminPage() {
         </div>
 
         {/* 방문자/기간별 분석 (실데이터 기반) */}
-        <AdminAnalyticsPanel daily={daily} summary7={summary7} summaryMonth={summaryMonth} />
+        <AdminAnalyticsPanel daily={daily} summary7={summary7} summaryMonth={summaryMonth} summaryPrevMonth={summaryPrevMonth} />
       </div>
     </AppShell>
   );

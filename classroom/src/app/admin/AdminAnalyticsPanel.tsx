@@ -136,10 +136,12 @@ export default function AdminAnalyticsPanel({
   daily,
   summary7,
   summaryMonth,
+  summaryPrevMonth,
 }: {
   daily: AdminDailyMetrics[];
   summary7: Summary;
   summaryMonth: Summary;
+  summaryPrevMonth: Summary;
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [activeMetric, setActiveMetric] = useState<"pageViews" | "visitors" | "orders" | "revenue">("pageViews");
@@ -232,16 +234,18 @@ export default function AdminAnalyticsPanel({
           label="페이지뷰"
           lines={[
             { label: "오늘", value: todayPageViews.toLocaleString("ko-KR") },
-            { label: "이번주", value: sum(pv).toLocaleString("ko-KR") },
+            { label: "이번주", value: summary7.pageViews.toLocaleString("ko-KR") },
             { label: "이번달", value: summaryMonth.pageViews.toLocaleString("ko-KR") },
+            { label: "저번달", value: summaryPrevMonth.pageViews.toLocaleString("ko-KR") },
           ]}
         />
         <StatCard
           label="방문자"
           lines={[
             { label: "오늘", value: todayVisitors.toLocaleString("ko-KR") },
-            { label: "이번주", value: sum(uv).toLocaleString("ko-KR") },
+            { label: "이번주", value: summary7.visitors.toLocaleString("ko-KR") },
             { label: "이번달", value: summaryMonth.visitors.toLocaleString("ko-KR") },
+            { label: "저번달", value: summaryPrevMonth.visitors.toLocaleString("ko-KR") },
           ]}
         />
         <StatCard
@@ -250,6 +254,7 @@ export default function AdminAnalyticsPanel({
             { label: "오늘", value: `${todayOrders}건` },
             { label: "이번주", value: `${summary7.orders}건` },
             { label: "이번달", value: `${summaryMonth.orders}건` },
+            { label: "저번달", value: `${summaryPrevMonth.orders}건` },
           ]}
         />
         <StatCard
@@ -258,6 +263,7 @@ export default function AdminAnalyticsPanel({
             { label: "오늘", value: formatMoney(todayRevenue) },
             { label: "이번주", value: formatMoney(summary7.revenue) },
             { label: "이번달", value: formatMoney(summaryMonth.revenue) },
+            { label: "저번달", value: formatMoney(summaryPrevMonth.revenue) },
           ]}
         />
       </div>

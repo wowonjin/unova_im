@@ -121,38 +121,47 @@ export default function LandingHeader({
   useEffect(() => {
     const syncSearch = () => {
       try {
-        setRawSearch(window.location.search || "");
+        const next = window.location.search || "";
+        setRawSearch((prev) => (prev === next ? prev : next));
       } catch {
-        setRawSearch("");
+        setRawSearch((prev) => (prev === "" ? prev : ""));
       }
     };
 
-    const LOCATION_CHANGE_EVENT = "unova:location-change";
-    const emitLocationChange = () => window.dispatchEvent(new Event(LOCATION_CHANGE_EVENT));
-    const handleLocationChange = () => syncSearch();
+    let scheduled = false;
+    const enqueue = typeof queueMicrotask === "function" ? queueMicrotask : (cb: () => void) => Promise.resolve().then(cb);
+    const scheduleSyncSearch = () => {
+      if (scheduled) return;
+      scheduled = true;
+      // Next 내부 replaceState가 useInsertionEffect 타이밍에 호출될 수 있어
+      // setState는 마이크로태스크로 미뤄 "useInsertionEffect must not schedule updates" 경고를 피합니다.
+      enqueue(() => {
+        scheduled = false;
+        syncSearch();
+      });
+    };
+    const handleLocationChange = () => scheduleSyncSearch();
 
     syncSearch();
     window.addEventListener("popstate", handleLocationChange);
-    window.addEventListener(LOCATION_CHANGE_EVENT, handleLocationChange);
 
     const originalPushState = window.history.pushState.bind(window.history);
     const originalReplaceState = window.history.replaceState.bind(window.history);
 
     window.history.pushState = (...args: Parameters<History["pushState"]>) => {
       const result = originalPushState(...args);
-      emitLocationChange();
+      scheduleSyncSearch();
       return result;
     };
 
     window.history.replaceState = (...args: Parameters<History["replaceState"]>) => {
       const result = originalReplaceState(...args);
-      emitLocationChange();
+      scheduleSyncSearch();
       return result;
     };
 
     return () => {
       window.removeEventListener("popstate", handleLocationChange);
-      window.removeEventListener(LOCATION_CHANGE_EVENT, handleLocationChange);
       window.history.pushState = originalPushState;
       window.history.replaceState = originalReplaceState;
     };
