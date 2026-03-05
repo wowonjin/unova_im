@@ -191,7 +191,7 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
       message: defaultMessage,
     };
 
-    const out: Array<typeof base & { itemName: string }> = [];
+    const out: Array<typeof base & { qty: number; itemName: string }> = [];
     const matchedNames: string[] = [];
     const items = extractLineItems(o.providerPayload);
     if (items?.length) {
