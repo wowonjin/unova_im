@@ -1,6 +1,7 @@
 import AppShell from "@/app/_components/AppShell";
 import { requireAdminUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import Link from "next/link";
 import BuyerCell from "./BuyerCell";
 
@@ -60,6 +61,39 @@ function isPromiseLike<T>(v: unknown): v is Promise<T> {
 }
 
 type OrdersStats = { totalOrders: number; completedOrders: number; refundedOrders: number; totalSales: number };
+type LineItemRef = {
+  productType: "COURSE" | "TEXTBOOK";
+  productId: string;
+  productName: string | null;
+};
+
+function extractLineItemRefs(payload: Prisma.JsonValue | unknown): LineItemRef[] | null {
+  if (!payload || typeof payload !== "object") return null;
+  const lineItems = (payload as { lineItems?: unknown }).lineItems;
+  if (!lineItems || typeof lineItems !== "object") return null;
+  const items = (lineItems as { items?: unknown }).items;
+  if (!Array.isArray(items)) return null;
+
+  const refs: LineItemRef[] = [];
+  for (const raw of items) {
+    if (!raw || typeof raw !== "object") continue;
+    const item = raw as Record<string, unknown>;
+    const productType = item.productType === "COURSE" ? "COURSE" : item.productType === "TEXTBOOK" ? "TEXTBOOK" : null;
+    const productId = typeof item.productId === "string" ? item.productId : null;
+    if (!productType || !productId) continue;
+
+    const productName =
+      typeof item.productName === "string" && item.productName.trim()
+        ? item.productName.trim()
+        : typeof item.name === "string" && item.name.trim()
+          ? item.name.trim()
+          : null;
+
+    refs.push({ productType, productId, productName });
+  }
+
+  return refs.length ? refs : null;
+}
 
 export default async function AdminOrdersPage({ searchParams }: { searchParams?: SearchParams | Promise<SearchParams> }) {
   const teacher = await requireAdminUser();
@@ -75,6 +109,11 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams?:
     orderNo: string;
     userId: string;
     productName: string;
+    productNames: string[];
+    productType: "COURSE" | "TEXTBOOK";
+    courseId: string | null;
+    textbookId: string | null;
+    providerPayload: Prisma.JsonValue | null;
     amount: number;
     refundedAmount?: number | null;
     paymentMethod?: string | null;
@@ -160,6 +199,10 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams?:
           orderNo: true,
           userId: true,
           productName: true,
+          productType: true,
+          courseId: true,
+          textbookId: true,
+          providerPayload: true,
           amount: true,
           refundedAmount: true,
           paymentMethod: true,
@@ -174,7 +217,56 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams?:
       getRangeStats(monthStart, nextMonthStart),
     ]);
 
-    orders = pageOrders;
+    const courseIds = new Set<string>();
+    const textbookIds = new Set<string>();
+    const refsByOrderId = new Map<string, LineItemRef[] | null>();
+
+    for (const order of pageOrders) {
+      const refs = extractLineItemRefs(order.providerPayload);
+      refsByOrderId.set(order.id, refs);
+
+      if (order.courseId) courseIds.add(order.courseId);
+      if (order.textbookId) textbookIds.add(order.textbookId);
+
+      if (!refs) continue;
+      for (const ref of refs) {
+        if (ref.productType === "COURSE") courseIds.add(ref.productId);
+        if (ref.productType === "TEXTBOOK") textbookIds.add(ref.productId);
+      }
+    }
+
+    const [courses, textbooks] = await Promise.all([
+      courseIds.size
+        ? prisma.course.findMany({
+            where: { id: { in: Array.from(courseIds) } },
+            select: { id: true, title: true },
+          })
+        : Promise.resolve([] as Array<{ id: string; title: string }>),
+      textbookIds.size
+        ? prisma.textbook.findMany({
+            where: { id: { in: Array.from(textbookIds) } },
+            select: { id: true, title: true },
+          })
+        : Promise.resolve([] as Array<{ id: string; title: string }>),
+    ]);
+
+    const titleById = new Map<string, string>();
+    for (const course of courses) titleById.set(course.id, course.title);
+    for (const textbook of textbooks) titleById.set(textbook.id, textbook.title);
+
+    orders = pageOrders.map((order) => {
+      const refs = refsByOrderId.get(order.id) ?? null;
+      const productNames = refs?.length
+        ? refs.map((ref) => titleById.get(ref.productId) || ref.productName || `상품 (${ref.productId.slice(0, 6)})`)
+        : order.courseId || order.textbookId
+          ? [titleById.get(order.courseId || order.textbookId || "") || order.productName]
+          : [order.productName];
+
+      return {
+        ...order,
+        productNames,
+      };
+    });
     stats = { today: todayStats, week: weekStats, month: monthStats };
   } catch (e) {
     dbError = true;
@@ -332,8 +424,14 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams?:
                           email={order.user.email}
                         />
                       </td>
-                      <td className="px-5 py-4 text-[14px] text-white/80 max-w-[200px] truncate">
-                        {order.productName}
+                      <td className="px-5 py-4 text-[14px] text-white/80 max-w-[280px]">
+                        <div className="space-y-1">
+                          {order.productNames.map((name, idx) => (
+                            <p key={`${order.id}-product-${idx}`} className="truncate" title={name}>
+                              {name}
+                            </p>
+                          ))}
+                        </div>
                       </td>
                       <td className="px-5 py-4 text-[14px] font-medium text-white">
                         {formatPrice(order.amount)}

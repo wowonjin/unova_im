@@ -219,7 +219,8 @@ export async function GET(req: Request) {
     const orderLimit = date === "range" || date === "all" ? 10000 : 2000;
     const orders = await prisma.order.findMany({
       where: {
-        NOT: { status: "PENDING" },
+        // 배송 엑셀도 결제 완료 주문만 포함 (취소/환불/부분환불 제외)
+        status: "COMPLETED",
         ...(start && end ? { createdAt: { gte: start, lt: end } } : {}),
         OR: [
           { course: { ownerId: teacher.id } },
@@ -246,32 +247,41 @@ export async function GET(req: Request) {
         수하인주소: normalizeAddress([o.user.address || "", o.user.addressDetail || ""].join(" ").trim()),
         수하인전화번호: normalizePhone(o.user.phone),
         수하인핸드폰번호: normalizePhone(o.user.phone),
-        택배수량: 1,
         택배운임: shippingFee,
         운임구분: freightCode,
         배송메시지: message,
       };
 
-      // 1) 단일 상품 주문
-      if (o.textbookId && selectedIdSet.has(o.textbookId)) {
-        out.push({
-          ...base,
-          품목명: titleByTextbookId.get(o.textbookId) || o.productName,
-        });
-        return out;
+      const matchedNames: string[] = [];
+      const items = extractLineItems(o.providerPayload);
+      if (items?.length) {
+        for (const it of items) {
+          if (it.productType !== "TEXTBOOK") continue;
+          if (!selectedIdSet.has(it.productId)) continue;
+          matchedNames.push(titleByTextbookId.get(it.productId) || o.productName);
+        }
       }
 
-      // 2) 다중 상품 주문(providerPayload.lineItems.items)
-      const items = extractLineItems(o.providerPayload);
-      if (!items?.length) return out;
-      for (const it of items) {
-        if (it.productType !== "TEXTBOOK") continue;
-        if (!selectedIdSet.has(it.productId)) continue;
-        out.push({
-          ...base,
-          품목명: titleByTextbookId.get(it.productId) || o.productName,
-        });
+      // 하위 호환: lineItems가 없던 단일 상품 주문
+      if (matchedNames.length === 0 && o.textbookId && selectedIdSet.has(o.textbookId)) {
+        matchedNames.push(titleByTextbookId.get(o.textbookId) || o.productName);
       }
+
+      if (matchedNames.length === 0) return out;
+
+      const countByName = new Map<string, number>();
+      for (const name of matchedNames) {
+        countByName.set(name, (countByName.get(name) || 0) + 1);
+      }
+      const itemName = Array.from(countByName.entries())
+        .map(([name, count]) => (count > 1 ? `${name} x${count}` : name))
+        .join(" + ");
+
+      out.push({
+        ...base,
+        택배수량: 1,
+        품목명: itemName,
+      });
       return out;
     });
 

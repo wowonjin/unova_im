@@ -150,7 +150,8 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
   const orderLimit = dateFilter === "range" || dateFilter === "all" ? 10000 : 2000;
   const orders = await prisma.order.findMany({
     where: {
-      NOT: { status: "PENDING" },
+      // 배송 대상은 결제 완료 주문만 포함 (취소/환불/부분환불 제외)
+      status: "COMPLETED",
       ...(start && end ? { createdAt: { gte: start, lt: end } } : {}),
       OR: [
         { course: { ownerId: teacher.id } },
@@ -185,32 +186,43 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
       address: normalizeAddress([o.user.address || "", o.user.addressDetail || ""].join(" ").trim()),
       tel: normalizePhone(o.user.phone),
       mobile: normalizePhone(o.user.phone),
-      qty: 1,
       shippingFee: Number.isFinite(shippingFee) ? shippingFee : 3000,
       freightCode,
       message: defaultMessage,
     };
 
     const out: Array<typeof base & { itemName: string }> = [];
-
-    if (o.textbookId && selectedIdSet.has(o.textbookId)) {
-      out.push({
-        ...base,
-        itemName: titleByTextbookId.get(o.textbookId) || o.productName,
-      });
-      return out;
-    }
-
+    const matchedNames: string[] = [];
     const items = extractLineItems(o.providerPayload);
-    if (!items?.length) return out;
-    for (const it of items) {
-      if (it.productType !== "TEXTBOOK") continue;
-      if (!selectedIdSet.has(it.productId)) continue;
-      out.push({
-        ...base,
-        itemName: titleByTextbookId.get(it.productId) || o.productName,
-      });
+    if (items?.length) {
+      for (const it of items) {
+        if (it.productType !== "TEXTBOOK") continue;
+        if (!selectedIdSet.has(it.productId)) continue;
+        matchedNames.push(titleByTextbookId.get(it.productId) || o.productName);
+      }
     }
+
+    // 하위 호환: lineItems가 없던 단일 상품 주문
+    if (matchedNames.length === 0 && o.textbookId && selectedIdSet.has(o.textbookId)) {
+      matchedNames.push(titleByTextbookId.get(o.textbookId) || o.productName);
+    }
+
+    if (matchedNames.length === 0) return out;
+
+    const countByName = new Map<string, number>();
+    for (const name of matchedNames) {
+      countByName.set(name, (countByName.get(name) || 0) + 1);
+    }
+    const itemName = Array.from(countByName.entries())
+      .map(([name, count]) => (count > 1 ? `${name} x${count}` : name))
+      .join(" + ");
+
+    out.push({
+      ...base,
+      qty: 1,
+      itemName,
+    });
+
     return out;
   });
 

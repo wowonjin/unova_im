@@ -8,9 +8,6 @@ import { ensureSoldOutColumnsOnce } from "@/lib/ensure-columns";
 
 export const runtime = "nodejs";
 
-const ADDITIONAL_TEXTBOOK_DISCOUNT_PER = 5000;
-const ADDITIONAL_TEXTBOOK_DISCOUNT_MAX = 10000;
-
 // 새로운 cartItems 방식 스키마
 const CartItemSchema = z.object({
   productType: z.enum(["COURSE", "TEXTBOOK"]),
@@ -134,40 +131,10 @@ export async function POST(req: Request) {
 
   const firstItem = cartItems[0];
 
-  // 할인 정책
-  // - 교재 할인: 선택 교재 1권당 5,000원, 최대 10,000원
-  //   - 강의+교재 묶음: 선택한 교재 개수만큼 할인
-  //   - 교재 상세(교재+추가교재): "추가 교재" 개수만큼 할인 (= 전체 교재 개수 - 1)
-  // - 강의 할인: 강의+교재를 함께 구매할 경우 10,000원
-  const hasCourse = cartItems.some((i) => i.productType === "COURSE");
-  const textbookCount = cartItems.filter((i) => i.productType === "TEXTBOOK").length;
-
-  const additionalTextbookCount = hasCourse
-    ? textbookCount
-    : firstItem?.productType === "TEXTBOOK"
-      ? Math.max(0, textbookCount - 1)
-      : 0;
-
-  const additionalTextbookDiscount = Math.min(
-    additionalTextbookCount * ADDITIONAL_TEXTBOOK_DISCOUNT_PER,
-    ADDITIONAL_TEXTBOOK_DISCOUNT_MAX
-  );
-
-  const courseBundleDiscount = hasCourse && textbookCount > 0 ? 10000 : 0;
-
-  // 할인 합이 결제 금액을 초과하면(특히 테스트/저가 상품) 총액이 0원이 되어 결제가 불가능해집니다.
-  // 이 경우에는 할인 적용을 건너뛰어 결제 금액이 0원이 되지 않게 합니다.
-  let cappedAdditionalTextbookDiscount = additionalTextbookDiscount;
-  let cappedCourseBundleDiscount = courseBundleDiscount;
-
-  let totalDiscount = cappedAdditionalTextbookDiscount + cappedCourseBundleDiscount;
-  if (totalDiscount >= totalAmount) {
-    cappedAdditionalTextbookDiscount = 0;
-    cappedCourseBundleDiscount = 0;
-    totalDiscount = 0;
-  }
-
-  totalAmount = Math.max(0, totalAmount - totalDiscount);
+  // 할인 정책 제거: 다권/묶음 구매를 포함해 결제 금액 할인 미적용
+  const additionalTextbookDiscount = 0;
+  const courseBundleDiscount = 0;
+  const totalDiscount = 0;
 
   if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
     return NextResponse.json(
@@ -177,8 +144,8 @@ export async function POST(req: Request) {
         details: {
           totalAmount,
           totalDiscount,
-          additionalTextbookDiscount: cappedAdditionalTextbookDiscount,
-          courseBundleDiscount: cappedCourseBundleDiscount,
+          additionalTextbookDiscount,
+          courseBundleDiscount,
           cartItemsCount: cartItems.length,
         },
       },
