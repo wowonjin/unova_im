@@ -164,7 +164,7 @@ export default function StoreFilterClient({
         : initialSubject;
   const initialBookFormatValue: BookFormat =
     isDefaultMathPhysicalTextbookLanding
-      ? "실물책"
+      ? "전체"
       : isDefaultTransferEbookLanding
         ? "전자책"
         : "전체";
