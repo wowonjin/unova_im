@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentTeacherUser, getCurrentUser } from "@/lib/current-user";
 import { getStorageRoot, safeJoin } from "@/lib/storage";
 import { isAllCoursesTestModeFromRequest } from "@/lib/test-mode";
+import { optimizeThumbnailUpload } from "@/lib/thumbnail-image";
 
 export const runtime = "nodejs";
 
@@ -162,24 +163,23 @@ export async function GET(req: Request, ctx: { params: Promise<{ courseId: strin
   if (stat.size > 0 && stat.size <= MAX_FILE_SIZE) {
     try {
       const buffer = fs.readFileSync(filePath);
-      const base64 = buffer.toString("base64");
-      const dataUrl = `data:${mimeType};base64,${base64}`;
+      const optimized = await optimizeThumbnailUpload(buffer, mimeType);
 
       await prisma.course.update({
         where: { id: courseId },
         data: {
-          thumbnailUrl: dataUrl,
+          thumbnailUrl: optimized.dataUrl,
           thumbnailStoredPath: null,
-          thumbnailMimeType: mimeType,
-          thumbnailSizeBytes: buffer.length,
+          thumbnailMimeType: optimized.mimeType,
+          thumbnailSizeBytes: optimized.sizeBytes,
         },
       });
 
       const headers = new Headers();
-      headers.set("content-type", mimeType);
-      headers.set("content-length", String(buffer.length));
+      headers.set("content-type", optimized.mimeType);
+      headers.set("content-length", String(optimized.sizeBytes));
       headers.set("cache-control", cacheControl);
-      return new NextResponse(buffer, { status: 200, headers });
+      return new NextResponse(new Uint8Array(optimized.bytes), { status: 200, headers });
     } catch (e) {
       // 마이그레이션 실패해도, 기존 방식(스트리밍)으로 계속 제공
       console.error("[courses/thumbnail] migrate stored thumbnail to dataUrl failed:", e);

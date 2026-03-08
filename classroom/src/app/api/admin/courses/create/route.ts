@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentTeacherUser } from "@/lib/current-user";
 import { slugify } from "@/lib/slugify";
 import { getBaseUrl } from "@/lib/oauth";
+import { optimizeThumbnailUpload } from "@/lib/thumbnail-image";
 
 export const runtime = "nodejs";
 
@@ -122,21 +123,19 @@ export async function POST(req: Request) {
           name: thumbnailFile.name,
         });
       } else {
-        // 이미지를 Base64 데이터 URL로 변환하여 DB에 저장 (멀티 인스턴스에서도 안정적으로 표시)
         const bytes = Buffer.from(await thumbnailFile.arrayBuffer());
-        const mimeType = thumbnailFile.type || "image/jpeg";
-        const base64 = bytes.toString("base64");
-        const dataUrl = `data:${mimeType};base64,${base64}`;
+        const sourceMimeType = thumbnailFile.type || "image/jpeg";
+        const optimized = await optimizeThumbnailUpload(bytes, sourceMimeType);
 
         await prisma.course.update({
           where: { id: course.id },
           data: {
-            thumbnailUrl: dataUrl,
+            thumbnailUrl: optimized.dataUrl,
             // 로컬 파일 저장 관련 필드는 사용하지 않음 (기존 값이 있더라도 정리)
             thumbnailStoredPath: null,
             thumbnailOriginalName: thumbnailFile.name || null,
-            thumbnailMimeType: mimeType,
-            thumbnailSizeBytes: bytes.length,
+            thumbnailMimeType: optimized.mimeType,
+            thumbnailSizeBytes: optimized.sizeBytes,
           },
         });
       }

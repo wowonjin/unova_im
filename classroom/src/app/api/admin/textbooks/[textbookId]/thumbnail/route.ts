@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTeacherUser } from "@/lib/current-user";
 import { z } from "zod";
+import { optimizeThumbnailDataUrl, optimizeThumbnailUpload } from "@/lib/thumbnail-image";
 
 export const runtime = "nodejs";
 
@@ -47,16 +48,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ textbookId: st
     if (file.size > MAX_FILE_SIZE) return NextResponse.json({ ok: false, error: "FILE_TOO_LARGE" }, { status: 400 });
 
     const bytes = Buffer.from(await file.arrayBuffer());
-    const mimeType = file.type || "image/jpeg";
-    const base64 = bytes.toString("base64");
-    const dataUrl = `data:${mimeType};base64,${base64}`;
+    const sourceMimeType = file.type || "image/jpeg";
+    const optimized = await optimizeThumbnailUpload(bytes, sourceMimeType);
 
     await prisma.textbook.update({
       where: { id: textbookId },
-      data: { thumbnailUrl: dataUrl },
+      data: { thumbnailUrl: optimized.dataUrl },
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, thumbnailUrl: optimized.dataUrl });
   }
 
   // 2) data URL 저장(JSON) - 기존 PDF 첫 페이지 썸네일 생성 로직용
@@ -68,11 +68,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ textbookId: st
   }
 
   // 썸네일 저장
+  const optimized = await optimizeThumbnailDataUrl(body.thumbnailDataUrl);
+
   await prisma.textbook.update({
     where: { id: textbookId },
-    data: { thumbnailUrl: body.thumbnailDataUrl },
+    data: { thumbnailUrl: optimized.dataUrl },
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, thumbnailUrl: optimized.dataUrl });
 }
 

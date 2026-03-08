@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTeacherUser } from "@/lib/current-user";
+import { optimizeThumbnailUpload } from "@/lib/thumbnail-image";
 
 export const runtime = "nodejs";
 
@@ -42,21 +43,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "COURSE_NOT_FOUND" }, { status: 404 });
   }
 
-  // 이미지를 Base64 데이터 URL로 변환하여 DB에 저장
   const bytes = Buffer.from(await file.arrayBuffer());
-  const mimeType = file.type || "image/jpeg";
-  const base64 = bytes.toString("base64");
-  const dataUrl = `data:${mimeType};base64,${base64}`;
+  const sourceMimeType = file.type || "image/jpeg";
+  const optimized = await optimizeThumbnailUpload(bytes, sourceMimeType);
 
   await prisma.course.update({
     where: { id: course.id },
     data: {
-      thumbnailUrl: dataUrl,
+      thumbnailUrl: optimized.dataUrl,
       // 로컬 파일 저장 관련 필드는 초기화
       thumbnailStoredPath: null,
       thumbnailOriginalName: file.name || null,
-      thumbnailMimeType: mimeType,
-      thumbnailSizeBytes: bytes.length,
+      thumbnailMimeType: optimized.mimeType,
+      thumbnailSizeBytes: optimized.sizeBytes,
     },
   });
 
