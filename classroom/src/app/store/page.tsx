@@ -8,8 +8,9 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { ensureSoldOutColumnsOnce } from "@/lib/ensure-columns";
 
-// 스토어는 공개 상품 목록(모든 사용자 동일)이므로 짧은 ISR 캐시로 체감 로딩을 줄입니다.
-export const revalidate = 60;
+// 스토어는 공개 상품 목록(모든 사용자 동일)이므로 ISR 주기를 조금 늘려
+// 원격 DB를 매번 다시 치지 않도록 합니다.
+export const revalidate = 300;
 
 function getStoreOwnerEmail(): string {
   // NOTE: 스토어는 "판매 등록된 상품"을 보여줘야 하므로,
@@ -88,7 +89,7 @@ const getCachedCoursesForStore = unstable_cache(
     });
   },
   ["store:courses:v4"],
-  { revalidate: 60 }
+  { revalidate: 300 }
 );
 
 const getCachedTextbooksForStore = unstable_cache(
@@ -169,7 +170,7 @@ const getCachedTextbooksForStore = unstable_cache(
     }
   },
   ["store:textbooks:v5"],
-  { revalidate: 60 }
+  { revalidate: 300 }
 );
 
 function StoreProductsSkeleton({ label }: { label: "교재" | "강의" }) {

@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -12,22 +13,38 @@ function cacheControlForThumbnailRequest(req: Request): string {
   try {
     const u = new URL(req.url);
     const v = u.searchParams.get("v");
-    if (v && v.trim()) return "public, max-age=31536000, immutable";
+    if (v && v.trim()) return "public, max-age=31536000, s-maxage=31536000, immutable";
   } catch {
     // ignore
   }
   // v가 없으면 교체 가능성을 고려해 짧게
-  return "public, max-age=300";
+  return "public, max-age=300, s-maxage=300, stale-while-revalidate=86400";
 }
+
+const getCachedTextbookThumbnail = unstable_cache(
+  async (textbookId: string, versionKey: string) => {
+    void versionKey;
+    return prisma.textbook.findUnique({
+      where: { id: textbookId },
+      select: { id: true, thumbnailUrl: true },
+    });
+  },
+  ["textbook-thumbnail"],
+  { revalidate: 60 * 60 * 24 }
+);
 
 export async function GET(req: Request, ctx: { params: Promise<{ textbookId: string }> }) {
   const { textbookId } = ParamsSchema.parse(await ctx.params);
   const cacheControl = cacheControlForThumbnailRequest(req);
+  const versionKey = (() => {
+    try {
+      return new URL(req.url).searchParams.get("v") || "no-version";
+    } catch {
+      return "no-version";
+    }
+  })();
 
-  const textbook = await prisma.textbook.findUnique({
-    where: { id: textbookId },
-    select: { id: true, thumbnailUrl: true },
-  });
+  const textbook = await getCachedTextbookThumbnail(textbookId, versionKey);
   if (!textbook) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
   // data URL인 경우: Base64 디코딩하여 이미지 반환

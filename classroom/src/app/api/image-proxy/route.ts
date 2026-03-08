@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
   const out = new NextResponse(upstream.body, { status: 200 });
   out.headers.set("Content-Type", contentType);
   // `v` 쿼리로 캐시 무효화를 하므로 immutable + 1년 캐시를 강하게 적용
-  out.headers.set("Cache-Control", "public, max-age=31536000, immutable");
+  out.headers.set("Cache-Control", "public, max-age=31536000, s-maxage=31536000, immutable");
 
   const len = upstream.headers.get("content-length");
   if (len) out.headers.set("Content-Length", len);

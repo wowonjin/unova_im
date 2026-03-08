@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import fs from "node:fs";
@@ -25,38 +26,54 @@ function cacheControlForThumbnailRequest(req: Request): string {
   try {
     const u = new URL(req.url);
     const v = u.searchParams.get("v");
-    if (v && v.trim()) return "public, max-age=31536000, immutable";
+    if (v && v.trim()) return "public, max-age=31536000, s-maxage=31536000, immutable";
   } catch {
     // ignore
   }
   // v가 없으면 교체 가능성을 고려해 짧게
-  return "public, max-age=300";
+  return "public, max-age=300, s-maxage=300, stale-while-revalidate=86400";
 }
 
 function redirectPlaceholder(req: Request) {
   // public asset
   const res = NextResponse.redirect(new URL("/course-placeholder.svg", req.url));
-  res.headers.set("cache-control", "public, max-age=300"); // 5분
+  res.headers.set("cache-control", "public, max-age=300, s-maxage=300, stale-while-revalidate=86400"); // 5분
   return res;
 }
+
+const getCachedCourseThumbnail = unstable_cache(
+  async (courseId: string, versionKey: string) => {
+    void versionKey;
+    return prisma.course.findUnique({
+      where: { id: courseId },
+      select: {
+        id: true,
+        ownerId: true,
+        isPublished: true,
+        thumbnailStoredPath: true,
+        thumbnailMimeType: true,
+        thumbnailUrl: true,
+      },
+    });
+  },
+  ["course-thumbnail"],
+  { revalidate: 60 * 60 * 24 }
+);
 
 export async function GET(req: Request, ctx: { params: Promise<{ courseId: string }> }) {
   const json = wantsJson(req);
   const bypassEnrollment = isAllCoursesTestModeFromRequest(req);
   const { courseId } = ParamsSchema.parse(await ctx.params);
   const cacheControl = cacheControlForThumbnailRequest(req);
+  const versionKey = (() => {
+    try {
+      return new URL(req.url).searchParams.get("v") || "no-version";
+    } catch {
+      return "no-version";
+    }
+  })();
 
-  const course = await prisma.course.findUnique({
-    where: { id: courseId },
-    select: {
-      id: true,
-      ownerId: true,
-      isPublished: true,
-      thumbnailStoredPath: true,
-      thumbnailMimeType: true,
-      thumbnailUrl: true,
-    },
-  });
+  const course = await getCachedCourseThumbnail(courseId, versionKey);
   if (!course) {
     return json ? NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 }) : redirectPlaceholder(req);
   }

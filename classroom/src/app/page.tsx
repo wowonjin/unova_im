@@ -11,9 +11,9 @@ import HomeSectionNav from "./_components/HomeSectionNav";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 
-// 홈은 유저별 데이터가 아니고(쿠키/세션 의존 X) 변경도 잦지 않으므로
-// ISR 캐시로 서버/DB 부하를 줄여 페이지 이동 체감 속도를 개선합니다.
-export const revalidate = 60;
+// 홈은 유저별 데이터가 아니고(쿠키/세션 의존 X) 변경도 아주 자주 바뀌진 않으므로
+// ISR 주기를 조금 더 길게 잡아 원격 DB 왕복 횟수를 줄입니다.
+export const revalidate = 300;
 const SHOW_MAIN_POPUP = false; // Temporary: hide main-page popup layer.
 
 function getStoreOwnerEmail(): string {
