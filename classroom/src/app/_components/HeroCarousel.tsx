@@ -350,6 +350,9 @@ export default function HeroCarousel({ slides }: { slides?: Slide[] }) {
                   src={toImageProxyUrl(slide.image, slide.imageVersion)}
                   alt={slide.subtitle}
                   className="absolute inset-0 w-full h-full object-cover"
+                  loading={idx <= 2 ? "eager" : "lazy"}
+                  decoding="async"
+                  fetchPriority={idx <= 2 ? "high" : "auto"}
                 />
                 
                 {/* 어두운 오버레이 (비활성 슬라이드) */}

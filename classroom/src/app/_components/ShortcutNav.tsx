@@ -126,6 +126,8 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
                         src={toImageProxyUrl(item.schoolLogoUrl, item.imageVersion)}
                         alt=""
                         className="h-full w-full object-contain"
+                        loading="lazy"
+                        decoding="async"
                       />
                     </div>
                   ) : null}
@@ -138,6 +140,9 @@ export default function ShortcutNav({ items }: { items?: ShortcutItem[] }) {
                         ? "block h-full w-full object-cover"
                         : "block h-[70%] w-[70%] object-contain"
                     }
+                    loading={idx < 4 ? "eager" : "lazy"}
+                    decoding="async"
+                    fetchPriority={idx < 4 ? "high" : "auto"}
                   />
                 </div>
                 <div className="text-[11px] font-normal tracking-[-0.02em] text-white sm:text-[14px]">

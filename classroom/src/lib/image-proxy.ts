@@ -15,6 +15,18 @@ export function normalizeExternalAssetUrl(input: string): string {
   return s;
 }
 
+function appendVersionParam(url: string, version?: ImageProxyVersion): string {
+  const v = toIso(version);
+  if (!v) return url;
+  try {
+    const u = new URL(url);
+    u.searchParams.set("v", v);
+    return u.toString();
+  } catch {
+    return `${url}${url.includes("?") ? "&" : "?"}v=${encodeURIComponent(v)}`;
+  }
+}
+
 export function toImageProxyUrl(imageUrl: string, version?: ImageProxyVersion): string {
   const raw = String(imageUrl || "").trim();
   if (!raw) return "";
@@ -23,8 +35,14 @@ export function toImageProxyUrl(imageUrl: string, version?: ImageProxyVersion): 
   if (raw.startsWith("/") || raw.startsWith("./") || raw.startsWith("../")) return raw;
 
   const normalized = normalizeExternalAssetUrl(raw);
-  const v = toIso(version);
+  // Public CDN/GCS images load faster when the browser fetches them directly.
+  // The proxy is kept for internal APIs, but homepage/shortcut assets should avoid
+  // the extra Vercel hop whenever possible.
+  if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
+    return appendVersionParam(normalized, version);
+  }
 
+  const v = toIso(version);
   return `/api/image-proxy?url=${encodeURIComponent(normalized)}${v ? `&v=${encodeURIComponent(v)}` : ""}`;
 }
 
