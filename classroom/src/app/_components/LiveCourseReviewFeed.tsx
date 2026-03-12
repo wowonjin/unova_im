@@ -78,12 +78,12 @@ export default function LiveCourseReviewFeed() {
             </p>
           </div>
 
-          <div className="-mx-4 flex min-w-0 snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide lg:mx-0 lg:flex-1 lg:gap-5 lg:px-1">
+          <div className="grid min-w-0 grid-cols-2 gap-3 pb-2 lg:flex lg:flex-1 lg:gap-5 lg:overflow-x-auto lg:px-1 lg:scrollbar-hide">
             {loading && visibleReviews.length === 0 ? (
               Array.from({ length: 3 }).map((_, idx) => (
                 <div
                   key={`review-skeleton-${idx}`}
-                  className={`min-h-[220px] w-[calc(100vw-56px)] max-w-[340px] shrink-0 snap-start rounded-[18px] border border-white/10 bg-[#161616] animate-pulse sm:w-[300px] lg:min-h-[248px] lg:w-[calc((100%-40px)/3)] lg:max-w-none lg:min-w-0 ${
+                  className={`min-h-[210px] w-full min-w-0 rounded-[18px] border border-white/10 bg-[#161616] animate-pulse lg:min-h-[248px] lg:w-[calc((100%-40px)/3)] lg:max-w-none lg:min-w-0 lg:shrink-0 lg:snap-start ${
                     idx >= 2 ? "hidden lg:block" : ""
                   }`}
                 />
@@ -93,7 +93,7 @@ export default function LiveCourseReviewFeed() {
                 <Link
                   key={review.id}
                   href={`/store/${review.productId}`}
-                  className={`group min-h-[220px] w-[calc(100vw-56px)] max-w-[340px] shrink-0 snap-start flex-col rounded-[18px] bg-[#161616] p-5 transition-colors hover:bg-[#1c1c1c] sm:w-[300px] lg:flex lg:min-h-[248px] lg:w-[calc((100%-40px)/3)] lg:max-w-none lg:min-w-0 lg:p-[22px] ${
+                  className={`group flex min-h-[210px] w-full min-w-0 flex-col rounded-[18px] bg-[#161616] p-4 transition-colors hover:bg-[#1c1c1c] lg:min-h-[248px] lg:w-[calc((100%-40px)/3)] lg:max-w-none lg:min-w-0 lg:shrink-0 lg:snap-start lg:p-[22px] ${
                     idx >= 2 ? "hidden lg:flex" : "flex"
                   }`}
                 >
@@ -106,14 +106,14 @@ export default function LiveCourseReviewFeed() {
                     return (
                       <>
                         <div className="flex h-full flex-col">
-                          <p className="mt-1 line-clamp-4 text-[14px] font-[520] leading-[1.6] tracking-[-0.03em] text-white sm:text-[15px] lg:text-[16px]">
+                          <p className="mt-1 line-clamp-4 text-[13px] font-[500] leading-[1.55] tracking-[-0.03em] text-white sm:text-[15px] lg:text-[15px]">
                             {review.content}
                           </p>
-                          <div className="mt-auto pt-4">
-                            <p className="line-clamp-2 text-[11px] leading-5 text-white sm:text-[12px] lg:text-[13px]">
+                          <div className="mt-auto pt-3 lg:pt-4">
+                            <p className="line-clamp-2 text-[10px] leading-4 text-white sm:text-[12px] lg:text-[13px] lg:leading-5">
                               {review.productTitle}
                             </p>
-                            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-white">
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px] text-white lg:mt-2 lg:gap-1.5 lg:text-[11px]">
                               <span className="flex items-center gap-0.5">
                                 <span className="text-yellow-400">⭐</span>
                                 <span>{safeProductRating.toFixed(1)}</span>
@@ -122,13 +122,13 @@ export default function LiveCourseReviewFeed() {
                               <span className="truncate">{teacherName}T</span>
                             </div>
                           </div>
-                          <div className="mt-3 flex items-center gap-2.5">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1E1E1E] text-[12px] font-semibold text-white/85">
+                          <div className="mt-2.5 flex items-center gap-2 lg:mt-3 lg:gap-2.5">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1E1E1E] text-[11px] font-semibold text-white/85 lg:h-8 lg:w-8 lg:text-[12px]">
                               {Array.from(authorName)[0] ?? "유"}
                             </div>
-                            <div className="flex min-w-0 flex-col items-start gap-0.5 sm:flex-row sm:items-center sm:gap-2">
-                              <span className="truncate text-[12px] font-medium text-white/75">{authorName}</span>
-                              <span className="shrink-0 text-[11px] text-white/40">
+                            <div className="flex min-w-0 flex-col items-start gap-0.5">
+                              <span className="truncate text-[11px] font-medium text-white/75 lg:text-[12px]">{authorName}</span>
+                              <span className="text-[10px] text-white/40 lg:text-[11px]">
                                 {formatReviewDateTime(review.createdAtISO)}
                               </span>
                             </div>
