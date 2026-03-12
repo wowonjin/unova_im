@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type StorePreviewProduct = {
@@ -37,6 +38,14 @@ export type StorePreviewProductGroupSection = {
   id: string;
   title: string;
   groups: StorePreviewProductGroup[];
+};
+
+export type StorePreviewFeaturedSection = {
+  id: string;
+  title: string;
+  products: StorePreviewProduct[];
+  emptyLabel?: string;
+  showMeta?: boolean;
 };
 
 const types = ["교재", "강의"] as const;
@@ -136,6 +145,153 @@ function getDiscount(original: number, current: number): number {
   return Math.round(((original - current) / original) * 100);
 }
 
+function ProductCard({
+  product,
+  eager = false,
+  showMeta = true,
+}: {
+  product: StorePreviewProduct;
+  eager?: boolean;
+  showMeta?: boolean;
+}) {
+  return (
+    <Link
+      href={`/store/${product.id}`}
+      className={`group block cursor-pointer ${product.isSoldOut ? "opacity-90" : ""}`}
+      title={product.isSoldOut ? "준비중인 상품입니다" : undefined}
+    >
+      <div
+        className={`relative aspect-video overflow-hidden transition-all rounded-xl ${
+          product.type === "textbook"
+            ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02]"
+            : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
+        }`}
+      >
+        {product.type === "textbook" && product.textbookType ? (
+          <div className="absolute left-1 top-1 z-10 sm:left-2 sm:top-2">
+            <span
+              className={`inline-flex max-w-[12ch] items-center truncate rounded-md font-semibold text-white backdrop-blur sm:max-w-none ${
+                String(product.textbookType).trim().toUpperCase() === "PDF"
+                  ? "bg-gradient-to-r from-blue-500 to-purple-500 px-1.5 py-0.5 text-[9px] sm:px-2 sm:py-0.5 sm:text-[10px]"
+                  : "bg-black/70 px-1.5 py-0.5 text-[9px] sm:px-2 sm:py-0.5 sm:text-[10px]"
+              }`}
+            >
+              {product.textbookType}
+            </span>
+          </div>
+        ) : null}
+
+        {product.isSoldOut ? (
+          <div className="absolute right-1 top-1 z-10 sm:right-2 sm:top-2">
+            <span className="inline-flex items-center rounded-full bg-zinc-700/80 px-2 py-0.5 text-[9px] font-semibold text-white/90 border border-white/10 backdrop-blur sm:px-3 sm:py-1 sm:text-[10px]">
+              준비중
+            </span>
+          </div>
+        ) : null}
+
+        {(product.thumbnailUrl || (product.type === "course" && product.thumbnailStoredPath)) ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={
+              product.type === "course"
+                ? `/api/courses/${product.id}/thumbnail${
+                    product.thumbnailUpdatedAtISO ? `?v=${encodeURIComponent(product.thumbnailUpdatedAtISO)}` : ""
+                  }`
+                : `/api/textbooks/${product.id}/thumbnail${
+                    product.thumbnailUpdatedAtISO ? `?v=${encodeURIComponent(product.thumbnailUpdatedAtISO)}` : ""
+                  }`
+            }
+            alt={product.title}
+            className="absolute inset-0 h-full w-full object-cover"
+            loading={eager ? "eager" : "lazy"}
+            decoding="async"
+            fetchPriority={eager ? "high" : "auto"}
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div
+              className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
+                product.type === "course"
+                  ? "bg-gradient-to-br from-blue-500/30 to-purple-500/30"
+                  : "bg-gradient-to-br from-amber-500/30 to-orange-500/30"
+              }`}
+            >
+              <span
+                className="material-symbols-outlined text-white/80"
+                style={{ fontSize: "28px" }}
+                aria-hidden="true"
+              >
+                {product.type === "course" ? "play_circle" : "auto_stories"}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {product.isSoldOut ? (
+          <div className="pointer-events-none absolute inset-0 bg-black/25" aria-hidden="true" />
+        ) : null}
+      </div>
+
+      <div className="mt-3 px-0.5">
+        <h3 className="text-[14px] font-medium text-white leading-snug line-clamp-2 group-hover:text-white/90">
+          {product.title}
+        </h3>
+        <div className="mt-1 flex items-baseline gap-1.5">
+          <span className="text-[13px] font-semibold text-white">
+            {product.type === "textbook" && product.isFree ? "무료" : formatPrice(product.price)}
+          </span>
+          {product.originalPrice ? (
+            <>
+              <span className="text-[11px] text-white/30 line-through">{formatPrice(product.originalPrice)}</span>
+              <span className="text-[11px] font-semibold text-rose-400">
+                {getDiscount(product.originalPrice, product.price)}%
+              </span>
+            </>
+          ) : null}
+        </div>
+
+        {showMeta ? (
+          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-white">
+            <span className="flex items-center gap-0.5">
+              <span className="text-yellow-400">⭐</span>
+              <span>{(product.rating ?? 0).toFixed(1)}</span>
+              <span>({product.reviewCount ?? 0})</span>
+            </span>
+            {product.teacher ? (
+              <>
+                <span className="text-white/70">·</span>
+                <span>{product.teacher}T</span>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+
+        {product.tags.length > 0 ? (
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {product.tags
+              .filter((t) => t.trim().toUpperCase() !== "ORIGINAL")
+              .slice(0, 6)
+              .map((t, idx) => (
+                <span
+                  key={`${product.id}-tag-${t}`}
+                  className={`rounded-md px-2 py-0.5 text-[10px] font-medium ${
+                    idx === 0
+                      ? "bg-white text-black"
+                      : idx === 1
+                        ? "bg-[#6376EC] text-white"
+                        : "bg-white/[0.06] text-white/70"
+                  }`}
+                >
+                  {t}
+                </span>
+              ))}
+          </div>
+        ) : null}
+      </div>
+    </Link>
+  );
+}
+
 function ProductGrid({
   products,
   emptyLabel,
@@ -162,155 +318,109 @@ function ProductGrid({
     <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-5 sm:gap-y-10">
       {products.map((product, idx) => {
         const eager = eagerCount > 0 && idx < eagerCount;
-
-        const Card = (
-          <>
-            <div
-              className={`relative aspect-video overflow-hidden transition-all rounded-xl ${
-                product.type === "textbook"
-                  ? "bg-gradient-to-br from-white/[0.06] to-white/[0.02]"
-                  : "bg-gradient-to-br from-white/[0.08] to-white/[0.02]"
-              }`}
-            >
-            {/* 교재 종류 배지 (교재만) */}
-            {product.type === "textbook" && product.textbookType ? (
-              <div className="absolute left-1 top-1 z-10 sm:left-2 sm:top-2">
-                <span
-                  className={`inline-flex max-w-[12ch] items-center truncate rounded-md font-semibold text-white backdrop-blur sm:max-w-none ${
-                    String(product.textbookType).trim().toUpperCase() === "PDF"
-                      ? "bg-gradient-to-r from-blue-500 to-purple-500 px-1.5 py-0.5 text-[9px] sm:px-2 sm:py-0.5 sm:text-[10px]"
-                      : "bg-black/70 px-1.5 py-0.5 text-[9px] sm:px-2 sm:py-0.5 sm:text-[10px]"
-                  }`}
-                >
-                  {product.textbookType}
-                </span>
-              </div>
-            ) : null}
-
-            {/* 준비중 배지 */}
-            {product.isSoldOut ? (
-              <div className="absolute right-1 top-1 z-10 sm:right-2 sm:top-2">
-                <span className="inline-flex items-center rounded-full bg-zinc-700/80 px-2 py-0.5 text-[9px] font-semibold text-white/90 border border-white/10 backdrop-blur sm:px-3 sm:py-1 sm:text-[10px]">
-                  준비중
-                </span>
-              </div>
-            ) : null}
-
-            {(product.thumbnailUrl || (product.type === "course" && product.thumbnailStoredPath)) ? (
-              // data URL/CSP 이슈를 피하기 위해 내부 썸네일 API로 통일
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={
-                  product.type === "course"
-                    ? `/api/courses/${product.id}/thumbnail${
-                        product.thumbnailUpdatedAtISO ? `?v=${encodeURIComponent(product.thumbnailUpdatedAtISO)}` : ""
-                      }`
-                    : `/api/textbooks/${product.id}/thumbnail${
-                        product.thumbnailUpdatedAtISO ? `?v=${encodeURIComponent(product.thumbnailUpdatedAtISO)}` : ""
-                      }`
-                }
-                alt={product.title}
-                className="absolute inset-0 h-full w-full object-cover"
-                loading={eager ? "eager" : "lazy"}
-                decoding="async"
-                fetchPriority={eager ? "high" : "auto"}
-              />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div
-                  className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
-                    product.type === "course"
-                      ? "bg-gradient-to-br from-blue-500/30 to-purple-500/30"
-                      : "bg-gradient-to-br from-amber-500/30 to-orange-500/30"
-                  }`}
-                >
-                  <span
-                    className="material-symbols-outlined text-white/80"
-                    style={{ fontSize: "28px" }}
-                    aria-hidden="true"
-                  >
-                    {product.type === "course" ? "play_circle" : "auto_stories"}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* 준비중(=isSoldOut) 상품은 예전처럼 썸네일을 살짝 어둡게 처리 */}
-            {product.isSoldOut ? (
-              <div className="pointer-events-none absolute inset-0 bg-black/25" aria-hidden="true" />
-            ) : null}
-            </div>
-
-            <div className="mt-3 px-0.5">
-            <h3 className="text-[14px] font-medium text-white leading-snug line-clamp-2 group-hover:text-white/90">
-              {product.title}
-            </h3>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-[13px] font-semibold text-white">
-                {product.type === "textbook" && product.isFree ? "무료" : formatPrice(product.price)}
-              </span>
-              {product.originalPrice ? (
-                <>
-                  <span className="text-[11px] text-white/30 line-through">{formatPrice(product.originalPrice)}</span>
-                  <span className="text-[11px] font-semibold text-rose-400">
-                    {getDiscount(product.originalPrice, product.price)}%
-                  </span>
-                </>
-              ) : null}
-            </div>
-
-            {showMeta ? (
-              <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-white">
-                <span className="flex items-center gap-0.5">
-                  <span className="text-yellow-400">⭐</span>
-                  <span>{(product.rating ?? 0).toFixed(1)}</span>
-                  <span>({product.reviewCount ?? 0})</span>
-                </span>
-                {product.teacher ? (
-                  <>
-                    <span className="text-white/70">·</span>
-                    <span>{product.teacher}T</span>
-                  </>
-                ) : null}
-              </div>
-            ) : null}
-
-            {product.tags.length > 0 ? (
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {product.tags
-                  .filter((t) => t.trim().toUpperCase() !== "ORIGINAL")
-                  .slice(0, 6)
-                  .map((t, idx) => (
-                    <span
-                      key={`${product.id}-tag-${t}`}
-                      className={`rounded-md px-2 py-0.5 text-[10px] font-medium ${
-                        idx === 0
-                          ? "bg-white text-black"
-                          : idx === 1
-                            ? "bg-[#6376EC] text-white"
-                            : "bg-white/[0.06] text-white/70"
-                      }`}
-                    >
-                      {t}
-                    </span>
-                  ))}
-              </div>
-            ) : null}
-            </div>
-          </>
-        );
-
-        return (
-          <Link
-            key={product.id}
-            href={`/store/${product.id}`}
-            className={`group block cursor-pointer ${product.isSoldOut ? "opacity-90" : ""}`}
-            title={product.isSoldOut ? "준비중인 상품입니다" : undefined}
-          >
-            {Card}
-          </Link>
-        );
+        return <ProductCard key={product.id} product={product} eager={eager} showMeta={showMeta} />;
       })}
+    </div>
+  );
+}
+
+function FeaturedProductCarousel({
+  title,
+  products,
+  emptyLabel,
+  eagerCount = 0,
+  showMeta = true,
+}: {
+  title?: ReactNode;
+  products: StorePreviewProduct[];
+  emptyLabel: string;
+  eagerCount?: number;
+  showMeta?: boolean;
+}) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(false);
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const maxScrollLeft = Math.max(0, el.scrollWidth - el.clientWidth);
+    setCanPrev(el.scrollLeft > 8);
+    setCanNext(el.scrollLeft < maxScrollLeft - 8);
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+    const handleResize = () => updateScrollState();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [products.length, updateScrollState]);
+
+  const scrollByPage = (direction: -1 | 1) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const amount = Math.max(280, Math.floor(el.clientWidth * 0.92));
+    el.scrollBy({ left: direction * amount, behavior: "smooth" });
+    window.setTimeout(updateScrollState, 250);
+  };
+
+  if (products.length <= 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <span className="material-symbols-outlined text-white/20" style={{ fontSize: "64px" }} aria-hidden="true">
+          search_off
+        </span>
+        <p className="mt-4 text-[18px] font-medium text-white/60">{emptyLabel}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">{title}</div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => scrollByPage(-1)}
+            disabled={!canPrev}
+            aria-label="이전 상품 보기"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.04] text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
+              chevron_left
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollByPage(1)}
+            disabled={!canNext}
+            aria-label="다음 상품 보기"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.04] text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
+              chevron_right
+            </span>
+          </button>
+        </div>
+      </div>
+      <div
+        ref={scrollRef}
+        onScroll={updateScrollState}
+        className="mt-6 flex gap-4 overflow-x-auto scroll-smooth pb-1 scrollbar-hide sm:gap-5"
+      >
+        {products.map((product, idx) => {
+          const eager = eagerCount > 0 && idx < eagerCount;
+          return (
+            <div
+              key={product.id}
+              className="w-[calc(50%-8px)] shrink-0 sm:w-[calc(50%-10px)] lg:w-[calc((100%-60px)/4)]"
+            >
+              <ProductCard product={product} eager={eager} showMeta={showMeta} />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1102,6 +1212,10 @@ function StorePreviewSections({
   textbooks,
   hideTabMenus = false,
   anchorPrefix,
+  featuredTextbookSection,
+  featuredCourseSection,
+  recentTextbookSection,
+  featuredCourseAfterNode,
   showMeta = true,
   showFreeDownloads = false,
 }: {
@@ -1110,6 +1224,10 @@ function StorePreviewSections({
   hideTabMenus?: boolean;
   /** 스크롤 타겟용 id prefix */
   anchorPrefix?: string;
+  featuredTextbookSection?: StorePreviewFeaturedSection;
+  featuredCourseSection?: StorePreviewFeaturedSection;
+  recentTextbookSection?: StorePreviewFeaturedSection;
+  featuredCourseAfterNode?: ReactNode;
   showMeta?: boolean;
   showFreeDownloads?: boolean;
 }) {
@@ -1270,6 +1388,22 @@ function StorePreviewSections({
     return transferTextbooks.filter((p) => p.subject === selectedTransferTextbookSubject);
   }, [hideTabMenus, selectedTransferTextbookSubject, transferTextbooks]);
 
+  const featuredSectionId = featuredTextbookSection?.id ?? "section-suneung";
+  const featuredSectionTitle = featuredTextbookSection?.title ?? "수능 교재 구매하기";
+  const featuredSectionProducts = featuredTextbookSection?.products ?? filteredSuneungTextbooks;
+  const featuredSectionEmptyLabel = featuredTextbookSection?.emptyLabel ?? "등록된 교재 상품이 없습니다";
+  const featuredSectionShowMeta = featuredTextbookSection?.showMeta ?? showMeta;
+  const featuredCourseSectionId = featuredCourseSection?.id ?? "section-g1";
+  const featuredCourseSectionTitle = featuredCourseSection?.title ?? "내신 교재 구매하기";
+  const featuredCourseSectionProducts = featuredCourseSection?.products ?? filteredG1Textbooks;
+  const featuredCourseSectionEmptyLabel = featuredCourseSection?.emptyLabel ?? "등록된 내신 교재가 없습니다";
+  const featuredCourseSectionShowMeta = featuredCourseSection?.showMeta ?? showMeta;
+  const recentTextbookSectionId = recentTextbookSection?.id ?? "section-transfer";
+  const recentTextbookSectionTitle = recentTextbookSection?.title ?? "편입 교재 구매하기";
+  const recentTextbookSectionProducts = recentTextbookSection?.products ?? filteredTransferTextbooks;
+  const recentTextbookSectionEmptyLabel = recentTextbookSection?.emptyLabel ?? "등록된 교재 상품이 없습니다";
+  const recentTextbookSectionShowMeta = recentTextbookSection?.showMeta ?? showMeta;
+
   // 선택 과목이 사라진 경우(상품 구성 변경 등) 안전 리셋
   useEffect(() => {
     if (selectedCourseSubject === "전체") return;
@@ -1304,290 +1438,324 @@ function StorePreviewSections({
   }, [selectedTransferTextbookSubject, transferTextbookSubjects]);
 
   return (
-    <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-10">
-      <div id="section-suneung" className="mt-4 md:mt-6 scroll-mt-24">
-        <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">수능 교재 구매하기</h2>
-        {/* 전자책/실물책 필터 (과목 탭 위) */}
-        {!hideTabMenus ? (
-          <div className="mt-4 md:mt-6">
-            {/* 과목 탭과 동일한 탭 메뉴(underline) 스타일 */}
-            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
-              {BOOK_FORMATS.map((fmt) => {
-                const active = selectedSuneungBookFormat === fmt;
-                return (
-                  <button
-                    key={`suneung-bookfmt-${fmt}`}
-                    type="button"
-                    onClick={() => setSelectedSuneungBookFormat((prev) => (prev === fmt ? "전체" : fmt))}
-                    role="tab"
-                    aria-selected={active}
-                    className={`relative shrink-0 px-1 py-2 text-[13px] md:px-1 md:py-2 md:text-[15px] font-semibold ${
-                      active ? "text-white" : "text-white/55"
-                    }`}
-                  >
-                    {fmt}
-                    {active ? (
-                      <span
-                        className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white"
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
-
-        {!hideTabMenus && suneungTextbookSubjects.length > 1 ? (
-          <div className="mt-2 md:mt-4">
-            {/* 모바일: 탭 메뉴 스타일 */}
-            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
-              {suneungTextbookSubjects.map((subject) => {
-                const active = selectedSuneungTextbookSubject === subject;
-                return (
-                  <button
-                    key={`textbook-suneung-home-${subject}`}
-                    type="button"
-                    onClick={() => setSelectedSuneungTextbookSubject(subject)}
-                    role="tab"
-                    aria-selected={active}
-                    className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
-                      active ? "text-white" : "text-white/55"
-                    }`}
-                  >
-                    {subject}
-                    {active ? (
-                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-            {/* 데스크톱: 탭 메뉴 스타일 */}
-            <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
-              {suneungTextbookSubjects.map((subject) => {
-                const active = selectedSuneungTextbookSubject === subject;
-                return (
-                  <button
-                    key={`textbook-suneung-home-${subject}-desktop`}
-                    type="button"
-                    onClick={() => setSelectedSuneungTextbookSubject(subject)}
-                    role="tab"
-                    aria-selected={active}
-                    className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
-                      active ? "text-white" : "text-white/55"
-                    }`}
-                  >
-                    {subject}
-                    {active ? (
-                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
-        <div id={textbooksAnchorId} className={textbooksAnchorId ? "unova-scroll-target mt-6" : "mt-6"}>
-          <ExpandableProductGrid
-            products={filteredSuneungTextbooks}
-            emptyLabel="등록된 교재 상품이 없습니다"
-            collapsedRows={3}
-            eagerCount={8}
-            showMeta={showMeta}
-          />
-        </div>
-      </div>
-
-      {g1Textbooks.length > 0 ? (
-        <div id="section-g1" className="mt-14 md:mt-20 scroll-mt-24">
-          <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">내신 교재 구매하기</h2>
-          {!hideTabMenus && g1TextbookSubjects.length > 1 ? (
-            <div className="mt-2 md:mt-4">
-              {/* 모바일: 탭 메뉴 스타일 */}
-              <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
-                {g1TextbookSubjects.map((subject) => {
-                  const active = selectedG1TextbookSubject === subject;
-                  return (
-                    <button
-                      key={`textbook-g1-home-${subject}`}
-                      type="button"
-                      onClick={() => setSelectedG1TextbookSubject(subject)}
-                      role="tab"
-                      aria-selected={active}
-                      className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
-                        active ? "text-white" : "text-white/55"
-                      }`}
-                    >
-                      {subject}
-                      {active ? (
-                        <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-              {/* 데스크톱: 탭 메뉴 스타일 */}
-              <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
-                {g1TextbookSubjects.map((subject) => {
-                  const active = selectedG1TextbookSubject === subject;
-                  return (
-                    <button
-                      key={`textbook-g1-home-${subject}-desktop`}
-                      type="button"
-                      onClick={() => setSelectedG1TextbookSubject(subject)}
-                      role="tab"
-                      aria-selected={active}
-                      className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
-                        active ? "text-white" : "text-white/55"
-                      }`}
-                    >
-                      {subject}
-                      {active ? (
-                        <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-          <div className="mt-6">
-            <ExpandableProductGrid
-              products={filteredG1Textbooks}
-              emptyLabel="등록된 내신 교재가 없습니다"
-              collapsedRows={3}
-              eagerCount={8}
-              showMeta={showMeta}
+    <section suppressHydrationWarning className="mx-auto max-w-6xl px-4 pt-4 md:pt-6">
+      <div id={featuredSectionId} className="mt-4 md:mt-4 scroll-mt-24">
+        {featuredTextbookSection ? (
+          <div id={textbooksAnchorId} className={textbooksAnchorId ? "unova-scroll-target" : undefined}>
+            <FeaturedProductCarousel
+              title={<h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">{featuredSectionTitle}</h2>}
+              products={featuredSectionProducts.slice(0, 8)}
+              emptyLabel={featuredSectionEmptyLabel}
+              eagerCount={4}
+              showMeta={featuredSectionShowMeta}
             />
           </div>
+        ) : (
+          <>
+            <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">{featuredSectionTitle}</h2>
+            {/* 전자책/실물책 필터 (과목 탭 위) */}
+            {!hideTabMenus ? (
+              <div className="mt-4 md:mt-6">
+                <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+                  {BOOK_FORMATS.map((fmt) => {
+                    const active = selectedSuneungBookFormat === fmt;
+                    return (
+                      <button
+                        key={`suneung-bookfmt-${fmt}`}
+                        type="button"
+                        onClick={() => setSelectedSuneungBookFormat((prev) => (prev === fmt ? "전체" : fmt))}
+                        role="tab"
+                        aria-selected={active}
+                        className={`relative shrink-0 px-1 py-2 text-[13px] md:px-1 md:py-2 md:text-[15px] font-semibold ${
+                          active ? "text-white" : "text-white/55"
+                        }`}
+                      >
+                        {fmt}
+                        {active ? (
+                          <span
+                            className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {!hideTabMenus && suneungTextbookSubjects.length > 1 ? (
+              <div className="mt-2 md:mt-4">
+                <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
+                  {suneungTextbookSubjects.map((subject) => {
+                    const active = selectedSuneungTextbookSubject === subject;
+                    return (
+                      <button
+                        key={`textbook-suneung-home-${subject}`}
+                        type="button"
+                        onClick={() => setSelectedSuneungTextbookSubject(subject)}
+                        role="tab"
+                        aria-selected={active}
+                        className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                          active ? "text-white" : "text-white/55"
+                        }`}
+                      >
+                        {subject}
+                        {active ? (
+                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+                  {suneungTextbookSubjects.map((subject) => {
+                    const active = selectedSuneungTextbookSubject === subject;
+                    return (
+                      <button
+                        key={`textbook-suneung-home-${subject}-desktop`}
+                        type="button"
+                        onClick={() => setSelectedSuneungTextbookSubject(subject)}
+                        role="tab"
+                        aria-selected={active}
+                        className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                          active ? "text-white" : "text-white/55"
+                        }`}
+                      >
+                        {subject}
+                        {active ? (
+                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            <div id={textbooksAnchorId} className={textbooksAnchorId ? "unova-scroll-target mt-6" : "mt-6"}>
+              <ExpandableProductGrid
+                products={featuredSectionProducts}
+                emptyLabel={featuredSectionEmptyLabel}
+                collapsedRows={3}
+                eagerCount={8}
+                showMeta={showMeta}
+              />
+            </div>
+          </>
+        )}
+      </div>
+
+      {featuredCourseSection || g1Textbooks.length > 0 ? (
+        <div id={featuredCourseSectionId} className="mt-14 md:mt-14 scroll-mt-24">
+          {featuredCourseSection ? (
+            <>
+              <FeaturedProductCarousel
+                title={<h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">{featuredCourseSectionTitle}</h2>}
+                products={featuredCourseSectionProducts.slice(0, 8)}
+                emptyLabel={featuredCourseSectionEmptyLabel}
+                eagerCount={4}
+                showMeta={featuredCourseSectionShowMeta}
+              />
+            </>
+          ) : (
+            <>
+              <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">{featuredCourseSectionTitle}</h2>
+              {!hideTabMenus && g1TextbookSubjects.length > 1 ? (
+                <div className="mt-2 md:mt-4">
+                  <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
+                    {g1TextbookSubjects.map((subject) => {
+                      const active = selectedG1TextbookSubject === subject;
+                      return (
+                        <button
+                          key={`textbook-g1-home-${subject}`}
+                          type="button"
+                          onClick={() => setSelectedG1TextbookSubject(subject)}
+                          role="tab"
+                          aria-selected={active}
+                          className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                            active ? "text-white" : "text-white/55"
+                          }`}
+                        >
+                          {subject}
+                          {active ? (
+                            <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+                    {g1TextbookSubjects.map((subject) => {
+                      const active = selectedG1TextbookSubject === subject;
+                      return (
+                        <button
+                          key={`textbook-g1-home-${subject}-desktop`}
+                          type="button"
+                          onClick={() => setSelectedG1TextbookSubject(subject)}
+                          role="tab"
+                          aria-selected={active}
+                          className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                            active ? "text-white" : "text-white/55"
+                          }`}
+                        >
+                          {subject}
+                          {active ? (
+                            <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+              <div className="mt-6">
+                <ExpandableProductGrid
+                  products={featuredCourseSectionProducts}
+                  emptyLabel={featuredCourseSectionEmptyLabel}
+                  collapsedRows={3}
+                  eagerCount={8}
+                  showMeta={showMeta}
+                />
+              </div>
+            </>
+          )}
+          {featuredCourseAfterNode ? <div key="featured-course-after-node">{featuredCourseAfterNode}</div> : null}
         </div>
       ) : null}
 
-      {/* 편입 교재 구매하기 */}
-      <div id="section-transfer" className="mt-14 md:mt-20 scroll-mt-24">
-        <h3 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">편입 교재 구매하기</h3>
-        {!hideTabMenus && transferTextbookSubjects.length > 1 ? (
-          <div className="mt-2 md:mt-8">
-            {/* 모바일: 탭 메뉴 스타일 */}
-            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
-              {transferTextbookSubjects.map((subject) => {
-                const active = selectedTransferTextbookSubject === subject;
-                return (
-                  <button
-                    key={`textbook-transfer-home-${subject}`}
-                    type="button"
-                    onClick={() => setSelectedTransferTextbookSubject(subject)}
-                    role="tab"
-                    aria-selected={active}
-                    className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
-                      active ? "text-white" : "text-white/55"
-                    }`}
-                  >
-                    {subject}
-                    {active ? (
-                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-            {/* 데스크톱: 탭 메뉴 스타일 */}
-            <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
-              {transferTextbookSubjects.map((subject) => {
-                const active = selectedTransferTextbookSubject === subject;
-                return (
-                  <button
-                    key={`textbook-transfer-home-${subject}-desktop`}
-                    type="button"
-                    onClick={() => setSelectedTransferTextbookSubject(subject)}
-                    role="tab"
-                    aria-selected={active}
-                    className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
-                      active ? "text-white" : "text-white/55"
-                    }`}
-                  >
-                    {subject}
-                    {active ? (
-                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
-        <div className="mt-6">
-          <ExpandableProductGrid
-            products={filteredTransferTextbooks}
-            emptyLabel="등록된 교재 상품이 없습니다"
-            collapsedRows={3}
-            eagerCount={8}
-            showMeta={showMeta}
+      {recentTextbookSection ? (
+        <div id={recentTextbookSectionId} className="mt-14 md:mt-14 scroll-mt-24">
+          <FeaturedProductCarousel
+            title={<h3 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">{recentTextbookSectionTitle}</h3>}
+            products={recentTextbookSectionProducts.slice(0, 8)}
+            emptyLabel={recentTextbookSectionEmptyLabel}
+            eagerCount={4}
+            showMeta={recentTextbookSectionShowMeta}
           />
         </div>
-      </div>
-
-      {/* 강의 구매하기 */}
-      <div id="section-courses" className="mt-14 md:mt-20 scroll-mt-24">
-        <div id={coursesAnchorId} className={coursesAnchorId ? "unova-scroll-target" : undefined}>
-          <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">🔥 강의 구매하기</h2>
-        </div>
-        {!hideTabMenus && courseSubjects.length > 1 ? (
-          <div className="mt-2 md:mt-8">
-            {/* 모바일: 탭 메뉴 스타일 */}
-            <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
-              {courseSubjects.map((subject) => {
-                const active = selectedCourseSubject === subject;
-                return (
-                  <button
-                    key={`course-home-${subject}`}
-                    type="button"
-                    onClick={() => setSelectedCourseSubject(subject)}
-                    role="tab"
-                    aria-selected={active}
-                    className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
-                      active ? "text-white" : "text-white/55"
-                    }`}
-                  >
-                    {subject}
-                    {active ? (
-                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-            {/* 데스크톱: 탭 메뉴 스타일 */}
-            <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
-              {courseSubjects.map((subject) => {
-                const active = selectedCourseSubject === subject;
-                return (
-                  <button
-                    key={`course-home-${subject}-desktop`}
-                    type="button"
-                    onClick={() => setSelectedCourseSubject(subject)}
-                    role="tab"
-                    aria-selected={active}
-                    className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
-                      active ? "text-white" : "text-white/55"
-                    }`}
-                  >
-                    {subject}
-                    {active ? (
-                      <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
-                    ) : null}
-                  </button>
-                );
-              })}
+      ) : (
+        <>
+          {/* 편입 교재 구매하기 */}
+          <div id="section-transfer" className="mt-14 md:mt-20 scroll-mt-24">
+            <h3 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">편입 교재 구매하기</h3>
+            {!hideTabMenus && transferTextbookSubjects.length > 1 ? (
+              <div className="mt-2 md:mt-8">
+                <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
+                  {transferTextbookSubjects.map((subject) => {
+                    const active = selectedTransferTextbookSubject === subject;
+                    return (
+                      <button
+                        key={`textbook-transfer-home-${subject}`}
+                        type="button"
+                        onClick={() => setSelectedTransferTextbookSubject(subject)}
+                        role="tab"
+                        aria-selected={active}
+                        className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                          active ? "text-white" : "text-white/55"
+                        }`}
+                      >
+                        {subject}
+                        {active ? (
+                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+                  {transferTextbookSubjects.map((subject) => {
+                    const active = selectedTransferTextbookSubject === subject;
+                    return (
+                      <button
+                        key={`textbook-transfer-home-${subject}-desktop`}
+                        type="button"
+                        onClick={() => setSelectedTransferTextbookSubject(subject)}
+                        role="tab"
+                        aria-selected={active}
+                        className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                          active ? "text-white" : "text-white/55"
+                        }`}
+                      >
+                        {subject}
+                        {active ? (
+                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            <div className="mt-6">
+              <ExpandableProductGrid
+                products={filteredTransferTextbooks}
+                emptyLabel="등록된 교재 상품이 없습니다"
+                collapsedRows={3}
+                eagerCount={8}
+                showMeta={showMeta}
+              />
             </div>
           </div>
-        ) : null}
-        <div className="mt-6">
-          <ProductGrid products={filteredCourses} emptyLabel="등록된 강의 상품이 없습니다" eagerCount={8} showMeta={showMeta} />
-        </div>
-      </div>
+
+          {/* 강의 구매하기 */}
+          <div id="section-courses" className="mt-14 md:mt-20 scroll-mt-24">
+            <div id={coursesAnchorId} className={coursesAnchorId ? "unova-scroll-target" : undefined}>
+              <h2 className="text-[20px] md:text-[26px] font-bold tracking-[-0.02em]">🔥 강의 구매하기</h2>
+            </div>
+            {!hideTabMenus && courseSubjects.length > 1 ? (
+              <div className="mt-2 md:mt-8">
+                <div className="flex gap-4 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide md:hidden">
+                  {courseSubjects.map((subject) => {
+                    const active = selectedCourseSubject === subject;
+                    return (
+                      <button
+                        key={`course-home-${subject}`}
+                        type="button"
+                        onClick={() => setSelectedCourseSubject(subject)}
+                        role="tab"
+                        aria-selected={active}
+                        className={`relative shrink-0 px-1 py-2 text-[13px] font-semibold ${
+                          active ? "text-white" : "text-white/55"
+                        }`}
+                      >
+                        {subject}
+                        {active ? (
+                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="hidden md:flex gap-6 overflow-x-auto border-b border-white/10 pb-2 scrollbar-hide">
+                  {courseSubjects.map((subject) => {
+                    const active = selectedCourseSubject === subject;
+                    return (
+                      <button
+                        key={`course-home-${subject}-desktop`}
+                        type="button"
+                        onClick={() => setSelectedCourseSubject(subject)}
+                        role="tab"
+                        aria-selected={active}
+                        className={`relative shrink-0 px-1 py-2 text-[15px] font-semibold ${
+                          active ? "text-white" : "text-white/55"
+                        }`}
+                      >
+                        {subject}
+                        {active ? (
+                          <span className="absolute left-0 right-0 -bottom-2 h-[2px] rounded-full bg-white" aria-hidden="true" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            <div className="mt-6">
+              <ProductGrid products={filteredCourses} emptyLabel="등록된 강의 상품이 없습니다" eagerCount={8} showMeta={showMeta} />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* 무료 자료 다운로드 */}
       {showFreeDownloads && freeTextbooks.length > 0 ? (
@@ -1636,6 +1804,10 @@ export default function StorePreviewTabs({
   sectionsMode = "home",
   hideTabMenus = false,
   anchorPrefix,
+  featuredTextbookSection,
+  featuredCourseSection,
+  recentTextbookSection,
+  featuredCourseAfterNode,
   courseGroupSections,
   textbookGroups,
   textbookGroupSections,
@@ -1652,6 +1824,10 @@ export default function StorePreviewTabs({
   hideTabMenus?: boolean;
   /** 스크롤 타겟용 id prefix */
   anchorPrefix?: string;
+  featuredTextbookSection?: StorePreviewFeaturedSection;
+  featuredCourseSection?: StorePreviewFeaturedSection;
+  recentTextbookSection?: StorePreviewFeaturedSection;
+  featuredCourseAfterNode?: ReactNode;
   /** sectionsMode="simple"에서 강의를 여러 "구매하기" 섹션으로 나눠 보여주고 싶을 때 사용 */
   courseGroupSections?: StorePreviewProductGroupSection[];
   /** sectionsMode="simple"에서 교재를 여러 섹션으로 나눠 보여주고 싶을 때 사용 */
@@ -1682,6 +1858,10 @@ export default function StorePreviewTabs({
           textbooks={textbooks}
           hideTabMenus={hideTabMenus}
           anchorPrefix={anchorPrefix}
+          featuredTextbookSection={featuredTextbookSection}
+          featuredCourseSection={featuredCourseSection}
+          recentTextbookSection={recentTextbookSection}
+          featuredCourseAfterNode={featuredCourseAfterNode}
           showMeta={showMeta}
           showFreeDownloads={showFreeDownloads}
         />;

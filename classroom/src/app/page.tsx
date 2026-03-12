@@ -7,14 +7,29 @@ import ShortcutNav, { type ShortcutNavItem } from "./_components/ShortcutNav";
 import FloatingKakaoButton from "./_components/FloatingKakaoButton";
 import PopupLayerClient from "./_components/PopupLayerClient";
 import StorePreviewTabs, { type StorePreviewProduct } from "./_components/StorePreviewTabs";
-import HomeSectionNav from "./_components/HomeSectionNav";
+import LiveCourseReviewFeed from "./_components/LiveCourseReviewFeed";
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
+import { OrderStatus, ProductType, type Prisma } from "@prisma/client";
 
 // 홈은 유저별 데이터가 아니고(쿠키/세션 의존 X) 변경도 아주 자주 바뀌진 않으므로
 // ISR 주기를 조금 더 길게 잡아 원격 DB 왕복 횟수를 줄입니다.
 export const revalidate = 300;
 const SHOW_MAIN_POPUP = false; // Temporary: hide main-page popup layer.
+const HOME_FEATURED_TEXTBOOK_SECTION = {
+  id: "section-featured",
+  title: "지금 가장 주목받는 교재",
+  emptyLabel: "등록된 인기 교재가 없습니다",
+} as const;
+const HOME_FEATURED_COURSE_SECTION = {
+  id: "section-featured-courses",
+  title: "지금 가장 주목받는 강의",
+  emptyLabel: "등록된 인기 강의가 없습니다",
+} as const;
+const HOME_RECENT_TEXTBOOK_SECTION = {
+  id: "section-recent-textbooks",
+  title: "최근 출시된 교재",
+  emptyLabel: "등록된 최신 교재가 없습니다",
+} as const;
 
 function getStoreOwnerEmail(): string {
   // NOTE: 홈 프리뷰는 "판매 등록된 상품"을 보여줘야 하므로 특정 owner로 제한하지 않습니다.
@@ -101,6 +116,7 @@ export default async function HomePage() {
       thumbnailUrl: true;
       thumbnailStoredPath: true;
       updatedAt: true;
+      isSoldOut: true;
       rating: true;
       reviewCount: true;
     };
@@ -118,7 +134,9 @@ export default async function HomePage() {
         textbookType: true;
       gradeCategory: true;
       thumbnailUrl: true;
+      createdAt: true;
       updatedAt: true;
+      isSoldOut: true;
       rating: true;
       reviewCount: true;
     };
@@ -126,6 +144,8 @@ export default async function HomePage() {
 
   let storeCourses: DbCourseRow[] = [];
   let storeTextbooks: DbTextbookRow[] = [];
+  let featuredCourses: DbCourseRow[] = [];
+  let featuredTextbooks: DbTextbookRow[] = [];
   let courseReviewStats = new Map<string, { count: number; avg: number }>();
   let textbookReviewStats = new Map<string, { count: number; avg: number }>();
   try {
@@ -180,6 +200,7 @@ export default async function HomePage() {
             textbookType: true,
             gradeCategory: true,
             thumbnailUrl: true,
+            createdAt: true,
             updatedAt: true,
             isSoldOut: true,
             rating: true,
@@ -207,6 +228,7 @@ export default async function HomePage() {
             textbookType: true,
             gradeCategory: true,
             thumbnailUrl: true,
+            createdAt: true,
             updatedAt: true,
             isSoldOut: true,
             rating: true,
@@ -223,10 +245,131 @@ export default async function HomePage() {
     storeCourses = coursesRes.status === "fulfilled" ? coursesRes.value : [];
     storeTextbooks = textbooksRes.status === "fulfilled" ? textbooksRes.value : [];
 
+    try {
+      const grouped = await prisma.order.groupBy({
+        by: ["courseId"],
+        where: {
+          productType: ProductType.COURSE,
+          courseId: { not: null },
+          status: { in: [OrderStatus.COMPLETED, OrderStatus.PARTIALLY_REFUNDED] },
+        },
+        _count: { _all: true },
+      });
+
+      const rankedCourseIds = grouped
+        .filter((row): row is typeof row & { courseId: string } => typeof row.courseId === "string" && row.courseId.length > 0)
+        .sort((a, b) => {
+          const countDiff = (b._count._all ?? 0) - (a._count._all ?? 0);
+          if (countDiff !== 0) return countDiff;
+          return String(a.courseId).localeCompare(String(b.courseId), "ko");
+        })
+        .map((row) => row.courseId)
+        .slice(0, 20);
+
+      if (rankedCourseIds.length > 0) {
+        const rows = await prisma.course.findMany({
+          where: {
+            id: { in: rankedCourseIds },
+            isPublished: true,
+            OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+          },
+          select: {
+            id: true,
+            title: true,
+            subjectName: true,
+            teacherName: true,
+            price: true,
+            originalPrice: true,
+            tags: true,
+            thumbnailUrl: true,
+            thumbnailStoredPath: true,
+            updatedAt: true,
+            isSoldOut: true,
+            rating: true,
+            reviewCount: true,
+          },
+        });
+        const rowById = new Map(rows.map((row) => [row.id, row]));
+        featuredCourses = rankedCourseIds
+          .map((id) => rowById.get(id))
+          .filter((row): row is DbCourseRow => Boolean(row))
+          .slice(0, 8);
+      }
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn("[home] failed to load featured course rankings:", msg);
+      }
+      featuredCourses = [];
+    }
+
+    try {
+      const grouped = await prisma.order.groupBy({
+        by: ["textbookId"],
+        where: {
+          productType: ProductType.TEXTBOOK,
+          textbookId: { not: null },
+          status: { in: [OrderStatus.COMPLETED, OrderStatus.PARTIALLY_REFUNDED] },
+        },
+        _count: { _all: true },
+      });
+
+      const rankedTextbookIds = grouped
+        .filter((row): row is typeof row & { textbookId: string } => typeof row.textbookId === "string" && row.textbookId.length > 0)
+        .sort((a, b) => {
+          const countDiff = (b._count._all ?? 0) - (a._count._all ?? 0);
+          if (countDiff !== 0) return countDiff;
+          return String(a.textbookId).localeCompare(String(b.textbookId), "ko");
+        })
+        .map((row) => row.textbookId)
+        .slice(0, 40);
+
+      if (rankedTextbookIds.length > 0) {
+        const rows = await prisma.textbook.findMany({
+          where: {
+            id: { in: rankedTextbookIds },
+            isPublished: true,
+            OR: [{ price: { not: null } }, { originalPrice: { not: null } }],
+          },
+          select: {
+            id: true,
+            title: true,
+            subjectName: true,
+            teacherName: true,
+            price: true,
+            originalPrice: true,
+            tags: true,
+            textbookType: true,
+            gradeCategory: true,
+            thumbnailUrl: true,
+            createdAt: true,
+            updatedAt: true,
+            isSoldOut: true,
+            rating: true,
+            reviewCount: true,
+          },
+        });
+        const rowById = new Map(rows.map((row) => [row.id, row]));
+        featuredTextbooks = rankedTextbookIds
+          .map((id) => rowById.get(id))
+          .filter(
+            (row): row is DbTextbookRow =>
+              row != null && typeof row.price === "number" && row.price > 0
+          )
+          .slice(0, 8);
+      }
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn("[home] failed to load featured textbook rankings:", msg);
+      }
+      featuredTextbooks = [];
+    }
+
     // 리뷰 집계값이 DB에 반영되지 않은 경우를 대비한 보정(홈 프리뷰 표시용)
     try {
       if (storeCourses.length > 0) {
-        const courseIds = storeCourses.map((c) => c.id);
+        const courseIds = Array.from(new Set([...storeCourses.map((c) => c.id), ...featuredCourses.map((c) => c.id)]));
         const rows = await prisma.review.groupBy({
           by: ["courseId"],
           where: { productType: "COURSE", courseId: { in: courseIds }, isApproved: true },
@@ -247,7 +390,7 @@ export default async function HomePage() {
       }
 
       if (storeTextbooks.length > 0) {
-        const textbookIds = storeTextbooks.map((t) => t.id);
+        const textbookIds = Array.from(new Set([...storeTextbooks.map((t) => t.id), ...featuredTextbooks.map((t) => t.id)]));
         const rows = await prisma.review.groupBy({
           by: ["textbookId"],
           where: { productType: "TEXTBOOK", textbookId: { in: textbookIds }, isApproved: true },
@@ -279,9 +422,11 @@ export default async function HomePage() {
     }
     storeCourses = [];
     storeTextbooks = [];
+    featuredCourses = [];
+    featuredTextbooks = [];
   }
 
-  const coursePreview: StorePreviewProduct[] = storeCourses.map((c) => {
+  const mapCourseToPreview = (c: DbCourseRow): StorePreviewProduct => {
     const tags = (c.tags as string[] | null) || [];
     const stats = courseReviewStats.get(c.id);
     return {
@@ -304,9 +449,15 @@ export default async function HomePage() {
       rating: stats ? stats.avg : c.rating,
       reviewCount: stats ? stats.count : c.reviewCount,
     };
-  });
+  };
 
-  const textbookPreview: StorePreviewProduct[] = storeTextbooks.map((t) => {
+  const coursePreview: StorePreviewProduct[] = storeCourses.map(mapCourseToPreview);
+  const featuredCoursePreview: StorePreviewProduct[] = [
+    ...featuredCourses.map(mapCourseToPreview),
+    ...coursePreview.filter((item) => !featuredCourses.some((featured) => featured.id === item.id)),
+  ].slice(0, 8);
+
+  const mapTextbookToPreview = (t: DbTextbookRow): StorePreviewProduct => {
     const tags = (t.tags as string[] | null) || [];
     const stats = textbookReviewStats.get(t.id);
     return {
@@ -329,7 +480,17 @@ export default async function HomePage() {
       rating: stats ? stats.avg : t.rating,
       reviewCount: stats ? stats.count : t.reviewCount,
     };
-  });
+  };
+
+  const textbookPreview: StorePreviewProduct[] = storeTextbooks.map(mapTextbookToPreview);
+  const featuredTextbookPreview: StorePreviewProduct[] = featuredTextbooks
+    .map(mapTextbookToPreview)
+    .filter((item) => !item.isFree && item.price > 0)
+    .slice(0, 8);
+  const recentTextbookPreview: StorePreviewProduct[] = [...storeTextbooks]
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 8)
+    .map(mapTextbookToPreview);
 
   return (
     <Suspense
@@ -353,18 +514,49 @@ export default async function HomePage() {
         {/* Shortcut Navigation */}
         <ShortcutNav items={shortcutItems} />
 
-        {/* PC 좌측 섹션 네비게이션 */}
-        <HomeSectionNav />
-
         {/* 교재 및 강의 구매(스토어) - 바로가기 아래 배치 */}
         <div className="pb-20">
           <StorePreviewTabs
             courses={coursePreview}
             textbooks={textbookPreview}
             variant="sections"
+            featuredTextbookSection={{
+              ...HOME_FEATURED_TEXTBOOK_SECTION,
+              products: featuredTextbookPreview,
+              showMeta: true,
+            }}
+            featuredCourseSection={{
+              ...HOME_FEATURED_COURSE_SECTION,
+              products: featuredCoursePreview,
+              showMeta: true,
+            }}
+            recentTextbookSection={{
+              ...HOME_RECENT_TEXTBOOK_SECTION,
+              products: recentTextbookPreview,
+            }}
+            featuredCourseAfterNode={<LiveCourseReviewFeed />}
             showMeta={false}
             showFreeDownloads={false}
           />
+
+          <div className="mx-auto mt-10 max-w-6xl px-4">
+            <Link
+              href="https://novabook-six.vercel.app/"
+              className="block overflow-hidden rounded-[20px]"
+              aria-label="기출뱅크 바로가기"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Image
+                src="/api/assets/past-exam-bank"
+                alt="평가원 기출문제 무료 다운로드 기출뱅크 배너"
+                width={1024}
+                height={512}
+                className="h-[120px] w-full object-cover object-top md:h-[170px]"
+                priority={false}
+              />
+            </Link>
+          </div>
         </div>
 
         {/* Footer */}

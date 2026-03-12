@@ -92,8 +92,9 @@ export default function LandingHeader({
   const [mobileExpanded, setMobileExpanded] = useState<Record<string, boolean>>({});
   const [mobileProfileExpanded, setMobileProfileExpanded] = useState(false);
   const [mounted, setMounted] = useState(false);
-  // 메인 페이지 헤더 이벤트 배너(🎁 겨울방학... 무료 다운로드!) 숨김
-  const [eventBannerVisible] = useState(false);
+  const promoBannerHref = "/store?type=교재&exam=편입&subject=기출문제집";
+  const promoBannerLeadText = "성공적인 2027 대학 편입.";
+  const promoBannerCtaText = "학교별 기출 문제집 지금 구매하기";
   const sidebarContext = useSidebarOptional();
   const sidebar = showMobileMenu ? sidebarContext : null;
   const pathname = usePathname();
@@ -539,84 +540,34 @@ export default function LandingHeader({
   };
 
 
-  // 스크롤 시 배너 숨김
-  const showEventBanner = eventBannerVisible && !scrolled && !isTeacherConsole && isHome;
-  // 모바일/PC 높이를 CSS 변수로 관리 (모바일에서 더 낮게)
-  const eventBannerOffset = showEventBanner ? "var(--unova-event-banner-h)" : "0px";
+  const showPromoBanner = !isTeacherConsole;
+  const eventBannerOffset = showPromoBanner ? "var(--unova-event-banner-h)" : "0px";
 
   return (
     <div className="unova-event-banner-vars" style={{ ["--unova-event-banner-offset" as any]: eventBannerOffset } as any}>
-      {/* ❄️ 겨울 이벤트 배너 - 게임 스타일 */}
-      {eventBannerVisible && !isTeacherConsole && isHome && (
+      {/* 상단 프로모션 배너 */}
+      {showPromoBanner && (
         <div
-          className={`fixed top-0 left-0 right-0 z-[1001] h-[var(--unova-event-banner-h)] overflow-hidden transition-all duration-300 ease-out ${
-            scrolled ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"
-          }`}
+          className="fixed left-0 right-0 top-0 z-[1001] h-[var(--unova-event-banner-h)] overflow-hidden"
           style={{
-            background: "linear-gradient(90deg, #0f172a 0%, #1e3a5f 25%, #312e81 50%, #4c1d95 75%, #1e3a5f 100%)",
-            backgroundSize: "200% 100%",
-            animation: "gradientShift 8s ease infinite",
+            background: "linear-gradient(90deg, #7aa7ff 0%, #b989ff 50%, #e297f1 100%)",
           }}
         >
-          {/* 눈 내리는 효과 */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-            {[...Array(12)].map((_, i) => (
-              <span
-                key={i}
-                className="absolute text-white/40 animate-[snowfall_linear_infinite]"
-                style={{
-                  left: `${8 + i * 8}%`,
-                  top: "-10px",
-                  fontSize: `${6 + (i % 3) * 2}px`,
-                  animationDuration: `${3 + (i % 4)}s`,
-                  animationDelay: `${i * 0.3}s`,
-                }}
-              >
-                ❄
-              </span>
-            ))}
-          </div>
-
-          {/* 반짝이는 별 효과 */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-            {[...Array(6)].map((_, i) => (
-              <span
-                key={i}
-                className="absolute w-1 h-1 rounded-full bg-white animate-[twinkle_ease-in-out_infinite]"
-                style={{
-                  left: `${10 + i * 15}%`,
-                  top: `${20 + (i % 3) * 20}%`,
-                  animationDuration: `${1.5 + (i % 3) * 0.5}s`,
-                  animationDelay: `${i * 0.2}s`,
-                }}
-              />
-            ))}
-          </div>
-
-          {/* 메인 콘텐츠 */}
           <div className="relative mx-auto flex h-full max-w-6xl items-center justify-center px-4">
             <Link
-              href="https://unova.co.kr/store/cmkfcr810002a3uip4c8d2gzb"
-              className="group flex items-center"
+              href={promoBannerHref}
+              className="group flex h-full w-full items-center justify-center"
             >
-              {/* 텍스트 - 글로우 + 그라데이션 */}
-              <span className="flex items-center gap-1.5 text-[12px] sm:text-[14px] font-bold tracking-wide">
-                <span aria-hidden="true">🎁</span>
-                <span 
-                  className="text-transparent bg-clip-text"
-                  style={{
-                    backgroundImage: "linear-gradient(90deg, #e0f2fe, #ffffff, #c4b5fd, #ffffff, #e0f2fe)",
-                    backgroundSize: "200% auto",
-                    animation: "shimmer 3s linear infinite",
-                    filter: "drop-shadow(0 0 8px rgba(255,255,255,0.5))",
-                  }}
-                >
-                  겨울방학 필수 암기 숙어집 무료 다운로드!
+              <span className="flex items-center justify-center gap-1.5 text-center text-[12px] tracking-[0.01em] text-white sm:gap-2 sm:text-[15px]">
+                <span className="font-normal">
+                  {promoBannerLeadText}
+                </span>
+                <span className="font-semibold">
+                  {promoBannerCtaText}
                 </span>
               </span>
             </Link>
           </div>
-
         </div>
       )}
 
@@ -1399,10 +1350,10 @@ export default function LandingHeader({
         document.body
       )}
     </nav>
-      {/* 배너가 보일 때(스크롤 전)만, 메인 콘텐츠를 아래로 밀어주는 스페이서 */}
+      {/* 배너 높이만큼 콘텐츠를 아래로 밀어줍니다. */}
       <div
         aria-hidden="true"
-        className="transition-[height] duration-300 ease-out h-[var(--unova-event-banner-offset)]"
+        className="h-[var(--unova-event-banner-offset)]"
       />
     </div>
   );

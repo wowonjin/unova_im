@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const NAV_ITEMS = [
-  { id: "section-suneung", label: "수능 교재 구매하기" },
-  { id: "section-g1", label: "내신 교재 구매하기" },
+  { id: "section-featured", label: "지금 가장 주목받는 교재" },
+  { id: "section-featured-courses", label: "지금 가장 주목받는 강의" },
   { id: "section-transfer", label: "편입 교재 구매하기" },
   { id: "section-courses", label: "강의 구매하기" },
 ];
